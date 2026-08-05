@@ -1,16 +1,11 @@
 codegen * typescript
 ========================
-Positive Passed: 20644/22023 (93.74%)
+Positive Passed: 20695/22023 (93.97%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - parser: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
 Failed: fixtures/typescript/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts - parser: Expected '=' in type alias declaration, but found 'I' at 49..50
-Failed: fixtures/typescript/tests/cases/compiler/acceptableAlias1.ts - parser: expected an import-equals declaration after 'export' at 56..69
-Failed: fixtures/typescript/tests/cases/compiler/aliasInaccessibleModule.ts - parser: expected an import-equals declaration after 'export' at 49..62
-Failed: fixtures/typescript/tests/cases/compiler/aliasInaccessibleModule2.ts - parser: expected an import-equals declaration after 'export' at 104..117
 Failed: fixtures/typescript/tests/cases/compiler/aliasOnMergedModuleInterface.ts - parser: Expected '=' in type alias declaration, but found 'A' at 65..66
-Failed: fixtures/typescript/tests/cases/compiler/aliasesInSystemModule1.ts - parser: expected an import-equals declaration after 'export' at 64..90
-Failed: fixtures/typescript/tests/cases/compiler/aliasesInSystemModule2.ts - parser: expected an import-equals declaration after 'export' at 60..86
 Failed: fixtures/typescript/tests/cases/compiler/allowJsCrossMonorepoPackage.ts - parser: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/allowSyntheticDefaultImportsCanPaintCrossModuleDeclaration.ts - parser: Expected '=' in type alias declaration, but found 'function' at 49..57
 Failed: fixtures/typescript/tests/cases/compiler/ambientConstLiterals.ts - ambientConstLiterals.ts: codegen output changed after reparse 
@@ -100,7 +95,6 @@ Failed: fixtures/typescript/tests/cases/compiler/caseInsensitiveFileSystemWithCa
 Failed: fixtures/typescript/tests/cases/compiler/caseInsensitiveFileSystemWithCapsImportTypeDeclarations.ts - parser: Expected '=' in type alias declaration, but found 'TypeB' at 84..89
 Failed: fixtures/typescript/tests/cases/compiler/checkJsdocTypeTagOnExportAssignment2.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 22..25
 Failed: fixtures/typescript/tests/cases/compiler/circularConstructorWithReturn.ts - parser: Expected '=' in type alias declaration, but found 'Client' at 142..148
-Failed: fixtures/typescript/tests/cases/compiler/circularReferenceInImport.ts - parser: expected an import-equals declaration after 'export' at 34..52
 Failed: fixtures/typescript/tests/cases/compiler/circularlyConstrainedMappedTypeContainingConditionalNoInfiniteInstantiationDepth.ts - parser: Expected '=' in type alias declaration, but found 'const' at 573..578
 Failed: fixtures/typescript/tests/cases/compiler/classExpressionWithResolutionOfNamespaceOfSameName01.ts - parser: Expected '=' in type alias declaration, but found 'type' at 57..61
 Failed: fixtures/typescript/tests/cases/compiler/classExtendingAbstractClassWithMemberCalledTheSameAsItsOwnTypeParam.ts - parser: Expected '=' in type alias declaration, but found 'IReader' at 223..230
@@ -128,7 +122,6 @@ Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndAmbie
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndAmbientModule.ts - parser: Expected '=' in type alias declaration, but found 'namespace' at 20..29
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndAmbientVar.ts - parser: Expected '=' in type alias declaration, but found 'var' at 166..169
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndAmbientVar.ts - parser: Expected '=' in type alias declaration, but found 'var' at 20..23
-Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndInternalModuleAliasInGlobalFile.ts - parser: expected an import-equals declaration after 'export' at 307..339
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndUninstantiatedModule.ts - parser: Expected '=' in type alias declaration, but found 'I' at 66..67
 Failed: fixtures/typescript/tests/cases/compiler/collisionThisExpressionAndEnumInGlobal.ts - collisionThisExpressionAndEnumInGlobal.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/commentOnAmbientEnum.ts - a.ts: codegen output changed after reparse 
@@ -190,15 +183,10 @@ Failed: fixtures/typescript/tests/cases/compiler/declFileConstructSignatures.ts 
 Failed: fixtures/typescript/tests/cases/compiler/declFileEnumUsedAsValue.ts - declFileEnumUsedAsValue.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/declFileEnums.ts - declFileEnums.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/declFileExportAssignmentImportInternalModule.ts - parser: Expected '=' in type alias declaration, but found 'connectModule' at 65..78
-Failed: fixtures/typescript/tests/cases/compiler/declFileExportImportChain.ts - parser: expected an import-equals declaration after 'export' at 7..57
-Failed: fixtures/typescript/tests/cases/compiler/declFileExportImportChain.ts - parser: expected an import-equals declaration after 'export' at 7..59
-Failed: fixtures/typescript/tests/cases/compiler/declFileExportImportChain2.ts - parser: expected an import-equals declaration after 'export' at 7..58
-Failed: fixtures/typescript/tests/cases/compiler/declFileForExportedImport.ts - parser: expected an import-equals declaration after 'export' at 61..113
 Failed: fixtures/typescript/tests/cases/compiler/declFileGenericType.ts - parser: Expected '=' in type alias declaration, but found 'i' at 825..826
 Failed: fixtures/typescript/tests/cases/compiler/declFileGenericType2.ts - parser: Expected '=' in type alias declaration, but found 'IElementController' at 507..525
 Failed: fixtures/typescript/tests/cases/compiler/declFileImportModuleWithExportAssignment.ts - parser: Expected '=' in type alias declaration, but found 'connectModule' at 39..52
 Failed: fixtures/typescript/tests/cases/compiler/declFileIndexSignatures.ts - parser: Expected '=' in type alias declaration, but found 'IStringIndexSignature' at 22..43
-Failed: fixtures/typescript/tests/cases/compiler/declFileInternalAliases.ts - parser: expected an import-equals declaration after 'export' at 158..173
 Failed: fixtures/typescript/tests/cases/compiler/declFileMethods.ts - parser: Expected '=' in type alias declaration, but found 'I1' at 2283..2285
 Failed: fixtures/typescript/tests/cases/compiler/declFileModuleContinuation.ts - parser: Expected '=' in type alias declaration, but found 'Z' at 40..41
 Failed: fixtures/typescript/tests/cases/compiler/declFileTypeAnnotationTypeAlias.ts - parser: Expected '=' in type alias declaration, but found 'Value' at 33..38
@@ -260,10 +248,10 @@ Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMappedPrivateTyp
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMappedTypePreservesTypeParameterConstraint.ts - parser: Expected '=' in type alias declaration, but found 'abstract' at 418..426
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMappedTypeTemplateTypeofSymbol.ts - parser: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMergedAliasWithConst.ts - parser: Expected '=' in type alias declaration, but found 'Color' at 93..98
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflicts.ts - parser: expected an import-equals declaration after 'export' at 237..252
+Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflicts.ts - parser: Expected '=' in type alias declaration, but found 'I' at 217..218
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflicts2.ts - declarationEmitNameConflicts2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflicts3.ts - parser: Expected '=' in type alias declaration, but found 'D' at 38..39
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflictsWithAlias.ts - parser: expected an import-equals declaration after 'export' at 53..66
+Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflictsWithAlias.ts - parser: Expected '=' in type alias declaration, but found 'I' at 45..46
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNamespaceMergedWithInterfaceNestedFunction.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 22..25
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNoInvalidCommentReuse1.ts - parser: Expected '=' in type alias declaration, but found 'Id' at 17..19
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNoInvalidCommentReuse1.ts - parser: Expected '=' in type alias declaration, but found 'const' at 20..25
@@ -415,7 +403,6 @@ Failed: fixtures/typescript/tests/cases/compiler/es6ImportNamedImportWithTypesAn
 Failed: fixtures/typescript/tests/cases/compiler/es6ModuleConstEnumDeclaration.ts - es6ModuleConstEnumDeclaration.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/es6ModuleConstEnumDeclaration2.ts - es6ModuleConstEnumDeclaration2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/es6ModuleEnumDeclaration.ts - es6ModuleEnumDeclaration.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/es6ModuleInternalImport.ts - parser: expected an import-equals declaration after 'export' at 53..69
 Failed: fixtures/typescript/tests/cases/compiler/exactSpellingSuggestion.ts - exactSpellingSuggestion.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/excessPropertyCheckWithMultipleDiscriminants.ts - parser: Expected '=' in type alias declaration, but found 'BaseAttribute' at 1865..1878
 Failed: fixtures/typescript/tests/cases/compiler/excessPropertyChecksWithNestedIntersections.ts - parser: Expected '=' in type alias declaration, but found 'MyType' at 633..639
@@ -435,12 +422,9 @@ Failed: fixtures/typescript/tests/cases/compiler/exportDefaultProperty.ts - pars
 Failed: fixtures/typescript/tests/cases/compiler/exportDefaultProperty2.ts - parser: Expected '=' in type alias declaration, but found 'B' at 146..147
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsProperty.ts - parser: Expected '=' in type alias declaration, but found 'X' at 117..118
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsProperty2.ts - parser: Expected '=' in type alias declaration, but found 'B' at 141..142
-Failed: fixtures/typescript/tests/cases/compiler/exportImport.ts - parser: expected an import-equals declaration after 'export' at 7..34
-Failed: fixtures/typescript/tests/cases/compiler/exportImportAndClodule.ts - parser: expected an import-equals declaration after 'export' at 260..275
-Failed: fixtures/typescript/tests/cases/compiler/exportImportCanSubstituteConstEnumForValue.ts - parser: expected an import-equals declaration after 'export' at 667..712
-Failed: fixtures/typescript/tests/cases/compiler/exportImportMultipleFiles.ts - parser: expected an import-equals declaration after 'export' at 7..63
-Failed: fixtures/typescript/tests/cases/compiler/exportImportNonInstantiatedModule.ts - parser: expected an import-equals declaration after 'export' at 79..92
-Failed: fixtures/typescript/tests/cases/compiler/exportImportNonInstantiatedModule2.ts - parser: expected an import-equals declaration after 'export' at 7..34
+Failed: fixtures/typescript/tests/cases/compiler/exportImportAndClodule.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 154..159
+Failed: fixtures/typescript/tests/cases/compiler/exportImportCanSubstituteConstEnumForValue.ts - parser: Expected '=' in type alias declaration, but found 'DialogResultCallback' at 177..197
+Failed: fixtures/typescript/tests/cases/compiler/exportImportNonInstantiatedModule.ts - parser: Expected '=' in type alias declaration, but found 'I' at 38..39
 Failed: fixtures/typescript/tests/cases/compiler/exportNamespaceDeclarationRetainsVisibility.ts - parser: Expected '=' in type alias declaration, but found 'C' at 103..104
 Failed: fixtures/typescript/tests/cases/compiler/exportRedeclarationTypeAliases.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 17..20
 Failed: fixtures/typescript/tests/cases/compiler/exportSpecifierReferencingOuterDeclaration1.ts - parser: Expected '=' in type alias declaration, but found 'bar' at 46..49
@@ -475,8 +459,7 @@ Failed: fixtures/typescript/tests/cases/compiler/exportedInterfaceInaccessibleIn
 Failed: fixtures/typescript/tests/cases/compiler/expr.ts - expr.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/extendsUntypedModule.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 92..96
 Failed: fixtures/typescript/tests/cases/compiler/extendsUntypedModule.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'is' at 4..6
-Failed: fixtures/typescript/tests/cases/compiler/externalModuleReferenceDoubleUnderscore1.ts - parser: expected an import-equals declaration after 'export' at 105..139
-Failed: fixtures/typescript/tests/cases/compiler/externalModuleReferenceOfImportDeclarationWithExportModifier.ts - parser: expected an import-equals declaration after 'export' at 7..96
+Failed: fixtures/typescript/tests/cases/compiler/externalModuleReferenceDoubleUnderscore1.ts - externalModuleReferenceDoubleUnderscore1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/fakeInfinity1.ts - parser: Expected '=' in type alias declaration, but found 'PositiveInfinity' at 62..78
 Failed: fixtures/typescript/tests/cases/compiler/fakeInfinity2.ts - fakeInfinity2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/fakeInfinity3.ts - fakeInfinity3.ts: codegen output changed after reparse 
@@ -507,11 +490,8 @@ Failed: fixtures/typescript/tests/cases/compiler/genericTypeWithMultipleBases2.t
 Failed: fixtures/typescript/tests/cases/compiler/identicalGenericConditionalsWithInferRelated.ts - parser: Expected '=' in type alias declaration, but found 'Constructor' at 336..347
 Failed: fixtures/typescript/tests/cases/compiler/implicitIndexSignatures.ts - implicitIndexSignatures.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatInterop1.ts - parser: Expected '=' in type alias declaration, but found 'HighlightAPI' at 56..68
-Failed: fixtures/typescript/tests/cases/compiler/importAliasAnExternalModuleInsideAnInternalModule.ts - parser: expected an import-equals declaration after 'export' at 164..177
 Failed: fixtures/typescript/tests/cases/compiler/importAliasFromNamespace.ts - internal.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/importDeclTypes.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 22..25
-Failed: fixtures/typescript/tests/cases/compiler/importDeclWithExportModifier.ts - parser: expected an import-equals declaration after 'export' at 47..62
-Failed: fixtures/typescript/tests/cases/compiler/importDeclWithExportModifierInAmbientContext.ts - parser: expected an import-equals declaration after 'export' at 88..103
 Failed: fixtures/typescript/tests/cases/compiler/importElisionEnum.ts - enum.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/importElisionEnum.ts - index.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/importEqualsError45874.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 39..42
@@ -569,31 +549,23 @@ Failed: fixtures/typescript/tests/cases/compiler/interfaceDeclaration3.ts - pars
 Failed: fixtures/typescript/tests/cases/compiler/interfaceDeclaration5.ts - parser: Expected '=' in type alias declaration, but found 'I1' at 22..24
 Failed: fixtures/typescript/tests/cases/compiler/interfaceNameAsIdentifier.ts - parser: Expected '=' in type alias declaration, but found 'C' at 72..73
 Failed: fixtures/typescript/tests/cases/compiler/interfacePropertiesWithSameName2.ts - parser: Expected '=' in type alias declaration, but found 'Shaker' at 379..385
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasClassInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 171..186
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasClassInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 115..131
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnum.ts - internalAliasEnum.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 137..158
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideLocalModuleWithExport.ts - internalAliasEnumInsideLocalModuleWithExport.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideLocalModuleWithoutExport.ts - internalAliasEnumInsideLocalModuleWithoutExport.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 112..133
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideTopLevelModuleWithExport.ts - internalAliasEnumInsideTopLevelModuleWithExport.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideTopLevelModuleWithoutExport.ts - internalAliasEnumInsideTopLevelModuleWithoutExport.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasFunctionInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 117..134
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasFunctionInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 92..109
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasInitializedModuleInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 122..137
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasInitializedModuleInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 97..112
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterface.ts - parser: Expected '=' in type alias declaration, but found 'I' at 38..39
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 87..102
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideLocalModuleWithExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 45..46
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideLocalModuleWithoutExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 45..46
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideLocalModuleWithoutExportAccessError.ts - parser: Expected '=' in type alias declaration, but found 'I' at 45..46
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 62..77
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideTopLevelModuleWithExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 45..46
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideTopLevelModuleWithoutExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 45..46
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModule.ts - parser: Expected '=' in type alias declaration, but found 'I' at 63..64
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 145..160
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideLocalModuleWithExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 70..71
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideLocalModuleWithoutExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 70..71
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideLocalModuleWithoutExportAccessError.ts - parser: Expected '=' in type alias declaration, but found 'I' at 70..71
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 120..135
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideTopLevelModuleWithExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 70..71
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideTopLevelModuleWithoutExport.ts - parser: Expected '=' in type alias declaration, but found 'I' at 70..71
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasVarInsideLocalModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 79..94
-Failed: fixtures/typescript/tests/cases/compiler/internalAliasVarInsideTopLevelModuleWithExport.ts - parser: expected an import-equals declaration after 'export' at 54..69
 Failed: fixtures/typescript/tests/cases/compiler/internalImportInstantiatedModuleMergedWithClassNotReferencingInstanceNoConflict.ts - parser: Expected '=' in type alias declaration, but found 'X' at 67..68
 Failed: fixtures/typescript/tests/cases/compiler/internalImportUnInstantiatedModuleMergedWithClassNotReferencingInstanceNoConflict.ts - parser: Expected '=' in type alias declaration, but found 'X' at 67..68
 Failed: fixtures/typescript/tests/cases/compiler/internalImportUnInstantiatedModuleNotReferencingInstanceNoConflict.ts - parser: Expected '=' in type alias declaration, but found 'X' at 38..39
@@ -608,7 +580,6 @@ Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesAmbientConstEnum
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesConstEnum.ts - /foo.d.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesDontElideReExportStar.ts - parser: Expected '=' in type alias declaration, but found 'T' at 17..18
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportImportUninstantiatedNamespace.ts - parser: Expected '=' in type alias declaration, but found 'HTMLAttributes' at 50..64
-Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportImportUninstantiatedNamespace.ts - parser: expected an import-equals declaration after 'export' at 44..69
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - enum1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - enum2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - parser: Expected '=' in type alias declaration, but found 'T' at 95..96
@@ -617,7 +588,7 @@ Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesImportConstEnumT
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesNonAmbientConstEnum.ts - file1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesReExportType.ts - parser: Expected '=' in type alias declaration, but found 'T' at 17..18
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesReExportType.ts - parser: Expected '=' in type alias declaration, but found 'T' at 17..18
-Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesReExportType.ts - parser: expected an import-equals declaration after 'export' at 94..133
+Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesReExportType.ts - parser: Expected '=' in type alias declaration, but found 'T3' at 378..380
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesSketchyAliasLocalMerge.ts - parser: Expected '=' in type alias declaration, but found 'FC' at 17..19
 Failed: fixtures/typescript/tests/cases/compiler/jsDeclarationsWithDefaultAsNamespaceLikeMerge.ts - parser: Expected '=' in type alias declaration, but found 'function' at 277..285
 Failed: fixtures/typescript/tests/cases/compiler/jsDocDeclarationEmitDoesNotUseNodeModulesPathWithoutError.ts - parser: Expected '=' in type alias declaration, but found 'LionRequestInit' at 17..32
@@ -635,11 +606,8 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxElementClassTooManyParams.ts
 Failed: fixtures/typescript/tests/cases/compiler/jsxLibraryManagedAttributesUnusedGeneric.tsx - parser: Expected '=' in type alias declaration, but found 'Element' at 155..162
 Failed: fixtures/typescript/tests/cases/compiler/jsxLocalNamespaceIndexSignatureNoCrash.tsx - parser: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 147..164
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexport.tsx - parser: Expected '=' in type alias declaration, but found 'ComponentType' at 958..971
-Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexport.tsx - parser: expected an import-equals declaration after 'export' at 1456..1481
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissingAliasTarget.tsx - parser: Expected '=' in type alias declaration, but found 'ComponentType' at 958..971
-Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissingAliasTarget.tsx - parser: expected an import-equals declaration after 'export' at 1296..1318
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - parser: Expected '=' in type alias declaration, but found 'ComponentType' at 958..971
-Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - parser: expected an import-equals declaration after 'export' at 1259..1284
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceReexports.tsx - parser: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 121..138
 Failed: fixtures/typescript/tests/cases/compiler/jsxNestedWithinTernaryParsesCorrectly.tsx - jsxNestedWithinTernaryParsesCorrectly.tsx: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - parser: Unexpected token '<' at 12..13
@@ -710,7 +678,6 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSuffixes_on
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 4..8
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_fakeScopedPackage.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 129..133
 Failed: fixtures/typescript/tests/cases/compiler/moduleSameValueDuplicateExportedBindings2.ts - c.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/moduleSharesNameWithImportDeclarationInsideIt2.ts - parser: expected an import-equals declaration after 'export' at 120..135
 Failed: fixtures/typescript/tests/cases/compiler/moduleSymbolMerging.ts - parser: Expected '=' in type alias declaration, but found 'I' at 38..39
 Failed: fixtures/typescript/tests/cases/compiler/moduleVisibilityTest1.ts - parser: Expected '=' in type alias declaration, but found 'var' at 454..457
 Failed: fixtures/typescript/tests/cases/compiler/moduleVisibilityTest3.ts - parser: Expected '=' in type alias declaration, but found 'IMode' at 43..48
@@ -718,7 +685,6 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleVisibilityTest4.ts - pars
 Failed: fixtures/typescript/tests/cases/compiler/module_augmentUninstantiatedModule2.ts - parser: Expected '=' in type alias declaration, but found 'IAngularStatic' at 82..96
 Failed: fixtures/typescript/tests/cases/compiler/module_augmentUninstantiatedModule2.ts - parser: Expected '=' in type alias declaration, but found 'IModule' at 82..89
 Failed: fixtures/typescript/tests/cases/compiler/moduledecl.ts - parser: Expected '=' in type alias declaration, but found 'i1' at 1051..1053
-Failed: fixtures/typescript/tests/cases/compiler/multiImportExport.ts - parser: expected an import-equals declaration after 'export' at 7..43
 Failed: fixtures/typescript/tests/cases/compiler/multipleBaseInterfaesWithIncompatibleProperties2.ts - parser: Expected '=' in type alias declaration, but found 'TcpSocketConnectOpts' at 97..117
 Failed: fixtures/typescript/tests/cases/compiler/namespaceDisambiguationInUnion.ts - parser: Expected '=' in type alias declaration, but found 'Yep' at 35..38
 Failed: fixtures/typescript/tests/cases/compiler/namespaces1.ts - parser: Expected '=' in type alias declaration, but found 'Z' at 63..64
@@ -727,7 +693,6 @@ Failed: fixtures/typescript/tests/cases/compiler/narrowingUnionWithBang.ts - par
 Failed: fixtures/typescript/tests/cases/compiler/nestedExcessPropertyChecking.ts - nestedExcessPropertyChecking.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/nestedGenericConditionalTypeWithGenericImportType.ts - parser: Expected '=' in type alias declaration, but found 'Name' at 27..31
 Failed: fixtures/typescript/tests/cases/compiler/neverAsDiscriminantType.ts - parser: Expected '=' in type alias declaration, but found 'GatewayPayloadStructure' at 348..371
-Failed: fixtures/typescript/tests/cases/compiler/newNamesInGlobalAugmentations1.ts - parser: expected an import-equals declaration after 'export' at 205..223
 Failed: fixtures/typescript/tests/cases/compiler/noAsConstNameLookup.ts - parser: Expected '=' in type alias declaration, but found 'Cleaner' at 67..74
 Failed: fixtures/typescript/tests/cases/compiler/noCrashUMDMergedWithGlobalValue.ts - parser: Expected '=' in type alias declaration, but found 'Action' at 52..58
 Failed: fixtures/typescript/tests/cases/compiler/noImplicitAnyDestructuringInPrivateMethod.ts - parser: Expected '=' in type alias declaration, but found 'class' at 124..129
@@ -768,15 +733,13 @@ Failed: fixtures/typescript/tests/cases/compiler/privacyFunctionParameterDeclFil
 Failed: fixtures/typescript/tests/cases/compiler/privacyFunctionReturnTypeDeclFile.ts - parser: Expected '=' in type alias declaration, but found 'publicInterfaceWithPrivateParmeterTypes' at 1377..1416
 Failed: fixtures/typescript/tests/cases/compiler/privacyFunctionReturnTypeDeclFile.ts - parser: Expected '=' in type alias declaration, but found 'publicInterfaceWithPrivateParmeterTypes' at 74..113
 Failed: fixtures/typescript/tests/cases/compiler/privacyGloClass.ts - parser: Expected '=' in type alias declaration, but found 'm1_i_public' at 39..50
-Failed: fixtures/typescript/tests/cases/compiler/privacyGloImport.ts - parser: expected an import-equals declaration after 'export' at 2965..3001
 Failed: fixtures/typescript/tests/cases/compiler/privacyGloInterface.ts - parser: Expected '=' in type alias declaration, but found 'C3_public' at 120..129
-Failed: fixtures/typescript/tests/cases/compiler/privacyImport.ts - parser: expected an import-equals declaration after 'export' at 2972..3008
 Failed: fixtures/typescript/tests/cases/compiler/privacyInterface.ts - parser: Expected '=' in type alias declaration, but found 'C3_public' at 127..136
 Failed: fixtures/typescript/tests/cases/compiler/privacyInterfaceExtendsClauseDeclFile.ts - parser: Expected '=' in type alias declaration, but found 'publicInterfaceInPublicModule' at 56..85
 Failed: fixtures/typescript/tests/cases/compiler/privacyInterfaceExtendsClauseDeclFile.ts - parser: Expected '=' in type alias declaration, but found 'publicInterfaceInPublicModule' at 57..86
-Failed: fixtures/typescript/tests/cases/compiler/privacyLocalInternalReferenceImportWithExport.ts - parser: expected an import-equals declaration after 'export' at 985..1034
+Failed: fixtures/typescript/tests/cases/compiler/privacyLocalInternalReferenceImportWithExport.ts - parser: Expected '=' in type alias declaration, but found 'i_private' at 257..266
 Failed: fixtures/typescript/tests/cases/compiler/privacyLocalInternalReferenceImportWithoutExport.ts - parser: Expected '=' in type alias declaration, but found 'i_private' at 257..266
-Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelInternalReferenceImportWithExport.ts - parser: expected an import-equals declaration after 'export' at 944..993
+Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelInternalReferenceImportWithExport.ts - parser: Expected '=' in type alias declaration, but found 'i_private' at 257..266
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelInternalReferenceImportWithoutExport.ts - parser: Expected '=' in type alias declaration, but found 'i_private' at 257..266
 Failed: fixtures/typescript/tests/cases/compiler/privacyTypeParameterOfFunction.ts - parser: Expected '=' in type alias declaration, but found 'publicInterfaceWithPrivateTypeParameters' at 74..114
 Failed: fixtures/typescript/tests/cases/compiler/privacyTypeParameterOfFunctionDeclFile.ts - parser: Expected '=' in type alias declaration, but found 'publicInterfaceWithPrivateTypeParameters' at 74..114
@@ -814,16 +777,13 @@ Failed: fixtures/typescript/tests/cases/compiler/recursiveTypeAliasWithSpreadCon
 Failed: fixtures/typescript/tests/cases/compiler/recursivelySpecializedConstructorDeclaration.ts - parser: Expected '=' in type alias declaration, but found 'Interface' at 68..77
 Failed: fixtures/typescript/tests/cases/compiler/reducibleIndexedAccessTypes.ts - reducibleIndexedAccessTypes.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/reexportNameAliasedAndHoisted.ts - parser: Expected '=' in type alias declaration, but found 'Sizing' at 17..23
-Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - parser: expected an import-equals declaration after 'export' at 23..60
 Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found '++' at 74..76
-Failed: fixtures/typescript/tests/cases/compiler/reservedNameOnModuleImport.ts - parser: expected an import-equals declaration after 'export' at 129..153
 Failed: fixtures/typescript/tests/cases/compiler/resolveNameWithNamspace.ts - parser: Expected '=' in type alias declaration, but found 'cool' at 74..78
 Failed: fixtures/typescript/tests/cases/compiler/restInvalidArgumentType.ts - restInvalidArgumentType.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/reverseMappedPartiallyInferableTypes.ts - parser: Expected '=' in type alias declaration, but found 'Prop' at 38..42
 Failed: fixtures/typescript/tests/cases/compiler/reverseMappedTypeDeepDeclarationEmit.ts - parser: Expected '=' in type alias declaration, but found 'Validator' at 17..26
 Failed: fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts - parser: Expected a type, but found '...' at 495..498
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
-Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationImport.ts - parser: expected an import-equals declaration after 'export' at 73..88
 Failed: fixtures/typescript/tests/cases/compiler/specedNoStackBlown.ts - parser: Expected '=' in type alias declaration, but found 'Spec' at 642..646
 Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionLeadingUnderscores01.ts - parser: Expected '=' in type alias declaration, but found 'let' at 40..43
 Failed: fixtures/typescript/tests/cases/compiler/spreadInvalidArgumentType.ts - spreadInvalidArgumentType.ts: codegen output changed after reparse 
@@ -852,7 +812,6 @@ Failed: fixtures/typescript/tests/cases/compiler/symlinkedWorkspaceDependenciesN
 Failed: fixtures/typescript/tests/cases/compiler/symlinkedWorkspaceDependenciesNoDirectLinkPeerGeneratesNonrelativeName.ts - parser: Expected '=' in type alias declaration, but found 'function' at 53..61
 Failed: fixtures/typescript/tests/cases/compiler/systemModule17.ts - parser: Expected '=' in type alias declaration, but found 'I' at 41..42
 Failed: fixtures/typescript/tests/cases/compiler/systemModule17.ts - parser: Expected '=' in type alias declaration, but found 'I' at 84..85
-Failed: fixtures/typescript/tests/cases/compiler/systemModule18.ts - parser: expected an import-equals declaration after 'export' at 7..44
 Failed: fixtures/typescript/tests/cases/compiler/systemModuleAmbientDeclarations.ts - file1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/systemModuleAmbientDeclarations.ts - parser: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/systemModuleAmbientDeclarations.ts - parser: Expected '=' in type alias declaration, but found 'enum' at 20..24
@@ -920,7 +879,7 @@ Failed: fixtures/typescript/tests/cases/compiler/unusedLocalsAndParametersTypeAl
 Failed: fixtures/typescript/tests/cases/compiler/unwitnessedTypeParameterVariance.ts - parser: Expected '=' in type alias declaration, but found 'CalcObj' at 44..51
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDeclaration_jsx.tsx - parser: Expected '=' in type alias declaration, but found 'Element' at 40..47
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDefinitionInDeclarationFiles.ts - parser: Expected '=' in type alias declaration, but found 'class' at 20..25
-Failed: fixtures/typescript/tests/cases/compiler/usingModuleWithExportImportInValuePosition.ts - parser: expected an import-equals declaration after 'export' at 254..267
+Failed: fixtures/typescript/tests/cases/compiler/usingModuleWithExportImportInValuePosition.ts - parser: Expected '=' in type alias declaration, but found 'Id' at 182..184
 Failed: fixtures/typescript/tests/cases/compiler/varArgsOnConstructorTypes.ts - parser: Expected '=' in type alias declaration, but found 'I1' at 249..251
 Failed: fixtures/typescript/tests/cases/compiler/vardecl.ts - parser: Expected '=' in type alias declaration, but found 'var' at 1140..1143
 Failed: fixtures/typescript/tests/cases/compiler/varianceProblingAndZeroOrderIndexSignatureRelationsAlign.ts - parser: Expected '=' in type alias declaration, but found 'MyInfo' at 1625..1631
@@ -956,7 +915,6 @@ Failed: fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowBinar
 Failed: fixtures/typescript/tests/cases/conformance/controlFlow/neverReturningFunctions1.ts - parser: Expected '=' in type alias declaration, but found 'function' at 818..826
 Failed: fixtures/typescript/tests/cases/conformance/controlFlow/typeGuardsAsAssertions.ts - parser: Expected '=' in type alias declaration, but found 'Optional' at 56..64
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/leaveOptionalParameterAsWritten.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 22..25
-Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/leaveOptionalParameterAsWritten.ts - parser: expected an import-equals declaration after 'export' at 107..126
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/libReferenceDeclarationEmit.ts - parser: Expected '=' in type alias declaration, but found 'const' at 64..69
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/libReferenceDeclarationEmitBundle.ts - parser: Expected '=' in type alias declaration, but found 'const' at 64..69
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/libReferenceNoLib.ts - parser: Expected '=' in type alias declaration, but found 'interface' at 48..57
@@ -1010,9 +968,9 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/modules/defaultExportsCa
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports1-amd.ts - parser: Expected '=' in type alias declaration, but found 'I' at 185..186
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports1-es6.ts - parser: Expected '=' in type alias declaration, but found 'I' at 185..186
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports1.ts - parser: Expected '=' in type alias declaration, but found 'I' at 185..186
-Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-amd.ts - parser: expected an import-equals declaration after 'export' at 276..291
-Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-es6.ts - parser: expected an import-equals declaration after 'export' at 276..291
-Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3.ts - parser: expected an import-equals declaration after 'export' at 276..291
+Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-amd.ts - parser: Expected '=' in type alias declaration, but found 'I' at 83..84
+Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-es6.ts - parser: Expected '=' in type alias declaration, but found 'I' at 83..84
+Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3.ts - parser: Expected '=' in type alias declaration, but found 'I' at 83..84
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports5.ts - parser: Expected '=' in type alias declaration, but found 'A' at 22..23
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck59.ts - generatorTypeCheck59.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck61.ts - generatorTypeCheck61.ts: codegen output changed after reparse 
@@ -1154,8 +1112,7 @@ Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclar
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ExportInterfaceWithInaccessibleTypeInTypeParameterConstraint.ts - parser: Expected '=' in type alias declaration, but found 'Point3d' at 137..144
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ExportVariableWithAccessibleTypeInTypeAnnotation.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 38..43
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ExportVariableWithInaccessibleTypeInTypeAnnotation.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 38..43
-Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/circularImportAlias.ts - parser: expected an import-equals declaration after 'export' at 47..60
-Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/exportImportAlias.ts - parser: expected an import-equals declaration after 'export' at 290..303
+Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/exportImportAlias.ts - parser: Expected '=' in type alias declaration, but found 'Id' at 207..209
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/importAliasIdentifiers.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 291..296
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/invalidImportAliasIdentifiers.ts - invalidImportAliasIdentifiers.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleBody/moduleWithStatementsOfEveryKind.ts - parser: Expected '=' in type alias declaration, but found 'I' at 682..683
@@ -1163,7 +1120,6 @@ Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclar
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/instantiatedModule.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 90..95
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/nestedModules.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 42..47
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/nonInstantiatedModule.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 38..43
-Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/reExportAliasMakesInstantiated.ts - parser: expected an import-equals declaration after 'export' at 156..183
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/declarations/jsDeclarationsClassImplementsGenericsSerialization.ts - parser: Expected '=' in type alias declaration, but found 'Encoder' at 22..29
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/importTag1.ts - parser: Expected '=' in type alias declaration, but found 'Foo' at 22..25
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/importTag16.ts - parser: Expected '=' in type alias declaration, but found 'I' at 54..55
@@ -1216,9 +1172,6 @@ Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModu
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationConditions.ts - parser: Expected '=' in type alias declaration, but found 'Thing' at 41..46
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationDirectory.ts - parser: Expected '=' in type alias declaration, but found 'Thing' at 41..46
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationPattern.ts - parser: Expected '=' in type alias declaration, but found 'Thing' at 41..46
-Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - parser: expected an import-equals declaration after 'export' at 119..146
-Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - parser: expected an import-equals declaration after 'export' at 66..93
-Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - parser: expected an import-equals declaration after 'export' at 66..93
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAttributesModeDeclarationEmit1.ts - parser: Expected '=' in type alias declaration, but found 'ImportInterface' at 22..37
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAttributesModeDeclarationEmit1.ts - parser: Expected '=' in type alias declaration, but found 'LocalInterface' at 186..200
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAttributesModeDeclarationEmit1.ts - parser: Expected '=' in type alias declaration, but found 'RequireInterface' at 22..38
@@ -1378,7 +1331,3 @@ Failed: fixtures/typescript/tests/cases/projects/VisibilityOfCrosssModuleTypeUsa
 Failed: fixtures/typescript/tests/cases/projects/VisibilityOfCrosssModuleTypeUsage/server.ts - parser: Expected '=' in type alias declaration, but found 'IServer' at 22..29
 Failed: fixtures/typescript/tests/cases/projects/baseline/decl.ts - parser: Expected '=' in type alias declaration, but found 'Point' at 22..27
 Failed: fixtures/typescript/tests/cases/projects/declarations_ExportNamespace/useModule.ts - parser: Expected '=' in type alias declaration, but found 'IUseModuleA' at 44..55
-Failed: fixtures/typescript/tests/cases/projects/privacyCheck-ImportInParent/test.ts - parser: expected an import-equals declaration after 'export' at 33..73
-Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/test.ts - parser: expected an import-equals declaration after 'export' at 51..91
-Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/testGlo.ts - parser: expected an import-equals declaration after 'export' at 26..66
-Failed: fixtures/typescript/tests/cases/projects/privacyCheck-SimpleReference/test.ts - parser: expected an import-equals declaration after 'export' at 7..47
