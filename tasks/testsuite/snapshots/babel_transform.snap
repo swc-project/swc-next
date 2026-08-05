@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 441/4069 (10.84%)
-Failed: 62/4069 (1.52%)
+Passed: 443/4069 (10.89%)
+Failed: 60/4069 (1.47%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 413/560 (73.75%)
-Failed: 55/560 (9.82%)
+Passed: 415/560 (74.11%)
+Failed: 53/560 (9.46%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -76,8 +76,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/arrow-f
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/cast-need-parentheses/input.js - babel-generator/test/fixtures/typescript/cast-need-parentheses: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/class-abstract/input.js - semantic: Duplicate export of 'default' at 157..193
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/export-default-function-as/input.js - babel-generator/test/fixtures/typescript/export-default-function-as: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/import-export-import-require/input.js - parse: expected an import-equals declaration after 'export' at 7..31
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/import-export-import/input.js - parse: expected an import-equals declaration after 'export' at 7..22
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/non-null-parentheses/input.js - babel-generator/test/fixtures/typescript/non-null-parentheses: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies/input.js - babel-generator/test/fixtures/typescript/satisfies: transformed output differs from output.js
