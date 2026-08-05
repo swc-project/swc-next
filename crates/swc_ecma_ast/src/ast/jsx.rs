@@ -1,7 +1,6 @@
 use swc_next_ast_macros::ast;
 
-use super::{js::*, ts::*};
-use crate::{Ast, NodeKind};
+use super::js::*;
 
 #[ast(repr)]
 pub enum JsxElementName {
@@ -38,58 +37,8 @@ pub enum JsxAttributeValue {
 
 #[ast(repr)]
 pub enum JsxExpression {
-    // =========== Expr =========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    Function(Function),
-    Class(Class),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
-    // =========== JSX-specific =========
+    Expr(Expr),
     JsxEmptyExpression(JsxEmptyExpression),
-}
-
-impl_union_conversion!(JsxExpression, Expr, Expr);
-
-impl JsxExpression {
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        (ast.node_kind(self.node_id()) != NodeKind::JsxEmptyExpression)
-            .then_some(Expr(self.node_id()))
-    }
 }
 
 #[ast(repr)]
