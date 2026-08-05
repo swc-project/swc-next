@@ -8,6 +8,7 @@ pub enum SourceType {
     Module,
     Script,
     CommonJs,
+    Unambiguous,
 }
 
 impl From<SourceType> for AstSourceType {
@@ -16,6 +17,7 @@ impl From<SourceType> for AstSourceType {
             SourceType::Module => Self::Module,
             SourceType::Script => Self::Script,
             SourceType::CommonJs => Self::CommonJs,
+            SourceType::Unambiguous => Self::Unambiguous,
         }
     }
 }
@@ -26,7 +28,7 @@ impl From<AstSourceType> for SourceType {
             AstSourceType::Module => Self::Module,
             AstSourceType::Script => Self::Script,
             AstSourceType::CommonJs => Self::CommonJs,
-            AstSourceType::Unambiguous => unreachable!(),
+            AstSourceType::Unambiguous => Self::Unambiguous,
         }
     }
 }

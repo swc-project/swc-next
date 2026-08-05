@@ -54,7 +54,8 @@ export declare function parseSync(source: string, options?: ParserOptions | unde
 export declare const enum SourceType {
   Module = 'module',
   Script = 'script',
-  CommonJs = 'commonjs'
+  CommonJs = 'commonjs',
+  Unambiguous = 'unambiguous'
 }
 
 export declare function sourceTypeFromPath(path: string): SourceType
