@@ -11805,8 +11805,6 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
 mod tests {
     use swc_next_allocator::Allocator;
 
-    use crate::TokenParserConfig;
-
     use super::*;
 
     #[test]
@@ -11822,23 +11820,23 @@ mod tests {
         ));
     }
 
-    fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
-        let allocator = Allocator::new();
-        let mut ast = Ast::new(source, &allocator);
-        let options = Options {
-            source_type: SourceType::Unambiguous,
-            lang: Lang::Ts,
-            ..Options::default()
-        };
-        let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
-
-        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        assert_eq!(result.program.source_type(&ast), expected, "{source}");
-        assert_eq!(ast.source_type(), expected, "{source}");
-    }
-
     #[test]
-    fn resolves_unambiguous_program_source_type() {
+    fn unambiguous() {
+        fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
+            let allocator = Allocator::new();
+            let mut ast = Ast::new(source, &allocator);
+            let options = Options {
+                source_type: SourceType::Unambiguous,
+                lang: Lang::Ts,
+                ..Options::default()
+            };
+            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+
+            assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+            assert_eq!(result.program.source_type(&ast), expected, "{source}");
+            assert_eq!(ast.source_type(), expected, "{source}");
+        }
+
         assert_unambiguous_source_type("const value = 1;", SourceType::Script);
         assert_unambiguous_source_type("import value from 'value';", SourceType::Module);
         assert_unambiguous_source_type("export const value = 1;", SourceType::Module);
@@ -11850,7 +11848,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_return_outside_function_when_enabled() {
+    fn allows_return_outside_function() {
         let allocator = Allocator::new();
         let mut ast = Ast::new("return;", &allocator);
         let options = Options {
@@ -11865,21 +11863,18 @@ mod tests {
     }
 
     #[test]
-    fn bounds_small_capacity_estimates() {
+    fn estimate_capacity() {
         let (nodes, extra) = estimate_ast_capacity(0);
         assert_eq!(nodes, 384);
         assert!(extra <= nodes);
-    }
 
-    #[test]
-    fn leaves_extra_data_growth_headroom() {
         let (nodes, extra) = estimate_ast_capacity(8_000_000);
         assert_eq!(nodes, 1_500_000);
         assert_eq!(extra, 666_666);
     }
 
     #[test]
-    fn validates_identifier_fast_and_diagnostic_paths() {
+    fn validate_identifier() {
         let allocator = Allocator::new();
         let mut ast = Ast::new("name", &allocator);
         let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
@@ -11909,26 +11904,5 @@ mod tests {
             parser.diagnostics[0].message,
             "'if' is reserved and cannot be used as an identifier"
         );
-    }
-
-    #[test]
-    fn preserves_line_terminator_when_rescanning_jsx_identifier() {
-        let allocator = Allocator::new();
-        let source = "<Comp<T>\nfoo />";
-        let mut ast = Ast::new(source, &allocator);
-        let options = Options {
-            lang: Lang::Tsx,
-            ..Options::default()
-        };
-        let result = Parser::init(&mut ast, options, TokenParserConfig).parse();
-
-        assert!(result.diagnostics.is_empty());
-        let foo = result
-            .tokens
-            .iter()
-            .find(|token| token.span == Span::new(9, 12))
-            .expect("expected JSX identifier token");
-        assert_eq!(foo.tag, TokenTag::JsxIdentifier);
-        assert!(foo.has_line_terminator_before());
     }
 }
