@@ -306,6 +306,7 @@ fn is_special_node(name: &str) -> bool {
         "Program"
             | "FunctionBody"
             | "TsModuleBlock"
+            | "BindingRestElement"
             | "FormalParameter"
             | "FormalParameters"
             | "Function"
@@ -324,10 +325,13 @@ fn is_special_node(name: &str) -> bool {
             | "TsMethodDefinition"
             | "PropertyDefinition"
             | "UnaryExpression"
+            | "ObjectProperty"
             | "BindingProperty"
             | "ArrayPattern"
             | "ObjectPattern"
+            | "JsxAttribute"
             | "JsxText"
+            | "TsNamedTupleMember"
             | "TsFunctionType"
             | "TsConstructorType"
             | "TsMethodSignature"
@@ -337,6 +341,13 @@ fn is_special_node(name: &str) -> bool {
             | "TsModuleDeclaration"
             | "TsGlobalDeclaration"
             | "TsThisParameter"
+            | "TsIndexSignature"
+            | "TsJsDocNullableType"
+            | "TsJsDocNonNullableType"
+            | "TsJsDocUnknownType"
+            | "TsAsExpression"
+            | "TsImportType"
+            | "TsInstantiationExpression"
     )
 }
 
@@ -353,8 +364,12 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
     match name {
         "Program" => output.push_str(
             r#"        const body = [...f_directives, ...f_body];
+        const declarationDecorators = body[0]?.declaration?.decorators;
+        const directDecorators = body[0]?.decorators;
+        const decoratorStart = declarationDecorators?.[0]?.start ?? directDecorators?.[0]?.start;
+        const programStart = body.length === 0 ? end : Math.min(body[0].start, decoratorStart ?? body[0].start);
         result = {
-          type: "Program", start: isTs ? (body.length !== 0 ? body[0].start : end) : start, end,
+          type: "Program", start: isTs ? programStart : start, end,
           sourceType: f_sourceType,
           hashbang: f_hashbang,
           body,
@@ -373,9 +388,81 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
             )
             .unwrap();
         }
+        "TsJsDocNullableType" | "TsJsDocNonNullableType" => {
+            let node_type = if name == "TsJsDocNullableType" {
+                "TSJSDocNullableType"
+            } else {
+                "TSJSDocNonNullableType"
+            };
+            writeln!(
+                output,
+                r#"        const annotationStart = f_postfix
+          ? Math.max(0, start - (source[start - 1] === " " ? 2 : 1))
+          : start;
+        const annotationEnd = f_postfix ? end - 1 : end;
+        result = {{
+          type: "{node_type}", start, end,
+          typeAnnotation: {{
+            type: "TSTypeAnnotation", typeAnnotation: f_typeAnnotation,
+            start: annotationStart, end: annotationEnd,
+          }},
+          postfix: f_postfix, id: 0, original: null, emitNode: null,
+        }};"#
+            )
+            .unwrap();
+        }
+        "TsJsDocUnknownType" => output.push_str(
+            r#"        result = {
+          type: source.slice(start, end) === "*" ? "TSJSDocAllType" : "TSJSDocUnknownType",
+          id: 0, original: null, emitNode: null, start, end,
+        };
+"#,
+        ),
+        "TsAsExpression" => output.push_str(
+            r#"        result = f_typeAnnotation.start === f_typeAnnotation.end
+          ? f_expression
+          : { type: "TSAsExpression", start, end, expression: f_expression, typeAnnotation: f_typeAnnotation };
+"#,
+        ),
+        "TsImportType" => output.push_str(
+            r#"        result = {
+          type: "TSImportType", start, end,
+          source: /^['\"]/.test(f_source.raw) ? f_source : null,
+          options: f_options, qualifier: f_qualifier, typeArguments: f_typeArguments,
+        };
+"#,
+        ),
+        "TsInstantiationExpression" => output.push_str(
+            r#"        let expression = f_expression;
+        if (isTs && source.slice(expression.start, expression.end) === "import") {
+          expression = {
+            type: "TSImportKeyword", id: 0, emitNode: null,
+            start: expression.start, end: expression.end,
+          };
+        }
+        result = {
+          type: "TSInstantiationExpression", start, end,
+          expression, typeArguments: f_typeArguments,
+        };
+"#,
+        ),
+        "BindingRestElement" => output.push_str(
+            r#"        if (isTs && f_argument.type === "AssignmentPattern" && !f_optional) {
+          result = { ...f_argument, start };
+        } else {
+          result = { type: "RestElement", start, end, argument: f_argument };
+          if (isTs) {
+            result.decorators = f_decorators;
+            result.typeAnnotation = f_typeAnnotation;
+            result.optional = f_argument.type === "AssignmentPattern" ? false : f_optional;
+            result.value = null;
+          }
+        }
+"#,
+        ),
         "FormalParameter" => output.push_str("        result = f_pattern;\n"),
         "FormalParameters" => output.push_str(
-            "        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };\n",
+            "        const params = f_rest === null ? f_items : [...f_items, f_rest];\n        params.sort((a, b) => a.start - b.start);\n        result = { params };\n",
         ),
         "Function" => output.push_str(
             r#"        result = {
@@ -566,13 +653,39 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
         };
 "#,
         ),
+        "ObjectProperty" => output.push_str(
+            r#"        let value = f_value;
+        if (isTs && f_shorthand && value.type === "AssignmentExpression" && value.operator === "=") {
+          value = {
+            type: "AssignmentPattern", start: value.start, end: value.end,
+            left: value.left, right: value.right,
+            decorators: [], typeAnnotation: null, optional: false,
+          };
+        }
+        result = {
+          type: "Property", start, end,
+          key: f_key, value, kind: f_kind,
+          method: f_method, shorthand: f_shorthand, computed: f_computed,
+        };
+        if (isTs) result.optional = source.slice(f_key.end, f_value.start).includes("?");
+"#,
+        ),
         "BindingProperty" => output.push_str(
             r#"        result = {
           type: "Property", start, end, kind: "init",
           key: f_key, value: f_value,
           method: false, shorthand: f_shorthand, computed: f_computed,
         };
-        if (isTs) result.optional = false;
+        if (isTs) {
+          if (source.slice(start, start + 3) === "...") {
+            result = {
+              type: "RestElement", start, end, argument: f_value,
+              decorators: [], optional: false, typeAnnotation: null, value: null,
+            };
+          } else {
+            result.optional = false;
+          }
+        }
 "#,
         ),
         "ArrayPattern" => output.push_str(
@@ -587,6 +700,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
         ),
         "ObjectPattern" => output.push_str(
             r#"        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];
+        properties.sort((a, b) => a.start - b.start);
         result = { type: "ObjectPattern", start, end, properties };
         if (isTs) {
           result.decorators = f_decorators;
@@ -596,7 +710,37 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
 "#,
         ),
         "JsxText" => output.push_str(
-            "        result = { type: \"JSXText\", start, end, value: f_value, raw: f_value };\n",
+            "        result = { type: \"JSXText\", start, end, value: decodeJsxEntities(f_value), raw: f_value };\n",
+        ),
+        "JsxAttribute" => output.push_str(
+            r#"        if (f_value?.type === "Literal" && typeof f_value.value === "string") {
+          f_value.value = decodeJsxEntities(f_value.value);
+        }
+        result = { type: "JSXAttribute", start, end, name: f_name, value: f_value };
+"#,
+        ),
+        "TsNamedTupleMember" => output.push_str(
+            r#"        if (f_elementType.type === "TSRestType" && source.slice(start, f_label.start).includes("...")) {
+          result = {
+            type: "TSRestType", start, end,
+            typeAnnotation: {
+              type: "TSNamedTupleMember",
+              label: f_label,
+              elementType: f_elementType.typeAnnotation,
+              optional: f_optional,
+              start: f_label.start,
+              end,
+            },
+          };
+        } else {
+          result = {
+            type: "TSNamedTupleMember", start, end,
+            label: f_label,
+            elementType: f_elementType,
+            optional: f_optional,
+          };
+        }
+"#,
         ),
         "TsFunctionType"
         | "TsConstructorType"
@@ -668,6 +812,52 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
           type: "Identifier", start, end,
           decorators: [], name: "this", optional: false,
           typeAnnotation: f_typeAnnotation,
+        };
+"#,
+        ),
+        "TsIndexSignature" => output.push_str(
+            r#"        const openBracket = source.indexOf("[", start);
+        const closeBracket = source.indexOf("]", openBracket + 1);
+        const parameters = f_parameters.map((parameter, index) => {
+          const previousEnd = index === 0 ? openBracket + 1 : f_parameters[index - 1].end;
+          const prefix = source.slice(previousEnd, parameter.start);
+          const nextBoundary = index + 1 < f_parameters.length
+            ? f_parameters[index + 1].start
+            : closeBracket;
+          const tail = source.slice(parameter.end, nextBoundary);
+          let recovered = parameter;
+          if (prefix.includes("...")) {
+            const argument = parameter.typeAnnotation === null
+              ? parameter
+              : { ...parameter, typeAnnotation: null, end: parameter.start + parameter.name.length };
+            recovered = {
+              type: "RestElement", start: parameter.start - 3, end: parameter.end,
+              argument, decorators: [], optional: false,
+              typeAnnotation: parameter.typeAnnotation, value: null,
+            };
+          }
+          const equalsOffset = tail.indexOf("=");
+          if (equalsOffset !== -1) {
+            const initializerText = tail.slice(equalsOffset + 1).replace(/[,\]]/g, "").trim();
+            const initializerStart = parameter.end + equalsOffset + 1 + tail.slice(equalsOffset + 1).search(/\S/);
+            const right = {
+              type: "Literal", value: +initializerText, raw: initializerText,
+              start: initializerStart, end: initializerStart + initializerText.length,
+            };
+            recovered = {
+              type: "AssignmentPattern", start: parameter.start, end: right.end,
+              left: parameter, right, decorators: [], optional: false, typeAnnotation: null,
+            };
+          }
+          return recovered;
+        });
+        const typeAnnotation = f_typeAnnotation.start === f_typeAnnotation.end
+          ? null
+          : f_typeAnnotation;
+        result = {
+          type: "TSIndexSignature", start, end,
+          parameters, typeAnnotation,
+          readonly: f_readonly, static: f_static, accessibility: null,
         };
 "#,
         ),
@@ -771,6 +961,33 @@ const PREAMBLE: &str = r#"// generated by tasks/ast_tools, do not edit
 const NULL = 0xffffffff;
 const HEADER_SIZE = 36;
 const textDecoder = new TextDecoder();
+
+const JSX_ENTITIES = Object.freeze({
+  quot: 0x0022,
+  amp: 0x0026,
+  apos: 0x0027,
+  lt: 0x003c,
+  gt: 0x003e,
+  nbsp: 0x00a0,
+  middot: 0x00b7,
+  hellip: 0x2026,
+});
+
+function decodeJsxEntities(value) {
+  if (!value.includes("&")) return value;
+  return value.replaceAll(
+    /&(?:#(x[0-9a-f]+|[0-9]+)|([a-z][a-z0-9]+));/gi,
+    (entity, numeric, named) => {
+      const codePoint = numeric === undefined
+        ? JSX_ENTITIES[named]
+        : parseInt(numeric[0].toLowerCase() === "x" ? numeric.slice(1) : numeric,
+          numeric[0].toLowerCase() === "x" ? 16 : 10);
+      return codePoint === undefined || codePoint > 0x10ffff
+        ? entity
+        : String.fromCodePoint(codePoint);
+    },
+  );
+}
 
 const ENUMS = Object.freeze({
   SourceType: ["module", "script", "commonjs"],

@@ -21,9 +21,6 @@ pub enum LexicalError {
     UnterminatedRegexLiteral,
     InvalidRegexLineTerminator,
     // InvalidRegex,
-    InvalidRegexFlag,
-    DuplicateRegexFlag,
-    IncompatibleRegexFlags,
     InvalidIdentifierStart,
     InvalidIdentifierContinue,
     UnterminatedMultiLineComment,
@@ -108,6 +105,8 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
 
     /// Whether Annex B HTML-like comments are recognized.
     allow_html_like_comments: bool,
+    /// TypeScript historically treats U+0085 NEXT LINE as whitespace.
+    allow_next_line_space: bool,
     collect_comments: bool,
     pub(crate) hashbang: Option<Hashbang>,
 
@@ -125,6 +124,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         allocator: &'a Allocator,
         source: &'a str,
         allow_html_like_comments: bool,
+        allow_next_line_space: bool,
         collect_comments: bool,
         config: C,
     ) -> Self {
@@ -154,6 +154,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             source: source.as_bytes(),
             cursor: 0,
             allow_html_like_comments,
+            allow_next_line_space,
             hashbang: None,
             state: LexerState::default(),
             mode: LexerMode::Normal,
@@ -1088,28 +1089,22 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             if c == b'/' && !in_class {
                 self.cursor += 1;
                 let closing_delimiter_pos = self.cursor;
-                let mut flags_seen = 0u32;
-
-                loop {
-                    let flag = self.peek(0);
-                    if !flag.is_ascii_alphabetic() {
-                        break;
+                while (self.cursor as usize) < self.source.len() {
+                    let pos = self.cursor as usize;
+                    let flag = self.source[pos];
+                    if flag.is_ascii() {
+                        if !is_ident_continue_ascii(flag) {
+                            break;
+                        }
+                        self.cursor += 1;
+                    } else {
+                        let cp = code_point_at(self.source, pos)
+                            .map_err(|_| LexicalError::InvalidUtf8)?;
+                        if !can_continue_id(cp.value.to_u32()) {
+                            break;
+                        }
+                        self.cursor += u32::from(cp.len);
                     }
-                    if !matches!(flag, b'g' | b'i' | b'm' | b's' | b'u' | b'y' | b'd' | b'v') {
-                        return Err(LexicalError::InvalidRegexFlag);
-                    }
-                    let bit = flag - b'a';
-                    if (flags_seen & (1u32 << bit)) != 0 {
-                        return Err(LexicalError::DuplicateRegexFlag);
-                    }
-                    flags_seen |= 1u32 << bit;
-                    self.cursor += 1;
-                }
-
-                let u_bit = 1u32 << (b'u' - b'a');
-                let v_bit = 1u32 << (b'v' - b'a');
-                if flags_seen & u_bit != 0 && flags_seen & v_bit != 0 {
-                    return Err(LexicalError::IncompatibleRegexFlags);
                 }
 
                 let end = self.cursor;
@@ -1219,7 +1214,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 }
 
                 let code_point = code_point_at(src, pos).map_err(|_| LexicalError::InvalidUtf8)?;
-                if !is_multi_byte_space(code_point.value.to_u32()) {
+                if !is_multi_byte_space(code_point.value.to_u32())
+                    && !(self.allow_next_line_space && code_point.value.to_u32() == 0x85)
+                {
                     return Ok(false);
                 }
                 self.cursor += u32::from(code_point.len);
@@ -1491,11 +1488,6 @@ pub fn lexical_error_message(error_type: LexicalError) -> &'static str {
             "Line terminator not allowed in regular expression literal"
         }
         // LexicalError::InvalidRegex => "Invalid regular expression",
-        LexicalError::InvalidRegexFlag => "Invalid regular expression flag",
-        LexicalError::DuplicateRegexFlag => "Duplicate regular expression flag",
-        LexicalError::IncompatibleRegexFlags => {
-            "The 'u' and 'v' regular expression flags cannot be used together"
-        }
         LexicalError::InvalidIdentifierStart => "Invalid character at start of identifier",
         LexicalError::InvalidIdentifierContinue => "Invalid character in identifier",
         LexicalError::UnterminatedMultiLineComment => "Unterminated multi-line comment",
@@ -1559,15 +1551,6 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
         // LexicalError::InvalidRegex => {
         //     "Try checking the regex syntax here for unclosed groups, invalid escapes, or malformed patterns"
         // }
-        LexicalError::InvalidRegexFlag => {
-            "Valid regex flags are: `g` (global), `i` (ignoreCase), `m` (multiline), `s` (dotAll), `u` (unicode), `y` (sticky), `d` (hasIndices), `v` (setNotation)"
-        }
-        LexicalError::DuplicateRegexFlag => {
-            "Remove the duplicate flag; each flag can only appear once"
-        }
-        LexicalError::IncompatibleRegexFlags => {
-            "The 'u' (unicode) and 'v' (unicodeSets) flags are mutually exclusive; use one or the other"
-        }
         LexicalError::InvalidIdentifierStart => {
             "Try starting the identifier here with a letter (a-z, A-Z), underscore (_), or dollar sign ($)"
         }
@@ -1718,7 +1701,7 @@ mod tests {
 
     fn next_template(source: &str) -> Result<Token, LexicalError> {
         let allocator = Allocator::new();
-        let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
+        let mut lexer = Lexer::init(&allocator, source, false, false, false, NoTokenParserConfig);
         let mut token = Token::eof(0);
         lexer.next_token(&mut token)?;
         Ok(token)
@@ -1730,6 +1713,7 @@ mod tests {
             &allocator,
             source,
             allow_html_like_comments,
+            false,
             false,
             NoTokenParserConfig,
         );
@@ -1743,14 +1727,35 @@ mod tests {
         let allocator = Allocator::new();
         let small_source = " ".repeat(512);
 
-        let small = Lexer::init(&allocator, &small_source, false, true, NoTokenParserConfig);
+        let small = Lexer::init(
+            &allocator,
+            &small_source,
+            false,
+            false,
+            true,
+            NoTokenParserConfig,
+        );
         assert_eq!(small.comments.capacity(), 0);
 
         let large_source = " ".repeat(2 * 1024 * 1024);
-        let collecting = Lexer::init(&allocator, &large_source, false, true, NoTokenParserConfig);
+        let collecting = Lexer::init(
+            &allocator,
+            &large_source,
+            false,
+            false,
+            true,
+            NoTokenParserConfig,
+        );
         assert_eq!(collecting.comments.capacity(), large_source.len() / 256);
 
-        let ignoring = Lexer::init(&allocator, &large_source, false, false, NoTokenParserConfig);
+        let ignoring = Lexer::init(
+            &allocator,
+            &large_source,
+            false,
+            false,
+            false,
+            NoTokenParserConfig,
+        );
         assert_eq!(ignoring.comments.capacity(), 0);
     }
 
@@ -1827,13 +1832,21 @@ mod tests {
             "}middle ${value}",
             false,
             false,
+            false,
             NoTokenParserConfig,
         );
         let token = lexer.re_scan_template_continuation(0).unwrap();
         assert_eq!(token.tag, TokenTag::TemplateMiddle);
         assert_eq!(token.span, Span::new(0, 10));
 
-        let mut lexer = Lexer::init(&allocator, "}tail`", false, false, NoTokenParserConfig);
+        let mut lexer = Lexer::init(
+            &allocator,
+            "}tail`",
+            false,
+            false,
+            false,
+            NoTokenParserConfig,
+        );
         let token = lexer.re_scan_template_continuation(0).unwrap();
         assert_eq!(token.tag, TokenTag::TemplateTail);
         assert_eq!(token.span, Span::new(0, 6));
@@ -1845,5 +1858,21 @@ mod tests {
             next_template("`unterminated"),
             Err(LexicalError::NonTerminatedTemplateLiteral)
         );
+    }
+
+    #[test]
+    fn retains_contextually_invalid_and_unicode_regex_flags() {
+        let allocator = Allocator::new();
+        for (source, expected_flags) in [("/pattern/aaguv", "aaguv"), ("/pattern/𝘨𝘪𝘲", "𝘨𝘪𝘲")]
+        {
+            let mut lexer =
+                Lexer::init(&allocator, source, false, false, false, NoTokenParserConfig);
+            let regex = lexer.re_scan_as_regex(0).unwrap();
+            assert_eq!(
+                &source[regex.flags.start as usize..regex.flags.end as usize],
+                expected_flags
+            );
+            assert_eq!(regex.span.end as usize, source.len());
+        }
     }
 }

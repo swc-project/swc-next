@@ -4,6 +4,33 @@ const NULL = 0xffffffff;
 const HEADER_SIZE = 36;
 const textDecoder = new TextDecoder();
 
+const JSX_ENTITIES = Object.freeze({
+  quot: 0x0022,
+  amp: 0x0026,
+  apos: 0x0027,
+  lt: 0x003c,
+  gt: 0x003e,
+  nbsp: 0x00a0,
+  middot: 0x00b7,
+  hellip: 0x2026,
+});
+
+function decodeJsxEntities(value) {
+  if (!value.includes("&")) return value;
+  return value.replaceAll(
+    /&(?:#(x[0-9a-f]+|[0-9]+)|([a-z][a-z0-9]+));/gi,
+    (entity, numeric, named) => {
+      const codePoint = numeric === undefined
+        ? JSX_ENTITIES[named]
+        : parseInt(numeric[0].toLowerCase() === "x" ? numeric.slice(1) : numeric,
+          numeric[0].toLowerCase() === "x" ? 16 : 10);
+      return codePoint === undefined || codePoint > 0x10ffff
+        ? entity
+        : String.fromCodePoint(codePoint);
+    },
+  );
+}
+
 const ENUMS = Object.freeze({
   SourceType: ["module", "script", "commonjs"],
   MethodDefinitionKind: ["constructor", "method", "get", "set"],
@@ -153,8 +180,12 @@ export function decode(buffer, source) {
         const f_body = nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false);
         const f_hashbang = optionalNode(_u32[(payload + 0) >> 2]);
         const body = [...f_directives, ...f_body];
+        const declarationDecorators = body[0]?.declaration?.decorators;
+        const directDecorators = body[0]?.decorators;
+        const decoratorStart = declarationDecorators?.[0]?.start ?? directDecorators?.[0]?.start;
+        const programStart = body.length === 0 ? end : Math.min(body[0].start, decoratorStart ?? body[0].start);
         result = {
-          type: "Program", start: isTs ? (body.length !== 0 ? body[0].start : end) : start, end,
+          type: "Program", start: isTs ? programStart : start, end,
           sourceType: f_sourceType,
           hashbang: f_hashbang,
           body,
@@ -331,18 +362,20 @@ export function decode(buffer, source) {
       }
       case 17: {
         const extraId = _u32[(payload + 12) >> 2];
-        if (isTs) {
-          result = { type: "RestElement", start, end,
-            argument: node(_dv.getUint32(payload + 1, true)),
-            decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-            typeAnnotation: optionalNode(_dv.getUint32(payload + 5, true)),
-            optional: _dv.getUint8(payload + 0) !== 0,
-            value: null,
-          };
+        const f_argument = node(_dv.getUint32(payload + 1, true));
+        const f_decorators = nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
+        const f_typeAnnotation = optionalNode(_dv.getUint32(payload + 5, true));
+        const f_optional = _dv.getUint8(payload + 0) !== 0;
+        if (isTs && f_argument.type === "AssignmentPattern" && !f_optional) {
+          result = { ...f_argument, start };
         } else {
-          result = { type: "RestElement", start, end,
-            argument: node(_dv.getUint32(payload + 1, true)),
-          };
+          result = { type: "RestElement", start, end, argument: f_argument };
+          if (isTs) {
+            result.decorators = f_decorators;
+            result.typeAnnotation = f_typeAnnotation;
+            result.optional = f_argument.type === "AssignmentPattern" ? false : f_optional;
+            result.value = null;
+          }
         }
         break;
       }
@@ -370,6 +403,7 @@ export function decode(buffer, source) {
         const f_typeAnnotation = optionalNode(_dv.getUint32(payload + 5, true));
         const f_optional = _dv.getUint8(payload + 0) !== 0;
         const properties = f_rest === null ? f_properties : [...f_properties, f_rest];
+        properties.sort((a, b) => a.start - b.start);
         result = { type: "ObjectPattern", start, end, properties };
         if (isTs) {
           result.decorators = f_decorators;
@@ -388,7 +422,16 @@ export function decode(buffer, source) {
           key: f_key, value: f_value,
           method: false, shorthand: f_shorthand, computed: f_computed,
         };
-        if (isTs) result.optional = false;
+        if (isTs) {
+          if (source.slice(start, start + 3) === "...") {
+            result = {
+              type: "RestElement", start, end, argument: f_value,
+              decorators: [], optional: false, typeAnnotation: null, value: null,
+            };
+          } else {
+            result.optional = false;
+          }
+        }
         break;
       }
       case 21: {
@@ -777,7 +820,9 @@ export function decode(buffer, source) {
         const f_items = nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false);
         const f_rest = optionalNode(_u32[(payload + 8) >> 2]);
         const f_kind = enumValue("FormalParameterKind", _dv.getUint8(payload + 12));
-        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };
+        const params = f_rest === null ? f_items : [...f_items, f_rest];
+        params.sort((a, b) => a.start - b.start);
+        result = { params };
         break;
       }
       case 59: {
@@ -804,26 +849,26 @@ export function decode(buffer, source) {
         break;
       }
       case 63: {
-        if (isTs) {
-          result = { type: "Property", start, end,
-            key: node(_u32[(payload + 0) >> 2]),
-            value: node(_u32[(payload + 4) >> 2]),
-            kind: enumValue("PropertyKind", _dv.getUint8(payload + 8)),
-            method: _dv.getUint8(payload + 9) !== 0,
-            shorthand: _dv.getUint8(payload + 10) !== 0,
-            computed: _dv.getUint8(payload + 11) !== 0,
-            optional: false,
-          };
-        } else {
-          result = { type: "Property", start, end,
-            key: node(_u32[(payload + 0) >> 2]),
-            value: node(_u32[(payload + 4) >> 2]),
-            kind: enumValue("PropertyKind", _dv.getUint8(payload + 8)),
-            method: _dv.getUint8(payload + 9) !== 0,
-            shorthand: _dv.getUint8(payload + 10) !== 0,
-            computed: _dv.getUint8(payload + 11) !== 0,
+        const f_key = node(_u32[(payload + 0) >> 2]);
+        const f_value = node(_u32[(payload + 4) >> 2]);
+        const f_kind = enumValue("PropertyKind", _dv.getUint8(payload + 8));
+        const f_method = _dv.getUint8(payload + 9) !== 0;
+        const f_shorthand = _dv.getUint8(payload + 10) !== 0;
+        const f_computed = _dv.getUint8(payload + 11) !== 0;
+        let value = f_value;
+        if (isTs && f_shorthand && value.type === "AssignmentExpression" && value.operator === "=") {
+          value = {
+            type: "AssignmentPattern", start: value.start, end: value.end,
+            left: value.left, right: value.right,
+            decorators: [], typeAnnotation: null, optional: false,
           };
         }
+        result = {
+          type: "Property", start, end,
+          key: f_key, value, kind: f_kind,
+          method: f_method, shorthand: f_shorthand, computed: f_computed,
+        };
+        if (isTs) result.optional = source.slice(f_key.end, f_value.start).includes("?");
         break;
       }
       case 64: {
@@ -1229,11 +1274,14 @@ export function decode(buffer, source) {
         break;
       }
       case 106: {
-        result = { type: "TSImportType", start, end,
-          source: node(_u32[(payload + 0) >> 2]),
-          options: optionalNode(_u32[(payload + 4) >> 2]),
-          qualifier: optionalNode(_u32[(payload + 8) >> 2]),
-          typeArguments: optionalNode(_u32[(payload + 12) >> 2]),
+        const f_source = node(_u32[(payload + 0) >> 2]);
+        const f_options = optionalNode(_u32[(payload + 4) >> 2]);
+        const f_qualifier = optionalNode(_u32[(payload + 8) >> 2]);
+        const f_typeArguments = optionalNode(_u32[(payload + 12) >> 2]);
+        result = {
+          type: "TSImportType", start, end,
+          source: /^['\"]/.test(f_source.raw) ? f_source : null,
+          options: f_options, qualifier: f_qualifier, typeArguments: f_typeArguments,
         };
         break;
       }
@@ -1293,11 +1341,29 @@ export function decode(buffer, source) {
         break;
       }
       case 115: {
-        result = { type: "TSNamedTupleMember", start, end,
-          label: node(_u32[(payload + 0) >> 2]),
-          elementType: node(_u32[(payload + 4) >> 2]),
-          optional: _dv.getUint8(payload + 8) !== 0,
-        };
+        const f_label = node(_u32[(payload + 0) >> 2]);
+        const f_elementType = node(_u32[(payload + 4) >> 2]);
+        const f_optional = _dv.getUint8(payload + 8) !== 0;
+        if (f_elementType.type === "TSRestType" && source.slice(start, f_label.start).includes("...")) {
+          result = {
+            type: "TSRestType", start, end,
+            typeAnnotation: {
+              type: "TSNamedTupleMember",
+              label: f_label,
+              elementType: f_elementType.typeAnnotation,
+              optional: f_optional,
+              start: f_label.start,
+              end,
+            },
+          };
+        } else {
+          result = {
+            type: "TSNamedTupleMember", start, end,
+            label: f_label,
+            elementType: f_elementType,
+            optional: f_optional,
+          };
+        }
         break;
       }
       case 116: {
@@ -1313,21 +1379,43 @@ export function decode(buffer, source) {
         break;
       }
       case 118: {
-        result = { type: "TSJSDocNullableType", start, end,
-          typeAnnotation: node(_u32[(payload + 0) >> 2]),
-          postfix: _dv.getUint8(payload + 4) !== 0,
+        const f_typeAnnotation = node(_u32[(payload + 0) >> 2]);
+        const f_postfix = _dv.getUint8(payload + 4) !== 0;
+        const annotationStart = f_postfix
+          ? Math.max(0, start - (source[start - 1] === " " ? 2 : 1))
+          : start;
+        const annotationEnd = f_postfix ? end - 1 : end;
+        result = {
+          type: "TSJSDocNullableType", start, end,
+          typeAnnotation: {
+            type: "TSTypeAnnotation", typeAnnotation: f_typeAnnotation,
+            start: annotationStart, end: annotationEnd,
+          },
+          postfix: f_postfix, id: 0, original: null, emitNode: null,
         };
         break;
       }
       case 119: {
-        result = { type: "TSJSDocNonNullableType", start, end,
-          typeAnnotation: node(_u32[(payload + 0) >> 2]),
-          postfix: _dv.getUint8(payload + 4) !== 0,
+        const f_typeAnnotation = node(_u32[(payload + 0) >> 2]);
+        const f_postfix = _dv.getUint8(payload + 4) !== 0;
+        const annotationStart = f_postfix
+          ? Math.max(0, start - (source[start - 1] === " " ? 2 : 1))
+          : start;
+        const annotationEnd = f_postfix ? end - 1 : end;
+        result = {
+          type: "TSJSDocNonNullableType", start, end,
+          typeAnnotation: {
+            type: "TSTypeAnnotation", typeAnnotation: f_typeAnnotation,
+            start: annotationStart, end: annotationEnd,
+          },
+          postfix: f_postfix, id: 0, original: null, emitNode: null,
         };
         break;
       }
       case 120: {
-        result = { type: "TSJSDocUnknownType", start, end,
+        result = {
+          type: source.slice(start, end) === "*" ? "TSJSDocAllType" : "TSJSDocUnknownType",
+          id: 0, original: null, emitNode: null, start, end,
         };
         break;
       }
@@ -1499,21 +1587,53 @@ export function decode(buffer, source) {
         break;
       }
       case 136: {
-        if (isTs) {
-          result = { type: "TSIndexSignature", start, end,
-            parameters: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
-            typeAnnotation: node(_u32[(payload + 8) >> 2]),
-            readonly: _dv.getUint8(payload + 12) !== 0,
-            static: _dv.getUint8(payload + 13) !== 0,
-            accessibility: null,
-          };
-        } else {
-          result = { type: "TSIndexSignature", start, end,
-            parameters: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
-            typeAnnotation: node(_u32[(payload + 8) >> 2]),
-            readonly: _dv.getUint8(payload + 12) !== 0,
-          };
-        }
+        const f_parameters = nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false);
+        const f_typeAnnotation = node(_u32[(payload + 8) >> 2]);
+        const f_readonly = _dv.getUint8(payload + 12) !== 0;
+        const f_static = _dv.getUint8(payload + 13) !== 0;
+        const openBracket = source.indexOf("[", start);
+        const closeBracket = source.indexOf("]", openBracket + 1);
+        const parameters = f_parameters.map((parameter, index) => {
+          const previousEnd = index === 0 ? openBracket + 1 : f_parameters[index - 1].end;
+          const prefix = source.slice(previousEnd, parameter.start);
+          const nextBoundary = index + 1 < f_parameters.length
+            ? f_parameters[index + 1].start
+            : closeBracket;
+          const tail = source.slice(parameter.end, nextBoundary);
+          let recovered = parameter;
+          if (prefix.includes("...")) {
+            const argument = parameter.typeAnnotation === null
+              ? parameter
+              : { ...parameter, typeAnnotation: null, end: parameter.start + parameter.name.length };
+            recovered = {
+              type: "RestElement", start: parameter.start - 3, end: parameter.end,
+              argument, decorators: [], optional: false,
+              typeAnnotation: parameter.typeAnnotation, value: null,
+            };
+          }
+          const equalsOffset = tail.indexOf("=");
+          if (equalsOffset !== -1) {
+            const initializerText = tail.slice(equalsOffset + 1).replace(/[,\]]/g, "").trim();
+            const initializerStart = parameter.end + equalsOffset + 1 + tail.slice(equalsOffset + 1).search(/\S/);
+            const right = {
+              type: "Literal", value: +initializerText, raw: initializerText,
+              start: initializerStart, end: initializerStart + initializerText.length,
+            };
+            recovered = {
+              type: "AssignmentPattern", start: parameter.start, end: right.end,
+              left: parameter, right, decorators: [], optional: false, typeAnnotation: null,
+            };
+          }
+          return recovered;
+        });
+        const typeAnnotation = f_typeAnnotation.start === f_typeAnnotation.end
+          ? null
+          : f_typeAnnotation;
+        result = {
+          type: "TSIndexSignature", start, end,
+          parameters, typeAnnotation,
+          readonly: f_readonly, static: f_static, accessibility: null,
+        };
         break;
       }
       case 137: {
@@ -1639,10 +1759,11 @@ export function decode(buffer, source) {
         break;
       }
       case 150: {
-        result = { type: "TSAsExpression", start, end,
-          expression: node(_u32[(payload + 0) >> 2]),
-          typeAnnotation: node(_u32[(payload + 4) >> 2]),
-        };
+        const f_expression = node(_u32[(payload + 0) >> 2]);
+        const f_typeAnnotation = node(_u32[(payload + 4) >> 2]);
+        result = f_typeAnnotation.start === f_typeAnnotation.end
+          ? f_expression
+          : { type: "TSAsExpression", start, end, expression: f_expression, typeAnnotation: f_typeAnnotation };
         break;
       }
       case 151: {
@@ -1666,9 +1787,18 @@ export function decode(buffer, source) {
         break;
       }
       case 154: {
-        result = { type: "TSInstantiationExpression", start, end,
-          expression: node(_u32[(payload + 0) >> 2]),
-          typeArguments: node(_u32[(payload + 4) >> 2]),
+        const f_expression = node(_u32[(payload + 0) >> 2]);
+        const f_typeArguments = node(_u32[(payload + 4) >> 2]);
+        let expression = f_expression;
+        if (isTs && source.slice(expression.start, expression.end) === "import") {
+          expression = {
+            type: "TSImportKeyword", id: 0, emitNode: null,
+            start: expression.start, end: expression.end,
+          };
+        }
+        result = {
+          type: "TSInstantiationExpression", start, end,
+          expression, typeArguments: f_typeArguments,
         };
         break;
       }
@@ -1769,10 +1899,12 @@ export function decode(buffer, source) {
         break;
       }
       case 168: {
-        result = { type: "JSXAttribute", start, end,
-          name: node(_u32[(payload + 0) >> 2]),
-          value: optionalNode(_u32[(payload + 4) >> 2]),
-        };
+        const f_name = node(_u32[(payload + 0) >> 2]);
+        const f_value = optionalNode(_u32[(payload + 4) >> 2]);
+        if (f_value?.type === "Literal" && typeof f_value.value === "string") {
+          f_value.value = decodeJsxEntities(f_value.value);
+        }
+        result = { type: "JSXAttribute", start, end, name: f_name, value: f_value };
         break;
       }
       case 169: {
@@ -1794,7 +1926,7 @@ export function decode(buffer, source) {
       }
       case 172: {
         const f_value = str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]);
-        result = { type: "JSXText", start, end, value: f_value, raw: f_value };
+        result = { type: "JSXText", start, end, value: decodeJsxEntities(f_value), raw: f_value };
         break;
       }
       case 173: {
