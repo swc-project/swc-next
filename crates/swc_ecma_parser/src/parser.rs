@@ -11905,4 +11905,362 @@ mod tests {
             "'if' is reserved and cannot be used as an identifier"
         );
     }
+
+    #[test]
+    fn comments() {
+        fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {
+            let allocator = Allocator::new();
+            let mut ast = Ast::new(source, &allocator);
+            let options = Options {
+                lang,
+                ..Options::default()
+            };
+            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+
+            assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+            ast.comments().to_vec()
+        }
+
+        fn comment(
+            source: &str,
+            text: &str,
+            kind: CommentKind,
+            position: CommentPosition,
+            attached_to: u32,
+        ) -> Comment {
+            let start = source.find(text).unwrap() as u32;
+            Comment {
+                span: Span::new(start, start + text.len() as u32),
+                kind,
+                attached_to,
+                position,
+            }
+        }
+
+        // Ported from oxc_parser's trivia_builder::comment_attachments tests.
+        {
+            let source = "
+        /* Leading 1 */
+        // Leading 2
+        /* Leading 3 */ token /* Trailing 1 */ // Trailing 2
+        // Leading of EOF token
+        ";
+            let expected = [
+                Comment {
+                    span: Span::new(9, 24),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Leading,
+                    attached_to: 70,
+                },
+                Comment {
+                    span: Span::new(33, 45),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Leading,
+                    attached_to: 70,
+                },
+                Comment {
+                    span: Span::new(54, 69),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Leading,
+                    attached_to: 70,
+                },
+                Comment {
+                    span: Span::new(76, 92),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Trailing,
+                    attached_to: 0,
+                },
+                Comment {
+                    span: Span::new(93, 106),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Trailing,
+                    attached_to: 0,
+                },
+                Comment {
+                    span: Span::new(115, 138),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Leading,
+                    attached_to: 147,
+                },
+            ];
+            assert_eq!(parse_comments(source, Lang::Js), expected);
+        }
+
+        {
+            let source = "#!/usr/bin/env node
+/* Leading 1 */
+token /* Trailing 1 */
+        ";
+            let expected = [
+                Comment {
+                    span: Span::new(20, 35),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Leading,
+                    attached_to: 36,
+                },
+                Comment {
+                    span: Span::new(42, 58),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Trailing,
+                    attached_to: 0,
+                },
+            ];
+            assert_eq!(parse_comments(source, Lang::Js), expected);
+        }
+
+        {
+            let source = "
+/*
+ * A
+ **/
+/*
+ * B
+ **/
+ token
+        ";
+            let expected = [
+                Comment {
+                    span: Span::new(1, 13),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Leading,
+                    attached_to: 28,
+                },
+                Comment {
+                    span: Span::new(14, 26),
+                    kind: CommentKind::Block,
+                    position: CommentPosition::Leading,
+                    attached_to: 28,
+                },
+            ];
+            assert_eq!(parse_comments(source, Lang::Js), expected);
+        }
+
+        // Legal and annotation comments describe the following expression or declaration.
+        for (source, text, next_token) in [
+            (
+                "foo();/**
+ * @license MIT
+ **/
+function bar() {}",
+                "/**\n * @license MIT\n **/",
+                "function",
+            ),
+            (
+                "foo();//! @license MIT\nfunction bar() {}",
+                "//! @license MIT",
+                "function",
+            ),
+            (
+                "function foo() {}/* #__NO_SIDE_EFFECTS__ */\nfunction bar() {}",
+                "/* #__NO_SIDE_EFFECTS__ */",
+                "function",
+            ),
+            (
+                "foo();// @__NO_SIDE_EFFECTS__\nfunction bar() {}",
+                "// @__NO_SIDE_EFFECTS__",
+                "function",
+            ),
+            ("foo();/* @__PURE__ */new Bar()", "/* @__PURE__ */", "new"),
+        ] {
+            let attached_to = source.rfind(next_token).unwrap() as u32;
+            assert_eq!(
+                parse_comments(source, Lang::Js),
+                [comment(
+                    source,
+                    text,
+                    if text.starts_with("//") {
+                        CommentKind::Line
+                    } else {
+                        CommentKind::Block
+                    },
+                    CommentPosition::Leading,
+                    attached_to,
+                )]
+            );
+        }
+
+        {
+            let source = "
+            const v1 = // Leading comment 1
+            foo();
+            function foo(param =// Leading comment 2
+            new Foo()
+            ) {}
+        ";
+            let expected = [
+                Comment {
+                    span: Span::new(24, 44),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Leading,
+                    attached_to: 57,
+                },
+                Comment {
+                    span: Span::new(96, 116),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Leading,
+                    attached_to: 129,
+                },
+            ];
+            assert_eq!(parse_comments(source, Lang::Js), expected);
+        }
+
+        {
+            let source = "
+            call(// Leading comment 1
+                arguments)
+            (// Leading comment 2
+                arguments)
+        ";
+            let expected = [
+                Comment {
+                    span: Span::new(18, 38),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Leading,
+                    attached_to: 55,
+                },
+                Comment {
+                    span: Span::new(79, 99),
+                    kind: CommentKind::Line,
+                    position: CommentPosition::Leading,
+                    attached_to: 116,
+                },
+            ];
+            assert_eq!(parse_comments(source, Lang::Js), expected);
+        }
+
+        {
+            let source = "v = cond ? a : // Leading comment\nb;";
+            let expected = [Comment {
+                span: Span::new(15, 33),
+                kind: CommentKind::Line,
+                position: CommentPosition::Leading,
+                attached_to: 34,
+            }];
+            assert_eq!(parse_comments(source, Lang::Js), expected);
+        }
+
+        // Ported from swc_ecma_parser's comment attachment regression tests.
+        {
+            let source = "
+            // test
+        ";
+            assert_eq!(
+                parse_comments(source, Lang::Ts),
+                [comment(
+                    source,
+                    "// test",
+                    CommentKind::Line,
+                    CommentPosition::Leading,
+                    0,
+                )]
+            );
+        }
+
+        {
+            let source = "#!/foo/bar
+            // test
+        ";
+            assert_eq!(
+                parse_comments(source, Lang::Ts),
+                [comment(
+                    source,
+                    "// test",
+                    CommentKind::Line,
+                    CommentPosition::Trailing,
+                    0,
+                )]
+            );
+        }
+
+        for lang in [Lang::Tsx, Lang::Jsx] {
+            let source = "
+        const t = <Switch>
+            // 1
+            /* 2 */
+        </Switch>
+    ";
+            assert!(parse_comments(source, lang).is_empty());
+        }
+
+        {
+            let source = "
+/** block comment */
+import h from 'h';
+<div></div>
+";
+            let import_start = source.find("import").unwrap() as u32;
+            assert_eq!(
+                parse_comments(source, Lang::Tsx),
+                [comment(
+                    source,
+                    "/** block comment */",
+                    CommentKind::Block,
+                    CommentPosition::Leading,
+                    import_start,
+                )]
+            );
+        }
+
+        {
+            let source = "const foo = <h1>/* no */{/* 1 */ bar /* 2 */}/* no */</h1>;";
+            assert_eq!(
+                parse_comments(source, Lang::Tsx),
+                [
+                    comment(
+                        source,
+                        "/* 1 */",
+                        CommentKind::Block,
+                        CommentPosition::Trailing,
+                        0,
+                    ),
+                    comment(
+                        source,
+                        "/* 2 */",
+                        CommentKind::Block,
+                        CommentPosition::Trailing,
+                        0,
+                    ),
+                ]
+            );
+        }
+
+        {
+            let source = "
+        const t = <T,>() => {
+            // 1
+            /* 2 */
+            test;
+        };
+    ";
+            let test_start = source.find("test;").unwrap() as u32;
+            assert_eq!(
+                parse_comments(source, Lang::Tsx),
+                [
+                    comment(
+                        source,
+                        "// 1",
+                        CommentKind::Line,
+                        CommentPosition::Leading,
+                        test_start,
+                    ),
+                    comment(
+                        source,
+                        "/* 2 */",
+                        CommentKind::Block,
+                        CommentPosition::Leading,
+                        test_start,
+                    ),
+                ]
+            );
+        }
+
+        // Comments between an assignment and a regexp literal must not turn `/` into division.
+        for source in [
+            "re = // ...\n/w+/",
+            "re = /* ... *//w+/",
+            "re =\n/*\n ...\n */\n/w+/",
+        ] {
+            parse_comments(source, Lang::Js);
+        }
+    }
 }
