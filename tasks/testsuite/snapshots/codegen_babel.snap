@@ -1,13 +1,12 @@
 codegen * babel
 ========================
-Positive Passed: 2127/2238 (95.04%)
+Positive Passed: 2128/2238 (95.08%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/basic/arrow-function/input.js - comments/basic/arrow-function: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/basic/async-arrow-function/input.js - comments/basic/async-arrow-function: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/typescript/TSEnumBody-trailing-comma/input.ts - comments/typescript/TSEnumBody-trailing-comma: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/escape-keyword/async/input.js - parser: Keywords cannot contain escape characters at 1..11
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/100/input.js - core/uncategorised/100: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/101/input.js - core/uncategorised/101: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/263/input.js - core/uncategorised/263: codegen output changed after reparse 

@@ -7971,17 +7971,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     .into_function_expression(),
                 ))
             }
-            TokenTag::LeftParen => {
-                if token.is_escaped() {
-                    self.report_escaped_keyword(token.span);
-                }
-                self.parse_async_arrow_function_or_call(
-                    token.span,
-                    async_identifier,
-                    minimum,
-                    token.is_escaped(),
-                )
-            }
+            TokenTag::LeftParen => self.parse_async_arrow_function_or_call(
+                token.span,
+                async_identifier,
+                minimum,
+                token.is_escaped(),
+            ),
             TokenTag::LessThan if self.lang.is_typescript() => {
                 if let Some(arrow) = self.try_parse_generic_arrow(true, token.span.start)? {
                     if token.is_escaped() {
@@ -11810,6 +11805,17 @@ mod tests {
 
     use super::*;
 
+    fn parse_diagnostic_messages(source: &str) -> Vec<String> {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
+            .parse()
+            .diagnostics
+            .into_iter()
+            .map(|diagnostic| diagnostic.message.into_owned())
+            .collect()
+    }
+
     #[test]
     fn parse_expression() {
         let allocator = Allocator::default();
@@ -11910,6 +11916,36 @@ mod tests {
             parser.diagnostics[0].message,
             "'if' is reserved and cannot be used as an identifier"
         );
+    }
+
+    #[test]
+    fn escaped_keyword_diagnostics_follow_syntactic_role() {
+        for source in [
+            r"(\u0061sync ())",
+            r"(a\u0073ync ())",
+            r"({ \u0061sync: 1 })",
+            r"({ \u0069f: 1 })",
+        ] {
+            let diagnostics = parse_diagnostic_messages(source);
+            assert!(diagnostics.is_empty(), "{source}: {diagnostics:#?}");
+        }
+
+        for source in [
+            r"\u0069f (true) {}",
+            r"\u0061sync function f() {}",
+            r"(\u0061sync () => {})",
+            r"(a\u0073ync value => value)",
+        ] {
+            let diagnostics = parse_diagnostic_messages(source);
+            let escaped_keyword_count = diagnostics
+                .iter()
+                .filter(|message| message.as_str() == "Keywords cannot contain escape characters")
+                .count();
+            assert_eq!(
+                escaped_keyword_count, 1,
+                "{source}: expected exactly one escaped-keyword diagnostic, got {diagnostics:#?}"
+            );
+        }
     }
 
     #[test]
