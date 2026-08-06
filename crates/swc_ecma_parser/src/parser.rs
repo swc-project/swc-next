@@ -8026,7 +8026,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         }
 
-        let context = enter_grammar_context![&mut self.context, +Await];
+        let context = if escaped_async {
+            self.context
+        } else {
+            enter_grammar_context![&mut self.context, +Await]
+        };
         let cover = self.parse_parenthesized_cover();
         self.context = context;
         let cover = cover?;
@@ -11945,6 +11949,25 @@ mod tests {
             assert_eq!(diagnostic.severity, Severity::Error, "{source}");
             assert_eq!(diagnostic.span, expected_span, "{source}");
             assert_eq!(diagnostic.message, ESCAPED_KEYWORD_MESSAGE, "{source}");
+        }
+    }
+
+    #[test]
+    fn escaped_async_call_preserves_await_context() {
+        for source in [r"\u0061sync(await);", r"a\u0073ync(await);"] {
+            let allocator = Allocator::new();
+            let mut ast = Ast::new(source, &allocator);
+            let options = Options {
+                source_type: SourceType::Script,
+                ..Options::default()
+            };
+            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+
+            assert!(
+                result.diagnostics.is_empty(),
+                "{source}: {:#?}",
+                result.diagnostics
+            );
         }
     }
 
