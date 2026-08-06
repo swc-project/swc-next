@@ -482,7 +482,7 @@ Failed: fixtures/typescript/tests/cases/compiler/genericInterfaceFunctionTypePar
 Failed: fixtures/typescript/tests/cases/compiler/genericRecursiveImplicitConstructorErrors1.ts - parser: Expected '=' in type alias declaration, but found 'namespace' at 20..29
 Failed: fixtures/typescript/tests/cases/compiler/genericRecursiveImplicitConstructorErrors2.ts - parser: Expected '=' in type alias declaration, but found 'DeclKind' at 48..56
 Failed: fixtures/typescript/tests/cases/compiler/genericReturnTypeFromGetter1.ts - parser: Expected '=' in type alias declaration, but found 'A' at 22..23
-Failed: fixtures/typescript/tests/cases/compiler/genericTupleWithSimplifiableElements.ts - parser: Expected a type, but found '...' at 64..67
+Failed: fixtures/typescript/tests/cases/compiler/genericTupleWithSimplifiableElements.ts - parser: A labeled tuple rest element must use '...' before the label at 64..67
 Failed: fixtures/typescript/tests/cases/compiler/genericTypeArgumentInference1.ts - parser: Expected '=' in type alias declaration, but found 'Iterator' at 47..55
 Failed: fixtures/typescript/tests/cases/compiler/genericTypeAssertions3.ts - parser: Unexpected token '<<' at 8..10
 Failed: fixtures/typescript/tests/cases/compiler/genericTypeWithMultipleBases1.ts - parser: Expected '=' in type alias declaration, but found 'I1' at 22..24
@@ -526,7 +526,7 @@ Failed: fixtures/typescript/tests/cases/compiler/inferConditionalConstraintMappe
 Failed: fixtures/typescript/tests/cases/compiler/inferFromAnnotatedReturn1.ts - parser: Expected '=' in type alias declaration, but found 'function' at 165..173
 Failed: fixtures/typescript/tests/cases/compiler/inferFromGenericFunctionReturnTypes3.ts - parser: Expected '=' in type alias declaration, but found 'DiagnosticSeverity' at 1147..1165
 Failed: fixtures/typescript/tests/cases/compiler/inferTypeConstraintInstantiationCircularity.ts - parser: Expected '=' in type alias declaration, but found 'addQuestionMarks' at 788..804
-Failed: fixtures/typescript/tests/cases/compiler/inferTypesWithFixedTupleExtendsAtVariadicPosition.ts - parser: Expected a type, but found '...' at 359..362
+Failed: fixtures/typescript/tests/cases/compiler/inferTypesWithFixedTupleExtendsAtVariadicPosition.ts - parser: A labeled tuple rest element must use '...' before the label at 359..362
 Failed: fixtures/typescript/tests/cases/compiler/inferenceAndHKTs.ts - parser: Expected '=' in type alias declaration, but found 'TypeLambda' at 43..53
 Failed: fixtures/typescript/tests/cases/compiler/inferenceDoesntCompareAgainstUninstantiatedTypeParameter.ts - parser: Expected '=' in type alias declaration, but found 'ValueInterface' at 155..169
 Failed: fixtures/typescript/tests/cases/compiler/inferenceLimit.ts - parser: Expected '=' in type alias declaration, but found 'MyModel' at 22..29
@@ -782,7 +782,7 @@ Failed: fixtures/typescript/tests/cases/compiler/resolveNameWithNamspace.ts - pa
 Failed: fixtures/typescript/tests/cases/compiler/restInvalidArgumentType.ts - restInvalidArgumentType.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/reverseMappedPartiallyInferableTypes.ts - parser: Expected '=' in type alias declaration, but found 'Prop' at 38..42
 Failed: fixtures/typescript/tests/cases/compiler/reverseMappedTypeDeepDeclarationEmit.ts - parser: Expected '=' in type alias declaration, but found 'Validator' at 17..26
-Failed: fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts - parser: Expected a type, but found '...' at 495..498
+Failed: fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts - parser: A labeled tuple rest element must use '...' before the label at 495..498
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/specedNoStackBlown.ts - parser: Expected '=' in type alias declaration, but found 'Spec' at 642..646
 Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionLeadingUnderscores01.ts - parser: Expected '=' in type alias declaration, but found 'let' at 40..43
@@ -1278,7 +1278,7 @@ Failed: fixtures/typescript/tests/cases/conformance/types/primitives/undefined/i
 Failed: fixtures/typescript/tests/cases/conformance/types/primitives/undefined/invalidUndefinedValues.ts - invalidUndefinedValues.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/primitives/void/invalidVoidAssignments.ts - invalidVoidAssignments.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/primitives/void/invalidVoidValues.ts - invalidVoidValues.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/types/rest/genericRestParameters3.ts - parser: Expected a type, but found '...' at 2066..2069
+Failed: fixtures/typescript/tests/cases/conformance/types/rest/genericRestParameters3.ts - parser: A labeled tuple rest element must use '...' before the label at 2066..2069
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeReferences/nonGenericTypeReferenceWithTypeArguments.ts - nonGenericTypeReferenceWithTypeArguments.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/castingTuple.ts - castingTuple.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/named/namedTupleMembers.ts - parser: Expected '=' in type alias declaration, but found 'Segment' at 17..24
