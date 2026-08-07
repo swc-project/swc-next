@@ -7999,17 +7999,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     .into_function_expression(),
                 ))
             }
-            TokenTag::LeftParen => {
-                if token.is_escaped() {
-                    self.report_escaped_keyword(token.span);
-                }
-                self.parse_async_arrow_function_or_call(
-                    token.span,
-                    async_identifier,
-                    minimum,
-                    token.is_escaped(),
-                )
-            }
+            TokenTag::LeftParen => self.parse_async_arrow_function_or_call(
+                token.span,
+                async_identifier,
+                minimum,
+                token.is_escaped(),
+            ),
             TokenTag::LessThan if self.lang.is_typescript() => {
                 if let Some(arrow) = self.try_parse_generic_arrow(true, token.span.start)? {
                     if token.is_escaped() {
@@ -8057,7 +8052,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         }
 
-        let context = enter_grammar_context![&mut self.context, +Await];
+        let context = if escaped_async {
+            self.context
+        } else {
+            enter_grammar_context![&mut self.context, +Await]
+        };
         let cover = self.parse_parenthesized_cover();
         self.context = context;
         let cover = cover?;
