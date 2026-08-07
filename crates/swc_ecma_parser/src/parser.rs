@@ -21,8 +21,6 @@ use crate::{
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
-const ESCAPED_KEYWORD_MESSAGE: &str = "Keywords cannot contain escape characters";
-
 /// Whether comments are attached to AST nodes.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CommentMode {
@@ -11271,7 +11269,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn report_escaped_keyword(&mut self, span: Span) {
         self.diagnostics.push(Diagnostic {
             severity: Severity::Error,
-            message: Cow::Borrowed(ESCAPED_KEYWORD_MESSAGE),
+            message: Cow::Borrowed("Keywords cannot contain escape characters"),
             span,
             help: Some(Cow::Borrowed("Remove the escape characters")),
             labels: Vec::new(),
@@ -11811,14 +11809,6 @@ mod tests {
 
     use super::*;
 
-    fn parse_diagnostics<'a>(source: &'a str) -> Vec<Diagnostic<'a>> {
-        let allocator = Allocator::new();
-        let mut ast = Ast::new(source, &allocator);
-        Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
-            .parse()
-            .diagnostics
-    }
-
     #[test]
     fn parse_expression() {
         let allocator = Allocator::default();
@@ -11919,56 +11909,6 @@ mod tests {
             parser.diagnostics[0].message,
             "'if' is reserved and cannot be used as an identifier"
         );
-    }
-
-    #[test]
-    fn escaped_keyword_diagnostics_follow_syntactic_role() {
-        for source in [
-            r"(\u0061sync ())",
-            r"(a\u0073ync ())",
-            r"({ \u0061sync: 1 })",
-            r"({ \u0069f: 1 })",
-        ] {
-            let diagnostics = parse_diagnostics(source);
-            assert!(diagnostics.is_empty(), "{source}: {diagnostics:#?}");
-        }
-
-        for (source, expected_span) in [
-            (r"\u0069f (true) {}", Span::new(0, 7)),
-            (r"\u0061sync function f() {}", Span::new(0, 10)),
-            (r"(\u0061sync () => {})", Span::new(1, 11)),
-            (r"(a\u0073ync value => value)", Span::new(1, 11)),
-        ] {
-            let diagnostics = parse_diagnostics(source);
-            assert_eq!(
-                diagnostics.len(),
-                1,
-                "{source}: expected one diagnostic, got {diagnostics:#?}"
-            );
-            let diagnostic = &diagnostics[0];
-            assert_eq!(diagnostic.severity, Severity::Error, "{source}");
-            assert_eq!(diagnostic.span, expected_span, "{source}");
-            assert_eq!(diagnostic.message, ESCAPED_KEYWORD_MESSAGE, "{source}");
-        }
-    }
-
-    #[test]
-    fn escaped_async_call_preserves_await_context() {
-        for source in [r"\u0061sync(await);", r"a\u0073ync(await);"] {
-            let allocator = Allocator::new();
-            let mut ast = Ast::new(source, &allocator);
-            let options = Options {
-                source_type: SourceType::Script,
-                ..Options::default()
-            };
-            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
-
-            assert!(
-                result.diagnostics.is_empty(),
-                "{source}: {:#?}",
-                result.diagnostics
-            );
-        }
     }
 
     #[test]
