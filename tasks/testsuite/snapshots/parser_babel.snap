@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2210/2238 (98.75%)
+Positive Passed: 2211/2238 (98.79%)
 Negative Passed: 1603/1743 (91.97%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29

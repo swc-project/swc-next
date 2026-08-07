@@ -1,6 +1,6 @@
 codegen * babel
 ========================
-Positive Passed: 2128/2238 (95.08%)
+Positive Passed: 2129/2238 (95.13%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
