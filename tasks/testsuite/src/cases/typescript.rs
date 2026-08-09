@@ -2,8 +2,8 @@
 //! <https://github.com/microsoft/typescript-go/blob/main/internal/testrunner/test_case_parser.go>
 
 use std::{
-    collections::{HashMap, HashSet},
-    fs::read_to_string,
+    collections::{HashMap, HashSet, hash_map::Entry},
+    fs::{read, read_dir, read_to_string},
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -26,9 +26,21 @@ static OPTION_REGEX: LazyLock<Regex> =
 static LINK_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?m)^//\s*@link\s*:\s*([^\r\n]*)\s*->\s*([^\r\n]*)").unwrap());
 
-/// Regex for a TypeScript diagnostic such as `error TS1234: ...`.
+/// A diagnostic rendered inside one `==== virtual-file ====` baseline section.
 static TS_ERROR_CODE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"error[[:space:]]+TS(?<code>\d{4,5}):[[:space:]]+").unwrap());
+    LazyLock::new(|| Regex::new(r"^!!! error TS(?<code>\d{4,5}):").unwrap());
+
+type UnitErrorCodes = HashMap<String, Vec<HashSet<String>>>;
+
+/// Diagnostics from one configured TypeScript baseline, keyed by the raw
+/// virtual file name rendered in that baseline.
+struct ErrorCodeVariant {
+    name: String,
+    error_codes: UnitErrorCodes,
+}
+
+/// Option variants for each actual test file, relative to `tests/cases`.
+type TestErrorCodes = HashMap<PathBuf, Vec<ErrorCodeVariant>>;
 
 #[derive(Debug)]
 struct TestUnit {
@@ -57,33 +69,13 @@ impl Case for TypeScriptCase {
 
     fn read() -> Vec<Self> {
         let test_dir = fixtures().join("typescript/tests/cases");
-        let error_codes = read_error_codes();
+        let error_codes = read_error_codes(&test_dir);
+        let case_paths = compiler_case_paths(&test_dir);
+        validate_non_program_test_paths(&case_paths, &test_dir);
 
-        WalkDir::new(test_dir)
-            .into_iter()
-            .filter_map(|file| {
-                let file = file.ok()?;
-                if !file.file_type().is_file() {
-                    return None;
-                }
-
-                let path = file.path();
-                let path_str = path.to_string_lossy();
-                let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-                (matches!(
-                    ext,
-                    "ts" | "tsx" | "js" | "jsx" | "mts" | "cts" | "mjs" | "cjs"
-                ) && !path_str.ends_with(".d.ts")
-                    && !path_str.contains("_FIXTURE")
-                    && !path_str.contains("transpile")
-                    && !IGNORED_TESTS
-                        .iter()
-                        .any(|ignored| path_str.replace('\\', "/").contains(ignored)))
-                .then_some(path)
-            })
-            .collect::<Vec<_>>()
+        case_paths
             .into_par_iter()
-            .flat_map(|path| Self::read_file(path, &error_codes))
+            .flat_map(|path| Self::read_file(path, &test_dir, &error_codes))
             .collect()
     }
 
@@ -117,21 +109,46 @@ impl Case for TypeScriptCase {
 }
 
 impl TypeScriptCase {
-    fn read_file(path: PathBuf, error_codes: &HashMap<String, HashSet<String>>) -> Vec<Self> {
-        let Ok(code) = read_to_string(&path) else {
+    fn read_file(path: PathBuf, test_dir: &Path, error_codes: &TestErrorCodes) -> Vec<Self> {
+        let Ok(code) = read_typescript_file(&path) else {
             return Vec::new();
         };
+        let actual_path = path
+            .strip_prefix(test_dir)
+            .expect("TypeScript case is inside the cases directory")
+            .to_path_buf();
         let path_str = path.to_string_lossy();
         let mut parsed = parse_test_files_and_symlinks(&code, &path_str);
         merge_tsconfig_options(&path, &mut parsed.global_options);
-        let expects_error = should_fail(&path, &parsed.global_options, error_codes);
+        validate_baseline_units(&actual_path, &parsed.test_units, error_codes);
+        validate_non_program_units(&actual_path, &parsed.test_units, error_codes);
         let check_js = boolean_option(&parsed.global_options, "checkjs");
+        let allow_js = boolean_option(&parsed.global_options, "allowjs")
+            .or(check_js)
+            .unwrap_or(false);
 
+        let mut unit_occurrences = HashMap::<String, usize>::new();
         parsed
             .test_units
             .into_iter()
             .filter_map(|unit| {
+                let occurrence = unit_occurrences.entry(unit.name.clone()).or_default();
+                let unit_occurrence = *occurrence;
+                *occurrence += 1;
                 let lang = lang_from_path(&unit.name)?;
+                if !lang.is_typescript() && !allow_js {
+                    return None;
+                }
+                if is_non_program_unit(&actual_path, &unit.name, unit_occurrence) {
+                    return None;
+                }
+                let expects_error = should_fail(
+                    &actual_path,
+                    &unit.name,
+                    unit_occurrence,
+                    &parsed.global_options,
+                    error_codes,
+                );
                 let asserts_semantic_success =
                     asserts_semantic_success(lang, &unit.content, check_js);
                 Some(Self {
@@ -146,6 +163,128 @@ impl TypeScriptCase {
             })
             .collect()
     }
+}
+
+fn compiler_case_paths(test_dir: &Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    for suite in ["compiler", "conformance"] {
+        for file in WalkDir::new(test_dir.join(suite)) {
+            let file = file.unwrap_or_else(|error| {
+                panic!("failed to enumerate TypeScript case files: {error}")
+            });
+            if !file.file_type().is_file() {
+                continue;
+            }
+
+            let path = file.path();
+            let extension = path.extension().and_then(|extension| extension.to_str());
+            if !matches!(extension, Some("ts" | "tsx")) {
+                continue;
+            }
+
+            let actual_path = path
+                .strip_prefix(test_dir)
+                .expect("TypeScript compiler case is inside the cases directory");
+            if IGNORED_TESTS
+                .iter()
+                .any(|ignored| actual_path == Path::new(ignored))
+            {
+                continue;
+            }
+            paths.push(path);
+        }
+    }
+    paths.sort_unstable();
+    paths
+}
+
+fn read_typescript_file(path: &Path) -> std::io::Result<String> {
+    let bytes = read(path)?;
+    if let Some(bytes) = bytes.strip_prefix(&[0xfe, 0xff]) {
+        let code_units = bytes
+            .chunks_exact(2)
+            .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+            .collect::<Vec<_>>();
+        return Ok(String::from_utf16_lossy(&code_units));
+    }
+    if let Some(bytes) = bytes.strip_prefix(&[0xff, 0xfe]) {
+        let code_units = bytes
+            .chunks_exact(2)
+            .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+            .collect::<Vec<_>>();
+        return Ok(String::from_utf16_lossy(&code_units));
+    }
+    let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(&bytes);
+    Ok(String::from_utf8_lossy(bytes).into_owned())
+}
+
+fn validate_non_program_test_paths(case_paths: &[PathBuf], test_dir: &Path) {
+    let actual_paths = case_paths
+        .iter()
+        .map(|path| {
+            path.strip_prefix(test_dir)
+                .expect("TypeScript compiler case is inside the cases directory")
+        })
+        .collect::<HashSet<_>>();
+    let mut identities = HashSet::new();
+    for unit in NON_PROGRAM_UNITS {
+        assert!(
+            identities.insert((unit.test, unit.name, unit.occurrence)),
+            "duplicate non-Program TypeScript unit: {} - {} #{}",
+            unit.test,
+            unit.name,
+            unit.occurrence
+        );
+        assert!(
+            actual_paths.contains(Path::new(unit.test)),
+            "non-Program TypeScript unit refers to missing test `{}`",
+            unit.test
+        );
+    }
+}
+
+fn validate_non_program_units(
+    actual_path: &Path,
+    test_units: &[TestUnit],
+    error_codes: &TestErrorCodes,
+) {
+    let mut unit_counts = HashMap::<&str, usize>::new();
+    for unit in test_units {
+        *unit_counts.entry(&unit.name).or_default() += 1;
+    }
+    for unit in NON_PROGRAM_UNITS
+        .iter()
+        .filter(|unit| actual_path == Path::new(unit.test))
+    {
+        assert!(
+            unit_counts
+                .get(unit.name)
+                .is_some_and(|count| unit.occurrence < *count),
+            "non-Program TypeScript unit no longer exists: {} - {} #{}",
+            unit.test,
+            unit.name,
+            unit.occurrence
+        );
+        if let Some(variants) = error_codes.get(actual_path) {
+            for variant in variants {
+                let codes = &variant.error_codes[unit.name][unit.occurrence];
+                assert!(
+                    codes.is_empty(),
+                    "non-Program TypeScript unit has diagnostics in baseline `{}`: {} - {} #{}",
+                    variant.name,
+                    unit.test,
+                    unit.name,
+                    unit.occurrence
+                );
+            }
+        }
+    }
+}
+
+fn is_non_program_unit(actual_path: &Path, name: &str, occurrence: usize) -> bool {
+    NON_PROGRAM_UNITS.iter().any(|unit| {
+        actual_path == Path::new(unit.test) && name == unit.name && occurrence == unit.occurrence
+    })
 }
 
 fn boolean_option(options: &HashMap<String, String>, name: &str) -> Option<bool> {
@@ -217,74 +356,206 @@ fn parse_check_js_directive(comment: &str) -> Option<bool> {
     }
 }
 
-fn read_error_codes() -> HashMap<String, HashSet<String>> {
+fn read_error_codes(test_dir: &Path) -> TestErrorCodes {
     let baselines = fixtures().join("typescript/tests/baselines/reference");
+    let case_paths = baseline_case_paths(test_dir);
+    let mut baseline_paths = read_dir(&baselines)
+        .unwrap_or_else(|error| {
+            panic!(
+                "failed to read TypeScript baseline directory `{}`: {error}",
+                baselines.display()
+            )
+        })
+        .map(|entry| {
+            entry.unwrap_or_else(|error| {
+                panic!(
+                    "failed to enumerate TypeScript baseline directory `{}`: {error}",
+                    baselines.display()
+                )
+            })
+        })
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file())
+        .collect::<Vec<_>>();
+    baseline_paths.sort_unstable();
 
-    WalkDir::new(baselines)
-        .into_iter()
-        .filter_map(|file| {
-            let file = file.ok()?;
-            if !file.file_type().is_file() {
-                return None;
-            }
-
-            let file_name = file.file_name().to_string_lossy();
+    let variants = baseline_paths
+        .into_par_iter()
+        .filter_map(|path| {
+            let file_name = path.file_name()?.to_str()?;
             let baseline_name = file_name.strip_suffix(".errors.txt")?;
-            // Option variants have names such as `foo(target=es5).errors.txt`.
-            // Variants are flattened in this harness, so merge their diagnostics.
             let test_name = baseline_name
                 .split_once('(')
                 .map_or(baseline_name, |(name, _)| name)
                 .to_string();
-            Some((test_name, file.path()))
+
+            let Some(actual_path) = case_paths.get(&test_name) else {
+                // These baselines validate a declaration emit in a second
+                // compile, not a physical `.d.ts` compiler case.
+                if test_name.ends_with(".d") {
+                    return None;
+                }
+                panic!(
+                    "TypeScript baseline `{file_name}` does not map to a unique compiler or conformance case"
+                );
+            };
+            let baseline = read_to_string(&path).unwrap_or_else(|error| {
+                panic!(
+                    "failed to read TypeScript baseline `{}`: {error}",
+                    path.display()
+                )
+            });
+            let error_codes = read_unit_error_codes(&baseline);
+            Some((
+                actual_path.clone(),
+                ErrorCodeVariant {
+                    name: baseline_name.to_string(),
+                    error_codes,
+                },
+            ))
         })
-        .collect::<Vec<_>>()
-        .into_par_iter()
-        .filter_map(|(test_name, path)| {
-            let baseline = read_to_string(path).ok()?;
-            let codes = TS_ERROR_CODE_REGEX
-                .captures_iter(&baseline)
-                .filter_map(|captures| captures.name("code").map(|code| code.as_str().to_string()))
-                .collect::<HashSet<_>>();
-            Some((test_name, codes))
-        })
-        .fold(
-            HashMap::<String, HashSet<String>>::new,
-            |mut error_codes, (test_name, new_codes)| {
-                let codes = error_codes.entry(test_name).or_default();
-                codes.extend(new_codes);
-                error_codes
-            },
-        )
-        .reduce(HashMap::new, |mut error_codes, new_error_codes| {
-            for (test_name, new_codes) in new_error_codes {
-                error_codes.entry(test_name).or_default().extend(new_codes);
+        .collect::<Vec<_>>();
+
+    let mut error_codes = TestErrorCodes::new();
+    for (actual_path, variant) in variants {
+        error_codes.entry(actual_path).or_default().push(variant);
+    }
+    error_codes
+}
+
+fn baseline_case_paths(test_dir: &Path) -> HashMap<String, PathBuf> {
+    let mut case_paths = HashMap::new();
+    for suite in ["compiler", "conformance"] {
+        for file in WalkDir::new(test_dir.join(suite)) {
+            let file = file.unwrap_or_else(|error| {
+                panic!("failed to enumerate TypeScript case files: {error}")
+            });
+            if !file.file_type().is_file() {
+                continue;
             }
-            error_codes
-        })
+
+            let path = file.path();
+            let extension = path.extension().and_then(|extension| extension.to_str());
+            if !matches!(extension, Some("ts" | "tsx")) {
+                continue;
+            }
+
+            let Some(test_name) = path.file_stem().and_then(|name| name.to_str()) else {
+                continue;
+            };
+            let actual_path = path
+                .strip_prefix(test_dir)
+                .expect("TypeScript baseline case is inside the cases directory")
+                .to_path_buf();
+            match case_paths.entry(test_name.to_string()) {
+                Entry::Vacant(entry) => {
+                    entry.insert(actual_path);
+                }
+                Entry::Occupied(entry) => {
+                    panic!(
+                        "TypeScript baseline name `{test_name}` is ambiguous between `{}` and `{}`",
+                        entry.get().display(),
+                        actual_path.display()
+                    );
+                }
+            }
+        }
+    }
+    case_paths
+}
+
+fn read_unit_error_codes(baseline: &str) -> UnitErrorCodes {
+    let mut error_codes = UnitErrorCodes::new();
+    let mut current_unit = None;
+    for line in baseline.lines() {
+        if let Some(section) = line.strip_prefix("==== ") {
+            current_unit = None;
+            if let Some(section) = section.strip_suffix(" ====")
+                && let Some((name, _)) = section.rsplit_once(" (")
+            {
+                let name = name.to_string();
+                let occurrences = error_codes.entry(name.clone()).or_default();
+                let occurrence = occurrences.len();
+                occurrences.push(HashSet::new());
+                current_unit = Some((name, occurrence));
+            }
+            continue;
+        }
+        let Some((unit, occurrence)) = &current_unit else {
+            continue;
+        };
+        let Some(captures) = TS_ERROR_CODE_REGEX.captures(line) else {
+            continue;
+        };
+        let code = captures
+            .name("code")
+            .expect("diagnostic regex has a code capture")
+            .as_str()
+            .to_string();
+        error_codes
+            .get_mut(unit)
+            .expect("current baseline unit has an error-code entry")[*occurrence]
+            .insert(code);
+    }
+    error_codes
+}
+
+fn validate_baseline_units(
+    actual_path: &Path,
+    test_units: &[TestUnit],
+    error_codes: &TestErrorCodes,
+) {
+    let Some(variants) = error_codes.get(actual_path) else {
+        return;
+    };
+    let mut unit_counts = HashMap::<&str, usize>::new();
+    for unit in test_units {
+        *unit_counts.entry(unit.name.as_str()).or_default() += 1;
+    }
+    for variant in variants {
+        let baseline_counts = variant
+            .error_codes
+            .iter()
+            .map(|(name, occurrences)| (name.as_str(), occurrences.len()))
+            .collect::<HashMap<_, _>>();
+        assert_eq!(
+            baseline_counts,
+            unit_counts,
+            "TypeScript baseline `{}` virtual files do not match `{}`",
+            variant.name,
+            actual_path.display()
+        );
+    }
 }
 
 fn should_fail(
-    path: &Path,
+    actual_path: &Path,
+    unit_name: &str,
+    unit_occurrence: usize,
     global_options: &HashMap<String, String>,
-    error_codes: &HashMap<String, HashSet<String>>,
+    error_codes: &TestErrorCodes,
 ) -> bool {
     if global_options.contains_key("negative") {
         return true;
     }
 
-    let normalized_path = path.to_string_lossy().replace('\\', "/");
+    let normalized_path = actual_path.to_string_lossy().replace('\\', "/");
     if normalized_path.contains("/negative/") {
         return true;
     }
 
-    let Some(test_name) = path.file_stem().and_then(|name| name.to_str()) else {
-        return false;
-    };
-    error_codes.get(test_name).is_some_and(|codes| {
-        codes
-            .iter()
-            .any(|code| !NOT_SUPPORTED_ERROR_CODES.contains(&code.as_str()))
+    error_codes.get(actual_path).is_some_and(|variants| {
+        variants.iter().any(|variant| {
+            variant
+                .error_codes
+                .get(unit_name)
+                .and_then(|occurrences| occurrences.get(unit_occurrence))
+                .is_some_and(|codes| {
+                    codes
+                        .iter()
+                        .any(|code| !NOT_SUPPORTED_ERROR_CODES.contains(&code.as_str()))
+                })
+        })
     })
 }
 
@@ -327,10 +598,10 @@ fn parse_test_files_and_symlinks(code: &str, file_name: &str) -> ParsedTestConte
     let mut test_units = Vec::new();
     let mut symlinks = HashMap::new();
     let mut global_options = HashMap::new();
-    let mut current_file_content = String::new();
+    let mut current_file_content = None::<String>;
     let mut current_file_name = None;
 
-    for line in code.lines() {
+    for line in split_content_by_newlines(code) {
         if parse_symlink_from_test(line, &mut symlinks) {
             continue;
         }
@@ -346,10 +617,18 @@ fn parse_test_files_and_symlinks(code: &str, file_name: &str) -> ParsedTestConte
 
             if meta_name == "filename" {
                 if let Some(previous_name) = current_file_name.replace(meta_value) {
-                    test_units.push(TestUnit {
-                        name: previous_name,
-                        content: std::mem::take(&mut current_file_content),
-                    });
+                    // TypeScript drops a virtual-file marker that is replaced
+                    // before any source line belongs to it.
+                    if let Some(content) = current_file_content.take() {
+                        test_units.push(TestUnit {
+                            name: previous_name,
+                            content,
+                        });
+                    }
+                } else {
+                    // TypeScript permits only trivia before the first virtual file.
+                    // Do not attach that trivia to the first SourceFile.
+                    current_file_content = None;
                 }
                 continue;
             }
@@ -359,28 +638,50 @@ fn parse_test_files_and_symlinks(code: &str, file_name: &str) -> ParsedTestConte
             }
         }
 
-        if !current_file_content.is_empty() {
-            current_file_content.push('\n');
+        let content = current_file_content.get_or_insert_default();
+        if !content.is_empty() {
+            content.push('\n');
         }
-        current_file_content.push_str(line);
+        content.push_str(line);
     }
 
-    let name = current_file_name.unwrap_or_else(|| {
-        Path::new(file_name)
+    if let Some(name) = current_file_name {
+        // The final marker always denotes a virtual file, including an empty
+        // file at EOF. Only an intermediate marker superseded before any
+        // source line is omitted above.
+        test_units.push(TestUnit {
+            name,
+            content: current_file_content.unwrap_or_default(),
+        });
+    } else {
+        let name = Path::new(file_name)
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or("test.ts")
-            .to_string()
-    });
-    test_units.push(TestUnit {
-        name,
-        content: current_file_content,
-    });
+            .to_string();
+        test_units.push(TestUnit {
+            name,
+            content: current_file_content.unwrap_or_default(),
+        });
+    }
 
     ParsedTestContent {
         test_units,
         global_options,
     }
+}
+
+/// Match TypeScript's `/\r?\n/` split, including the final empty segment that
+/// preserves a newline at EOF. A bare carriage return is source text.
+fn split_content_by_newlines(mut code: &str) -> Vec<&str> {
+    let mut lines = Vec::new();
+    while let Some(newline) = code.find('\n') {
+        let line = &code[..newline];
+        lines.push(line.strip_suffix('\r').unwrap_or(line));
+        code = &code[newline + 1..];
+    }
+    lines.push(code);
+    lines
 }
 
 fn lang_from_path(path: &str) -> Option<Lang> {
@@ -418,6 +719,49 @@ fn source_type(path: &str, code: &str) -> SourceType {
 }
 
 const IGNORED_TESTS: &[&str] = &[
-    "fixtures/typescript/tests/cases/compiler/binderBinaryExpressionStress.ts",
-    "fixtures/typescript/tests/cases/compiler/binderBinaryExpressionStressJs.ts",
+    "compiler/binderBinaryExpressionStress.ts",
+    "compiler/binderBinaryExpressionStressJs.ts",
+];
+
+struct NonProgramUnit {
+    test: &'static str,
+    name: &'static str,
+    occurrence: usize,
+}
+
+/// TypeScript error baselines render every input unit, including package
+/// redirects and resolution alternatives that are not SourceFiles in the
+/// Program. Their zero-error sections are not positive parser or semantic
+/// oracles. Keep the exceptional identities exact and fail if fixtures drift.
+const NON_PROGRAM_UNITS: &[NonProgramUnit] = &[
+    NonProgramUnit {
+        test: "compiler/duplicatePackage.ts",
+        name: "/node_modules/b/node_modules/x/index.d.ts",
+        occurrence: 0,
+    },
+    NonProgramUnit {
+        test: "compiler/duplicatePackage_withErrors.ts",
+        name: "/node_modules/b/node_modules/x/index.d.ts",
+        occurrence: 0,
+    },
+    NonProgramUnit {
+        test: "conformance/moduleResolution/resolutionModeTripleSlash1.ts",
+        name: "/node_modules/@types/foo/index.d.cts",
+        occurrence: 0,
+    },
+    NonProgramUnit {
+        test: "conformance/moduleResolution/resolutionModeTripleSlash3.ts",
+        name: "/node_modules/@types/foo/index.d.cts",
+        occurrence: 0,
+    },
+    NonProgramUnit {
+        test: "conformance/moduleResolution/resolutionModeTripleSlash4.ts",
+        name: "/node_modules/@types/foo/index.d.cts",
+        occurrence: 0,
+    },
+    NonProgramUnit {
+        test: "conformance/moduleResolution/resolutionModeTripleSlash5.ts",
+        name: "/node_modules/@types/foo/index.d.cts",
+        occurrence: 0,
+    },
 ];
