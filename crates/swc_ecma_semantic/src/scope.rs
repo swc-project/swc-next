@@ -28,6 +28,8 @@ pub struct Scope {
     pub flags: ScopeFlags,
 }
 
+const _: () = assert!(std::mem::size_of::<Scope>() == 16);
+
 /// What kind of JavaScript construct created a scope.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ScopeKind {
@@ -96,7 +98,19 @@ impl ScopeKind {
 pub struct ScopeFlags {
     /// Whether this scope is in strict mode.
     pub strict: bool,
+    /// Whether this scope or one of its descendants contains a call that can
+    /// invoke the intrinsic eval function directly.
+    pub direct_eval: bool,
 }
+
+impl ScopeFlags {
+    /// True when direct eval can observe bindings owned by this scope.
+    pub fn contains_direct_eval(self) -> bool {
+        self.direct_eval
+    }
+}
+
+const _: () = assert!(std::mem::size_of::<ScopeFlags>() == 2);
 
 /// All scopes of a tree, indexed by [`ScopeId`].
 #[derive(Debug)]
@@ -118,6 +132,21 @@ impl<'a> ScopeTree<'a> {
         AncestorIterator {
             list: &self.list,
             current: start,
+        }
+    }
+
+    /// Marks `start` and every lexical ancestor as observable by direct eval.
+    pub(crate) fn mark_direct_eval(&mut self, start: ScopeId) {
+        let mut current = Some(start);
+        // Each scope is marked at most once. Later calls stop at the first
+        // marked ancestor, so all calls together are O(scopes + eval calls).
+        while let Some(id) = current {
+            let scope = &mut self.list[id.index()];
+            if scope.flags.direct_eval {
+                break;
+            }
+            scope.flags.direct_eval = true;
+            current = scope.parent;
         }
     }
 }
@@ -187,7 +216,14 @@ impl<'a> ScopeTracker<'a> {
 
         match source_type {
             SourceType::Module => {
-                self.push_scope(ScopeKind::Module, root_node, ScopeFlags { strict: true });
+                self.push_scope(
+                    ScopeKind::Module,
+                    root_node,
+                    ScopeFlags {
+                        strict: true,
+                        ..ScopeFlags::default()
+                    },
+                );
             }
             SourceType::CommonJs => {
                 self.push_scope(ScopeKind::Function, root_node, ScopeFlags::default());
@@ -236,7 +272,10 @@ impl<'a> ScopeTracker<'a> {
 
     pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
         let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
-            ScopeFlags { strict: true }
+            ScopeFlags {
+                strict: true,
+                ..ScopeFlags::default()
+            }
         } else {
             self.inherit_strict_flag()
         };
@@ -263,7 +302,10 @@ impl<'a> ScopeTracker<'a> {
         let body = arrow.body(tree).node_id();
         let flags = match tree.kind_data(body) {
             NodeKindData::FunctionBody(body) if self.has_retroactive_use_strict(tree, body) => {
-                ScopeFlags { strict: true }
+                ScopeFlags {
+                    strict: true,
+                    ..ScopeFlags::default()
+                }
             }
             _ => self.inherit_strict_flag(),
         };
@@ -354,7 +396,10 @@ impl<'a> ScopeTracker<'a> {
 
     pub fn enter_class(&mut self, tree: &Ast, class: Class) {
         // Classes are always strict mode (section 15.7.14).
-        let flags = ScopeFlags { strict: true };
+        let flags = ScopeFlags {
+            strict: true,
+            ..ScopeFlags::default()
+        };
         if is_named_class_expression(tree, class) {
             self.push_scope(ScopeKind::ExpressionName, class.node_id(), flags);
         }
@@ -408,6 +453,7 @@ impl<'a> ScopeTracker<'a> {
     fn inherit_strict_flag(&self) -> ScopeFlags {
         ScopeFlags {
             strict: self.current_scope().flags.strict,
+            ..ScopeFlags::default()
         }
     }
 

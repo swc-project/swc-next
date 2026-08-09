@@ -1015,6 +1015,7 @@ mod tests {
             const OverloadKey = Symbol();
             const RuntimeKey = Symbol();
             declare class Ambient extends Base { [Base](): void }
+            declare class AmbientEval extends eval("ambient") {}
             declare enum AmbientEnum { Member = Base }
             abstract class AbstractMember { abstract [TypeOnlyKey](): void }
             abstract class AbstractProperty { abstract [TypeOnlyKey]: unknown }
@@ -1069,7 +1070,6 @@ mod tests {
                 (ReferenceSpace::Value, true, true, false),
             ]
         );
-
         let accesses = |name: &[u8]| {
             semantic
                 .iter_references()
@@ -1113,6 +1113,11 @@ mod tests {
         assert_eq!(
             accesses(b"RuntimeKey"),
             [(ReferenceSpace::Value, true, true, false)]
+        );
+        assert!(
+            semantic
+                .iter_scopes()
+                .all(|entry| !entry.scope.flags.contains_direct_eval())
         );
     }
 
@@ -1295,5 +1300,105 @@ mod tests {
             let declaration = declaration(name);
             assert_eq!(semantic.reference_of(declaration.declaration.node), None);
         }
+    }
+
+    #[test]
+    fn direct_eval_marks_lexical_ancestor_scopes() {
+        let source = r#"
+            function parameter(value = eval("value")) { let body_local; }
+            function shadowed(eval) { eval("shadowed"); }
+            function indirect() {
+                (0, eval)("comma");
+                eval?.("optional");
+            }
+            function deleted() { delete eval("deleted"); }
+            function parent() {
+                function child() { (eval)("child"); }
+            }
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+
+        let function_scope = |name: &[u8]| {
+            let entry = semantic
+                .iter_scopes()
+                .find(|entry| {
+                    if entry.scope.kind != ScopeKind::Function {
+                        return false;
+                    }
+                    let NodeKindData::Function(function) = ast.kind_data(entry.scope.node) else {
+                        return false;
+                    };
+                    function
+                        .id(&ast)
+                        .is_some_and(|id| ast.get_utf8(id.name(&ast)).as_bytes() == name)
+                })
+                .expect("function scope");
+            (entry.id, entry.scope)
+        };
+
+        let (parameter_id, parameter) = function_scope(b"parameter");
+        assert!(parameter.flags.contains_direct_eval());
+        let parameter_body = semantic
+            .iter_scopes()
+            .find(|entry| {
+                entry.scope.kind == ScopeKind::FunctionBody
+                    && entry.scope.parent == Some(parameter_id)
+            })
+            .expect("parameter function body scope");
+        assert!(!parameter_body.scope.flags.contains_direct_eval());
+
+        assert!(function_scope(b"shadowed").1.flags.contains_direct_eval());
+        assert!(!function_scope(b"indirect").1.flags.contains_direct_eval());
+        assert!(function_scope(b"deleted").1.flags.contains_direct_eval());
+        assert!(function_scope(b"parent").1.flags.contains_direct_eval());
+        assert!(function_scope(b"child").1.flags.contains_direct_eval());
+        assert!(semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
+    }
+
+    #[test]
+    fn direct_eval_uses_runtime_transparent_typescript_wrappers() {
+        let source = r#"
+            function direct() { (eval as any)("direct"); }
+            function indirect() { (0, eval as any)("indirect"); }
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let contains_direct_eval = |name: &[u8]| {
+            semantic
+                .iter_scopes()
+                .find(|entry| {
+                    if entry.scope.kind != ScopeKind::Function {
+                        return false;
+                    }
+                    let NodeKindData::Function(function) = ast.kind_data(entry.scope.node) else {
+                        return false;
+                    };
+                    function
+                        .id(&ast)
+                        .is_some_and(|id| ast.get_utf8(id.name(&ast)).as_bytes() == name)
+                })
+                .expect("function scope")
+                .scope
+                .flags
+                .contains_direct_eval()
+        };
+
+        assert!(contains_direct_eval(b"direct"));
+        assert!(!contains_direct_eval(b"indirect"));
     }
 }

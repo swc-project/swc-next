@@ -1413,7 +1413,7 @@ impl<'a> SymbolTracker<'a> {
     pub fn finalize(
         mut self,
         tree: &Ast,
-        scopes: ScopeTree<'a>,
+        mut scopes: ScopeTree<'a>,
         has_with_statement: bool,
         node_scopes: ArenaVec<'a, ScopeId>,
         node_parents: ArenaVec<'a, Option<NodeId>>,
@@ -1482,6 +1482,12 @@ impl<'a> SymbolTracker<'a> {
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
             let name = tree.get_utf8(reference.name).as_bytes();
+            if name == b"eval"
+                && reference.flags.is_read()
+                && is_direct_eval_reference(tree, &node_parents, reference.node)
+            {
+                scopes.mark_direct_eval(reference.scope);
+            }
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
                 .hash_one(name);
@@ -1645,6 +1651,42 @@ fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
         },
         excludes: Excludes::IMPORT_BINDING,
         scope,
+    }
+}
+
+fn is_direct_eval_reference(
+    tree: &Ast<'_>,
+    node_parents: &[Option<NodeId>],
+    reference_node: NodeId,
+) -> bool {
+    if !matches!(
+        tree.kind_data(reference_node),
+        NodeKindData::IdentifierReference(_)
+    ) {
+        return false;
+    }
+
+    let mut expression = reference_node;
+    loop {
+        let Some(parent) = node_parents[expression.index()] else {
+            return false;
+        };
+        let inner = match tree.kind_data(parent) {
+            NodeKindData::ParenthesizedExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsAsExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsSatisfiesExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsTypeAssertion(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsNonNullExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsInstantiationExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::CallExpression(call) => {
+                return !call.optional(tree) && call.callee(tree).node_id() == expression;
+            }
+            _ => return false,
+        };
+        if inner != expression {
+            return false;
+        }
+        expression = parent;
     }
 }
 
