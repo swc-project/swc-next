@@ -1,8 +1,10 @@
 packages:
   - napi/*
+  - tasks/testsuite/typescript-manifest
 
 allowBuilds:
   '@swc/core': true
+  esbuild: true
 
 catalog:
   '@babel/parser': ^8.0.4
