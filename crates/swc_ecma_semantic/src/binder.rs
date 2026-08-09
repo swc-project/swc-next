@@ -667,6 +667,15 @@ impl<'a> SymbolTracker<'a> {
         self.export_state = ExportState::None;
     }
 
+    pub fn enter_arrow_function_expression(&mut self) -> ExportState {
+        std::mem::take(&mut self.export_state)
+    }
+
+    pub fn exit_arrow_function_expression(&mut self, saved: ExportState) {
+        debug_assert_eq!(self.export_state, ExportState::None);
+        self.export_state = saved;
+    }
+
     // Members are not the exported binding.
     pub fn enter_class_body(&mut self) {
         self.export_state = ExportState::None;

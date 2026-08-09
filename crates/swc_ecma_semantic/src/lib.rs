@@ -368,7 +368,7 @@ mod tests {
     use swc_next_ecma_ast::{Ast, Lang, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-    use super::{AnalyzeOptions, analyze};
+    use super::{AnalyzeOptions, SymbolFlags, analyze};
 
     fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
         let allocator = Allocator::new();
@@ -453,5 +453,40 @@ mod tests {
                 "{source}"
             );
         }
+    }
+
+    #[test]
+    fn arrow_initializer_preserves_export_context() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(
+            "export const f = parameter => { const hidden = 0; }, g = 1;",
+            &allocator,
+        );
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Module,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let exported = |name: &[u8]| {
+            semantic
+                .iter_symbols()
+                .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == name)
+                .expect("symbol")
+                .symbol
+                .flags
+                .contains(SymbolFlags::EXPORTED)
+        };
+
+        assert!(exported(b"f"));
+        assert!(exported(b"g"));
+        assert!(!exported(b"parameter"));
+        assert!(!exported(b"hidden"));
     }
 }

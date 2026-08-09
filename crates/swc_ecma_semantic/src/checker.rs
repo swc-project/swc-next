@@ -2149,8 +2149,13 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context
             .state
             .enter_arrow_function_expression(self.context.ast, node);
+        let export_state = self.context.state.symbols.enter_arrow_function_expression();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context
+            .state
+            .symbols
+            .exit_arrow_function_expression(export_state);
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
