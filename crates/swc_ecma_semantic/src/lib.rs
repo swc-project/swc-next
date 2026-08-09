@@ -742,4 +742,127 @@ mod tests {
         assert_eq!(re_export.origin, ExportOrigin::ReExportSpecifier);
         assert!(matches!(re_export.target, ExportTarget::External { .. }));
     }
+
+    #[test]
+    fn type_only_import_visibility() {
+        let source = "import type { TypeOnly, Merged } from 'mod'; TypeOnly; type T = TypeOnly; type N = TypeOnly.Member; type Q = typeof TypeOnly; export default TypeOnly; const Merged: Merged = 1; Merged;";
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Module,
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let type_only = semantic
+            .iter_symbols()
+            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"TypeOnly")
+            .expect("type-only import symbol")
+            .id;
+        assert!(
+            semantic
+                .symbol(type_only)
+                .flags
+                .contains(SymbolFlags::TYPE_IMPORT)
+        );
+        let type_only_references: Vec<_> = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"TypeOnly")
+            .map(|entry| (entry.reference.flags.space, entry.reference.symbol))
+            .collect();
+        assert_eq!(
+            type_only_references,
+            [
+                (ReferenceSpace::Value, None),
+                (ReferenceSpace::Type, Some(type_only)),
+                (ReferenceSpace::Namespace, Some(type_only)),
+                (ReferenceSpace::Typeof, Some(type_only)),
+                (ReferenceSpace::Any, Some(type_only)),
+            ]
+        );
+
+        let merged = semantic
+            .iter_symbols()
+            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"Merged")
+            .expect("merged import and value symbol")
+            .id;
+        let merged_references: Vec<_> = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"Merged")
+            .map(|entry| (entry.reference.flags.space, entry.reference.symbol))
+            .collect();
+        assert_eq!(
+            merged_references,
+            [
+                (ReferenceSpace::Type, Some(merged)),
+                (ReferenceSpace::Value, Some(merged)),
+            ]
+        );
+    }
+
+    #[test]
+    fn default_and_export_assignment_reference_spaces() {
+        fn export_reference(source: &str, name: &[u8]) -> (ReferenceSpace, bool) {
+            let allocator = Allocator::new();
+            let mut ast = Ast::new(source, &allocator);
+            let parse = Parser::init(
+                &mut ast,
+                Options {
+                    source_type: SourceType::Module,
+                    lang: Lang::Ts,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse();
+            assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+            let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+            let reference = semantic
+                .iter_references()
+                .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
+                .expect("export reference");
+            (
+                reference.reference.flags.space,
+                reference.reference.symbol.is_some(),
+            )
+        }
+
+        assert_eq!(
+            export_reference("type T = {}; export default T;", b"T"),
+            (ReferenceSpace::Any, true)
+        );
+        assert_eq!(
+            export_reference("type T = {}; export default T || {};", b"T"),
+            (ReferenceSpace::Value, false)
+        );
+        assert_eq!(
+            export_reference("type T = {}; export = T;", b"T"),
+            (ReferenceSpace::Any, true)
+        );
+        assert_eq!(
+            export_reference(
+                "namespace N { export interface T {} } export default N.T;",
+                b"N",
+            ),
+            (ReferenceSpace::Value, false)
+        );
+        assert_eq!(
+            export_reference("namespace N { export interface T {} } export = N.T;", b"N",),
+            (ReferenceSpace::Value, false)
+        );
+        assert_eq!(
+            export_reference(
+                "namespace N { export interface T {} } export = N['T'];",
+                b"N",
+            ),
+            (ReferenceSpace::Value, false)
+        );
+    }
 }

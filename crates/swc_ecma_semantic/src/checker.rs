@@ -93,6 +93,17 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
     }
 }
 
+fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
+    if matches!(
+        tree.kind_data(expression),
+        NodeKindData::IdentifierReference(_)
+    ) {
+        ReferenceSpace::Any
+    } else {
+        ReferenceSpace::Value
+    }
+}
+
 #[derive(Clone, Copy)]
 struct ExportSpecifierInfo<'a> {
     local_name: &'a [u8],
@@ -1553,7 +1564,6 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.visit_with_reference_flags(node.value(self.context.ast), flags);
         self.leave_node(node.node_id());
     }
-    #[inline]
     fn visit_parenthesized_expression(&mut self, node: ParenthesizedExpression) {
         let node_flags = self.context.enter_node(node.node_id());
         let flags = self.write_reference_flags(node_flags.write);
@@ -1737,8 +1747,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .state
             .symbols
             .enter_export_default_declaration();
-        let flags = self.flags_with_space(ReferenceSpace::Any);
-        self.visit_with_reference_flags(node.declaration(self.context.ast), flags);
+        let declaration = node.declaration(self.context.ast);
+        let space = declaration
+            .as_expr(self.context.ast)
+            .map_or(ReferenceSpace::Value, |expression| {
+                export_expression_space(self.context.ast, expression.node_id())
+            });
+        let flags = self.flags_with_space(space);
+        self.visit_with_reference_flags(declaration, flags);
         self.context.state.symbols.exit_export_declaration();
         self.leave_node(node.node_id());
     }
@@ -1817,8 +1833,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     #[inline]
     fn visit_ts_export_assignment(&mut self, node: TsExportAssignment) {
         self.context.enter_node(node.node_id());
-        let flags = self.flags_with_space(ReferenceSpace::Any);
-        self.visit_with_reference_flags(node.expression(self.context.ast), flags);
+        let expression = node.expression(self.context.ast);
+        let space = export_expression_space(self.context.ast, expression.node_id());
+        let flags = self.flags_with_space(space);
+        self.visit_with_reference_flags(expression, flags);
         self.leave_node(node.node_id());
     }
     fn visit_ts_enum_declaration(&mut self, node: TsEnumDeclaration) {

@@ -193,16 +193,17 @@ impl SymbolFlags {
     /// }
     /// ```
     ///
-    /// Import bindings alias symbols of unknowable space and are
-    /// visible in every space.
+    /// Value imports alias symbols of unknowable space and are visible in
+    /// every space. Type-only imports are not visible to runtime value uses,
+    /// but remain valid in type, namespace, and `typeof` positions.
     pub fn visible_in(self, space: ReferenceSpace) -> bool {
-        if self.intersects(Self::ANY_IMPORT) {
-            return true;
-        }
         match space {
-            ReferenceSpace::Value | ReferenceSpace::Typeof => self.in_value_space(),
-            ReferenceSpace::Type => self.in_type_space(),
-            ReferenceSpace::Namespace => self.in_namespace_space(),
+            ReferenceSpace::Value => self.contains(Self::IMPORT) || self.in_value_space(),
+            ReferenceSpace::Typeof => self.intersects(Self::ANY_IMPORT) || self.in_value_space(),
+            ReferenceSpace::Type => self.intersects(Self::ANY_IMPORT) || self.in_type_space(),
+            ReferenceSpace::Namespace => {
+                self.intersects(Self::ANY_IMPORT) || self.in_namespace_space()
+            }
             ReferenceSpace::Any => true,
         }
     }
@@ -410,8 +411,8 @@ pub enum ReferenceSpace {
     /// a value use inside a type, the entity of a `typeof` query or a
     /// type-predicate parameter
     Typeof,
-    /// an alias position that accepts every space: `export { x }`,
-    /// `export default x`, `export = x`, and `import a = x`
+    /// an alias position that accepts every space: `export { x }`, a direct
+    /// identifier in `export default` or `export =`, and `import a = x`
     Any,
 }
 
