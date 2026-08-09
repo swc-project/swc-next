@@ -86,6 +86,17 @@ fn bench_semantic(parsed: ParsedProgram) {
     ));
 }
 
+#[library_benchmark]
+#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
+fn bench_semantic_with_syntax_check(parsed: ParsedProgram) {
+    black_box(analyze(
+        parsed.program,
+        &parsed.ast,
+        AnalyzeOptions { check_syntax: true },
+    ));
+}
+
 struct VisitCounter<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
     count: usize,
@@ -250,7 +261,10 @@ fn bench_traverse(mut parsed: ParsedProgram) {
 
 library_benchmark_group!(name = parser, benchmarks = bench_parser);
 
-library_benchmark_group!(name = semantic, benchmarks = bench_semantic);
+library_benchmark_group!(
+    name = semantic,
+    benchmarks = [bench_semantic, bench_semantic_with_syntax_check]
+);
 
 library_benchmark_group!(
     name = visit,
