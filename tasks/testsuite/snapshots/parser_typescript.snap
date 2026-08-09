@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 21869/22023 (99.30%)
+Positive Passed: 21870/22023 (99.31%)
 Negative Passed: 1584/3448 (45.94%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -1906,7 +1906,6 @@ Failed: fixtures/typescript/tests/cases/conformance/salsa/moduleExportWithExport
 Failed: fixtures/typescript/tests/cases/conformance/salsa/moduleExportsAliasLoop1.ts - x.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/moduleExportsAliasLoop2.ts - x.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/plainJSGrammarErrors3.ts - plainJSGrammarErrors3.js: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/salsa/plainJSRedeclare3.ts - plainJSRedeclare.js: semantic: Identifier 'orbitol' has already been declared at 22..29
 Failed: fixtures/typescript/tests/cases/conformance/salsa/privateIdentifierExpando.ts - privateIdentifierExpando.js: semantic: Private field '#bar' must be declared in an enclosing class at 16..20
 Failed: fixtures/typescript/tests/cases/conformance/salsa/prototypePropertyAssignmentMergeAcrossFiles2.ts - other.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/prototypePropertyAssignmentMergeAcrossFiles2.ts - prototypePropertyAssignmentMergeAcrossFiles2.js: expected a parse or early error, but pipeline succeeded

@@ -22,6 +22,11 @@ pub trait Case: Sized + Sync {
     }
     fn lang(&self) -> Lang;
     fn expects_error(&self) -> bool;
+    /// Whether a case expected to succeed also asserts that semantic analysis
+    /// produces no early-error diagnostics.
+    fn asserts_semantic_success(&self) -> bool {
+        true
+    }
 
     fn relative_path(&self) -> &Path {
         self.path().strip_prefix(crate_root()).unwrap()

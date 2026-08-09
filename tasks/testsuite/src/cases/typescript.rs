@@ -49,6 +49,7 @@ pub struct TypeScriptCase {
     source_type: SourceType,
     lang: Lang,
     expects_error: bool,
+    asserts_semantic_success: bool,
 }
 
 impl Case for TypeScriptCase {
@@ -109,6 +110,10 @@ impl Case for TypeScriptCase {
     fn expects_error(&self) -> bool {
         self.expects_error
     }
+
+    fn asserts_semantic_success(&self) -> bool {
+        self.asserts_semantic_success
+    }
 }
 
 impl TypeScriptCase {
@@ -120,12 +125,15 @@ impl TypeScriptCase {
         let mut parsed = parse_test_files_and_symlinks(&code, &path_str);
         merge_tsconfig_options(&path, &mut parsed.global_options);
         let expects_error = should_fail(&path, &parsed.global_options, error_codes);
+        let check_js = boolean_option(&parsed.global_options, "checkjs");
 
         parsed
             .test_units
             .into_iter()
             .filter_map(|unit| {
                 let lang = lang_from_path(&unit.name)?;
+                let asserts_semantic_success =
+                    asserts_semantic_success(lang, &unit.content, check_js);
                 Some(Self {
                     path: path.clone(),
                     source_type: source_type(&unit.name, &unit.content),
@@ -133,9 +141,79 @@ impl TypeScriptCase {
                     name: unit.name,
                     code: unit.content,
                     expects_error,
+                    asserts_semantic_success,
                 })
             })
             .collect()
+    }
+}
+
+fn boolean_option(options: &HashMap<String, String>, name: &str) -> Option<bool> {
+    match options.get(name)?.trim().to_ascii_lowercase().as_str() {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+/// Whether TypeScript's lack of diagnostics is an oracle for scope-dependent
+/// diagnostics in this virtual file. TypeScript files are checked by default.
+/// JavaScript files require global `checkJs` or a leading `// @ts-check`; the
+/// last leading `// @ts-check` / `// @ts-nocheck` directive overrides the
+/// global setting.
+fn asserts_semantic_success(lang: Lang, code: &str, check_js: Option<bool>) -> bool {
+    if let Some(check) = file_check_js_directive(code) {
+        return check;
+    }
+    lang.is_typescript() || check_js.unwrap_or(false)
+}
+
+fn file_check_js_directive(code: &str) -> Option<bool> {
+    let bytes = code.as_bytes();
+    let mut position = usize::from(bytes.starts_with(&[0xef, 0xbb, 0xbf])) * 3;
+    let mut directive = None;
+
+    loop {
+        while bytes.get(position).is_some_and(u8::is_ascii_whitespace) {
+            position += 1;
+        }
+
+        if bytes.get(position..position + 2) == Some(b"//") {
+            let end = bytes[position..]
+                .iter()
+                .position(|&byte| matches!(byte, b'\n' | b'\r'))
+                .map_or(bytes.len(), |offset| position + offset);
+            directive = parse_check_js_directive(&code[position..end]).or(directive);
+            position = end;
+            continue;
+        }
+
+        if bytes.get(position..position + 2) == Some(b"/*") {
+            let comment = &bytes[position + 2..];
+            let Some(offset) = comment.windows(2).position(|window| window == b"*/") else {
+                break;
+            };
+            position += offset + 4;
+            continue;
+        }
+
+        break;
+    }
+
+    directive
+}
+
+fn parse_check_js_directive(comment: &str) -> Option<bool> {
+    let content = comment.strip_prefix("//")?;
+    let content = content.strip_prefix('/').unwrap_or(content).trim_start();
+    let pragma = content.strip_prefix('@')?;
+    let name_end = pragma
+        .find(|character: char| character.is_ascii_whitespace() || character == ':')
+        .unwrap_or(pragma.len());
+    match &pragma[..name_end] {
+        name if name.eq_ignore_ascii_case("ts-check") => Some(true),
+        name if name.eq_ignore_ascii_case("ts-nocheck") => Some(false),
+        _ => None,
     }
 }
 
@@ -273,10 +351,12 @@ fn parse_test_files_and_symlinks(code: &str, file_name: &str) -> ParsedTestConte
                         content: std::mem::take(&mut current_file_content),
                     });
                 }
-            } else {
-                global_options.insert(meta_name, meta_value);
+                continue;
             }
-            continue;
+            if !matches!(meta_name.as_str(), "ts-check" | "ts-nocheck") {
+                global_options.insert(meta_name, meta_value);
+                continue;
+            }
         }
 
         if !current_file_content.is_empty() {

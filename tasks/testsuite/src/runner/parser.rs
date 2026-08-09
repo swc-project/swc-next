@@ -37,6 +37,7 @@ impl<C: Case> Runner<C> for ParserRunner {
             let semantic_ret = analyze(program, &ast, AnalyzeOptions { check_syntax: true });
             match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),
+                (false, Some(_)) if !case.asserts_semantic_success() => Ok(()),
                 (true, None) => Err(format!(
                     "{}: expected a parse or early error, but pipeline succeeded",
                     case.name()
