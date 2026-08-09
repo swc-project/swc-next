@@ -745,7 +745,7 @@ mod tests {
 
     #[test]
     fn type_only_import_visibility() {
-        let source = "import type { TypeOnly, Merged } from 'mod'; TypeOnly; type T = TypeOnly; type N = TypeOnly.Member; type Q = typeof TypeOnly; export default TypeOnly; const Merged: Merged = 1; Merged;";
+        let source = "import type { TypeOnly, Merged } from 'mod'; import type Alias = TypeOnly; TypeOnly; type T = TypeOnly; type N = TypeOnly.Member; type Q = typeof TypeOnly; export default TypeOnly; export type { TypeOnly }; const Merged: Merged = 1; Merged;";
         let allocator = Allocator::new();
         let mut ast = Ast::new(source, &allocator);
         let parse = Parser::init(
@@ -774,16 +774,25 @@ mod tests {
         let type_only_references: Vec<_> = semantic
             .iter_references()
             .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"TypeOnly")
-            .map(|entry| (entry.reference.flags.space, entry.reference.symbol))
+            .map(|entry| {
+                (
+                    entry.reference.flags.space,
+                    entry.reference.symbol,
+                    entry.reference.flags.is_read(),
+                    entry.reference.flags.is_write(),
+                )
+            })
             .collect();
         assert_eq!(
             type_only_references,
             [
-                (ReferenceSpace::Value, None),
-                (ReferenceSpace::Type, Some(type_only)),
-                (ReferenceSpace::Namespace, Some(type_only)),
-                (ReferenceSpace::Typeof, Some(type_only)),
-                (ReferenceSpace::Any, Some(type_only)),
+                (ReferenceSpace::Any, Some(type_only), false, false),
+                (ReferenceSpace::Value, None, true, false),
+                (ReferenceSpace::Type, Some(type_only), false, false),
+                (ReferenceSpace::Namespace, Some(type_only), false, false,),
+                (ReferenceSpace::Typeof, Some(type_only), false, false),
+                (ReferenceSpace::Any, Some(type_only), false, false),
+                (ReferenceSpace::Any, Some(type_only), false, false),
             ]
         );
 
@@ -795,20 +804,27 @@ mod tests {
         let merged_references: Vec<_> = semantic
             .iter_references()
             .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"Merged")
-            .map(|entry| (entry.reference.flags.space, entry.reference.symbol))
+            .map(|entry| {
+                (
+                    entry.reference.flags.space,
+                    entry.reference.symbol,
+                    entry.reference.flags.is_read(),
+                    entry.reference.flags.is_write(),
+                )
+            })
             .collect();
         assert_eq!(
             merged_references,
             [
-                (ReferenceSpace::Type, Some(merged)),
-                (ReferenceSpace::Value, Some(merged)),
+                (ReferenceSpace::Type, Some(merged), false, false),
+                (ReferenceSpace::Value, Some(merged), true, false),
             ]
         );
     }
 
     #[test]
     fn default_and_export_assignment_reference_spaces() {
-        fn export_reference(source: &str, name: &[u8]) -> (ReferenceSpace, bool) {
+        fn export_reference(source: &str, name: &[u8]) -> (ReferenceSpace, bool, bool) {
             let allocator = Allocator::new();
             let mut ast = Ast::new(source, &allocator);
             let parse = Parser::init(
@@ -831,38 +847,267 @@ mod tests {
             (
                 reference.reference.flags.space,
                 reference.reference.symbol.is_some(),
+                reference.reference.flags.is_read(),
             )
         }
 
         assert_eq!(
             export_reference("type T = {}; export default T;", b"T"),
-            (ReferenceSpace::Any, true)
+            (ReferenceSpace::Any, true, false)
         );
         assert_eq!(
             export_reference("type T = {}; export default T || {};", b"T"),
-            (ReferenceSpace::Value, false)
+            (ReferenceSpace::Value, false, true)
         );
         assert_eq!(
             export_reference("type T = {}; export = T;", b"T"),
-            (ReferenceSpace::Any, true)
+            (ReferenceSpace::Any, true, false)
         );
         assert_eq!(
             export_reference(
                 "namespace N { export interface T {} } export default N.T;",
                 b"N",
             ),
-            (ReferenceSpace::Value, false)
+            (ReferenceSpace::Value, false, true)
         );
         assert_eq!(
             export_reference("namespace N { export interface T {} } export = N.T;", b"N",),
-            (ReferenceSpace::Value, false)
+            (ReferenceSpace::Value, false, true)
         );
         assert_eq!(
             export_reference(
                 "namespace N { export interface T {} } export = N['T'];",
                 b"N",
             ),
-            (ReferenceSpace::Value, false)
+            (ReferenceSpace::Value, false, true)
+        );
+    }
+
+    #[test]
+    fn alias_access_follows_the_resolved_symbol() {
+        let source = r#"
+            type T = {};
+            const V = 1;
+            namespace N { export interface I {} }
+            import { Imported } from "mod";
+            import type { TypeImported } from "mod";
+            namespace Q { export const Member = 1; }
+            export import Qualified = Q.Member;
+            import type TypeQualified = Q.Member;
+            export { T, V, N, Imported, TypeImported, Missing };
+            export type { V as ValueType };
+            export default T;
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Module,
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let references = |name: &[u8]| {
+            semantic
+                .iter_references()
+                .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
+                .map(|entry| {
+                    (
+                        entry.reference.flags.space,
+                        entry.reference.symbol.is_some(),
+                        entry.reference.flags.is_read(),
+                        entry.reference.flags.is_write(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            references(b"T"),
+            [
+                (ReferenceSpace::Any, true, false, false),
+                (ReferenceSpace::Any, true, false, false),
+            ]
+        );
+        assert_eq!(
+            references(b"V"),
+            [
+                (ReferenceSpace::Any, true, true, false),
+                (ReferenceSpace::Any, true, false, false),
+            ]
+        );
+        assert_eq!(
+            references(b"N"),
+            [(ReferenceSpace::Any, true, false, false)]
+        );
+        assert_eq!(
+            references(b"Imported"),
+            [(ReferenceSpace::Any, true, true, false)]
+        );
+        assert_eq!(
+            references(b"TypeImported"),
+            [(ReferenceSpace::Any, true, false, false)]
+        );
+        assert_eq!(
+            references(b"Missing"),
+            [(ReferenceSpace::Any, false, true, false)]
+        );
+        assert_eq!(
+            references(b"Q"),
+            [
+                (ReferenceSpace::Any, true, true, false),
+                (ReferenceSpace::Any, true, false, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn reference_access_flags() {
+        let source = r#"
+            let read, write, update, object, key, deleted;
+            read;
+            write = 1;
+            update++;
+            object[key] = 1;
+            delete deleted;
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let flags = |name: &[u8]| {
+            semantic
+                .iter_references()
+                .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
+                .expect("reference")
+                .reference
+                .flags
+        };
+
+        assert!(flags(b"read").is_read_only());
+        assert!(flags(b"write").is_write_only());
+        assert!(flags(b"update").is_read_write());
+        assert!(flags(b"object").is_read_only());
+        assert!(flags(b"key").is_read_only());
+        assert!(!flags(b"deleted").is_read());
+        assert!(!flags(b"deleted").is_write());
+    }
+
+    #[test]
+    fn erased_declarations_do_not_read_runtime_values() {
+        let source = r#"
+            import type { TypeOnlyKey } from "mod";
+            declare const decorator: any;
+            const Base = class {};
+            const DecoratedKey = Symbol();
+            const DecoratedMethodKey = Symbol();
+            const OverloadKey = Symbol();
+            const RuntimeKey = Symbol();
+            declare class Ambient extends Base { [Base](): void }
+            declare enum AmbientEnum { Member = Base }
+            abstract class AbstractMember { abstract [TypeOnlyKey](): void }
+            abstract class AbstractProperty { abstract [TypeOnlyKey]: unknown }
+            class DeclaredMember { declare [TypeOnlyKey]: unknown }
+            class DecoratedMember { @decorator declare [DecoratedKey]: unknown }
+            class DecoratedOverload {
+                @decorator
+                [DecoratedMethodKey](): void;
+                [DecoratedMethodKey]() {}
+            }
+            class OverloadedMember {
+                [OverloadKey](): void;
+                [OverloadKey]() {}
+            }
+            class RuntimeMember { [RuntimeKey]() {} }
+            class Runtime extends Base { [Base]() {} }
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Module,
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let accesses = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"Base")
+            .map(|entry| {
+                (
+                    entry.reference.flags.space,
+                    entry.reference.symbol.is_some(),
+                    entry.reference.flags.is_read(),
+                    entry.reference.flags.is_write(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            accesses,
+            [
+                (ReferenceSpace::Value, true, false, false),
+                (ReferenceSpace::Typeof, true, false, false),
+                (ReferenceSpace::Value, true, false, false),
+                (ReferenceSpace::Value, true, true, false),
+                (ReferenceSpace::Value, true, true, false),
+            ]
+        );
+
+        let accesses = |name: &[u8]| {
+            semantic
+                .iter_references()
+                .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
+                .map(|entry| {
+                    (
+                        entry.reference.flags.space,
+                        entry.reference.symbol.is_some(),
+                        entry.reference.flags.is_read(),
+                        entry.reference.flags.is_write(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            accesses(b"TypeOnlyKey"),
+            [
+                (ReferenceSpace::Typeof, true, false, false),
+                (ReferenceSpace::Typeof, true, false, false),
+                (ReferenceSpace::Typeof, true, false, false),
+            ]
+        );
+        assert_eq!(
+            accesses(b"DecoratedKey"),
+            [(ReferenceSpace::Value, true, true, false)]
+        );
+        assert_eq!(
+            accesses(b"DecoratedMethodKey"),
+            [
+                (ReferenceSpace::Value, true, true, false),
+                (ReferenceSpace::Value, true, true, false),
+            ]
+        );
+        assert_eq!(
+            accesses(b"OverloadKey"),
+            [
+                (ReferenceSpace::Typeof, true, false, false),
+                (ReferenceSpace::Value, true, true, false),
+            ]
+        );
+        assert_eq!(
+            accesses(b"RuntimeKey"),
+            [(ReferenceSpace::Value, true, true, false)]
         );
     }
 }

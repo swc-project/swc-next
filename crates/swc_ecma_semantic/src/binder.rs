@@ -347,7 +347,7 @@ impl Excludes {
 /// ```ts
 /// let a = b; a = 2;
 /// //      ^ a read of `b`
-/// //         ^ a write of `a`, flags.write
+/// //         ^ a write of `a`, flags.is_write()
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Reference {
@@ -362,14 +362,25 @@ pub struct Reference {
     pub flags: ReferenceFlags,
 }
 
-#[derive(Debug, Clone, Copy)]
+bitflags::bitflags! {
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    struct ReferenceAccess: u8 {
+        const READ = 1 << 0;
+        const WRITE = 1 << 1;
+    }
+}
+
+/// Whether evaluating a reference reads its previous value, writes a new
+/// value, or both. Type-only references do neither.
+///
+/// Syntactic forms such as assignments, updates, destructuring targets, and
+/// for-in/of targets are normalized to these access operations rather than
+/// being exposed as separate reference kinds. Alias positions retain a read
+/// only when their resolved symbol can contribute a runtime value; unresolved
+/// aliases conservatively retain it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReferenceFlags {
-    /// True when this reference (re)assigns its binding: the target of
-    /// an assignment, the operand of `++`/`--`, the iteration variable
-    /// of for-in/for-of, or a destructuring assignment leaf.
-    /// Initializers in declarations are not references, so an initialized
-    /// but never reassigned binding has no write.
-    pub write: bool,
+    access: ReferenceAccess,
     /// The declaration space this position resolves in.
     pub space: ReferenceSpace,
 }
@@ -377,11 +388,65 @@ pub struct ReferenceFlags {
 impl Default for ReferenceFlags {
     fn default() -> Self {
         Self {
-            write: false,
+            access: ReferenceAccess::READ,
             space: ReferenceSpace::Value,
         }
     }
 }
+
+impl ReferenceFlags {
+    /// True when evaluation reads the binding's value.
+    pub fn is_read(self) -> bool {
+        self.access.contains(ReferenceAccess::READ)
+    }
+
+    /// True when evaluation assigns to the binding.
+    pub fn is_write(self) -> bool {
+        self.access.contains(ReferenceAccess::WRITE)
+    }
+
+    /// True when the same reference both reads and writes the binding,
+    /// as in `value += 1` or `value++`.
+    pub fn is_read_write(self) -> bool {
+        self.access
+            .contains(ReferenceAccess::READ | ReferenceAccess::WRITE)
+    }
+
+    /// True when evaluation only reads the binding.
+    pub fn is_read_only(self) -> bool {
+        self.is_read() && !self.is_write()
+    }
+
+    /// True when evaluation only writes the binding.
+    pub fn is_write_only(self) -> bool {
+        self.is_write() && !self.is_read()
+    }
+
+    pub(crate) fn with_space(mut self, space: ReferenceSpace) -> Self {
+        self.space = space;
+        if space.in_type_position() {
+            self.access = ReferenceAccess::empty();
+        }
+        self
+    }
+
+    pub(crate) fn write_only(mut self) -> Self {
+        self.access = ReferenceAccess::WRITE;
+        self
+    }
+
+    pub(crate) fn read_write(mut self) -> Self {
+        self.access = ReferenceAccess::READ | ReferenceAccess::WRITE;
+        self
+    }
+
+    pub(crate) fn no_access(mut self) -> Self {
+        self.access = ReferenceAccess::empty();
+        self
+    }
+}
+
+const _: () = assert!(std::mem::size_of::<ReferenceFlags>() == 2);
 
 /// The declaration space a syntactic position resolves in,
 /// matching TypeScript name resolution. A binding outside a reference's
@@ -399,6 +464,7 @@ impl Default for ReferenceFlags {
 /// export { T };
 /// //       ^ any
 /// ```
+#[repr(u8)]
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum ReferenceSpace {
     /// a runtime use
@@ -529,6 +595,11 @@ impl<'a> SymbolTracker<'a> {
             ambient: tree.lang() == swc_next_ecma_ast::Lang::Dts,
             saved_stack: ArenaVec::with_capacity_in(32, allocator),
         }
+    }
+
+    #[inline]
+    pub fn in_ambient_context(&self) -> bool {
+        self.ambient || self.pending.flags.contains(SymbolFlags::AMBIENT)
     }
 
     pub fn enter_export_named_declaration(
@@ -1085,10 +1156,7 @@ impl<'a> SymbolTracker<'a> {
             name,
             scope.current,
             parameter_node,
-            ReferenceFlags {
-                space: ReferenceSpace::Typeof,
-                ..ReferenceFlags::default()
-            },
+            ReferenceFlags::default().with_space(ReferenceSpace::Typeof),
         );
     }
 
@@ -1229,6 +1297,15 @@ impl<'a> SymbolTracker<'a> {
     ) -> ReferenceId {
         assert!(node.index() < tree.node_count());
         assert!(self.references.len() < u32::MAX as usize);
+        // Ambient syntax still resolves through the same declaration space,
+        // but its erased expressions do not access the binding at runtime.
+        // Normalize only actual references instead of checking ambient state
+        // while entering every AST node.
+        let flags = if self.in_ambient_context() {
+            flags.no_access()
+        } else {
+            flags
+        };
         let id = reference_id(self.references.len());
         self.references.push(Reference {
             name,
@@ -1402,6 +1479,14 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
             self.references[reference_index].symbol = resolved;
+            if reference.flags.space == ReferenceSpace::Any
+                && resolved.is_some_and(|symbol| {
+                    let flags = self.symbols[symbol.index()].flags;
+                    !flags.contains(SymbolFlags::IMPORT) && !flags.in_value_space()
+                })
+            {
+                self.references[reference_index].flags = reference.flags.no_access();
+            }
         }
 
         // Use index: count, prefix-sum, fill. `len` doubles as the write

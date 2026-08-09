@@ -113,14 +113,11 @@ impl<'a> SemanticContext<'a> {
 
     #[inline]
     pub fn default_reference_flags(&self) -> ReferenceFlags {
-        ReferenceFlags {
-            write: false,
-            space: if self.in_type_position() {
-                ReferenceSpace::Type
-            } else {
-                ReferenceSpace::Value
-            },
-        }
+        ReferenceFlags::default().with_space(if self.in_type_position() {
+            ReferenceSpace::Type
+        } else {
+            ReferenceSpace::Value
+        })
     }
 
     #[inline]
