@@ -1,12 +1,7 @@
 parser * typescript
 ========================
-<<<<<<< HEAD
 Positive Passed: 21870/22023 (99.31%)
-Negative Passed: 1584/3448 (45.94%)
-=======
-Positive Passed: 21798/22023 (98.98%)
-Negative Passed: 1618/3448 (46.93%)
->>>>>>> 67ccd57 (refactor(parser): use swc allocator for regexp validation)
+Negative Passed: 1605/3448 (46.55%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -766,15 +761,6 @@ Failed: fixtures/typescript/tests/cases/compiler/recursiveBaseCheck6.ts - recurs
 Failed: fixtures/typescript/tests/cases/compiler/recursiveComplicatedClasses.ts - recursiveComplicatedClasses.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveFunctionTypes.ts - recursiveFunctionTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveTypeRelations.ts - recursiveTypeRelations.ts: expected a parse or early error, but pipeline succeeded
-<<<<<<< HEAD
-Failed: fixtures/typescript/tests/cases/compiler/regExpWithOpenBracketInCharClass.ts - regExpWithOpenBracketInCharClass.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/regularExpressionAnnexB.ts - regularExpressionAnnexB.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/regularExpressionCharacterClassRangeOrder.ts - regularExpressionCharacterClassRangeOrder.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/regularExpressionGroupNameSuggestions.ts - regularExpressionGroupNameSuggestions.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/regularExpressionUnicodePropertyValueExpressionSuggestions.ts - regularExpressionUnicodePropertyValueExpressionSuggestions.ts: expected a parse or early error, but pipeline succeeded
-=======
-Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - second.d.ts: parser: expected an import-equals declaration after 'export' at 23..60
->>>>>>> 67ccd57 (refactor(parser): use swc allocator for regexp validation)
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileInJsFile.ts - /js.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileInJsFile.ts - /user.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileWithComputedPropertyName.ts - file1.ts: expected a parse or early error, but pipeline succeeded
