@@ -2390,8 +2390,13 @@ impl<'a> CheckerState<'a> {
             let existing = context.state.symbols.symbol(existing_id);
             let merging_with_ambient = flags.contains(SymbolFlags::AMBIENT)
                 || existing.flags.contains(SymbolFlags::AMBIENT);
+            let import_value_conflict = !context.ast.is_ts()
+                && context.ast.is_module()
+                && target == ScopeId::MODULE
+                && ((flags.contains(SymbolFlags::IMPORT) && existing.flags.in_value_space())
+                    || (flags.in_value_space() && existing.flags.contains(SymbolFlags::IMPORT)));
             if !merging_with_ambient
-                && existing.flags.intersects(excludes)
+                && (existing.flags.intersects(excludes) || import_value_conflict)
                 && !context
                     .state
                     .symbols
