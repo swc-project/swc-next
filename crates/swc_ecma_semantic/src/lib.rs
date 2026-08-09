@@ -21,8 +21,13 @@ mod context;
 mod ecmascript;
 pub mod scope;
 
-pub use binder::{Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
+pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
 pub use swc_next_ecma_ast::ReferenceId;
+
+oxc_index::define_nonmax_u32_index_type! {
+    /// Identifier for a declaration in a completed [`Semantic`] model.
+    pub struct DeclarationId;
+}
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 
@@ -41,14 +46,15 @@ pub struct Semantic<'a> {
     symbols: ArenaVec<'a, Symbol>,
     /// Every reference, in source order, indexed by [`ReferenceId`].
     references: ArenaVec<'a, Reference>,
-    decl_nodes: ArenaVec<'a, NodeId>,
+    /// Every declaration, grouped by symbol and indexed by [`DeclarationId`].
+    declarations: ArenaVec<'a, Declaration>,
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
     node_scopes: ArenaVec<'a, ScopeId>,
     node_parents: ArenaVec<'a, Option<NodeId>>,
-    node_symbols: ArenaVec<'a, Option<SymbolId>>,
+    node_declarations: ArenaVec<'a, Option<DeclarationId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
 }
 
@@ -63,6 +69,12 @@ impl<'a> Semantic<'a> {
     pub fn reference(&self, id: ReferenceId) -> Reference {
         assert!(id.index() < self.references.len());
         self.references[id.index()]
+    }
+
+    /// The declaration with the given id.
+    pub fn declaration(&self, id: DeclarationId) -> Declaration {
+        assert!(id.index() < self.declarations.len());
+        self.declarations[id.index()]
     }
 
     /// The scope with the given id.
@@ -81,9 +93,17 @@ impl<'a> Semantic<'a> {
     /// //         ^ the same symbol, through the reference
     /// ```
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
-        assert!(node.index() < self.node_symbols.len());
-        self.node_symbols[node.index()]
+        assert!(node.index() < self.node_declarations.len());
+        self.node_declarations[node.index()]
+            .map(|id| self.declaration(id).symbol)
             .or_else(|| self.node_references[node.index()].and_then(|id| self.reference(id).symbol))
+    }
+
+    /// The declaration recorded at `node`, or `None` when the node is not a
+    /// declaration site.
+    pub fn declaration_of(&self, node: NodeId) -> Option<DeclarationId> {
+        assert!(node.index() < self.node_declarations.len());
+        self.node_declarations[node.index()]
     }
 
     /// The reference recorded at `node`, or `None` when the node is
@@ -116,31 +136,29 @@ impl<'a> Semantic<'a> {
         }
     }
 
-    /// The `binding_identifier` node of every declaration of `id`, in
-    /// source order. Usually a single element. Symbols whose declarations
-    /// merge (`var` redeclarations, TS overloads, `class` + `interface`)
-    /// have one entry per declaration. [`Semantic::parent_of`] reaches
-    /// the enclosing declarator or declaration from there.
+    /// Every declaration of `id`, in source order. Usually a single element.
+    /// Symbols whose declarations merge (`var` redeclarations, TS overloads,
+    /// `class` + `interface`) have one entry per declaration.
     ///
     /// ## Example
     /// ```ts
     /// var a = 1; var a = 2;
-    /// //  ^ decls[0]
-    /// //             ^ decls[1], same symbol
+    /// //  ^ declarations[0]
+    /// //             ^ declarations[1], same symbol
     /// ```
     ///
     /// A conflicting redeclaration is recorded here too, aliased onto
     /// the existing symbol so tooling on broken code still maps the node.
-    pub fn decls(&self, id: SymbolId) -> &[NodeId] {
-        let range = self.symbol(id).decls;
+    pub fn declarations(&self, id: SymbolId) -> &[Declaration] {
+        let range = self.symbol(id).declarations;
         let start = range.start as usize;
         let end = start + range.len as usize;
-        assert!(end <= self.decl_nodes.len());
-        &self.decl_nodes[start..end]
+        assert!(end <= self.declarations.len());
+        &self.declarations[start..end]
     }
 
     /// Every use site of `id`, in source order. Declaration sites are
-    /// not uses; those are returned by [`Semantic::decls`].
+    /// not uses; those are returned by [`Semantic::declarations`].
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
         assert!(id.index() < self.use_ranges.len());
         let range = self.use_ranges[id.index()];
@@ -228,6 +246,15 @@ impl<'a> Semantic<'a> {
             index: 0,
         }
     }
+
+    /// Iterates every `(id, declaration)` pair, grouped by symbol and in
+    /// source order within each symbol.
+    pub fn iter_declarations(&self) -> DeclarationIterator<'_> {
+        DeclarationIterator {
+            declarations: &self.declarations,
+            index: 0,
+        }
+    }
 }
 
 /// A `(id, scope)` pair yielded by [`Semantic::iter_scopes`].
@@ -246,6 +273,12 @@ pub struct SymbolEntry {
 pub struct ReferenceEntry {
     pub id: ReferenceId,
     pub reference: Reference,
+}
+
+/// A `(id, declaration)` pair yielded by [`Semantic::iter_declarations`].
+pub struct DeclarationEntry {
+    pub id: DeclarationId,
+    pub declaration: Declaration,
 }
 
 pub struct ScopeIterator<'a> {
@@ -319,6 +352,11 @@ pub struct ReferenceIterator<'a> {
     index: u32,
 }
 
+pub struct DeclarationIterator<'a> {
+    declarations: &'a [Declaration],
+    index: u32,
+}
+
 impl Iterator for ReferenceIterator<'_> {
     type Item = ReferenceEntry;
 
@@ -329,6 +367,20 @@ impl Iterator for ReferenceIterator<'_> {
         Some(ReferenceEntry {
             id: ReferenceId::from_usize(index),
             reference,
+        })
+    }
+}
+
+impl Iterator for DeclarationIterator<'_> {
+    type Item = DeclarationEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index as usize;
+        let declaration = *self.declarations.get(index)?;
+        self.index += 1;
+        Some(DeclarationEntry {
+            id: DeclarationId::from_usize(index),
+            declaration,
         })
     }
 }
@@ -365,7 +417,7 @@ pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> Sem
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Lang, SourceType};
+    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::{AnalyzeOptions, SymbolFlags, analyze};
@@ -389,6 +441,42 @@ mod tests {
             .into_iter()
             .map(|diagnostic| diagnostic.message.into_owned())
             .collect()
+    }
+
+    #[test]
+    fn declarations_are_grouped_by_symbol_in_source_order() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("interface A {} interface B {} interface A {}", &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Script,
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
+        let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
+        let a_declarations = semantic.declarations(a);
+        assert_eq!(a_declarations.len(), 2);
+        assert!(ast.span(a_declarations[0].node).start < ast.span(a_declarations[1].node).start);
+
+        let symbols: Vec<_> = semantic
+            .iter_declarations()
+            .map(|entry| entry.declaration.symbol)
+            .collect();
+        assert_eq!(symbols, [a, a, b]);
+        for entry in semantic.iter_declarations() {
+            assert_eq!(
+                semantic.declaration_of(entry.declaration.node),
+                Some(entry.id)
+            );
+        }
     }
 
     #[test]

@@ -13,7 +13,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ScopeMap, Semantic,
+    DeclarationId, ScopeMap, Semantic,
     scope::{self, ScopeKind, ScopeTracker, ScopeTree},
 };
 
@@ -36,11 +36,12 @@ pub struct Range {
 ///
 /// Declarations that legally share a name merge into one symbol,
 /// such as `var` redeclarations, TS function overloads, and `class`
-/// with `interface` merging. [`Semantic::decls`] lists every declaration
+/// with `interface` merging. [`Semantic::declarations`] lists every declaration
 /// site.
 ///
-/// `flags` describes the declaration kinds, the modifiers, and the spaces
-/// the symbol occupies.
+/// `flags` is the aggregate of every compatible declaration's kinds,
+/// modifiers, and spaces. Inspect [`Semantic::declarations`] when the
+/// contribution of an individual declaration matters.
 #[derive(Debug, Clone, Copy)]
 pub struct Symbol {
     pub name: AstWtf8,
@@ -49,9 +50,24 @@ pub struct Symbol {
     /// this is the hoist target it lands in, not the block it is
     /// written in.
     pub scope: ScopeId,
-    // window into `Semantic.decl_nodes`, expanded by `Semantic.decls`
-    pub decls: Range,
+    // window into `Semantic.declarations`
+    pub declarations: Range,
 }
+
+/// One declaration contributing to a [`Symbol`].
+///
+/// Unlike the aggregate flags on a symbol, `flags` describes only this
+/// declaration. This preserves the distinct type, value, and namespace
+/// meanings of declarations that merge into one symbol.
+#[derive(Debug, Clone, Copy)]
+pub struct Declaration {
+    pub node: NodeId,
+    pub symbol: SymbolId,
+    pub flags: SymbolFlags,
+}
+
+const _: () = assert!(std::mem::size_of::<Declaration>() == 12);
+const _: () = assert!(std::mem::size_of::<Option<DeclarationId>>() == 4);
 
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -409,7 +425,7 @@ pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
     symbols: ArenaVec<'a, Symbol>,
     references: ArenaVec<'a, Reference>,
-    decl_pairs: ArenaVec<'a, DeclPair>,
+    declarations: ArenaVec<'a, Declaration>,
     // first declarator of each symbol, parallel to `symbols`
     first_decls: ArenaVec<'a, NodeId>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
@@ -465,12 +481,6 @@ impl Default for PendingBinding {
 }
 
 #[derive(Clone, Copy)]
-struct DeclPair {
-    symbol_id: SymbolId,
-    node: NodeId,
-}
-
-#[derive(Clone, Copy)]
 struct SavedContext {
     pending: PendingBinding,
     export_state: ExportState,
@@ -486,7 +496,7 @@ impl<'a> SymbolTracker<'a> {
             allocator,
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
-            decl_pairs: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            declarations: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             first_decls: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             scope_maps: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             hoisting_variables: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
@@ -1118,19 +1128,23 @@ impl<'a> SymbolTracker<'a> {
         assert!(target.index() < self.scope_maps.len());
         assert!(node.index() < tree.node_count());
 
+        let mut declaration_flags = self.pending.flags;
+        declaration_flags.set(
+            SymbolFlags::EXPORTED,
+            self.export_state != ExportState::None,
+        );
+        declaration_flags.set(
+            SymbolFlags::IS_DEFAULT,
+            self.export_state == ExportState::Default,
+        );
+
         let name_text = tree.get_wtf8(name).as_bytes();
         let id = if let Some(existing) = self.binding(target, name_text) {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes)
                 || self.pending.allows_annex_b_function_duplicate(symbol.flags)
             {
-                let mut merged = symbol.flags.merge(self.pending.flags);
-                if self.export_state != ExportState::None {
-                    merged.insert(SymbolFlags::EXPORTED);
-                }
-                if self.export_state == ExportState::Default {
-                    merged.insert(SymbolFlags::IS_DEFAULT);
-                }
+                let mut merged = symbol.flags.merge(declaration_flags);
                 // An overload implementation emits at runtime, so the merged
                 // symbol is non-ambient.
                 merged.set(
@@ -1144,20 +1158,11 @@ impl<'a> SymbolTracker<'a> {
         } else {
             assert!(self.symbols.len() < u32::MAX as usize);
             let new_id = symbol_id(self.symbols.len());
-            let mut flags = self.pending.flags;
-            flags.set(
-                SymbolFlags::EXPORTED,
-                self.export_state != ExportState::None,
-            );
-            flags.set(
-                SymbolFlags::IS_DEFAULT,
-                self.export_state == ExportState::Default,
-            );
             self.symbols.push(Symbol {
                 name,
-                flags,
+                flags: declaration_flags,
                 scope: target,
-                decls: Range::default(),
+                declarations: Range::default(),
             });
             self.first_decls.push(node);
             let key = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
@@ -1165,9 +1170,10 @@ impl<'a> SymbolTracker<'a> {
             new_id
         };
 
-        self.decl_pairs.push(DeclPair {
-            symbol_id: id,
+        self.declarations.push(Declaration {
+            symbol: id,
             node,
+            flags: declaration_flags,
         });
         id
     }
@@ -1260,40 +1266,57 @@ impl<'a> SymbolTracker<'a> {
         assert_eq!(self.export_state, ExportState::None);
         self.sync_scope_maps(scopes.list.len());
 
-        // Declaration index: count, prefix-sum, fill. `decls.len`
-        // doubles as the write cursor during the fill.
+        // Declaration index: count, prefix-sum, assign destinations, then
+        // permute in place. For D declarations and S symbols, these phases are
+        // O(D + S). `Symbol.declarations.len` doubles as the destination cursor
+        // while preserving source order within each symbol.
         let symbol_count = self.symbols.len();
-        let mut decl_nodes = ArenaVec::with_capacity_in(self.decl_pairs.len(), self.allocator);
-        decl_nodes.resize(self.decl_pairs.len(), NodeId::from_usize_unchecked(0));
         for symbol in &mut self.symbols {
-            symbol.decls = Range::default();
+            symbol.declarations = Range::default();
         }
-        for pair in &self.decl_pairs {
-            self.symbols[pair.symbol_id.index()].decls.len += 1;
+        for declaration in &self.declarations {
+            self.symbols[declaration.symbol.index()].declarations.len += 1;
         }
         let mut declaration_offset = 0u32;
         for symbol in &mut self.symbols {
-            let count = symbol.decls.len;
-            symbol.decls.start = declaration_offset;
-            symbol.decls.len = 0;
+            let count = symbol.declarations.len;
+            symbol.declarations.start = declaration_offset;
+            symbol.declarations.len = 0;
             declaration_offset += count;
         }
-        assert_eq!(declaration_offset as usize, self.decl_pairs.len());
-        for pair in &self.decl_pairs {
-            let symbol = &mut self.symbols[pair.symbol_id.index()];
-            let index = (symbol.decls.start + symbol.decls.len) as usize;
-            decl_nodes[index] = pair.node;
-            symbol.decls.len += 1;
-        }
+        assert_eq!(declaration_offset as usize, self.declarations.len());
 
         let node_count = tree.node_count();
-        let mut node_symbols = ArenaVec::with_capacity_in(node_count, self.allocator);
-        let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
-        node_symbols.resize(node_count, None);
-        node_references.resize(node_count, None);
-        for pair in &self.decl_pairs {
-            node_symbols[pair.node.index()] = Some(pair.symbol_id);
+        let mut node_declarations = ArenaVec::with_capacity_in(node_count, self.allocator);
+        node_declarations.resize(node_count, None);
+        for declaration in &self.declarations {
+            let symbol = &mut self.symbols[declaration.symbol.index()];
+            let index = (symbol.declarations.start + symbol.declarations.len) as usize;
+            let declaration_id = DeclarationId::from_usize(index);
+            let node_declaration = &mut node_declarations[declaration.node.index()];
+            assert!(node_declaration.replace(declaration_id).is_none());
+            symbol.declarations.len += 1;
         }
+
+        // The node index already holds each declaration's unique final
+        // position. Every swap fixes one declaration, so all cycles perform
+        // fewer than D swaps in total.
+        for index in 0..self.declarations.len() {
+            loop {
+                let declaration = self.declarations[index];
+                let destination = node_declarations[declaration.node.index()]
+                    .expect("every declaration has a destination")
+                    .index();
+                if destination == index {
+                    break;
+                }
+                self.declarations.swap(index, destination);
+            }
+        }
+        let declarations = self.declarations;
+
+        let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
+        node_references.resize(node_count, None);
         for (index, reference) in self.references.iter().enumerate() {
             node_references[reference.node.index()] = Some(reference_id(index));
         }
@@ -1370,14 +1393,14 @@ impl<'a> SymbolTracker<'a> {
             scopes,
             symbols: self.symbols,
             references: self.references,
-            decl_nodes,
+            declarations,
             use_ids,
             use_ranges,
             scope_maps: self.scope_maps,
             hoisting_variables: self.hoisting_variables,
             node_scopes,
             node_parents,
-            node_symbols,
+            node_declarations,
             node_references,
         }
     }
