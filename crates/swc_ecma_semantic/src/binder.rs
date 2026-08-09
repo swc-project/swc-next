@@ -3,13 +3,13 @@ use std::hash::BuildHasher;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, AstWtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
-    FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier,
-    JsxClosingElement, JsxElementName, JsxElementNameData, JsxIdentifier,
-    JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId,
-    ScopeId, SourceType, SymbolId, TsEnumDeclaration, TsEnumMember, TsInterfaceDeclaration,
-    TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate, VariableDeclaration,
-    VariableKind,
+    Ast, AstUtf8, AstWtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration,
+    ExportSpecifier, Function, FunctionType, IdentifierReference, ImportDeclaration,
+    ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxElementName, JsxElementNameData,
+    JsxIdentifier, JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind,
+    NodeKindData, ReferenceId, ScopeId, SourceType, SymbolId, TsEnumDeclaration, TsEnumMember,
+    TsInterfaceDeclaration, TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate,
+    VariableDeclaration, VariableKind,
 };
 
 use crate::{
@@ -335,9 +335,11 @@ impl Excludes {
 }
 
 /// A use of a name. One is recorded for every `identifier_reference`
-/// in the source, for JSX component tag names (`<Foo>`), and for TS
-/// type-predicate parameters (`x is T`). Declaration sites live on
-/// the symbol itself.
+/// in the source, for the local name in an `export { name }` specifier,
+/// for JSX component tag names (`<Foo>`), and for TS type-predicate
+/// parameters (`x is T`). Re-export names in `export { name } from "module"`
+/// are external names, not references. Declaration sites live on the symbol
+/// itself.
 ///
 /// ## Example
 /// ```ts
@@ -1001,6 +1003,26 @@ impl<'a> SymbolTracker<'a> {
             identifier.name(tree),
             scope.current,
             identifier.node_id(),
+            flags,
+        );
+    }
+
+    pub fn add_local_export_reference(
+        &mut self,
+        tree: &Ast,
+        specifier: ExportSpecifier,
+        scope: &ScopeTracker<'a>,
+        flags: ReferenceFlags,
+    ) {
+        let Some(local) = specifier.local(tree).as_identifier_name(tree) else {
+            return;
+        };
+        self.sync_scope_maps_from(scope);
+        self.add_reference(
+            tree,
+            local.name(tree),
+            scope.current,
+            local.node_id(),
             flags,
         );
     }

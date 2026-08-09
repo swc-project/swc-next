@@ -619,4 +619,56 @@ mod tests {
         assert_eq!(reference.symbol, Some(symbol));
         assert_eq!(reference.flags.space, ReferenceSpace::Namespace);
     }
+
+    #[test]
+    fn binds_local_export_specifiers() {
+        let allocator = Allocator::new();
+        let source = "export { value }; export type { Type }; export { external as alias } from 'dep'; const value = 1; type Type = string;";
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Module,
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let body = parse.program.body(&ast);
+        let export_name = |index| {
+            let statement = body.get_node(&ast, index).unwrap();
+            let declaration = statement.as_export_named_declaration(&ast).unwrap();
+            let specifier = declaration.specifiers(&ast).get_node(&ast, 0).unwrap();
+            specifier.local(&ast).node_id()
+        };
+        let value_node = export_name(0);
+        let type_node = export_name(1);
+        let re_export_node = export_name(2);
+
+        let result = analyze(parse.program, &ast, AnalyzeOptions::default());
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+
+        let value_reference = result.semantic.reference_of(value_node).unwrap();
+        let value_reference = result.semantic.reference(value_reference);
+        let value_symbol = result
+            .semantic
+            .lookup(value_reference.scope, b"value", ReferenceSpace::Any)
+            .unwrap();
+        assert_eq!(value_reference.symbol, Some(value_symbol));
+        assert_eq!(value_reference.flags.space, ReferenceSpace::Any);
+
+        let type_reference = result.semantic.reference_of(type_node).unwrap();
+        let type_reference = result.semantic.reference(type_reference);
+        let type_symbol = result
+            .semantic
+            .lookup(type_reference.scope, b"Type", ReferenceSpace::Any)
+            .unwrap();
+        assert_eq!(type_reference.symbol, Some(type_symbol));
+        assert_eq!(type_reference.flags.space, ReferenceSpace::Any);
+
+        assert_eq!(result.semantic.reference_of(re_export_node), None);
+    }
 }

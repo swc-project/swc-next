@@ -1730,6 +1730,20 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         self.context.enter_node(node.node_id());
         let flags = self.flags_with_space(ReferenceSpace::Any);
+        let is_local = self.context.parent().is_some_and(|parent| {
+            let NodeKindData::ExportNamedDeclaration(declaration) =
+                self.context.ast.kind_data(parent)
+            else {
+                return false;
+            };
+            declaration.source(self.context.ast).is_none()
+        });
+        if is_local {
+            let state = &mut self.context.state;
+            state
+                .symbols
+                .add_local_export_reference(self.context.ast, node, &state.scope, flags);
+        }
         self.visit_with_reference_flags(node.local(self.context.ast), flags);
         node.exported(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
