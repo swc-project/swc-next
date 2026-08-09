@@ -417,10 +417,10 @@ pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> Sem
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
+    use swc_next_ecma_ast::{Ast, Lang, NodeKindData, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-    use super::{AnalyzeOptions, SymbolFlags, analyze};
+    use super::{AnalyzeOptions, ReferenceSpace, SymbolFlags, analyze};
 
     fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
         let allocator = Allocator::new();
@@ -576,5 +576,47 @@ mod tests {
         assert!(exported(b"g"));
         assert!(!exported(b"parameter"));
         assert!(!exported(b"hidden"));
+    }
+
+    #[test]
+    fn binds_qualified_namespace_heads() {
+        let allocator = Allocator::new();
+        let source = "namespace A.B {} let value: A.B;";
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Script,
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let statement = parse.program.body(&ast).get_node(&ast, 0).unwrap();
+        let declaration = statement.as_declaration(&ast).unwrap();
+        let declaration = declaration.as_ts_module_declaration(&ast).unwrap();
+        let NodeKindData::TsQualifiedName(name) = ast.kind_data(declaration.id(&ast).node_id())
+        else {
+            panic!("dotted namespace did not parse as a qualified name");
+        };
+        let head = name.left(&ast).node_id();
+
+        let result = analyze(parse.program, &ast, AnalyzeOptions::default());
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        let declaration = result.semantic.declaration_of(head).unwrap();
+        let symbol = result.semantic.declaration(declaration).symbol;
+        assert_eq!(result.semantic.symbol_of(head), Some(symbol));
+
+        let reference = result
+            .semantic
+            .iter_references()
+            .find(|entry| ast.get_utf8(entry.reference.name) == "A")
+            .unwrap()
+            .reference;
+        assert_eq!(reference.symbol, Some(symbol));
+        assert_eq!(reference.flags.space, ReferenceSpace::Namespace);
     }
 }

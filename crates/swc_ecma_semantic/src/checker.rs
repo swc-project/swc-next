@@ -41,6 +41,7 @@ pub struct Checker<'traverse, 'a> {
     checks: CheckerState<'a>,
     context: SemanticVisitCtx<'traverse, 'a>,
     check_syntax: bool,
+    in_ts_module_name: bool,
 }
 
 struct CheckerState<'a> {
@@ -56,6 +57,7 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
             checks: CheckerState::new(ast.allocator()),
             context: SemanticVisitCtx::new(ast, SemanticContext::init(root, ast)),
             check_syntax,
+            in_ts_module_name: false,
         }
     }
 
@@ -1786,7 +1788,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state
             .symbols
             .enter_ts_module_declaration(self.context.ast, node, &state.scope);
-        node.visit_children_with(self);
+        let was_in_ts_module_name = std::mem::replace(&mut self.in_ts_module_name, true);
+        node.id(self.context.ast).visit_with(self);
+        self.in_ts_module_name = was_in_ts_module_name;
+        node.body(self.context.ast).visit_with(self);
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
@@ -1825,6 +1830,12 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
     #[inline]
     fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
+        if self.in_ts_module_name {
+            self.context.enter_node(node.node_id());
+            node.visit_children_with(self);
+            self.leave_node(node.node_id());
+            return;
+        }
         self.context.state.enter_type_position();
         let node_flags = self.context.enter_node(node.node_id());
         let space = match node_flags.space {
@@ -2334,7 +2345,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.enter_node(node.node_id());
         self.context.state.symbols.enter_ts_module_block();
         node.visit_children_with(self);
-        self.context.state.exit_scope(node.node_id());
+        self.context.state.exit_ts_module_block(node.node_id());
         self.leave_node(node.node_id());
     }
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {

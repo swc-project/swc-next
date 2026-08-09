@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
 use crate::{
     Semantic,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
-    scope::{ScopeKind, ScopeTracker},
+    scope::ScopeTracker,
 };
 
 pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
@@ -64,6 +64,7 @@ pub(crate) struct SemanticContext<'a> {
     pub symbols: SymbolTracker<'a>,
     // depth of TS type-only context. inspect via `in_type_position()`.
     type_position_depth: u32,
+    ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
     node_scopes: ArenaVec<'a, ScopeId>,
@@ -81,6 +82,7 @@ impl<'a> SemanticContext<'a> {
             scope: ScopeTracker::init(root, tree),
             symbols: SymbolTracker::init(tree),
             type_position_depth: 0,
+            ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
             node_scopes,
             node_parents,
@@ -94,9 +96,7 @@ impl<'a> SemanticContext<'a> {
 
     /// True when the walker is currently inside a TS namespace body.
     pub fn in_ts_namespace(&self) -> bool {
-        self.scope
-            .ancestors(Some(self.scope.current))
-            .any(|id| self.scope.get(id).kind == ScopeKind::TsModule)
+        self.ts_namespace_depth > 0
     }
 
     #[inline]
@@ -230,7 +230,14 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn enter_ts_module_block(&mut self, node: NodeId) {
+        self.ts_namespace_depth += 1;
         self.scope.enter_ts_module_block(node);
+    }
+
+    pub fn exit_ts_module_block(&mut self, node: NodeId) {
+        debug_assert!(self.ts_namespace_depth > 0);
+        self.scope.exit_scope(node);
+        self.ts_namespace_depth -= 1;
     }
 
     pub fn enter_class(&mut self, tree: &Ast, class: Class) {
