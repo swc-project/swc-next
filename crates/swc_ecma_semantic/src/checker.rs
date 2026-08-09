@@ -28,7 +28,8 @@ use swc_next_ecma_ast::{
     TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
     TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
     TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator,
-    UpdateExpression, VariableDeclaration, VariableKind, Visit, VisitWith,
+    UpdateExpression, VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
+    WithStatement,
 };
 
 use crate::{
@@ -118,6 +119,21 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
         } else {
             self.visit_type_member_key(key, computed);
         }
+    }
+
+    fn visit_dynamic_var_declarator(&mut self, node: VariableDeclarator, iteration_write: bool) {
+        self.context.enter_node(node.node_id());
+        let id = node.id(self.context.ast);
+        let init = node.init(self.context.ast);
+        let dynamic_write = iteration_write || init.is_some();
+        if dynamic_write {
+            let flags = self.assignment_reference_flags(false);
+            self.visit_with_reference_flags(id, flags);
+        } else {
+            id.visit_with(self);
+        }
+        init.visit_with(self);
+        self.leave_node(node.node_id());
     }
 }
 
@@ -1688,16 +1704,23 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
     }
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
-        let space = self.context.enter_node(node.node_id()).space;
+        let flags = self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(node.node_id());
         let direct_export = self.context.state.symbols.export_state.named();
         let direct_export = direct_export.filter(|_| !self.context.state.in_ts_namespace());
         let state = &mut self.context.state;
-        let declaration =
+        let declaration = state.symbols.declare_binding_identifier(
+            self.context.ast,
+            node,
+            &state.scope,
+            flags.space,
+        );
+        if declaration.is_some() && flags.is_write_only() {
             state
                 .symbols
-                .declare_binding_identifier(self.context.ast, node, &state.scope, space);
+                .add_var_write_reference(self.context.ast, node, &state.scope, flags);
+        }
         if declaration.is_some()
             && let Some(statement) = direct_export
         {
@@ -1707,12 +1730,21 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         }
     }
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
-        self.context.enter_node(node.node_id());
+        let node_flags = self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
-        state
-            .symbols
-            .enter_variable_declaration(self.context.ast, node, &state.scope);
-        node.visit_children_with(self);
+        let dynamic_var_write =
+            state
+                .symbols
+                .enter_variable_declaration(self.context.ast, node, &state.scope);
+        if dynamic_var_write {
+            let iteration_write = node_flags.is_write();
+            for declarator in node.declarators(self.context.ast).iter() {
+                let declarator = self.context.ast.get_node_in_sub_range(declarator);
+                self.visit_dynamic_var_declarator(declarator, iteration_write);
+            }
+        } else {
+            node.visit_children_with(self);
+        }
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
@@ -2300,6 +2332,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.state.exit_scope(node.node_id());
+        self.leave_node(node.node_id());
+    }
+    fn visit_with_statement(&mut self, node: WithStatement) {
+        self.context.enter_node(node.node_id());
+        node.object(self.context.ast).visit_with(self);
+        self.context.state.enter_with_statement(node.node_id());
+        node.body(self.context.ast).visit_with(self);
+        self.context.state.exit_with_statement(node.node_id());
         self.leave_node(node.node_id());
     }
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {

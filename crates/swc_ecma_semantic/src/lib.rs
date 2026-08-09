@@ -93,9 +93,10 @@ impl<'a> Semantic<'a> {
         self.scopes.get(id)
     }
 
-    /// The symbol declared at `node`, or the symbol the reference at
-    /// `node` resolves to. `None` when the node neither declares nor
-    /// references a binding.
+    /// The symbol declared at `node`, or the lexical fallback symbol of the
+    /// reference at `node`. `None` when the node neither declares nor
+    /// references a binding. Inspect [`ReferenceFlags::is_dynamic`] before
+    /// treating a reference's fallback as its definite runtime binding.
     ///
     /// ## Example
     /// ```ts
@@ -169,7 +170,8 @@ impl<'a> Semantic<'a> {
     }
 
     /// Every use site of `id`, in source order. Declaration sites are
-    /// not uses; those are returned by [`Semantic::declarations`].
+    /// not uses; those are returned by [`Semantic::declarations`]. A dynamic
+    /// `with` reference is included under its potential lexical fallback.
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
         assert!(id.index() < self.use_ranges.len());
         let range = self.use_ranges[id.index()];
@@ -204,10 +206,10 @@ impl<'a> Semantic<'a> {
         }
     }
 
-    /// The nearest binding of `name` visible in `space` from `scope`,
-    /// walking the scope chain the way reference resolution does. A
-    /// binding outside the space does not shadow. [`ReferenceSpace::Any`]
-    /// matches by name alone.
+    /// The nearest lexical fallback binding of `name` visible in `space`
+    /// from `scope`. A binding outside the space does not shadow.
+    /// [`ReferenceSpace::Any`] matches by name alone. This does not query
+    /// runtime object properties when the path crosses [`scope::ScopeKind::With`].
     ///
     /// ## Example
     /// ```ts
@@ -431,7 +433,10 @@ mod tests {
     use swc_next_ecma_ast::{Ast, Lang, NodeKindData, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-    use super::{AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, SymbolFlags, analyze};
+    use super::{
+        AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, SymbolFlags, analyze,
+        scope::ScopeKind,
+    };
 
     fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
         let allocator = Allocator::new();
@@ -1109,5 +1114,186 @@ mod tests {
             accesses(b"RuntimeKey"),
             [(ReferenceSpace::Value, true, true, false)]
         );
+    }
+
+    #[test]
+    fn with_scope_marks_dynamic_references() {
+        let source = r#"
+            let object, second, outer;
+            with (object) {
+                let local;
+                local;
+                outer;
+                missing;
+                function nested() {
+                    arguments;
+                    outer;
+                    with (second) {
+                        local;
+                        arguments;
+                    }
+                }
+            }
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+
+        let outer = semantic
+            .iter_symbols()
+            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"outer")
+            .expect("outer binding")
+            .id;
+        let reference = |name: &[u8]| {
+            semantic
+                .iter_references()
+                .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
+                .expect("reference")
+                .reference
+        };
+
+        let object = reference(b"object");
+        assert!(!object.flags.is_dynamic());
+        assert!(object.symbol.is_some());
+
+        let local_references: Vec<_> = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"local")
+            .collect();
+        let [local, intercepted_local] = local_references.as_slice() else {
+            panic!("two local references")
+        };
+        assert!(!local.reference.flags.is_dynamic());
+        assert!(local.reference.symbol.is_some());
+        assert!(intercepted_local.reference.flags.is_dynamic());
+        assert_eq!(intercepted_local.reference.symbol, local.reference.symbol);
+
+        let missing = reference(b"missing");
+        assert!(missing.flags.is_dynamic());
+        assert!(missing.symbol.is_none());
+
+        let outer_references: Vec<_> = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"outer")
+            .collect();
+        assert_eq!(outer_references.len(), 2);
+        assert!(outer_references.iter().all(|entry| {
+            entry.reference.flags.is_dynamic() && entry.reference.symbol == Some(outer)
+        }));
+        let outer_uses: Vec<_> = outer_references.iter().map(|entry| entry.id).collect();
+        assert_eq!(semantic.uses(outer), outer_uses);
+
+        let arguments_references: Vec<_> = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"arguments")
+            .collect();
+        let [arguments, intercepted_arguments] = arguments_references.as_slice() else {
+            panic!("two arguments references")
+        };
+        assert!(!arguments.reference.flags.is_dynamic());
+        assert!(arguments.reference.symbol.is_none());
+        assert!(intercepted_arguments.reference.flags.is_dynamic());
+        assert!(intercepted_arguments.reference.symbol.is_none());
+
+        let second = reference(b"second");
+        assert!(second.flags.is_dynamic());
+        assert!(second.symbol.is_some());
+
+        let with_scopes: Vec<_> = semantic
+            .iter_scopes()
+            .filter(|entry| entry.scope.kind == ScopeKind::With)
+            .collect();
+        assert_eq!(with_scopes.len(), 2);
+        for with_scope in &with_scopes {
+            assert_eq!(semantic.scope_of(with_scope.scope.node), with_scope.id);
+        }
+        assert!(
+            with_scopes
+                .iter()
+                .any(|entry| entry.scope.parent == Some(object.scope))
+        );
+        assert!(
+            with_scopes
+                .iter()
+                .any(|entry| entry.scope.parent == Some(second.scope))
+        );
+    }
+
+    #[test]
+    fn with_scope_marks_var_binding_writes_dynamic() {
+        let source = r#"
+            var source, values;
+            with ({}) {
+                var untouched;
+                var initialized = 1;
+                var { value: destructured } = source;
+                var [ordered = ordered] = source;
+                var [defaulted = function () { var nested = 1; }] = source;
+                for (var iterated of values) {}
+                function boundary() { var local = 1; }
+                let lexical = 1;
+            }
+        "#;
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+
+        let declaration = |name: &[u8]| {
+            semantic
+                .iter_declarations()
+                .find(|entry| {
+                    let symbol = semantic.symbol(entry.declaration.symbol);
+                    ast.get_wtf8(symbol.name).as_bytes() == name
+                })
+                .expect("declaration")
+        };
+        for name in [
+            b"initialized".as_slice(),
+            b"destructured",
+            b"ordered",
+            b"defaulted",
+            b"iterated",
+        ] {
+            let declaration = declaration(name);
+            assert_eq!(
+                semantic.declaration_of(declaration.declaration.node),
+                Some(declaration.id)
+            );
+            let reference_id = semantic
+                .reference_of(declaration.declaration.node)
+                .expect("runtime write reference");
+            let reference = semantic.reference(reference_id);
+            assert!(reference.flags.is_write_only());
+            assert!(reference.flags.is_dynamic());
+            assert_eq!(reference.symbol, Some(declaration.declaration.symbol));
+            assert!(
+                semantic
+                    .uses(declaration.declaration.symbol)
+                    .contains(&reference_id)
+            );
+        }
+
+        let ordered = declaration(b"ordered").declaration.symbol;
+        let ordered_references: Vec<_> = semantic
+            .iter_references()
+            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"ordered")
+            .collect();
+        let [write, read] = ordered_references.as_slice() else {
+            panic!("ordered binding write and default read")
+        };
+        assert!(write.reference.flags.is_write_only());
+        assert!(write.reference.flags.is_dynamic());
+        assert!(read.reference.flags.is_read_only());
+        assert!(read.reference.flags.is_dynamic());
+        assert_eq!(semantic.uses(ordered), &[write.id, read.id]);
+
+        for name in [b"untouched".as_slice(), b"nested", b"local", b"lexical"] {
+            let declaration = declaration(name);
+            assert_eq!(semantic.reference_of(declaration.declaration.node), None);
+        }
     }
 }

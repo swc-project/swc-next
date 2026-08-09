@@ -161,6 +161,18 @@ impl<'a> SemanticContext<'a> {
         self.scope.enter_block_statement(tree, node);
     }
 
+    pub fn enter_with_statement(&mut self, node: NodeId) {
+        self.scope.enter_with_scope(node);
+        // The object expression evaluates in the enclosing environment, so
+        // the with scope is created only after visiting it. Keep the creator
+        // node associated with the scope it creates.
+        self.node_scopes[node.index()] = self.scope.current;
+    }
+
+    pub fn exit_with_statement(&mut self, node: NodeId) {
+        self.scope.exit_with_scope(node);
+    }
+
     pub fn enter_switch_case(&mut self, parent: Option<NodeId>) {
         self.scope.enter_switch_case(parent);
     }
@@ -261,10 +273,11 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
-        let scopes = self.scope.into_scope_tree();
+        let (scopes, has_with_statement) = self.scope.into_scope_tree();
         self.symbols.finalize(
             tree,
             scopes,
+            has_with_statement,
             self.node_scopes,
             self.node_parents,
             self.module_record,
