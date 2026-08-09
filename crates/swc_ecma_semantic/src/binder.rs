@@ -14,6 +14,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     DeclarationId, ScopeMap, Semantic,
+    module_record::ModuleRecordBuilder,
     scope::{self, ScopeKind, ScopeTracker, ScopeTree},
 };
 
@@ -452,8 +453,27 @@ pub(crate) struct SymbolTracker<'a> {
 pub(crate) enum ExportState {
     #[default]
     None,
-    Named,
+    Named {
+        statement: NodeId,
+    },
     Default,
+}
+
+impl ExportState {
+    fn is_exported(self) -> bool {
+        !matches!(self, Self::None)
+    }
+
+    fn is_default(self) -> bool {
+        matches!(self, Self::Default)
+    }
+
+    pub(crate) fn named(self) -> Option<NodeId> {
+        match self {
+            Self::Named { statement } => Some(statement),
+            Self::None | Self::Default => None,
+        }
+    }
 }
 
 /// The declaration context for the next `binding_identifier`.
@@ -521,7 +541,9 @@ impl<'a> SymbolTracker<'a> {
         if declaration.declaration(tree).is_some()
             || declaration.export_kind(tree) != ImportOrExportKind::Type
         {
-            self.export_state = ExportState::Named;
+            self.export_state = ExportState::Named {
+                statement: declaration.node_id(),
+            };
         }
     }
 
@@ -964,13 +986,13 @@ impl<'a> SymbolTracker<'a> {
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
         space: ReferenceSpace,
-    ) {
+    ) -> Option<SymbolId> {
         self.sync_scope_maps_from(scope);
         let node = identifier.node_id();
         // Type-position identifiers are parameter labels. Only type
         // parameters are real declarations there.
         if space.in_type_position() && !self.pending.flags.contains(SymbolFlags::TYPE_PARAMETER) {
-            return;
+            return None;
         }
         let name = identifier.name(tree);
         let symbol_id = self.declare(tree, name.into(), node);
@@ -988,6 +1010,7 @@ impl<'a> SymbolTracker<'a> {
                     .or_insert(symbol_id);
             }
         }
+        Some(symbol_id)
     }
 
     pub fn add_identifier_reference(
@@ -1151,14 +1174,8 @@ impl<'a> SymbolTracker<'a> {
         assert!(node.index() < tree.node_count());
 
         let mut declaration_flags = self.pending.flags;
-        declaration_flags.set(
-            SymbolFlags::EXPORTED,
-            self.export_state != ExportState::None,
-        );
-        declaration_flags.set(
-            SymbolFlags::IS_DEFAULT,
-            self.export_state == ExportState::Default,
-        );
+        declaration_flags.set(SymbolFlags::EXPORTED, self.export_state.is_exported());
+        declaration_flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
 
         let name_text = tree.get_wtf8(name).as_bytes();
         let id = if let Some(existing) = self.binding(target, name_text) {
@@ -1282,6 +1299,7 @@ impl<'a> SymbolTracker<'a> {
         scopes: ScopeTree<'a>,
         node_scopes: ArenaVec<'a, ScopeId>,
         node_parents: ArenaVec<'a, Option<NodeId>>,
+        module_record: ModuleRecordBuilder<'a>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
         assert!(self.saved_stack.is_empty());
@@ -1411,11 +1429,19 @@ impl<'a> SymbolTracker<'a> {
             range.len += 1;
         }
 
+        let module_record = module_record.finalize(
+            &declarations,
+            &node_declarations,
+            &self.references,
+            &node_references,
+        );
+
         Semantic {
             scopes,
             symbols: self.symbols,
             references: self.references,
             declarations,
+            module_record,
             use_ids,
             use_ranges,
             scope_maps: self.scope_maps,

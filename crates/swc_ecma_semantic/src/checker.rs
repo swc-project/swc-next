@@ -9,25 +9,25 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentPattern, Ast,
     BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement, BlockStatement,
-    CatchClause, Class, ClassBody, Decorator, Diagnostic, Directive, ExportDefaultDeclaration,
-    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, Function, FunctionBody, FunctionType, IdentifierReference, ImportDeclaration,
-    ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxOpeningElement, Label, NodeId,
-    NodeKind, NodeKindData, ObjectPattern, ParenthesizedExpression, Program, ScopeId, Severity,
-    Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, TsArrayType, TsAsExpression,
-    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
-    TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
-    TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
-    TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
-    TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType,
-    TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType, TsLiteralType, TsMappedType,
-    TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsNamedTupleMember,
-    TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType, TsParenthesizedType,
-    TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression, TsTemplateLiteralType,
-    TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
-    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
-    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryOperator, UpdateExpression,
-    VariableDeclaration, VariableKind, Visit, VisitWith,
+    CatchClause, Class, ClassBody, Decorator, Diagnostic, Directive, ExportAllDeclaration,
+    ExportDefaultDeclaration, ExportNamedDeclaration, ExportSpecifier, ForInStatement,
+    ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody, FunctionType,
+    IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
+    JsxOpeningElement, Label, NodeId, NodeKind, NodeKindData, ObjectPattern,
+    ParenthesizedExpression, Program, ScopeId, Severity, Span, StaticBlock, SwitchCase,
+    SwitchStatement, SymbolId, TsArrayType, TsAsExpression, TsCallSignatureDeclaration,
+    TsClassImplements, TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType,
+    TsEnumBody, TsEnumDeclaration, TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType,
+    TsGlobalDeclaration, TsImportEqualsDeclaration, TsImportType, TsIndexSignature,
+    TsIndexedAccessType, TsInferType, TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage,
+    TsIntersectionType, TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType,
+    TsLiteralType, TsMappedType, TsMethodSignature, TsModuleBlock, TsModuleDeclaration,
+    TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType,
+    TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression,
+    TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion,
+    TsTypeLiteral, TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration,
+    TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType,
+    UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit, VisitWith,
 };
 
 use crate::{
@@ -774,7 +774,7 @@ impl Checker<'_, '_> {
                     .symbols
                     .binding(context.state.symbols.pending.scope, name);
                 checks.check_redeclaration(identifier, node_id, name, flags, context, existing);
-                if context.state.symbols.export_state == crate::binder::ExportState::Named {
+                if context.state.symbols.export_state.named().is_some() {
                     let skip = existing.is_some() && context.ast.is_ts();
                     if !skip {
                         checks.record_exported_name(name, node_id, context);
@@ -1606,10 +1606,20 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let space = self.context.enter_node(node.node_id()).space;
         node.visit_children_with(self);
         self.leave_node(node.node_id());
+        let direct_export = self.context.state.symbols.export_state.named();
+        let direct_export = direct_export.filter(|_| !self.context.state.in_ts_namespace());
         let state = &mut self.context.state;
-        state
-            .symbols
-            .declare_binding_identifier(self.context.ast, node, &state.scope, space);
+        let declaration =
+            state
+                .symbols
+                .declare_binding_identifier(self.context.ast, node, &state.scope, space);
+        if declaration.is_some()
+            && let Some(statement) = direct_export
+        {
+            state
+                .module_record
+                .add_direct_export(self.context.ast, node.node_id(), statement);
+        }
     }
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
         self.context.enter_node(node.node_id());
@@ -1717,6 +1727,12 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
     fn visit_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
         self.context.enter_node(node.node_id());
+        if !self.context.state.in_ts_namespace() {
+            self.context
+                .state
+                .module_record
+                .add_default_export(self.context.ast, node);
+        }
         self.context
             .state
             .symbols
@@ -1726,19 +1742,38 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_export_declaration();
         self.leave_node(node.node_id());
     }
+    fn visit_export_all_declaration(&mut self, node: ExportAllDeclaration) {
+        self.context.enter_node(node.node_id());
+        if !self.context.state.in_ts_namespace() {
+            self.context
+                .state
+                .module_record
+                .add_export_all(self.context.ast, node);
+        }
+        node.visit_children_with(self);
+        self.leave_node(node.node_id());
+    }
     #[inline]
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         self.context.enter_node(node.node_id());
-        let flags = self.flags_with_space(ReferenceSpace::Any);
-        let is_local = self.context.parent().is_some_and(|parent| {
+        let declaration = self.context.parent().and_then(|parent| {
             let NodeKindData::ExportNamedDeclaration(declaration) =
                 self.context.ast.kind_data(parent)
             else {
-                return false;
+                return None;
             };
-            declaration.source(self.context.ast).is_none()
+            Some(declaration)
         });
-        if is_local {
+        if !self.context.state.in_ts_namespace()
+            && let Some(declaration) = declaration
+        {
+            self.context
+                .state
+                .module_record
+                .add_specifier(self.context.ast, declaration, node);
+        }
+        let flags = self.flags_with_space(ReferenceSpace::Any);
+        if declaration.is_some_and(|declaration| declaration.source(self.context.ast).is_none()) {
             let state = &mut self.context.state;
             state
                 .symbols

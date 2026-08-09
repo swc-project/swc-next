@@ -7,6 +7,7 @@ use swc_next_ecma_ast::{
 use crate::{
     Semantic,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
+    module_record::ModuleRecordBuilder,
     scope::ScopeTracker,
 };
 
@@ -62,6 +63,7 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
 pub(crate) struct SemanticContext<'a> {
     pub scope: ScopeTracker<'a>,
     pub symbols: SymbolTracker<'a>,
+    pub module_record: ModuleRecordBuilder<'a>,
     // depth of TS type-only context. inspect via `in_type_position()`.
     type_position_depth: u32,
     ts_namespace_depth: u32,
@@ -81,6 +83,7 @@ impl<'a> SemanticContext<'a> {
         Self {
             scope: ScopeTracker::init(root, tree),
             symbols: SymbolTracker::init(tree),
+            module_record: ModuleRecordBuilder::new(allocator),
             type_position_depth: 0,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
@@ -262,7 +265,12 @@ impl<'a> SemanticContext<'a> {
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
         let scopes = self.scope.into_scope_tree();
-        self.symbols
-            .finalize(tree, scopes, self.node_scopes, self.node_parents)
+        self.symbols.finalize(
+            tree,
+            scopes,
+            self.node_scopes,
+            self.node_parents,
+            self.module_record,
+        )
     }
 }

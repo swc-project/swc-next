@@ -19,9 +19,14 @@ mod binder;
 mod checker;
 mod context;
 mod ecmascript;
+mod module_record;
 pub mod scope;
 
 pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
+pub use module_record::{
+    ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
+    ModuleRecord,
+};
 pub use swc_next_ecma_ast::ReferenceId;
 
 oxc_index::define_nonmax_u32_index_type! {
@@ -48,6 +53,7 @@ pub struct Semantic<'a> {
     references: ArenaVec<'a, Reference>,
     /// Every declaration, grouped by symbol and indexed by [`DeclarationId`].
     declarations: ArenaVec<'a, Declaration>,
+    module_record: ModuleRecord<'a>,
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
@@ -75,6 +81,11 @@ impl<'a> Semantic<'a> {
     pub fn declaration(&self, id: DeclarationId) -> Declaration {
         assert!(id.index() < self.declarations.len());
         self.declarations[id.index()]
+    }
+
+    /// The source text module's export occurrences and resolved targets.
+    pub fn module_record(&self) -> &ModuleRecord<'a> {
+        &self.module_record
     }
 
     /// The scope with the given id.
@@ -420,7 +431,7 @@ mod tests {
     use swc_next_ecma_ast::{Ast, Lang, NodeKindData, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-    use super::{AnalyzeOptions, ReferenceSpace, SymbolFlags, analyze};
+    use super::{AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, SymbolFlags, analyze};
 
     fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
         let allocator = Allocator::new();
@@ -670,5 +681,65 @@ mod tests {
         assert_eq!(type_reference.flags.space, ReferenceSpace::Any);
 
         assert_eq!(result.semantic.reference_of(re_export_node), None);
+    }
+
+    #[test]
+    fn models_local_and_external_export_targets() {
+        let allocator = Allocator::new();
+        let source = "export { value }; export { external as alias } from 'dep'; const value = 1;";
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Module,
+                lang: Lang::Js,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let body = parse.program.body(&ast);
+        let specifier = |index| {
+            let statement = body.get_node(&ast, index).unwrap();
+            let declaration = statement.as_export_named_declaration(&ast).unwrap();
+            declaration.specifiers(&ast).get_node(&ast, 0).unwrap()
+        };
+        let local_specifier = specifier(0);
+        let re_export_specifier = specifier(1);
+        let local_node = local_specifier.local(&ast).node_id();
+
+        let result = analyze(parse.program, &ast, AnalyzeOptions::default());
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        let local_reference = result.semantic.reference_of(local_node).unwrap();
+        let local_symbol = result.semantic.reference(local_reference).symbol.unwrap();
+
+        let local_export = result
+            .semantic
+            .module_record()
+            .exports()
+            .iter()
+            .find(|entry| entry.node == local_specifier.node_id())
+            .unwrap();
+        assert_eq!(local_export.origin, ExportOrigin::LocalSpecifier);
+        assert_eq!(
+            local_export.target,
+            ExportTarget::Local {
+                symbol: local_symbol,
+                declaration: None,
+                reference: Some(local_reference),
+            }
+        );
+
+        let re_export = result
+            .semantic
+            .module_record()
+            .exports()
+            .iter()
+            .find(|entry| entry.node == re_export_specifier.node_id())
+            .unwrap();
+        assert_eq!(re_export.origin, ExportOrigin::ReExportSpecifier);
+        assert!(matches!(re_export.target, ExportTarget::External { .. }));
     }
 }
