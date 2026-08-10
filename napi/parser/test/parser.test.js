@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { parseSync } from "../src-js/index.js";
 
-test("parses JavaScript with the focused package", () => {
+test("parseSync parses JavaScript", () => {
   const { program } = parseSync("const answer = 42;");
 
   assert.equal(program.type, "Program");
