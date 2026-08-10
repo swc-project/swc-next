@@ -99,7 +99,7 @@ jobs:
         run: pnpm build --release
       - name: Run ESTree conformance
         run: pnpm --filter @swc-next/core conformance
-      - name: Run focused parser package tests
+      - name: Run JavaScript tests
         run: pnpm test
       - name: Check conformance snapshots
         run: git diff --exit-code -- tasks/testsuite/snapshots
