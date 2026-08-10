@@ -2819,6 +2819,7 @@ dependencies = [
 name = "swc_next_ecma_parser"
 version = "0.11.0"
 dependencies = [
+ "bitflags",
  "memchr",
  "pico-args",
  "rustc-hash",

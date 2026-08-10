@@ -12,6 +12,7 @@ version               = "0.11.0"
 unstable = []
 
 [dependencies]
+bitflags           = { workspace = true }
 memchr             = { workspace = true }
 rustc-hash         = { workspace = true }
 swc_next_allocator = { workspace = true }
