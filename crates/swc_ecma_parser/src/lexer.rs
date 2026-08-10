@@ -63,6 +63,8 @@ pub struct LexerState {
     processed_comments: usize,
     saw_newline: bool,
     previous_token_tag: Option<TokenTag>,
+    /// End offset of the most recently consumed token.
+    pub(super) prev_token_end: u32,
 }
 
 impl Default for LexerState {
@@ -72,6 +74,7 @@ impl Default for LexerState {
             processed_comments: 0,
             saw_newline: true,
             previous_token_tag: None,
+            prev_token_end: 0,
         }
     }
 }

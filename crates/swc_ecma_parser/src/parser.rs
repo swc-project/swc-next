@@ -614,12 +614,6 @@ pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
     lexer: Lexer<'a, C>,
     pub(super) diagnostics: Vec<Diagnostic<'static>>,
     current_token: Token,
-    /// End offset of the most recently consumed token.
-    ///
-    /// This is used for spans after a closing delimiter has been consumed,
-    /// where the parent node must end at that delimiter instead of at the next
-    /// token beyond whitespace or newlines.
-    prev_token_end: u32,
     scratch_statements: ScratchBuffer,
     scratch_cover: ScratchBuffer,
     scratch_decorators: ScratchBuffer,
@@ -655,7 +649,6 @@ struct Checkpoint {
     lexer_tokens_len: usize,
     // Parser token stream.
     current_token: Token,
-    prev_token_end: u32,
     // Append-only AST storage.
     nodes_len: usize,
     extra_len: usize,
@@ -760,7 +753,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             lexer,
             diagnostics: Vec::new(),
             current_token: Token::eof(0),
-            prev_token_end: 0,
             scratch_statements: ScratchBuffer::default(),
             scratch_cover: ScratchBuffer::default(),
             scratch_decorators: ScratchBuffer::default(),
@@ -1041,7 +1033,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             lexer_comments_len: self.lexer.comments.len(),
             lexer_tokens_len: self.lexer.tokens.len(),
             current_token: self.current_token,
-            prev_token_end: self.prev_token_end,
             nodes_len: self.ast.node_count(),
             extra_len: self.ast.extra_data_count(),
             diagnostics_len: self.diagnostics.len(),
@@ -1061,7 +1052,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
         self.lexer.tokens.truncate(checkpoint.lexer_tokens_len);
         self.current_token = checkpoint.current_token;
-        self.prev_token_end = checkpoint.prev_token_end;
         self.ast
             .truncate(checkpoint.nodes_len, checkpoint.extra_len);
         self.diagnostics.truncate(checkpoint.diagnostics_len);
@@ -1528,7 +1518,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         self.eat(TokenTag::Semicolon)?;
-        let end = self.prev_token_end;
+        let end = self.lexer.state.prev_token_end;
         Some(
             self.ast
                 .stmt_do_while_statement(Span::new(start, end), body, test),
@@ -1541,7 +1531,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         if !self.context.r#return {
             self.report(
-                Span::new(start, self.prev_token_end),
+                Span::new(start, self.lexer.state.prev_token_end),
                 "'return' statement is only valid inside a function",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -1560,7 +1550,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
                 .stmt_return_statement(Span::new(start, end), argument),
@@ -1583,7 +1573,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
         }
         let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
                 .stmt_throw_statement(Span::new(start, end), argument),
@@ -1601,7 +1591,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             Some(self.parse_label_identifier()?)
         };
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_break_statement(Span::new(start, end), label))
     }
 
@@ -1616,7 +1606,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             Some(self.parse_label_identifier()?)
         };
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
                 .stmt_continue_statement(Span::new(start, end), label),
@@ -1627,7 +1617,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Debugger);
         let start = self.current_token.span.start;
         self.advance()?;
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_debugger_statement(Span::new(start, end)))
     }
 
@@ -1675,7 +1665,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         start: u32,
         expression: Expr,
     ) -> Option<Stmt> {
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
                 .stmt_expression_statement(Span::new(start, end), expression),
@@ -1808,7 +1798,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             && !self.current_token.has_line_terminator_before()
             && self.eat(TokenTag::LogicalNot)?;
         let mut end = if definite {
-            self.prev_token_end
+            self.lexer.state.prev_token_end
         } else {
             id_span.end
         };
@@ -2666,7 +2656,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 let end = body.span(self.ast).end;
                 Some((params, type_parameters, return_type, Some(body), end))
             } else if self.lang.is_typescript() {
-                let end = self.eat_semicolon(self.prev_token_end)?;
+                let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
                 Some((params, type_parameters, return_type, None, end))
             } else {
                 self.report_expected(
@@ -2768,7 +2758,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             None
         };
 
-        let mut end = self.prev_token_end;
+        let mut end = self.lexer.state.prev_token_end;
         match self.current_token.tag {
             TokenTag::Semicolon => {
                 end = self.current_token.span.end;
@@ -3027,7 +3017,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         };
         let mut pattern = self.parse_binding_pattern()?;
         if self.lang.is_typescript() && self.eat(TokenTag::Question)? {
-            self.mark_pattern_optional(pattern, self.prev_token_end);
+            self.mark_pattern_optional(pattern, self.lexer.state.prev_token_end);
         }
         if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon {
             let annotation = self.parse_type_annotation()?;
@@ -3062,7 +3052,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-        let end = type_annotation.map_or(self.prev_token_end, |annotation| {
+        let end = type_annotation.map_or(self.lexer.state.prev_token_end, |annotation| {
             annotation.span(self.ast).end
         });
         Some(
@@ -3238,7 +3228,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         let source = self.parse_module_specifier()?;
         let attributes = self.parse_with_clause();
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_import_declaration(
             Span::new(start, end),
             specifiers,
@@ -3274,7 +3264,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_side_effect_import(&mut self, start: u32, phase: Option<ImportPhase>) -> Option<Stmt> {
         let source = self.parse_module_specifier()?;
         let attributes = self.parse_with_clause();
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         let specifiers = TypedSubRange::empty();
         Some(self.ast.stmt_import_declaration(
             Span::new(start, end),
@@ -3551,7 +3541,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let module_reference = self.parse_module_reference()?;
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_decl_ts_import_equals_declaration(
             Span::new(start, end),
             id,
@@ -3673,7 +3663,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_ts_export_assignment(&mut self, start: u32) -> Option<Stmt> {
         self.advance()?;
         let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
                 .stmt_ts_export_assignment(Span::new(start, end), expression),
@@ -3696,7 +3686,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn parse_namespace_export_declaration(&mut self, start: u32) -> Option<Stmt> {
         let id = self.parse_identifier_name()?;
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
                 .stmt_ts_namespace_export_declaration(Span::new(start, end), id),
@@ -3863,7 +3853,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         let source = self.parse_module_specifier()?;
         let attributes = self.parse_with_clause();
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_export_all_declaration(
             Span::new(start, end),
             exported,
@@ -4058,7 +4048,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.resolve_local_export_specifiers(&result)?;
             (None, TypedSubRange::empty())
         };
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_export_named_declaration(
             Span::new(start, end),
             None,
@@ -4466,7 +4456,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let type_annotation = self.parse_type_alias_body()?;
-        let end = self.eat_semicolon(self.prev_token_end)?;
+        let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         let declaration = self.ast.ts_type_alias_declaration(
             Span::new(start, end),
             id,
@@ -4651,7 +4641,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let end = initializer.map_or_else(
             || {
                 if computed {
-                    self.prev_token_end
+                    self.lexer.state.prev_token_end
                 } else {
                     id.span(self.ast).end
                 }
@@ -4731,7 +4721,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let end = if let Some(body) = body {
             body.span(self.ast).end
         } else {
-            self.eat_semicolon(self.prev_token_end)?
+            self.eat_semicolon(self.lexer.state.prev_token_end)?
         };
         let declaration =
             self.ast
@@ -5595,7 +5585,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             None
         };
         let end = type_arguments.map_or_else(
-            || qualifier.map_or(self.prev_token_end, |name| name.span(self.ast).end),
+            || {
+                qualifier.map_or(self.lexer.state.prev_token_end, |name| {
+                    name.span(self.ast).end
+                })
+            },
             |args| args.span(self.ast).end,
         );
         Some(TsType::TsImportType(self.ast.ts_import_type(
@@ -6073,7 +6067,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-        let end = return_type.map_or(self.prev_token_end, |ty| ty.span(self.ast).end);
+        let end = return_type.map_or(self.lexer.state.prev_token_end, |ty| ty.span(self.ast).end);
         Some(if is_construct {
             self.ast.ts_type_element_ts_construct_signature_declaration(
                 Span::new(start, end),
@@ -6262,7 +6256,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-        let end = return_type.map_or(self.prev_token_end, |ty| ty.span(self.ast).end);
+        let end = return_type.map_or(self.lexer.state.prev_token_end, |ty| ty.span(self.ast).end);
         Some(self.ast.ts_type_element_ts_method_signature(
             Span::new(start, end),
             key,
@@ -7687,7 +7681,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 && self.current_token.tag != TokenTag::Eof
             {
                 let element = if self.eat(TokenTag::Spread)? {
-                    let spread_start = self.prev_token_end - 3;
+                    let spread_start = self.lexer.state.prev_token_end - 3;
                     let argument = self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts {
@@ -8969,7 +8963,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         continue;
                     }
                     let argument = if self.eat(TokenTag::Spread)? {
-                        let spread_start = self.prev_token_end - 3;
+                        let spread_start = self.lexer.state.prev_token_end - 3;
                         let expression = self.parse_assignment_expression_in_cover()?;
                         let span = Span::new(spread_start, expression.span(self.ast).end);
                         Argument::SpreadElement(self.ast.spread_element(span, expression))
@@ -9037,7 +9031,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 && self.current_token.tag != TokenTag::Eof
             {
                 let property = if self.eat(TokenTag::Spread)? {
-                    let spread_start = self.prev_token_end - 3;
+                    let spread_start = self.lexer.state.prev_token_end - 3;
                     let expression = self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts {
@@ -9797,7 +9791,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 && self.current_token.tag != TokenTag::Eof
             {
                 let argument = if self.eat(TokenTag::Spread)? {
-                    let start = self.prev_token_end - 3;
+                    let start = self.lexer.state.prev_token_end - 3;
                     let expression =
                         self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
                     Argument::SpreadElement(self.ast.spread_element(
@@ -9899,7 +9893,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             TypedSubRange::empty()
         };
-        let end = self.prev_token_end.max(callee.span(self.ast).end);
+        let end = self
+            .lexer
+            .state
+            .prev_token_end
+            .max(callee.span(self.ast).end);
         Some(
             self.ast
                 .expr_new_expression(Span::new(start, end), callee, arguments, type_arguments),
@@ -10766,7 +10764,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             );
             return None;
         }
-        let end = argument.map_or(self.prev_token_end, |expr| expr.span(self.ast).end);
+        let end = argument.map_or(self.lexer.state.prev_token_end, |expr| {
+            expr.span(self.ast).end
+        });
         Some(
             self.ast
                 .expr_yield_expression(Span::new(start, end), argument, delegate),
@@ -10843,7 +10843,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let end = if prefix {
             argument.span(self.ast).end
         } else {
-            self.prev_token_end
+            self.lexer.state.prev_token_end
         };
         Some(
             self.ast
@@ -11236,7 +11236,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     #[inline(always)]
     fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
-        self.prev_token_end = self.current_token.span.end;
+        self.lexer.state.prev_token_end = self.current_token.span.end;
         self.next_token()
     }
 
@@ -11252,7 +11252,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     /// Advances without checking whether the current token is an escaped
     /// keyword.
     fn advance_without_escape_check(&mut self) -> Option<()> {
-        self.prev_token_end = self.current_token.span.end;
+        self.lexer.state.prev_token_end = self.current_token.span.end;
         self.next_token()
     }
 
