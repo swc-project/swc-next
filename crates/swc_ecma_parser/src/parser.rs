@@ -11875,11 +11875,31 @@ mod tests {
 
     #[test]
     fn comments() {
-        fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {
+        macro_rules! check {
+            ($comment:expr, $start:literal, $end:literal, $position:ident, $attached_to:literal) => {
+                assert_eq!(
+                    ($comment.span, $comment.position, $comment.attached_to),
+                    (
+                        Span::new($start, $end),
+                        CommentPosition::$position,
+                        $attached_to
+                    )
+                );
+            };
+        }
+
+        fn parse_comments_with_source_type(
+            source: &str,
+            lang: Lang,
+            source_type: SourceType,
+            allow_return_outside_function: bool,
+        ) -> Vec<Comment> {
             let allocator = Allocator::new();
             let mut ast = Ast::new(source, &allocator);
             let options = Options {
                 lang,
+                source_type,
+                allow_return_outside_function,
                 ..Options::default()
             };
             let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
@@ -11888,346 +11908,396 @@ mod tests {
             ast.comments().to_vec()
         }
 
-        fn comment(
-            source: &str,
-            text: &str,
-            kind: CommentKind,
-            position: CommentPosition,
-            attached_to: u32,
-        ) -> Comment {
-            let start = source.find(text).unwrap() as u32;
-            Comment {
-                span: Span::new(start, start + text.len() as u32),
-                kind,
-                attached_to,
-                position,
-            }
+        fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {
+            parse_comments_with_source_type(source, lang, SourceType::Module, false)
         }
 
-        // Ported from oxc_parser's trivia_builder::comment_attachments tests.
-        {
-            let source = "
-        /* Leading 1 */
-        // Leading 2
-        /* Leading 3 */ token /* Trailing 1 */ // Trailing 2
-        // Leading of EOF token
-        ";
-            let expected = [
-                Comment {
-                    span: Span::new(9, 24),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Leading,
-                    attached_to: 70,
-                },
-                Comment {
-                    span: Span::new(33, 45),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Leading,
-                    attached_to: 70,
-                },
-                Comment {
-                    span: Span::new(54, 69),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Leading,
-                    attached_to: 70,
-                },
-                Comment {
-                    span: Span::new(76, 92),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Trailing,
-                    attached_to: 0,
-                },
-                Comment {
-                    span: Span::new(93, 106),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Trailing,
-                    attached_to: 0,
-                },
-                Comment {
-                    span: Span::new(115, 138),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Leading,
-                    attached_to: 147,
-                },
-            ];
-            assert_eq!(parse_comments(source, Lang::Js), expected);
+        fn parse_return_comments(source: &str, lang: Lang) -> Vec<Comment> {
+            parse_comments_with_source_type(source, lang, SourceType::Module, true)
         }
 
-        {
-            let source = "#!/usr/bin/env node
-/* Leading 1 */
-token /* Trailing 1 */
-        ";
-            let expected = [
-                Comment {
-                    span: Span::new(20, 35),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Leading,
-                    attached_to: 36,
-                },
-                Comment {
-                    span: Span::new(42, 58),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Trailing,
-                    attached_to: 0,
-                },
-            ];
-            assert_eq!(parse_comments(source, Lang::Js), expected);
+        fn parse_script_comments(source: &str, lang: Lang) -> Vec<Comment> {
+            parse_comments_with_source_type(source, lang, SourceType::Script, true)
         }
 
-        {
-            let source = "
-/*
- * A
- **/
-/*
- * B
- **/
- token
-        ";
-            let expected = [
-                Comment {
-                    span: Span::new(1, 13),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Leading,
-                    attached_to: 28,
-                },
-                Comment {
-                    span: Span::new(14, 26),
-                    kind: CommentKind::Block,
-                    position: CommentPosition::Leading,
-                    attached_to: 28,
-                },
-            ];
-            assert_eq!(parse_comments(source, Lang::Js), expected);
-        }
+        // The expected values are generated by swc_core. Its spans and comment map keys are 1-based,
+        // so those values are converted to 0-based offsets here.
+        let comments = parse_comments(
+            "/* Leading 1 */\n// Leading 2\n/* Leading 3 */ token /* Trailing 1 */ // Trailing 2\n// Leading of EOF token",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 6);
+        check!(comments[0], 0, 15, Leading, 45);
+        check!(comments[1], 16, 28, Leading, 45);
+        check!(comments[2], 29, 44, Leading, 45);
+        check!(comments[3], 51, 67, Trailing, 50);
+        check!(comments[4], 68, 81, Trailing, 50);
+        check!(comments[5], 82, 105, Trailing, 50);
 
-        // Legal and annotation comments describe the following expression or declaration.
-        for (source, text, next_token) in [
-            (
-                "foo();/**
- * @license MIT
- **/
-function bar() {}",
-                "/**\n * @license MIT\n **/",
-                "function",
-            ),
-            (
-                "foo();//! @license MIT\nfunction bar() {}",
-                "//! @license MIT",
-                "function",
-            ),
-            (
-                "function foo() {}/* #__NO_SIDE_EFFECTS__ */\nfunction bar() {}",
-                "/* #__NO_SIDE_EFFECTS__ */",
-                "function",
-            ),
-            (
-                "foo();// @__NO_SIDE_EFFECTS__\nfunction bar() {}",
-                "// @__NO_SIDE_EFFECTS__",
-                "function",
-            ),
-            ("foo();/* @__PURE__ */new Bar()", "/* @__PURE__ */", "new"),
-        ] {
-            let attached_to = source.rfind(next_token).unwrap() as u32;
-            assert_eq!(
-                parse_comments(source, Lang::Js),
-                [comment(
-                    source,
-                    text,
-                    if text.starts_with("//") {
-                        CommentKind::Line
-                    } else {
-                        CommentKind::Block
-                    },
-                    CommentPosition::Leading,
-                    attached_to,
-                )]
-            );
-        }
+        let comments = parse_comments(
+            "#!/usr/bin/env node\n/* Leading 1 */\ntoken /* Trailing 1 */",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 20, 35, Leading, 36);
+        check!(comments[1], 42, 58, Trailing, 41);
 
-        {
-            let source = "
-            const v1 = // Leading comment 1
-            foo();
-            function foo(param =// Leading comment 2
-            new Foo()
-            ) {}
-        ";
-            let expected = [
-                Comment {
-                    span: Span::new(24, 44),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Leading,
-                    attached_to: 57,
-                },
-                Comment {
-                    span: Span::new(96, 116),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Leading,
-                    attached_to: 129,
-                },
-            ];
-            assert_eq!(parse_comments(source, Lang::Js), expected);
-        }
+        let comments = parse_comments("/*\n * A\n **/\n/*\n * B\n **/\ntoken", Lang::Js);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 0, 12, Leading, 26);
+        check!(comments[1], 13, 25, Leading, 26);
 
-        {
-            let source = "
-            call(// Leading comment 1
-                arguments)
-            (// Leading comment 2
-                arguments)
-        ";
-            let expected = [
-                Comment {
-                    span: Span::new(18, 38),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Leading,
-                    attached_to: 55,
-                },
-                Comment {
-                    span: Span::new(79, 99),
-                    kind: CommentKind::Line,
-                    position: CommentPosition::Leading,
-                    attached_to: 116,
-                },
-            ];
-            assert_eq!(parse_comments(source, Lang::Js), expected);
-        }
+        let comments = parse_comments(
+            "foo();/**\n * @license MIT\n **/\nfunction bar() {}",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 6, 30, Trailing, 6);
 
-        {
-            let source = "v = cond ? a : // Leading comment\nb;";
-            let expected = [Comment {
-                span: Span::new(15, 33),
-                kind: CommentKind::Line,
-                position: CommentPosition::Leading,
-                attached_to: 34,
-            }];
-            assert_eq!(parse_comments(source, Lang::Js), expected);
-        }
+        let comments = parse_comments("foo();//! @license MIT\nfunction bar() {}", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 6, 22, Trailing, 6);
 
-        // Ported from swc_ecma_parser's comment attachment regression tests.
-        {
-            let source = "
-            // test
-        ";
-            assert_eq!(
-                parse_comments(source, Lang::Ts),
-                [comment(
-                    source,
-                    "// test",
-                    CommentKind::Line,
-                    CommentPosition::Leading,
-                    0,
-                )]
-            );
-        }
+        let comments = parse_comments(
+            "function foo() {}/* #__NO_SIDE_EFFECTS__ */\nfunction bar() {}",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 17, 43, Trailing, 17);
 
-        {
-            let source = "#!/foo/bar
-            // test
-        ";
-            assert_eq!(
-                parse_comments(source, Lang::Ts),
-                [comment(
-                    source,
-                    "// test",
-                    CommentKind::Line,
-                    CommentPosition::Trailing,
-                    0,
-                )]
-            );
-        }
+        let comments = parse_comments("foo();// @__NO_SIDE_EFFECTS__\nfunction bar() {}", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 6, 29, Trailing, 6);
+
+        let comments = parse_comments("foo();/* @__PURE__ */new Bar()", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 6, 21, Trailing, 6);
+
+        let comments = parse_comments(
+            "const v1 = // Leading comment 1\nfoo();\nfunction foo(param =// Leading comment 2\nnew Foo()\n) {}",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 11, 31, Trailing, 10);
+        check!(comments[1], 59, 79, Trailing, 59);
+
+        let comments = parse_comments(
+            "call(// Leading comment 1\narguments)\n(// Leading comment 2\narguments)",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 5, 25, Trailing, 5);
+        check!(comments[1], 38, 58, Trailing, 38);
+
+        let comments = parse_comments("v = cond ? a : // Leading comment\nb;", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 15, 33, Trailing, 14);
+
+        let comments = parse_comments("// test", Lang::Ts);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 7, Leading, 0);
+
+        let comments = parse_comments("#!/foo/bar\n// test", Lang::Ts);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 11, 18, Trailing, 10);
 
         for lang in [Lang::Tsx, Lang::Jsx] {
-            let source = "
-        const t = <Switch>
-            // 1
-            /* 2 */
-        </Switch>
-    ";
-            assert!(parse_comments(source, lang).is_empty());
+            let comments = parse_comments("const t = <Switch>\n// 1\n/* 2 */\n</Switch>", lang);
+            assert!(comments.is_empty());
         }
 
-        {
-            let source = "
-/** block comment */
-import h from 'h';
-<div></div>
-";
-            let import_start = source.find("import").unwrap() as u32;
-            assert_eq!(
-                parse_comments(source, Lang::Tsx),
-                [comment(
-                    source,
-                    "/** block comment */",
-                    CommentKind::Block,
-                    CommentPosition::Leading,
-                    import_start,
-                )]
-            );
-        }
+        let comments = parse_comments(
+            "/** block comment */\nimport h from 'h';\n<div></div>",
+            Lang::Tsx,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 20, Leading, 21);
 
-        {
-            let source = "const foo = <h1>/* no */{/* 1 */ bar /* 2 */}/* no */</h1>;";
-            assert_eq!(
-                parse_comments(source, Lang::Tsx),
-                [
-                    comment(
-                        source,
-                        "/* 1 */",
-                        CommentKind::Block,
-                        CommentPosition::Trailing,
-                        0,
-                    ),
-                    comment(
-                        source,
-                        "/* 2 */",
-                        CommentKind::Block,
-                        CommentPosition::Trailing,
-                        0,
-                    ),
-                ]
-            );
-        }
+        let comments = parse_comments(
+            "const foo = <h1>/* no */{/* 1 */ bar /* 2 */}/* no */</h1>;",
+            Lang::Tsx,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 25, 32, Trailing, 25);
+        check!(comments[1], 37, 44, Trailing, 36);
 
-        {
-            let source = "
-        const t = <T,>() => {
-            // 1
-            /* 2 */
-            test;
-        };
-    ";
-            let test_start = source.find("test;").unwrap() as u32;
-            assert_eq!(
-                parse_comments(source, Lang::Tsx),
-                [
-                    comment(
-                        source,
-                        "// 1",
-                        CommentKind::Line,
-                        CommentPosition::Leading,
-                        test_start,
-                    ),
-                    comment(
-                        source,
-                        "/* 2 */",
-                        CommentKind::Block,
-                        CommentPosition::Leading,
-                        test_start,
-                    ),
-                ]
-            );
-        }
+        let comments = parse_comments("const t = <T,>() => {\n// 1\n/* 2 */\ntest;\n};", Lang::Tsx);
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 22, 26, Leading, 35);
+        check!(comments[1], 27, 34, Leading, 35);
 
-        // Comments between an assignment and a regexp literal must not turn `/` into division.
-        for source in [
-            "re = // ...\n/w+/",
-            "re = /* ... *//w+/",
-            "re =\n/*\n ...\n */\n/w+/",
-        ] {
-            parse_comments(source, Lang::Js);
-        }
+        let comments = parse_comments("re = // ...\n/w+/", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 5, 11, Trailing, 4);
+
+        let comments = parse_comments("re = /* ... *//w+/", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 5, 14, Leading, 14);
+
+        let comments = parse_comments("re =\n/*\n ...\n */\n/w+/", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 5, 16, Leading, 17);
+
+        // From js_parser_test.rs.
+
+        let comments = parse_return_comments("return //\n x", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 9, Trailing, 6);
+
+        let comments = parse_return_comments("return /**/\n x", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 11, Leading, 13);
+
+        let comments = parse_script_comments("return <!--\n x", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 8, 11, Trailing, 6);
+
+        let comments = parse_script_comments("-->\nx", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 3, 3, Leading, 0);
+
+        let comments = parse_script_comments("x\n-->\ny", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 5, 5, Leading, 2);
+
+        let comments = parse_script_comments("x\n/**/ /**/-->\ny", Lang::Js);
+        assert_eq!(comments.len(), 3);
+        check!(comments[0], 2, 6, Leading, 11);
+        check!(comments[1], 7, 11, Leading, 11);
+        check!(comments[2], 14, 14, Leading, 11);
+
+        let comments = parse_comments(
+            "function f() { //! @legal comment\n 'use strict' }",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 15, 33, Trailing, 14);
+
+        let comments = parse_comments("foo() //! test", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 6, 14, Trailing, 5);
+
+        let comments = parse_comments("//! test\nfoo()", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 8, Leading, 9);
+
+        let comments = parse_comments("if (1) {//! test\nfoo()}", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 8, 16, Trailing, 8);
+
+        let comments = parse_comments("if (1) {foo() //! test\n}", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 14, 22, Trailing, 13);
+
+        let comments = parse_comments("    /*!\r\n     * Re-indent test\r\n     */", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 4, 39, Leading, 0);
+
+        let comments = parse_comments(
+            "x\u{2028}    /*!\u{2028}     * Re-indent test\u{2028}     */",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 8, 45, Trailing, 1);
+
+        let comments = parse_comments("//�\n123", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 5, Leading, 6);
+
+        let comments = parse_comments("/*�*/123", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 7, Leading, 7);
+
+        let comments = parse_comments("< /**/ a/>", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 2, 6, Leading, 7);
+
+        let comments = parse_comments("<a /**/ />", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 3, 7, Trailing, 2);
+
+        let comments = parse_comments("<a/ /**/ >", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 4, 8, Leading, 9);
+
+        let comments = parse_comments("<a>b</ /**/ a>", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 11, Leading, 12);
+
+        let comments = parse_comments("<a>b</ //\n a>", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 9, Trailing, 6);
+
+        let comments = parse_comments("<a>b</a /**/ >", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 8, 12, Trailing, 7);
+
+        let comments = parse_comments("// @jsx h\n<a/>", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 9, Leading, 10);
+
+        let comments = parse_comments("<a/>\n// @jsx h", Lang::Jsx);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 5, 14, Trailing, 4);
+
+        // From js_printer_test.rs.
+
+        let comments = parse_comments(
+            "new Worker(// webpackFoo: 1\n // webpackBar: 2\n 'path');",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 11, 27, Trailing, 11);
+        check!(comments[1], 29, 45, Leading, 47);
+
+        let comments = parse_comments(
+            "new Worker(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path');",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 11, 30, Leading, 51);
+        check!(comments[1], 31, 50, Leading, 51);
+
+        let comments = parse_comments(
+            "new Worker(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 16, 58, Leading, 59);
+
+        let comments = parse_comments(
+            "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 11, 30, Leading, 31);
+        check!(comments[1], 38, 56, Trailing, 37);
+
+        let comments = parse_comments(
+            "new Worker(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 11, 30, Leading, 31);
+        check!(comments[1], 39, 57, Leading, 58);
+
+        let comments = parse_comments(
+            "new Worker(new URL('path', /* webpackFoo: these can go anywhere */ import.meta.url))",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 27, 66, Leading, 67);
+
+        let comments = parse_comments(
+            "switch (x) { /* 1 */ case 1: /* 2 */ case 2: /* default */ default: break }",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 3);
+        check!(comments[0], 13, 20, Trailing, 12);
+        check!(comments[1], 29, 36, Leading, 37);
+        check!(comments[2], 45, 58, Leading, 59);
+
+        let comments = parse_comments("(/* foo */ { x() { foo() } }.x());", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 1, 10, Leading, 11);
+
+        let comments = parse_comments("(/* @__PURE__ */ (() => foo())());", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 1, 16, Leading, 17);
+
+        let comments = parse_comments("export default (/* foo */ function f() {});", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 16, 25, Leading, 26);
+
+        let comments = parse_comments("x = () => (/* foo */ {});", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 11, 20, Leading, 21);
+
+        let comments = parse_comments("function *x() { yield (/* foo */ y) }", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 23, 32, Leading, 33);
+
+        let comments = parse_comments("/*@__PURE__*/(function() { foo() })()", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 13, Leading, 13);
+
+        let comments = parse_comments(
+            "export default /*@__PURE__*/(function() { foo() })()",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 15, 28, Leading, 28);
+
+        let comments = parse_comments(
+            "import(// webpackFoo: 1\n // webpackBar: 2\n 'path');",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 23, Trailing, 7);
+        check!(comments[1], 25, 41, Leading, 43);
+
+        let comments = parse_comments(
+            "import(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path');",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 26, Leading, 47);
+        check!(comments[1], 27, 46, Leading, 47);
+
+        let comments = parse_comments(
+            "import(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 12, 54, Leading, 55);
+
+        let comments = parse_comments(
+            "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 26, Leading, 27);
+        check!(comments[1], 34, 52, Trailing, 33);
+
+        let comments = parse_comments(
+            "import(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 26, Leading, 27);
+        check!(comments[1], 35, 53, Leading, 54);
+
+        let comments = parse_comments(
+            "import(/* webpackFoo: 1 */ 'path', { type: 'module' } /* webpackBar:2 */ );",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 2);
+        check!(comments[0], 7, 26, Leading, 27);
+        check!(comments[1], 54, 72, Trailing, 53);
+
+        let comments = parse_comments(
+            "import(new URL('path', /* webpackFoo: these can go anywhere */ import.meta.url))",
+            Lang::Js,
+        );
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 23, 62, Leading, 63);
+
+        let comments = parse_comments("//!single\nthrow 1 + 2", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 9, Leading, 10);
+
+        let comments = parse_comments("/*!multi-\nline*/\nthrow 1 + 2", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 16, Leading, 17);
+
+        let comments = parse_comments("//! </script\n//! >/script\n//! /script", Lang::Js);
+        assert_eq!(comments.len(), 3);
+        check!(comments[0], 0, 12, Leading, 0);
+        check!(comments[1], 13, 25, Leading, 0);
+        check!(comments[2], 26, 37, Leading, 0);
+
+        let comments = parse_comments("/*! </script \n </script */", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 0, 26, Leading, 0);
     }
 }
