@@ -2792,6 +2792,7 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "swc_next_ecma_ast",
  "swc_next_napi",
 ]
 
@@ -2865,6 +2866,7 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "swc_next_ecma_ast",
  "swc_next_napi",
 ]
 
