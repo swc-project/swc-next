@@ -1,4 +1,0 @@
-interface:
-  display_name: "Work on Conformance"
-  short_description: "Improve SWC Next conformance safely"
-  default_prompt: "Use $work-on-conformance to diagnose and fix a conformance failure without changing the AST or upstream fixtures."
