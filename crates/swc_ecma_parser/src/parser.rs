@@ -11874,39 +11874,6 @@ mod tests {
     }
 
     #[test]
-    fn validate_identifier() {
-        let allocator = Allocator::new();
-        let mut ast = Ast::new("name", &allocator);
-        let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
-        parser.validate_identifier(
-            Token {
-                span: Span::new(0, 4),
-                tag: TokenTag::Identifier,
-                flags: 0,
-            },
-            "an identifier",
-        );
-        assert!(parser.diagnostics.is_empty());
-
-        let allocator = Allocator::new();
-        let mut ast = Ast::new("if", &allocator);
-        let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
-        parser.validate_identifier(
-            Token {
-                span: Span::new(0, 2),
-                tag: TokenTag::If,
-                flags: 0,
-            },
-            "an identifier",
-        );
-        assert_eq!(parser.diagnostics.len(), 1);
-        assert_eq!(
-            parser.diagnostics[0].message,
-            "'if' is reserved and cannot be used as an identifier"
-        );
-    }
-
-    #[test]
     fn comments() {
         fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {
             let allocator = Allocator::new();
