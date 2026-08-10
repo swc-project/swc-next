@@ -33,7 +33,7 @@ Improve conformance by fixing implementation behavior and verifying the complete
 5. Run focused crate or binding tests while iterating, then run the complete affected conformance command:
    - Parser or codegen: `cargo run --locked -p testsuite --bin conformance`
    - Babel transform: `cargo run --locked -p testsuite --bin babel_transform`
-   - ESTree: build with `pnpm build:core --release`, then run `pnpm --filter @swc-next/core conformance`
+   - ESTree: build with `pnpm build --release`, then run `pnpm --filter @swc-next/core conformance`
 6. Review every generated snapshot diff. Require the intended failures or panics to disappear with no new failures, panics, mismatches, or skipped cases. Explain any changed totals from the implementation.
 7. Run `cargo check --locked -p testsuite` and the relevant implementation tests. Commit only implementation, legitimate harness corrections, and snapshots produced by a complete run.
 

@@ -28,8 +28,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js",
-    "test": "node --test test/*.test.js"
+    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js"
   },
   "keywords": [
     "ast",

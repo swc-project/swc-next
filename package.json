@@ -6,9 +6,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build:core": "pnpm --filter @swc-next/core build",
-    "build:parser": "pnpm --filter @swc-next/parser build",
-    "build:napi": "pnpm --filter @swc-next/core --filter @swc-next/parser build"
+    "build": "pnpm --filter @swc-next/core --filter @swc-next/parser build",
+    "test": "node --test napi/parser/test/*.test.js"
   },
   "keywords": [],
   "author": "",
