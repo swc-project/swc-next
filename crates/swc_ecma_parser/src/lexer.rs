@@ -116,7 +116,7 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
 
     pub(crate) config: C,
     pub(crate) tokens: ArenaVec<'a, Token>,
-    pub(crate) comments: Vec<Comment>,
+    pub(crate) comments: ArenaVec<'a, Comment>,
     pub(crate) processed_comments: usize,
 
     pub(crate) cursor: u32,
@@ -152,7 +152,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let mut lexer = Self {
             config,
-            comments: Vec::with_capacity(comment_capacity),
+            comments: ArenaVec::with_capacity_in(comment_capacity, allocator),
             processed_comments: 0,
             tokens,
             collect_comments,

@@ -47,7 +47,7 @@ pub struct Ast<'a> {
 
     lang: Lang,
 
-    attached_comments: ArenaHashMap<'a, u32, ArenaVec<'a, Comment>>,
+    attached_comments: ArenaVec<'a, Comment>,
 
     /// Flattening AST nodes.
     pub(crate) nodes: NodeData<'a>,
@@ -109,7 +109,7 @@ impl<'a> Ast<'a> {
             allocator,
             source_type: SourceType::Module,
             lang: Lang::Js,
-            attached_comments: ArenaHashMap::new_in(allocator),
+            attached_comments: ArenaVec::new_in(allocator),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
             strings: StringPool::new_in(allocator, source),
@@ -233,20 +233,26 @@ impl<'a> Ast<'a> {
         self.lang = lang;
     }
 
-    /// Replaces the attached-comment table, grouping comments by attachment offset.
-    pub fn set_attached_comments(&mut self, comments: &[Comment]) {
-        self.attached_comments.clear();
-        self.attached_comments.reserve(comments.len());
+    /// Replaces attached comments while preserving source order.
+    pub fn set_attached_comments(&mut self, comments: ArenaVec<'a, Comment>) {
+        self.attached_comments = comments;
+    }
+
+    /// Creates a map grouping attached comments by attachment offset.
+    pub fn create_comments_map(&self) -> ArenaHashMap<'a, u32, ArenaVec<'a, Comment>> {
+        let mut attached_comments =
+            ArenaHashMap::with_capacity_in(self.attached_comments.len(), self.allocator);
         let allocator = self.allocator;
-        for &comment in comments {
-            let comments = self.attached_comments.entry(comment.attached_to);
+        for &comment in &self.attached_comments {
+            let comments = attached_comments.entry(comment.attached_to);
             let comments = comments.or_insert_with(|| ArenaVec::new_in(allocator));
             comments.push(comment);
         }
+        attached_comments
     }
 
-    /// Returns attached comments grouped by attachment offset.
-    pub fn comments(&self) -> &ArenaHashMap<'a, u32, ArenaVec<'a, Comment>> {
+    /// Returns attached comments in source order.
+    pub fn comments(&self) -> &[Comment] {
         &self.attached_comments
     }
 

@@ -88,12 +88,7 @@ pub fn print<'a>(
     options: Options,
 ) -> PrintResult<'a> {
     let wants_map = options.source_map_path.is_some();
-    let mut comments = ArenaVec::new_in(allocator);
-    for attached_comments in tree.comments().values() {
-        comments.extend_from_slice_copy(attached_comments);
-    }
-    comments.sort_unstable_by_key(|comment| comment.span.start);
-    let comments = comments.into_bump_slice();
+    let comments = tree.comments();
     let line_offset_tables = if wants_map {
         generate_line_offset_tables(allocator, tree.source().as_bytes())
     } else {

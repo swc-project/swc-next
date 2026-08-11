@@ -808,9 +808,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
 
         if self.comment_mode == CommentMode::Attached {
-            self.ast.set_attached_comments(&self.lexer.comments);
-        } else {
-            self.ast.set_attached_comments(&[]);
+            self.ast.set_attached_comments(self.lexer.comments);
         }
 
         let diagnostics = self.diagnostics;
@@ -845,9 +843,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 }
 
                 if self.comment_mode == CommentMode::Attached {
-                    self.ast.set_attached_comments(&self.lexer.comments);
-                } else {
-                    self.ast.set_attached_comments(&[]);
+                    self.ast.set_attached_comments(self.lexer.comments);
                 }
                 Ok(expr)
             }
@@ -11939,13 +11935,7 @@ mod tests {
             let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
 
             assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-            let mut comments = ast
-                .comments()
-                .values()
-                .flat_map(|comments| comments.iter().copied())
-                .collect::<Vec<_>>();
-            comments.sort_unstable_by_key(|comment| comment.span.start);
-            comments
+            ast.comments().to_vec()
         }
 
         fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {
