@@ -256,7 +256,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
         }
 
-        self.attach_pending_comments(token);
+        if self.processed_comments < self.comments.len() {
+            self.attach_pending_comments(token);
+        }
         self.state.previous_token_tag = Some(token.tag);
         self.state.had_line_break = false;
     }
