@@ -21,7 +21,7 @@ mod generated {
 
 use oxc_index::Idx;
 use std::marker::PhantomData;
-use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
+use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
 
 pub use ast::*;
 pub use comment::*;
@@ -47,7 +47,7 @@ pub struct Ast<'a> {
 
     lang: Lang,
 
-    attached_comments: ArenaVec<'a, Comment>,
+    attached_comments: ArenaHashMap<'a, u32, ArenaVec<'a, Comment>>,
 
     /// Flattening AST nodes.
     pub(crate) nodes: NodeData<'a>,
@@ -109,7 +109,7 @@ impl<'a> Ast<'a> {
             allocator,
             source_type: SourceType::Module,
             lang: Lang::Js,
-            attached_comments: ArenaVec::new_in(allocator),
+            attached_comments: ArenaHashMap::new_in(allocator),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
             strings: StringPool::new_in(allocator, source),
@@ -233,14 +233,20 @@ impl<'a> Ast<'a> {
         self.lang = lang;
     }
 
-    /// Replaces the attached-comment table used by source consumers.
+    /// Replaces the attached-comment table, grouping comments by attachment offset.
     pub fn set_attached_comments(&mut self, comments: &[Comment]) {
         self.attached_comments.clear();
-        self.attached_comments.extend_from_slice_copy(comments);
+        self.attached_comments.reserve(comments.len());
+        let allocator = self.allocator;
+        for &comment in comments {
+            let comments = self.attached_comments.entry(comment.attached_to);
+            let comments = comments.or_insert_with(|| ArenaVec::new_in(allocator));
+            comments.push(comment);
+        }
     }
 
-    /// Returns attached comments in source order.
-    pub fn comments(&self) -> &[Comment] {
+    /// Returns attached comments grouped by attachment offset.
+    pub fn comments(&self) -> &ArenaHashMap<'a, u32, ArenaVec<'a, Comment>> {
         &self.attached_comments
     }
 

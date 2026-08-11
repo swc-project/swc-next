@@ -11912,7 +11912,13 @@ mod tests {
             let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
 
             assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-            ast.comments().to_vec()
+            let mut comments = ast
+                .comments()
+                .values()
+                .flat_map(|comments| comments.iter().copied())
+                .collect::<Vec<_>>();
+            comments.sort_unstable_by_key(|comment| comment.span.start);
+            comments
         }
 
         fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {
