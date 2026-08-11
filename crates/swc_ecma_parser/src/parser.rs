@@ -11779,7 +11779,6 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>, comments: &mut [Comment]) {
     let mut trailing_comment_index = 0;
     for index in 0..ast.node_count() {
         let node = NodeId::from_raw_unchecked(index as u32);
-        let parenthesized_span = ast.span(node);
         let replacement = match ast.kind_data(node) {
             NodeKindData::ParenthesizedExpression(parenthesized) => {
                 let mut inner = parenthesized.expression(ast);
@@ -11799,6 +11798,7 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>, comments: &mut [Comment]) {
             }
             _ => continue,
         };
+        let parenthesized_span = ast.span(node);
         let replacement_span = ast.span(replacement);
 
         let leading_from = parenthesized_span.start;
