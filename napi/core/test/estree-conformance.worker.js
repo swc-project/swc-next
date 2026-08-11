@@ -13,6 +13,9 @@ const FIELD_ORDERS_FILE = path.resolve(TEST_HARNESS, "field-orders.json");
 const { makeUnitsFromTest } = await import(
   path.resolve(TEST_HARNESS, "utils/typescript-make-units-from-test.cjs")
 );
+const { stringifyWith, transformerAcorn } = await import(
+  path.resolve(TEST_HARNESS, "utils/json.js")
+);
 
 export default async function runCase({ oracle, source, file }) {
   const oracleFile = path.resolve(oracle, file);
@@ -58,7 +61,7 @@ export default async function runCase({ oracle, source, file }) {
           expected?.astValue.sourceType ??
           (sourceUnit.sourceType.module ? "module" : "script"),
       });
-      return JSON.stringify(ast, reorderAstFields, 2);
+      return stringifyWith(ast, reorderAstFields);
     });
     const passed =
       actualAsts.length === expectedUnits.length &&
@@ -99,6 +102,9 @@ function getLang(sourceUnit, oracleFile) {
 
 function reorderAstFields(_key, value) {
   if (typeof value === "bigint") return null;
+  // Use the oracle's representation so stringifyWith can emit valid JSON for
+  // numeric literals whose value overflows to Infinity.
+  if (value === Infinity) return transformerAcorn(_key, value);
 
   if (
     typeof value !== "object" ||

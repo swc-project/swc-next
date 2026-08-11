@@ -1,16 +1,12 @@
 AST Parsed     : 47030/47030 (100.00%)
-Positive Passed: 46984/47030 (99.90%)
+Positive Passed: 46989/47030 (99.91%)
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/Array/prototype/indexOf/15.4.4.14-10-1.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/Array/prototype/lastIndexOf/15.4.4.15-9-1.js
 Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/JSON/parse/15.12.1.1-0-6.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/Number/S9.3.1_A6_T1.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/Number/S9.3.1_A6_T2.js
 Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/RegExp/escape/escaped-whitespace.js
 Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/trim/15.5.4.20-4-10.js
 Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/trim/15.5.4.20-4-34.js
@@ -45,4 +41,3 @@ Mismatch: tasks/testsuite/fixtures/test262/test/language/identifiers/part-unicod
 Mismatch: tasks/testsuite/fixtures/test262/test/language/statements/for-in/head-lhs-cover.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-lhs-async-parens.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-lhs-cover.js
-Mismatch: tasks/testsuite/fixtures/test262/test/language/types/number/8.5.1.js

@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11259/11509 (97.83%)
+Positive Passed: 11267/11509 (97.90%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -17,7 +17,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/constInClassE
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/controlFlowInstanceofWithSymbolHasInstance.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/declareAlreadySeen.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/decoratorMetadataRestParameterWithImportedType.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/deferredConditionalTypes2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/emitHelpersWithLocalCollisions.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingFollowedWithNamedImport1WithExport.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingFollowedWithNamedImportWithExport.ts
@@ -32,9 +31,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithDeclareModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithExportModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/expressionWithJSDocTypeArguments.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fakeInfinity1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fakeInfinity2.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fakeInfinity3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fileWithNextLine3.ts
@@ -105,10 +101,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionWithTypeArgument.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es2019/importMeta/importMeta.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/arrowFunction/disallowLineTerminatorBeforeArrow.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/binaryAndOctalIntegerLiteral/binaryIntegerLiteral.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/binaryAndOctalIntegerLiteral/binaryIntegerLiteralES6.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/binaryAndOctalIntegerLiteral/octalIntegerLiteral.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/binaryAndOctalIntegerLiteral/octalIntegerLiteralES6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames49_ES5.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames49_ES6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames50_ES5.ts
