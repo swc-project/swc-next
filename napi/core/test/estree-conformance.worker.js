@@ -102,8 +102,8 @@ function getLang(sourceUnit, oracleFile) {
 
 function reorderAstFields(_key, value) {
   if (typeof value === "bigint") return null;
-  // Use the oracle's representation so stringifyWith can emit valid JSON for
-  // numeric literals whose value overflows to Infinity.
+  // JSON.stringify serializes Infinity as null. Use the oracle's placeholder
+  // so stringifyWith can emit the numeric JSON token 1e+400 instead.
   if (value === Infinity) return transformerAcorn(_key, value);
 
   if (
