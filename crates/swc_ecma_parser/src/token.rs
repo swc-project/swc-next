@@ -237,7 +237,7 @@ pub enum TokenTag {
     Undefined = 155 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
     Unknown = 156 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
 
-    JsxIdentifier = 157,
+    JsxIdentifier = 157 | flags!(CAN_HAVE_TRAILING_COMMENT),
     JsxText = 158 | flags!(CAN_HAVE_TRAILING_COMMENT),
     Eof = 159,
 }

@@ -12051,21 +12051,21 @@ mod tests {
 
         let comments = parse_script_comments("return <!--\n x", Lang::Js);
         assert_eq!(comments.len(), 1);
-        check!(comments[0], 8, 11, Trailing, 6);
+        check!(comments[0], 7, 11, Trailing, 6);
 
         let comments = parse_script_comments("-->\nx", Lang::Js);
         assert_eq!(comments.len(), 1);
-        check!(comments[0], 3, 3, Leading, 0);
+        check!(comments[0], 0, 3, Leading, 4);
 
         let comments = parse_script_comments("x\n-->\ny", Lang::Js);
         assert_eq!(comments.len(), 1);
-        check!(comments[0], 5, 5, Leading, 2);
+        check!(comments[0], 2, 5, Leading, 6);
 
         let comments = parse_script_comments("x\n/**/ /**/-->\ny", Lang::Js);
         assert_eq!(comments.len(), 3);
-        check!(comments[0], 2, 6, Leading, 11);
-        check!(comments[1], 7, 11, Leading, 11);
-        check!(comments[2], 14, 14, Leading, 11);
+        check!(comments[0], 2, 6, Leading, 15);
+        check!(comments[1], 7, 11, Leading, 15);
+        check!(comments[2], 11, 14, Leading, 15);
 
         let comments = parse_comments(
             "function f() { //! @legal comment\n 'use strict' }",

@@ -1251,10 +1251,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     fn can_have_trailing_line_comment(&self) -> bool {
         !self.state.had_line_break
-            && self
-                .state
-                .previous_token_tag
-                .is_some_and(TokenTag::can_have_trailing_line_comment)
+            && self.state.previous_token_tag.is_some_and(|tag| {
+                (self.mode == LexerMode::JsxTag && tag == TokenTag::Slash)
+                    || tag.can_have_trailing_line_comment()
+            })
     }
 
     #[inline]
