@@ -113,7 +113,7 @@ pub enum TokenTag {
 
     LeftParen = 59 | ((Precedence::Call as u32) << PREC_SHIFT),
     RightParen = 60,
-    LeftBrace = 61,
+    LeftBrace = 61 | flags!(CAN_HAVE_TRAILING_COMMENT),
     RightBrace = 62 | flags!(CAN_HAVE_TRAILING_COMMENT),
     LeftBracket = 63 | ((Precedence::Member as u32) << PREC_SHIFT),
     RightBracket = 64,

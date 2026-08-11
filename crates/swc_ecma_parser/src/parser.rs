@@ -741,6 +741,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             options.comments == CommentMode::Attached,
             config,
         );
+        let initial_token = Token::eof(lexer.state.prev_token_end);
         Self {
             ast,
             source,
@@ -752,7 +753,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             allow_return_outside_function: options.allow_return_outside_function,
             lexer,
             diagnostics: Vec::new(),
-            current_token: Token::eof(0),
+            current_token: initial_token,
             scratch_statements: ScratchBuffer::default(),
             scratch_cover: ScratchBuffer::default(),
             scratch_decorators: ScratchBuffer::default(),
