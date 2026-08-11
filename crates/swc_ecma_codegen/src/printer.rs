@@ -3120,23 +3120,24 @@ impl<'a> Printer<'a> {
     fn print_export_named(&mut self, d: ExportNamedDeclaration) {
         self.print_indent();
         self.add_source_mapping(d.span(self.ast).start);
+        let declaration = d.declaration(self.ast);
         self.print("export");
-        if d.export_kind(self.ast) == ImportOrExportKind::Type {
-            self.print(" type ");
-        } else if d.declaration(self.ast).is_some() {
+        if let Some(decl) = declaration {
             let decorated_class = matches!(
-                d.declaration(self.ast).map(|d| self.ast.decl_data(d)),
-                Some(DeclData::Class(class)) if !class.decorators(self.ast).is_empty()
+                self.ast.decl_data(decl),
+                DeclData::Class(class) if !class.decorators(self.ast).is_empty()
             );
             if decorated_class {
                 self.print_space();
             } else {
                 self.print(" ");
             }
+        } else if d.export_kind(self.ast) == ImportOrExportKind::Type {
+            self.print(" type ");
         } else {
             self.print_space();
         }
-        if let Some(decl) = d.declaration(self.ast) {
+        if let Some(decl) = declaration {
             let block = matches!(
                 self.ast.decl_data(decl),
                 DeclData::Function(_)
