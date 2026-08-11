@@ -15,7 +15,7 @@ impl OptionalCatchBinding {
         let binding = BoundIdentifier::named(
             ctx,
             scope,
-            "unused",
+            "_unused",
             SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::CATCH_VAR,
         );
         node.set_param(

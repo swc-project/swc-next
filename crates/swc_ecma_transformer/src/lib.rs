@@ -345,7 +345,6 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
             .enter_catch_clause(node, &mut TransformCtx::new(ctx));
         TraverseAction::Continue
     }
-
     fn exit_catch_clause(
         &mut self,
         _node: CatchClause,
@@ -782,5 +781,4 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
         }
         TraverseAction::Continue
     }
-
 }

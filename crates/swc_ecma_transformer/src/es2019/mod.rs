@@ -20,11 +20,7 @@ impl ES2019 {
         }
     }
 
-    pub(crate) fn enter_catch_clause(
-        &mut self,
-        node: CatchClause,
-        ctx: &mut TransformCtx<'_, '_>,
-    ) {
+    pub(crate) fn enter_catch_clause(&mut self, node: CatchClause, ctx: &mut TransformCtx<'_, '_>) {
         if self.optional_catch_binding {
             optional_catch_binding::OptionalCatchBinding.enter_catch_clause(node, ctx);
         }
