@@ -20,6 +20,7 @@ mod jsx_pragma;
 mod used_names;
 
 pub mod assumptions;
+pub mod es2019;
 pub mod es2022;
 pub mod normalize;
 pub mod proposal;
@@ -28,6 +29,7 @@ pub mod typescript;
 #[derive(Default)]
 pub struct TransformerOptions {
     pub assumptions: Assumptions,
+    pub es2019: es2019::ES2019Options,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
     pub typescript: Option<typescript::TypeScriptOptions>,
@@ -40,6 +42,7 @@ pub struct TransformerReturn<'a> {
 
 pub struct Transformer {
     x0_es2022: es2022::ES2022,
+    x1_es2019: es2019::ES2019,
 }
 
 impl Transformer {
@@ -70,6 +73,7 @@ impl Transformer {
 
         let mut transformer = Self {
             x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
+            x1_es2019: es2019::ES2019::new(options.es2019),
         };
 
         let state = TransformerState::new(semantic);
@@ -268,6 +272,8 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
     ) -> TraverseAction<CatchClause> {
         let scope = ctx.state.semantic.scope_of(node.node_id()).unwrap();
         ctx.state.scope_stack.push(scope);
+        self.x1_es2019
+            .enter_catch_clause(node, &mut TransformCtx::new(ctx));
         TraverseAction::Continue
     }
 
@@ -711,4 +717,5 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
         }
         TraverseAction::Continue
     }
+
 }
