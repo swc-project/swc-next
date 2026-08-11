@@ -19,6 +19,7 @@ mod helpers;
 mod uid;
 
 pub mod assumptions;
+pub mod es2019;
 pub mod es2022;
 pub mod jsx;
 pub mod normalize;
@@ -32,6 +33,7 @@ pub struct TransformerOptions {
     pub proposal: proposal::ProposalOptions,
 
     // Transform Options
+    pub es2019: es2019::ES2019Options,
     pub es2022: es2022::ES2022Options,
     pub jsx: Option<jsx::JsxOptions>,
     pub typescript: Option<typescript::TypeScriptOptions>,
@@ -115,6 +117,7 @@ impl<'ctx, 'a> MultiPassTransformer<'ctx, 'a> {
 }
 
 struct ECMAScriptTransformer {
+    es2019: es2019::ES2019,
     es2022: es2022::ES2022,
     jsx_display_name: jsx::DisplayName,
 }
@@ -128,6 +131,7 @@ impl ECMAScriptTransformer {
         let program = ast.root_program();
         let state = TransformerState::new(ScopeModel::new(semantic));
         let mut transformer = Self {
+            es2019: es2019::ES2019::new(options.es2019),
             es2022: es2022::ES2022::new(options.es2022, options.proposal),
             jsx_display_name: jsx::DisplayName::new(options, options.filename.clone()),
         };
@@ -337,6 +341,8 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
     ) -> TraverseAction<CatchClause> {
         let scope = ctx.state.semantic.scope_of(node.node_id()).unwrap();
         ctx.state.scope_stack.push(scope);
+        self.es2019
+            .enter_catch_clause(node, &mut TransformCtx::new(ctx));
         TraverseAction::Continue
     }
 
@@ -776,4 +782,5 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for ECMAScriptTransformer {
         }
         TraverseAction::Continue
     }
+
 }
