@@ -87,6 +87,7 @@ impl<'a> CloneIn<'a> for Expr {
             ExprData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
             ExprData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
             ExprData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            ExprData::Undefined(it) => Self::Undefined(it.clone_in(ast)),
             ExprData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
             ExprData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
             ExprData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
@@ -414,6 +415,14 @@ impl<'a> CloneIn<'a> for NullLiteral {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         ast.null_literal(span)
+    }
+}
+impl<'a> CloneIn<'a> for Undefined {
+    type Cloned = Undefined;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.undefined(span)
     }
 }
 impl<'a> CloneIn<'a> for RegExpLiteral {

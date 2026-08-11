@@ -262,6 +262,16 @@ impl<'a> ExtraDataCompact<'a> for NullLiteral {
         Self(unsafe { data.node_id })
     }
 }
+impl<'a> ExtraDataCompact<'a> for Undefined {
+    #[inline]
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData::from_node_id(self.node_id())
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        Self(unsafe { data.node_id })
+    }
+}
 impl<'a> ExtraDataCompact<'a> for RegExpLiteral {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {

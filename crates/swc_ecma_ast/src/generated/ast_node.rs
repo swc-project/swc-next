@@ -13,6 +13,7 @@ pub enum NodeKind {
     BigIntLiteral,
     BooleanLiteral,
     NullLiteral,
+    Undefined,
     RegExpLiteral,
     TemplateLiteral,
     TemplateElement,
@@ -191,6 +192,7 @@ pub enum NodeKindData {
     BigIntLiteral(BigIntLiteral),
     BooleanLiteral(BooleanLiteral),
     NullLiteral(NullLiteral),
+    Undefined(Undefined),
     RegExpLiteral(RegExpLiteral),
     TemplateLiteral(TemplateLiteral),
     TemplateElement(TemplateElement),
@@ -1027,6 +1029,32 @@ impl GetSpan for NullLiteral {
     }
 }
 impl SetSpan for NullLiteral {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
+impl Undefined {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Undefined {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for Undefined {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for Undefined {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
@@ -5883,6 +5911,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => NodeKindData::BigIntLiteral(BigIntLiteral(node_id)),
             NodeKind::BooleanLiteral => NodeKindData::BooleanLiteral(BooleanLiteral(node_id)),
             NodeKind::NullLiteral => NodeKindData::NullLiteral(NullLiteral(node_id)),
+            NodeKind::Undefined => NodeKindData::Undefined(Undefined(node_id)),
             NodeKind::RegExpLiteral => NodeKindData::RegExpLiteral(RegExpLiteral(node_id)),
             NodeKind::TemplateLiteral => NodeKindData::TemplateLiteral(TemplateLiteral(node_id)),
             NodeKind::TemplateElement => NodeKindData::TemplateElement(TemplateElement(node_id)),
@@ -6281,6 +6310,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => ExprData::BigIntLiteral(BigIntLiteral(node.0)),
             NodeKind::BooleanLiteral => ExprData::BooleanLiteral(BooleanLiteral(node.0)),
             NodeKind::NullLiteral => ExprData::NullLiteral(NullLiteral(node.0)),
+            NodeKind::Undefined => ExprData::Undefined(Undefined(node.0)),
             NodeKind::RegExpLiteral => ExprData::RegExpLiteral(RegExpLiteral(node.0)),
             NodeKind::TemplateLiteral => ExprData::TemplateLiteral(TemplateLiteral(node.0)),
             NodeKind::BinaryExpression => ExprData::BinaryExpression(BinaryExpression(node.0)),
@@ -6441,6 +6471,7 @@ impl<'a> Ast<'a> {
             NodeKind::MetaProperty => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => PropertyKeyData::Expr(Expr(node.0)),
+            NodeKind::Undefined => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::TemplateLiteral => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => PropertyKeyData::Expr(Expr(node.0)),
@@ -6496,6 +6527,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => ArgumentData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => ArgumentData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => ArgumentData::Expr(Expr(node.0)),
+            NodeKind::Undefined => ArgumentData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => ArgumentData::Expr(Expr(node.0)),
             NodeKind::TemplateLiteral => ArgumentData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => ArgumentData::Expr(Expr(node.0)),
@@ -6556,6 +6588,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => ForStatementInitData::Expr(Expr(node.0)),
+            NodeKind::Undefined => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::TemplateLiteral => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => ForStatementInitData::Expr(Expr(node.0)),
@@ -6636,6 +6669,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => ArrowFunctionBodyData::Expr(Expr(node.0)),
+            NodeKind::Undefined => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::TemplateLiteral => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => ArrowFunctionBodyData::Expr(Expr(node.0)),
@@ -6783,6 +6817,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
+            NodeKind::Undefined => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::TemplateLiteral => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
@@ -7088,6 +7123,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
+            NodeKind::Undefined => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::LogicalExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
@@ -7225,6 +7261,7 @@ impl<'a> Ast<'a> {
             NodeKind::BigIntLiteral => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => JsxExpressionData::Expr(Expr(node.0)),
+            NodeKind::Undefined => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::TemplateLiteral => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => JsxExpressionData::Expr(Expr(node.0)),

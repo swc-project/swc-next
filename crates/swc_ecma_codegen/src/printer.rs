@@ -1591,6 +1591,10 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("null");
             }
+            ExprData::Undefined(_) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("undefined");
+            }
             ExprData::RegExpLiteral(e) => {
                 // Avoid forming a single-line comment or a "</script"
                 // sequence across the token boundary.

@@ -128,6 +128,12 @@ pub trait Visit<'a> {
         self.leave_node(node.node_id());
     }
     #[inline]
+    fn visit_undefined(&mut self, node: Undefined) {
+        self.enter_node(node.node_id());
+        <Undefined as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
     fn visit_reg_exp_literal(&mut self, node: RegExpLiteral) {
         self.enter_node(node.node_id());
         <RegExpLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
@@ -1584,6 +1590,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
                 <BooleanLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             ExprData::NullLiteral(it) => <NullLiteral as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::Undefined(it) => <Undefined as VisitWith<'a, V>>::visit_with(it, visitor),
             ExprData::RegExpLiteral(it) => {
                 <RegExpLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -2031,6 +2038,14 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NullLiteral {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_null_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Undefined {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_undefined(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {}
@@ -5399,6 +5414,10 @@ pub trait VisitMut<'a> {
         <NullLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
+    fn visit_mut_undefined(&mut self, node: Undefined) -> Option<Undefined> {
+        <Undefined as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
     fn visit_mut_reg_exp_literal(&mut self, node: RegExpLiteral) -> Option<RegExpLiteral> {
         <RegExpLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
@@ -6968,6 +6987,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
                 <NullLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::NullLiteral)
             }
+            ExprData::Undefined(it) => {
+                <Undefined as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Expr::Undefined)
+            }
             ExprData::RegExpLiteral(it) => {
                 <RegExpLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::RegExpLiteral)
@@ -7535,6 +7557,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NullLiteral {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_null_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
+        None
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Undefined {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
+        <V as VisitMut<'a>>::visit_mut_undefined(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
@@ -12391,6 +12423,16 @@ pub trait Traverse<'a, State = ()> {
     #[inline]
     fn exit_null_literal(&mut self, node: NullLiteral, ctx: &mut TraverseCtx<'_, 'a, State>) {}
     #[inline]
+    fn enter_undefined(
+        &mut self,
+        node: Undefined,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<Undefined> {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_undefined(&mut self, node: Undefined, ctx: &mut TraverseCtx<'_, 'a, State>) {}
+    #[inline]
     fn enter_reg_exp_literal(
         &mut self,
         node: RegExpLiteral,
@@ -15181,6 +15223,16 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
+            ExprData::Undefined(it) => {
+                match <Undefined as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => {
+                        TraverseAction::Replace(Expr::Undefined(replacement))
+                    }
+                }
+            }
             ExprData::RegExpLiteral(it) => {
                 match <RegExpLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
@@ -16362,6 +16414,17 @@ impl<'a, State> TraverseWith<'a, State> for NullLiteral {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         walk_null_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseWith<'a, State> for Undefined {
+    type Node = Undefined;
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<Self::Node> {
+        walk_undefined(self, traverser, ctx)
     }
 }
 impl<'a, State> TraverseWith<'a, State> for RegExpLiteral {
@@ -20758,6 +20821,43 @@ fn walk_null_literal<'a, State, T: ?Sized + Traverse<'a, State>>(
         return TraverseAction::Stop;
     }
     traverser.exit_null_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+    ctx.pop_node(node_id);
+    TraverseAction::Proceed
+}
+#[inline]
+fn walk_undefined<'a, State, T: ?Sized + Traverse<'a, State>>(
+    node: Undefined,
+    traverser: &mut T,
+    ctx: &mut TraverseCtx<'_, 'a, State>,
+) -> TraverseAction<Undefined> {
+    let node_id = node.node_id();
+    ctx.push_node(node_id);
+    let action = match traverser.enter_node::<Undefined>(node_id, ctx) {
+        TraverseAction::Proceed => traverser.enter_undefined(node, ctx),
+        action => action,
+    };
+    match action {
+        TraverseAction::Skip => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Proceed;
+        }
+        TraverseAction::Stop => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Stop;
+        }
+        TraverseAction::Replace(replacement) => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Replace(replacement);
+        }
+        TraverseAction::Proceed => {}
+    }
+    let children_stopped = 'traverse_children: { false };
+    if children_stopped {
+        ctx.pop_node(node_id);
+        return TraverseAction::Stop;
+    }
+    traverser.exit_undefined(node, ctx);
     traverser.exit_node(node_id, ctx);
     ctx.pop_node(node_id);
     TraverseAction::Proceed

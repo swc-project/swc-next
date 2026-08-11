@@ -327,6 +327,7 @@ fn is_special_node(name: &str) -> bool {
             | "BigIntLiteral"
             | "BooleanLiteral"
             | "NullLiteral"
+            | "Undefined"
             | "RegExpLiteral"
             | "TemplateElement"
             | "Class"
@@ -468,6 +469,15 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
         ),
         "NullLiteral" => output.push_str(
             "        result = { type: \"Literal\", start, end, value: null, raw: \"null\" };\n",
+        ),
+        "Undefined" => output.push_str(
+            r#"        result = isTs
+          ? {
+              type: "Identifier", start, end, name: "undefined",
+              decorators: [], optional: false, typeAnnotation: null,
+            }
+          : { type: "Identifier", start, end, name: "undefined" };
+"#,
         ),
         "RegExpLiteral" => output.push_str(
             r#"        let value = null;

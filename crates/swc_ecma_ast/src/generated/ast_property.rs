@@ -545,6 +545,10 @@ impl Expr {
         ast.node_kind(self.0) == NodeKind::NullLiteral
     }
     #[inline]
+    pub fn is_undefined(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Undefined
+    }
+    #[inline]
     pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::RegExpLiteral
     }
@@ -728,6 +732,13 @@ impl Expr {
     pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
         match ast.expr_data(self) {
             ExprData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_undefined(self, ast: &Ast<'_>) -> Option<Undefined> {
+        match ast.expr_data(self) {
+            ExprData::Undefined(it) => Some(it),
             _ => None,
         }
     }
@@ -1173,6 +1184,7 @@ impl PropertyKey {
                 | NodeKind::BigIntLiteral
                 | NodeKind::BooleanLiteral
                 | NodeKind::NullLiteral
+                | NodeKind::Undefined
                 | NodeKind::RegExpLiteral
                 | NodeKind::TemplateLiteral
                 | NodeKind::BinaryExpression
@@ -1287,6 +1299,7 @@ impl Argument {
                 | NodeKind::BigIntLiteral
                 | NodeKind::BooleanLiteral
                 | NodeKind::NullLiteral
+                | NodeKind::Undefined
                 | NodeKind::RegExpLiteral
                 | NodeKind::TemplateLiteral
                 | NodeKind::BinaryExpression
@@ -1381,6 +1394,7 @@ impl ForStatementInit {
                 | NodeKind::BigIntLiteral
                 | NodeKind::BooleanLiteral
                 | NodeKind::NullLiteral
+                | NodeKind::Undefined
                 | NodeKind::RegExpLiteral
                 | NodeKind::TemplateLiteral
                 | NodeKind::BinaryExpression
@@ -1481,6 +1495,7 @@ impl ArrowFunctionBody {
                 | NodeKind::BigIntLiteral
                 | NodeKind::BooleanLiteral
                 | NodeKind::NullLiteral
+                | NodeKind::Undefined
                 | NodeKind::RegExpLiteral
                 | NodeKind::TemplateLiteral
                 | NodeKind::BinaryExpression
@@ -1837,6 +1852,7 @@ impl BooleanLiteral {
     }
 }
 impl NullLiteral {}
+impl Undefined {}
 impl RegExpLiteral {
     #[inline]
     pub fn pattern<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
@@ -6314,6 +6330,7 @@ impl TsEnumMemberName {
                 | NodeKind::BigIntLiteral
                 | NodeKind::BooleanLiteral
                 | NodeKind::NullLiteral
+                | NodeKind::Undefined
                 | NodeKind::RegExpLiteral
                 | NodeKind::TemplateLiteral
                 | NodeKind::BinaryExpression
@@ -9005,6 +9022,7 @@ impl JsxExpression {
                 | NodeKind::BigIntLiteral
                 | NodeKind::BooleanLiteral
                 | NodeKind::NullLiteral
+                | NodeKind::Undefined
                 | NodeKind::RegExpLiteral
                 | NodeKind::TemplateLiteral
                 | NodeKind::BinaryExpression

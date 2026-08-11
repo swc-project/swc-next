@@ -621,6 +621,10 @@ impl<'a> Ast<'a> {
         Expr::NullLiteral(self.null_literal(span).into())
     }
     #[inline]
+    pub fn expr_undefined(&mut self, span: Span) -> Expr {
+        Expr::Undefined(self.undefined(span).into())
+    }
+    #[inline]
     pub fn expr_reg_exp_literal(&mut self, span: Span, pattern: AstUtf8, flags: AstUtf8) -> Expr {
         Expr::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
     }
@@ -1397,6 +1401,10 @@ impl<'a> Ast<'a> {
         PropertyKey::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
+    pub fn property_key_expr_undefined(&mut self, span: Span) -> PropertyKey {
+        PropertyKey::Expr(Expr::Undefined(self.undefined(span).into()))
+    }
+    #[inline]
     pub fn property_key_expr_reg_exp_literal(
         &mut self,
         span: Span,
@@ -1884,6 +1892,10 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn argument_expr_null_literal(&mut self, span: Span) -> Argument {
         Argument::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn argument_expr_undefined(&mut self, span: Span) -> Argument {
+        Argument::Expr(Expr::Undefined(self.undefined(span).into()))
     }
     #[inline]
     pub fn argument_expr_reg_exp_literal(
@@ -2397,6 +2409,10 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn for_statement_init_expr_null_literal(&mut self, span: Span) -> ForStatementInit {
         ForStatementInit::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn for_statement_init_expr_undefined(&mut self, span: Span) -> ForStatementInit {
+        ForStatementInit::Expr(Expr::Undefined(self.undefined(span).into()))
     }
     #[inline]
     pub fn for_statement_init_expr_reg_exp_literal(
@@ -3022,6 +3038,10 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn arrow_function_body_expr_null_literal(&mut self, span: Span) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn arrow_function_body_expr_undefined(&mut self, span: Span) -> ArrowFunctionBody {
+        ArrowFunctionBody::Expr(Expr::Undefined(self.undefined(span).into()))
     }
     #[inline]
     pub fn arrow_function_body_expr_reg_exp_literal(
@@ -3880,6 +3900,13 @@ impl<'a> Ast<'a> {
         ExportDefaultDeclarationKind::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
+    pub fn export_default_declaration_kind_expr_undefined(
+        &mut self,
+        span: Span,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::Undefined(self.undefined(span).into()))
+    }
+    #[inline]
     pub fn export_default_declaration_kind_expr_reg_exp_literal(
         &mut self,
         span: Span,
@@ -4447,6 +4474,10 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn null_literal(&mut self, span: Span) -> NullLiteral {
         NullLiteral(self.add_node(span, NodeKind::NullLiteral, NodePayload(0)))
+    }
+    #[inline]
+    pub fn undefined(&mut self, span: Span) -> Undefined {
+        Undefined(self.add_node(span, NodeKind::Undefined, NodePayload(0)))
     }
     #[inline]
     pub fn reg_exp_literal(
@@ -6815,6 +6846,10 @@ impl<'a> Ast<'a> {
         TsEnumMemberName::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
+    pub fn ts_enum_member_name_expr_undefined(&mut self, span: Span) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::Undefined(self.undefined(span).into()))
+    }
+    #[inline]
     pub fn ts_enum_member_name_expr_reg_exp_literal(
         &mut self,
         span: Span,
@@ -8583,6 +8618,10 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn jsx_expression_expr_null_literal(&mut self, span: Span) -> JsxExpression {
         JsxExpression::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn jsx_expression_expr_undefined(&mut self, span: Span) -> JsxExpression {
+        JsxExpression::Expr(Expr::Undefined(self.undefined(span).into()))
     }
     #[inline]
     pub fn jsx_expression_expr_reg_exp_literal(

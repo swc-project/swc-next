@@ -413,6 +413,7 @@ pub enum Expr {
     BigIntLiteral(BigIntLiteral),
     BooleanLiteral(BooleanLiteral),
     NullLiteral(NullLiteral),
+    Undefined(Undefined),
     RegExpLiteral(RegExpLiteral),
     TemplateLiteral(TemplateLiteral),
     BinaryExpression(BinaryExpression),
@@ -641,6 +642,14 @@ pub struct BooleanLiteral {
 /// ```
 #[ast]
 pub struct NullLiteral {}
+
+/// The canonical internal representation of the JavaScript `undefined` value.
+///
+/// This node is an internal IR construct instead of an ECMAScript syntax node.
+/// Source-level `undefined` identifiers remain [`IdentifierReference`] nodes
+/// until a later pass has established that they refer to the global value.
+#[ast]
+pub struct Undefined {}
 
 /// A regular expression literal.
 ///
