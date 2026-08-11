@@ -1,8 +1,8 @@
 codegen * test262
 ========================
-Positive Passed: 90528/91092 (99.38%)
+Positive Passed: 90581/91145 (99.38%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/91092 (0.00%)
+Panicked: 0/91145 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/arrow-function.js - sloppy: codegen output changed after reparse 
