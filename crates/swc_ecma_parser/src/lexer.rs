@@ -115,7 +115,7 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     pub(crate) config: C,
     pub(crate) tokens: ArenaVec<'a, Token>,
     pub(crate) comments: ArenaVec<'a, Comment>,
-    pending_comments: Vec<Comment>,
+    pub(crate) processed_comments: usize,
 
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
@@ -151,7 +151,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let mut lexer = Self {
             config,
             comments: ArenaVec::with_capacity_in(comment_capacity, allocator),
-            pending_comments: Vec::with_capacity(comment_capacity),
+            processed_comments: 0,
             tokens,
             collect_comments,
             source: source.as_bytes(),
@@ -272,30 +272,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 debug_assert!(!self.config.tokens());
             }
         }
-    }
-
-    fn attach_pending_comments(&mut self, token: Token) {
-        if self.pending_comments.is_empty() {
-            return;
-        }
-
-        let (position, attached_to) = if token.tag == TokenTag::Eof {
-            if self.state.prev_token_end == 0 {
-                (CommentPosition::Leading, 0)
-            } else {
-                (CommentPosition::Trailing, self.state.prev_token_end)
-            }
-        } else {
-            (CommentPosition::Leading, token.span.start)
-        };
-
-        for mut comment in self.pending_comments.drain(..) {
-            comment.position = position;
-            comment.attached_to = attached_to;
-            self.comments.push(comment);
-        }
-        self.comments
-            .sort_unstable_by_key(|comment| comment.span.start);
     }
 
     fn scan_simple_punctuation(&mut self) -> Token {
@@ -1284,11 +1260,31 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if trailing {
             comment.position = CommentPosition::Trailing;
             comment.attached_to = self.state.prev_token_end;
-            self.comments.push(comment);
-        } else {
-            self.pending_comments.push(comment);
+            for comment in &mut self.comments[self.processed_comments..] {
+                comment.attached_to = self.state.prev_token_end;
+            }
+            self.processed_comments = self.comments.len() + 1;
         }
+        self.comments.push(comment);
         Ok(())
+    }
+
+    fn attach_pending_comments(&mut self, token: Token) {
+        let (position, attached_to) = if token.tag == TokenTag::Eof {
+            if self.state.prev_token_end == 0 {
+                (CommentPosition::Leading, 0)
+            } else {
+                (CommentPosition::Trailing, self.state.prev_token_end)
+            }
+        } else {
+            (CommentPosition::Leading, token.span.start)
+        };
+
+        for comment in &mut self.comments[self.processed_comments..] {
+            comment.position = position;
+            comment.attached_to = attached_to;
+        }
+        self.processed_comments = self.comments.len();
     }
 
     fn scan_line_comment(&mut self) -> Result<(), LexicalError> {
