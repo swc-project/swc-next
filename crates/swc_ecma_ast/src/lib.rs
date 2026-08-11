@@ -256,6 +256,22 @@ impl<'a> Ast<'a> {
         &self.attached_comments
     }
 
+    /// Retargets comment attachment offsets while preserving source order.
+    ///
+    /// The callback receives each comment's position and current attachment
+    /// offset. Returning `Some` replaces the offset, while `None` leaves it
+    /// unchanged.
+    pub fn retarget_comments(
+        &mut self,
+        mut retarget: impl FnMut(CommentPosition, u32) -> Option<u32>,
+    ) {
+        for comment in &mut self.attached_comments {
+            if let Some(attached_to) = retarget(comment.position, comment.attached_to) {
+                comment.attached_to = attached_to;
+            }
+        }
+    }
+
     #[inline]
     pub fn source_type(&self) -> SourceType {
         self.source_type
