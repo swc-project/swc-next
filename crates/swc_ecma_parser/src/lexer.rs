@@ -1,3 +1,5 @@
+use std::hint::cold_path;
+
 use memchr::{memchr, memchr3};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
@@ -1273,6 +1275,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     fn attach_pending_comments(&mut self, token: Token) {
         let (position, attached_to) = if token.tag == TokenTag::Eof {
+            cold_path();
             if self.state.prev_token_end == 0 {
                 (CommentPosition::Leading, 0)
             } else {
