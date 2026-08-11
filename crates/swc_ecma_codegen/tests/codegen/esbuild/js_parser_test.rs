@@ -327,6 +327,14 @@ fn test_decls() {
 }
 
 #[test]
+fn test_for_of_async_identifier() {
+    expect_printed("for ((async) of []) ;", "for ((async) of []) ;\n");
+    expect_printed("for (\\u0061sync of []) ;", "for ((async) of []) ;\n");
+    expect_printed("for (async.x of []) ;", "for (async.x of []) ;\n");
+    expect_printed("for await (async of []) ;", "for await (async of []) ;\n");
+}
+
+#[test]
 #[ignore = "depends on esbuild parser lowering"]
 fn test_for() {
     expect_printed("for (; of; ) ;", "for (; of; ) ;\n");

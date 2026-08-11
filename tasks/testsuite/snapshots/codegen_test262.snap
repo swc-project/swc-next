@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 90581/91145 (99.38%)
+Positive Passed: 90585/91145 (99.39%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91145 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse 
@@ -489,10 +489,6 @@ Failed: fixtures/test262/test/language/statements/for-of/dstr/var-ary-ptrn-rest-
 Failed: fixtures/test262/test/language/statements/for-of/dstr/var-ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for-of/dstr/var-ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for-of/dstr/var-ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-escaped.js - parser: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 522..527
-Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-escaped.js - parser: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 536..541
-Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-parens.js - parser: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 516..521
-Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-parens.js - parser: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 530..535
 Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-elem-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-elem-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse 

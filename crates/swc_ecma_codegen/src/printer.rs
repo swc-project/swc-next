@@ -721,7 +721,8 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("for");
-                if s.r#await(self.ast) {
+                let is_await = s.r#await(self.ast);
+                if is_await {
                     self.print(" await");
                 }
                 self.print_space();
@@ -739,7 +740,7 @@ impl<'a> Printer<'a> {
                     self.print_comments_before(comment_end, true, true);
                     self.print_indent();
                     self.for_of_init_start = self.js.len();
-                    self.print_for_left(left);
+                    self.print_for_of_left(left, is_await);
                     self.print(" of ");
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
                     self.print_newline();
@@ -747,7 +748,7 @@ impl<'a> Printer<'a> {
                     self.print_indent();
                 } else {
                     self.for_of_init_start = self.js.len();
-                    self.print_for_left(left);
+                    self.print_for_of_left(left, is_await);
                     self.print(" of ");
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
                 }
@@ -1157,6 +1158,29 @@ impl<'a> Printer<'a> {
         match self.ast.for_statement_left_data(left) {
             ForStatementLeftData::VariableDeclaration(v) => self.print_variable_decl(v, false),
             ForStatementLeftData::AssignmentTarget(t) => self.print_assignment_target(t),
+        }
+    }
+
+    fn print_for_of_left(&mut self, left: ForStatementLeft, is_await: bool) {
+        if is_await {
+            self.print_for_left(left);
+            return;
+        }
+        let Some(identifier) = left
+            .as_assignment_target(self.ast)
+            .and_then(|target| target.as_simple_assignment_target(self.ast))
+            .and_then(|target| target.as_identifier_reference(self.ast))
+        else {
+            self.print_for_left(left);
+            return;
+        };
+        let wrap = self.ast.get_utf8(identifier.name(self.ast)) == "async";
+        if wrap {
+            self.print("(");
+        }
+        self.print_for_left(left);
+        if wrap {
+            self.print(")");
         }
     }
 
