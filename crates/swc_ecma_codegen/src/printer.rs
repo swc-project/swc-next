@@ -308,13 +308,16 @@ impl<'a> Printer<'a> {
         let expression = directive.expression(self.ast);
         let value = self.ast.get_wtf8(expression.value(self.ast));
         let raw = self.ast.get_utf8(expression.raw(self.ast));
-        let preserve_raw = (value == "use strict" && raw.as_bytes().contains(&b'\\'))
-            || (!self.options.minify && (!self.options.ascii_only || raw.is_ascii()));
-        if preserve_raw {
+        let raw_is_safe = !raw.is_empty() && !raw.contains("script");
+        if value == "use strict" && raw.as_bytes().contains(&b'\\') && raw_is_safe {
             self.print_bytes(raw);
-        } else {
-            self.print_quoted(value, false);
+            return;
         }
+        if !self.options.minify && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
+            self.print_bytes(raw);
+            return;
+        }
+        self.print_quoted(value, false);
     }
 
     fn print_comments_before(&mut self, offset: u32, statement: bool, preserve_all: bool) {

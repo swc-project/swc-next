@@ -9,6 +9,7 @@ fn test_directive_string_value() {
     );
     expect_printed_script(r#"'use\x20asm';"#, "'use\\x20asm';\n");
     expect_printed_minify(r#"'use\x20asm'; foo;"#, "\"use asm\";foo;");
+    expect_printed_script(r#""</script";"#, "\"<\\/script\";\n");
     expect_printed(
         r#"function f() { "\0" }"#,
         "function f() {\n  \"\\0\";\n}\n",
