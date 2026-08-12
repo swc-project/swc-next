@@ -5,7 +5,7 @@ use std::hint::black_box;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang};
+use swc_next_ecma_ast::Lang;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 
@@ -28,9 +28,9 @@ fn bench_semantic(c: &mut Criterion) {
             let allocator = Allocator::new();
             b.iter_batched(
                 || {
-                    let mut ast = Ast::new(source, &allocator);
                     let result = Parser::init(
-                        &mut ast,
+                        &allocator,
+                        source,
                         Options {
                             lang,
                             ..Options::default()
@@ -40,7 +40,7 @@ fn bench_semantic(c: &mut Criterion) {
                     .parse();
                     assert!(result.diagnostics.is_empty());
                     let program = result.program;
-                    (program, ast)
+                    (program, result.ast)
                 },
                 |(program, ast)| {
                     black_box(analyze(program, &ast, AnalyzeOptions::default()));

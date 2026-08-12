@@ -40,10 +40,10 @@ const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 fn bench_parser(source: &str, lang: Lang) {
     let source = black_box(source);
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source, &allocator);
     black_box(
         Parser::init(
-            &mut ast,
+            &allocator,
+            source,
             Options {
                 lang,
                 ..Options::default()
@@ -61,9 +61,9 @@ struct ParsedProgram {
 
 fn setup_program(source: &'static str, lang: Lang) -> ParsedProgram {
     let allocator = Box::leak(Box::new(Allocator::new()));
-    let mut ast = Ast::new(source, allocator);
     let result = Parser::init(
-        &mut ast,
+        allocator,
+        source,
         Options {
             lang,
             ..Options::default()
@@ -73,7 +73,10 @@ fn setup_program(source: &'static str, lang: Lang) -> ParsedProgram {
     .parse();
     assert!(result.diagnostics.is_empty());
     let program = result.program;
-    ParsedProgram { ast, program }
+    ParsedProgram {
+        ast: result.ast,
+        program,
+    }
 }
 
 #[library_benchmark]

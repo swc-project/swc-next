@@ -6,7 +6,7 @@
 use std::{borrow::Cow, mem};
 
 use rustc_hash::FxHashSet;
-use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8Buf};
+use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8Buf};
 use swc_next_ecma_ast::*;
 use swc_next_ecma_ast::{AstUtf8, AstWtf8};
 
@@ -601,8 +601,8 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 }
 
 /// Parser state and typed AST writer.
-pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
-    ast: &'parser mut Ast<'a>,
+pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
+    ast: Ast<'a>,
     source: &'a str,
     source_type: SourceType,
     /// Whether the source contains syntax which is only valid in a module.
@@ -635,8 +635,14 @@ pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
 
 pub struct ParseReturn<'a> {
     pub program: Program,
+    pub ast: Ast<'a>,
     pub tokens: ArenaVec<'a, Token>,
     pub diagnostics: Vec<Diagnostic<'static>>,
+}
+
+pub struct ParseExpressionReturn<'a> {
+    pub expression: Expr,
+    pub ast: Ast<'a>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -731,10 +737,10 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
     (estimated_nodes, estimated_extra)
 }
 
-impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
-    pub fn init(ast: &'parser mut Ast<'a>, options: Options, config: C) -> Self {
-        let source = ast.source();
+impl<'a, C: ParserConfig> Parser<'a, C> {
+    pub fn init(allocator: &'a Allocator, source: &'a str, options: Options, config: C) -> Self {
         assert!(source.len() <= u32::MAX as usize);
+        let mut ast = Ast::new(source, allocator);
         ast.set_source_metadata(options.source_type, options.lang);
         let allow_html_like_comments = options.source_type != SourceType::Module;
         let lexer = Lexer::init(
@@ -804,7 +810,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             hashbang,
         );
         if !self.preserve_parens {
-            strip_parenthesized_nodes(self.ast, &mut self.lexer.comments);
+            strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
         }
 
         if self.comment_mode == CommentMode::Attached {
@@ -823,12 +829,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
         ParseReturn {
             program,
+            ast: self.ast,
             tokens,
             diagnostics,
         }
     }
 
-    pub fn parse_expression(mut self) -> Result<Expr, Vec<Diagnostic<'a>>> {
+    pub fn parse_expression(mut self) -> Result<ParseExpressionReturn<'a>, Vec<Diagnostic<'a>>> {
         self.context = self.source_type.into();
         self.context.r#return |= self.allow_return_outside_function;
         if self.advance().is_none() {
@@ -839,13 +846,16 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         match expr {
             Some(expr) if self.diagnostics.is_empty() => {
                 if !self.preserve_parens {
-                    strip_parenthesized_nodes(self.ast, &mut self.lexer.comments);
+                    strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
                 }
 
                 if self.comment_mode == CommentMode::Attached {
                     self.ast.set_attached_comments(self.lexer.comments);
                 }
-                Ok(expr)
+                Ok(ParseExpressionReturn {
+                    expression: expr,
+                    ast: self.ast,
+                })
             }
             _ => Err(self.diagnostics),
         }
@@ -1117,11 +1127,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
                     {
                         let directive =
-                            self.parse_directive(string_literal, string_literal.span(self.ast))?;
+                            self.parse_directive(string_literal, string_literal.span(&self.ast))?;
                         self.scratch_statements.append(directive);
                         return Some(true);
                     }
-                    let start = expression.span(self.ast).start;
+                    let start = expression.span(&self.ast).start;
                     let statement =
                         self.parse_expression_statement_with_expression(start, expression)?;
                     self.scratch_statements.append(statement);
@@ -1166,8 +1176,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     return false;
                 };
                 declaration
-                    .module_reference(self.ast)
-                    .is_ts_external_module_reference(self.ast)
+                    .module_reference(&self.ast)
+                    .is_ts_external_module_reference(&self.ast)
             }
             _ => false,
         }
@@ -1256,7 +1266,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             Some(decorators_start),
             decorators,
         )?;
-        let end = class.span(self.ast).end;
+        let end = class.span(&self.ast).end;
         if is_default {
             Some(self.ast.stmt_export_default_declaration(
                 Span::new(export_start, end),
@@ -1465,8 +1475,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             None
         };
         let end = alternate.map_or_else(
-            || consequent.span(self.ast).end,
-            |stmt| stmt.span(self.ast).end,
+            || consequent.span(&self.ast).end,
+            |stmt| stmt.span(&self.ast).end,
         );
         Some(
             self.ast
@@ -1490,7 +1500,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let body = self.parse_statement(StatementContext::Statement)?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(
             self.ast
                 .stmt_while_statement(Span::new(start, end), test, body),
@@ -1640,7 +1650,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let body = self.parse_statement(StatementContext::Statement)?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(
             self.ast
                 .stmt_with_statement(Span::new(start, end), object, body),
@@ -1654,7 +1664,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         {
             return self.parse_labeled_statement(expression);
         }
-        self.parse_expression_statement_with_expression(expression.span(self.ast).start, expression)
+        self.parse_expression_statement_with_expression(
+            expression.span(&self.ast).start,
+            expression,
+        )
     }
 
     fn parse_expression_statement(&mut self) -> Option<Stmt> {
@@ -1680,13 +1693,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let ExprData::IdentifierReference(identifier) = self.ast.expr_data(identifier) else {
             unreachable!("only an identifier reference can start a labeled statement")
         };
-        let identifier_span = identifier.span(self.ast);
+        let identifier_span = identifier.span(&self.ast);
         let label = self
             .ast
-            .label_identifier(identifier_span, identifier.name(self.ast));
+            .label_identifier(identifier_span, identifier.name(&self.ast));
         self.advance()?;
         let body = self.parse_statement(StatementContext::LabelledItem)?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(
             self.ast
                 .stmt_labeled_statement(Span::new(identifier_span.start, end), label, body),
@@ -1724,11 +1737,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             let first = self.parse_variable_declarator(kind, context)?;
-            let mut declaration_end = first.span(self.ast).end;
+            let mut declaration_end = first.span(&self.ast).end;
             self.scratch_a.append(first);
             while self.eat(TokenTag::Comma)? {
                 let declarator = self.parse_variable_declarator(kind, context)?;
-                declaration_end = declarator.span(self.ast).end;
+                declaration_end = declarator.span(&self.ast).end;
                 self.scratch_a.append(declarator);
             }
             let end = self.eat_semicolon(declaration_end)?;
@@ -1787,7 +1800,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) -> Option<VariableDeclarator> {
         let start = self.current_token.span.start;
         let id = self.parse_binding_pattern()?;
-        let id_span = id.span(self.ast);
+        let id_span = id.span(&self.ast);
         let is_using = matches!(kind, VariableKind::Using | VariableKind::AwaitUsing);
         let destructuring = self.is_destructuring_pattern(id);
         if is_using && destructuring {
@@ -1807,7 +1820,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         };
         if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon {
             let annotation = self.parse_type_annotation()?;
-            end = annotation.span(self.ast).end;
+            end = annotation.span(&self.ast).end;
             self.apply_type_annotation_to_pattern(id, annotation);
         }
         let init = if self.eat(TokenTag::Assign)? {
@@ -1818,7 +1831,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     ..ParseExpressionOpts::default()
                 },
             )?;
-            end = expression.span(self.ast).end;
+            end = expression.span(&self.ast).end;
             Some(expression)
         } else {
             None
@@ -1909,7 +1922,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return Some(left);
         }
         let right = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
-        let span = Span::new(left.span(self.ast).start, right.span(self.ast).end);
+        let span = Span::new(left.span(&self.ast).start, right.span(&self.ast).end);
         let decorators = TypedSubRange::empty();
         Some(
             self.ast
@@ -1919,13 +1932,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn mark_pattern_optional(&mut self, pattern: BindingPattern, end: u32) {
         match self.ast.binding_pattern_data(pattern) {
-            BindingPatternData::BindingIdentifier(node) => node.set_optional(self.ast, true),
-            BindingPatternData::ArrayPattern(node) => node.set_optional(self.ast, true),
-            BindingPatternData::ObjectPattern(node) => node.set_optional(self.ast, true),
+            BindingPatternData::BindingIdentifier(node) => node.set_optional(&mut self.ast, true),
+            BindingPatternData::ArrayPattern(node) => node.set_optional(&mut self.ast, true),
+            BindingPatternData::ObjectPattern(node) => node.set_optional(&mut self.ast, true),
             _ => unreachable!("only binding patterns can be marked optional"),
         }
-        let span = pattern.span(self.ast);
-        pattern.set_span(self.ast, Span::new(span.start, end));
+        let span = pattern.span(&self.ast);
+        pattern.set_span(&mut self.ast, Span::new(span.start, end));
     }
 
     fn apply_type_annotation_to_pattern(
@@ -1935,21 +1948,19 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) {
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::BindingIdentifier(node) => {
-                node.set_type_annotation(self.ast, Some(annotation));
+                node.set_type_annotation(&mut self.ast, Some(annotation));
             }
             BindingPatternData::ArrayPattern(node) => {
-                node.set_type_annotation(self.ast, Some(annotation));
+                node.set_type_annotation(&mut self.ast, Some(annotation));
             }
             BindingPatternData::ObjectPattern(node) => {
-                node.set_type_annotation(self.ast, Some(annotation));
+                node.set_type_annotation(&mut self.ast, Some(annotation));
             }
             _ => unreachable!("only binding patterns can have type annotations"),
         }
-        let span = pattern.span(self.ast);
-        pattern.set_span(
-            self.ast,
-            Span::new(span.start, annotation.span(self.ast).end),
-        );
+        let span = pattern.span(&self.ast);
+        let end = annotation.span(&self.ast).end;
+        pattern.set_span(&mut self.ast, Span::new(span.start, end));
     }
 
     fn parse_function(
@@ -2010,9 +2021,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 } else {
                     None
                 };
-            let params_end = params.span(self.ast).end;
+            let params_end = params.span(&self.ast).end;
             let return_type_end =
-                return_type.map_or(params_end, |return_type| return_type.span(self.ast).end);
+                return_type.map_or(params_end, |return_type| return_type.span(&self.ast).end);
             let explicit_ambient_declaration = opts.is_declare && !is_function_expression;
             if explicit_ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
                 self.report(
@@ -2032,7 +2043,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 None
             };
             let end = if let Some(body) = body {
-                body.span(self.ast).end
+                body.span(&self.ast).end
             } else {
                 self.eat_semicolon(return_type_end)?
             };
@@ -2157,8 +2168,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 if let ExprData::TsInstantiationExpression(instantiation) =
                     self.ast.expr_data(super_class)
                 {
-                    super_class = instantiation.expression(self.ast);
-                    Some(instantiation.type_arguments(self.ast))
+                    super_class = instantiation.expression(&self.ast);
+                    Some(instantiation.type_arguments(&self.ast))
                 } else if is_angle_open(self.current_token.tag) {
                     Some(self.parse_type_arguments()?)
                 } else {
@@ -2177,7 +2188,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             TypedSubRange::empty()
         };
         let body = self.parse_class_body()?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(self.ast.class(
             Span::new(start, end),
             class_type,
@@ -2341,7 +2352,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             if definite {
                 self.report(
-                    key.span(self.ast),
+                    key.span(&self.ast),
                     "Method cannot have a definite assignment assertion",
                     ReportOptions {
                         help: Some(Cow::Borrowed(
@@ -2460,9 +2471,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !decorators.is_empty() {
             self.report(
                 decorators
-                    .get_node(self.ast, 0)
+                    .get_node(&self.ast, 0)
                     .expect("non-empty decorator range contains its first node")
-                    .span(self.ast),
+                    .span(&self.ast),
                 "Decorators cannot be applied to static blocks",
                 ReportOptions::default(),
             );
@@ -2513,10 +2524,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if matches!(
             self.ast.property_key_data(key),
             PropertyKeyData::PrivateIdentifier(private)
-                if self.ast.get_utf8(private.name(self.ast)) == "constructor"
+                if self.ast.get_utf8(private.name(&self.ast)) == "constructor"
         ) {
             self.report(
-                key.span(self.ast),
+                key.span(&self.ast),
                 "Classes can't have a private field named '#constructor'",
                 ReportOptions::default(),
             );
@@ -2549,7 +2560,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn validate_method_modifiers(&mut self, key: PropertyKey, modifiers: ClassElementModifiers) {
-        let span = key.span(self.ast);
+        let span = key.span(&self.ast);
         if modifiers.kind == MethodDefinitionKind::Constructor {
             if modifiers.is_async {
                 self.report(
@@ -2656,7 +2667,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 };
             if self.current_token.tag == TokenTag::LeftBrace {
                 let body = self.parse_function_body()?;
-                let end = body.span(self.ast).end;
+                let end = body.span(&self.ast).end;
                 Some((params, type_parameters, return_type, Some(body), end))
             } else if self.lang.is_typescript() {
                 let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
@@ -2827,7 +2838,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let expression = self.parse_left_hand_side_expression(LhsContext::Decorator)?;
         Some(
             self.ast
-                .decorator(Span::new(start, expression.span(self.ast).end), expression),
+                .decorator(Span::new(start, expression.span(&self.ast).end), expression),
         )
     }
 
@@ -2874,15 +2885,15 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
         let matches = match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(identifier) => {
-                self.ast.get_utf8(identifier.name(self.ast)) == expected
+                self.ast.get_utf8(identifier.name(&self.ast)) == expected
             }
             PropertyKeyData::StringLiteral(string) => {
-                self.ast.get_wtf8(string.value(self.ast)) == expected
+                self.ast.get_wtf8(string.value(&self.ast)) == expected
             }
             _ => false,
         };
         if matches {
-            Some(key.span(self.ast))
+            Some(key.span(&self.ast))
         } else {
             None
         }
@@ -2897,8 +2908,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let Some((expected, msg, help)) = kind.accessor_arity() else {
             return true;
         };
-        let items = params.items(self.ast);
-        let has_this = items.get_node(self.ast, 0).is_some_and(|item| {
+        let items = params.items(&self.ast);
+        let has_this = items.get_node(&self.ast, 0).is_some_and(|item| {
             let FormalParameterItemData::FormalParameter(parameter) =
                 self.ast.formal_parameter_item_data(item)
             else {
@@ -2906,17 +2917,17 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
             matches!(
                 self.ast
-                    .formal_parameter_pattern_data(parameter.pattern(self.ast)),
+                    .formal_parameter_pattern_data(parameter.pattern(&self.ast)),
                 FormalParameterPatternData::TsThisParameter(_)
             )
         });
         let count = items.len() - usize::from(has_this);
-        let has_rest = params.rest(self.ast).is_some();
+        let has_rest = params.rest(&self.ast).is_some();
         if count == expected && !has_rest {
             return true;
         }
         self.report(
-            params.span(self.ast),
+            params.span(&self.ast),
             msg,
             ReportOptions {
                 help: Some(Cow::Borrowed(help)),
@@ -3005,7 +3016,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) -> Option<FormalParameterItem> {
         if self.lang.is_typescript() && self.current_token.tag == TokenTag::This {
             let this_parameter = self.parse_this_parameter()?;
-            let span = this_parameter.span(self.ast);
+            let span = this_parameter.span(&self.ast);
             let parameter = self.ast.formal_parameter(
                 span,
                 FormalParameterPattern::TsThisParameter(this_parameter),
@@ -3027,7 +3038,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.apply_type_annotation_to_pattern(pattern, annotation);
         }
         pattern = self.parse_assignment_pattern(pattern)?;
-        let span = pattern.span(self.ast);
+        let span = pattern.span(&self.ast);
         if parameter_property.present {
             let parameter_property = self.ast.ts_parameter_property(
                 Span::new(start, span.end),
@@ -3056,7 +3067,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             None
         };
         let end = type_annotation.map_or(self.lexer.state.prev_token_end, |annotation| {
-            annotation.span(self.ast).end
+            annotation.span(&self.ast).end
         });
         Some(
             self.ast
@@ -3078,8 +3089,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             } else {
                 None
             };
-        let end = type_annotation.map_or(argument.span(self.ast).end, |annotation| {
-            annotation.span(self.ast).end
+        let end = type_annotation.map_or(argument.span(&self.ast).end, |annotation| {
+            annotation.span(&self.ast).end
         });
         Some(self.ast.binding_rest_element(
             Span::new(start, end),
@@ -3130,16 +3141,20 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::BindingIdentifier(node) => {
-                node.set_decorators(self.ast, decorators)
+                node.set_decorators(&mut self.ast, decorators)
             }
             BindingPatternData::AssignmentPattern(node) => {
-                node.set_decorators(self.ast, decorators)
+                node.set_decorators(&mut self.ast, decorators)
             }
             BindingPatternData::BindingRestElement(node) => {
-                node.set_decorators(self.ast, decorators)
+                node.set_decorators(&mut self.ast, decorators)
             }
-            BindingPatternData::ArrayPattern(node) => node.set_decorators(self.ast, decorators),
-            BindingPatternData::ObjectPattern(node) => node.set_decorators(self.ast, decorators),
+            BindingPatternData::ArrayPattern(node) => {
+                node.set_decorators(&mut self.ast, decorators)
+            }
+            BindingPatternData::ObjectPattern(node) => {
+                node.set_decorators(&mut self.ast, decorators)
+            }
             BindingPatternData::SimpleAssignmentTarget(_) => {}
         }
     }
@@ -3331,7 +3346,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let local = self.parse_imported_binding()?;
         Some(
             self.ast
-                .import_default_specifier(Span::new(start, local.span(self.ast).end), local),
+                .import_default_specifier(Span::new(start, local.span(&self.ast).end), local),
         )
     }
 
@@ -3357,7 +3372,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let local = self.parse_imported_binding()?;
         Some(
             self.ast
-                .import_namespace_specifier(Span::new(start, local.span(self.ast).end), local),
+                .import_namespace_specifier(Span::new(start, local.span(&self.ast).end), local),
         )
     }
 
@@ -3399,8 +3414,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let parts = self.parse_specifier_parts()?;
         let imported = parts.property_name.unwrap_or(parts.name);
         let local_name = parts.name;
-        let local_span = local_name.span(self.ast);
-        let Some(identifier) = local_name.as_identifier_name(self.ast) else {
+        let local_span = local_name.span(&self.ast);
+        let Some(identifier) = local_name.as_identifier_name(&self.ast) else {
             if parts.property_name.is_none() {
                 self.report(
                     local_span,
@@ -3421,7 +3436,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             return None;
         };
-        let name = identifier.name(self.ast);
+        let name = identifier.name(&self.ast);
         self.validate_identifier(parts.name_token, "an imported binding");
         let decorators = TypedSubRange::empty();
         let local = self
@@ -3446,7 +3461,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         };
         let tail = if self.lang.is_typescript()
             && first_token.tag == TokenTag::Type
-            && first.is_identifier_name(self.ast)
+            && first.is_identifier_name(&self.ast)
         {
             self.parse_type_specifier_tail(&mut parts, first)?
         } else {
@@ -3571,7 +3586,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
 
         let mut left = TsQualifiedNameLeft::IdentifierReference(head);
-        let start = head.span(self.ast).start;
+        let start = head.span(&self.ast).start;
         loop {
             self.advance()?;
             let right_token = self.current_token;
@@ -3699,7 +3714,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_export_default_declaration(&mut self, start: u32) -> Option<Stmt> {
         self.advance()?;
         let part = self.parse_export_default_part()?;
-        let declaration_end = part.declaration.span(self.ast).end;
+        let declaration_end = part.declaration.span(&self.ast).end;
         let end = if part.needs_semi {
             self.eat_semicolon(declaration_end)?
         } else {
@@ -3873,7 +3888,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 StmtData::Declaration(declaration) => declaration,
                 _ => {
                     self.report(
-                        statement.span(self.ast),
+                        statement.span(&self.ast),
                         "expected a TypeScript declaration after 'export'",
                         ReportOptions::default(),
                     );
@@ -3881,7 +3896,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 }
             };
             let export_kind = self.export_kind_for_declaration(declaration);
-            let end = declaration.span(self.ast).end;
+            let end = declaration.span(&self.ast).end;
             let specifiers = TypedSubRange::empty();
             let attributes = TypedSubRange::empty();
             return Some(self.ast.stmt_export_named_declaration(
@@ -3897,7 +3912,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let statement = self.parse_import_declaration()?;
             let StmtData::Declaration(declaration) = self.ast.stmt_data(statement) else {
                 self.report(
-                    statement.span(self.ast),
+                    statement.span(&self.ast),
                     "expected an import-equals declaration after 'export'",
                     ReportOptions::default(),
                 );
@@ -3907,7 +3922,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 unreachable!()
             };
             return Some(self.ast.stmt_export_named_declaration(
-                Span::new(start, declaration.span(self.ast).end),
+                Span::new(start, declaration.span(&self.ast).end),
                 Some(declaration),
                 TypedSubRange::empty(),
                 None,
@@ -3932,7 +3947,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 unreachable!()
             };
             return Some(self.ast.stmt_export_named_declaration(
-                Span::new(start, declaration.span(self.ast).end),
+                Span::new(start, declaration.span(&self.ast).end),
                 Some(declaration),
                 TypedSubRange::empty(),
                 None,
@@ -3946,7 +3961,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ) {
             let declaration =
                 self.parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)?;
-            let end = declaration.span(self.ast).end;
+            let end = declaration.span(&self.ast).end;
             let specifiers = TypedSubRange::empty();
             let attributes = TypedSubRange::empty();
             return Some(self.ast.stmt_export_named_declaration(
@@ -3989,7 +4004,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 )?
                 .into_declaration()
             };
-            let end = declaration.span(self.ast).end;
+            let end = declaration.span(&self.ast).end;
             let specifiers = TypedSubRange::empty();
             let attributes = TypedSubRange::empty();
             return Some(self.ast.stmt_export_named_declaration(
@@ -4019,20 +4034,22 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 ImportOrExportKind::Type
             }
             DeclData::TsEnumDeclaration(node) => {
-                import_or_export_kind_for_declare(node.declare(self.ast))
+                import_or_export_kind_for_declare(node.declare(&self.ast))
             }
             DeclData::TsModuleDeclaration(node) => {
-                import_or_export_kind_for_declare(node.declare(self.ast))
+                import_or_export_kind_for_declare(node.declare(&self.ast))
             }
             DeclData::TsGlobalDeclaration(node) => {
-                import_or_export_kind_for_declare(node.declare(self.ast))
+                import_or_export_kind_for_declare(node.declare(&self.ast))
             }
             DeclData::VariableDeclaration(node) => {
-                import_or_export_kind_for_declare(node.declare(self.ast))
+                import_or_export_kind_for_declare(node.declare(&self.ast))
             }
             DeclData::Function(_) => ImportOrExportKind::Value,
-            DeclData::TsFunction(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
-            DeclData::Class(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
+            DeclData::TsFunction(node) => {
+                import_or_export_kind_for_declare(node.declare(&self.ast))
+            }
+            DeclData::Class(node) => import_or_export_kind_for_declare(node.declare(&self.ast)),
             DeclData::TsImportEqualsDeclaration(_) => ImportOrExportKind::Value,
         }
     }
@@ -4105,7 +4122,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let local = parts.property_name.unwrap_or(parts.name);
         let exported = parts.name;
         Some(self.ast.export_specifier(
-            Span::new(start, exported.span(self.ast).end),
+            Span::new(start, exported.span(&self.ast).end),
             local,
             exported,
             parts.kind,
@@ -4116,12 +4133,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         for (index, local_tag) in result.local_tags.iter().copied().enumerate() {
             let specifier = result
                 .specifiers
-                .get_node(self.ast, index)
+                .get_node(&self.ast, index)
                 .expect("export specifier range contains its nodes");
-            let local = specifier.local(self.ast);
-            if local.is_string_literal(self.ast) {
+            let local = specifier.local(&self.ast);
+            if local.is_string_literal(&self.ast) {
                 self.report(
-                    local.span(self.ast),
+                    local.span(&self.ast),
                     "A string literal cannot be used as an exported binding without 'from'",
                     ReportOptions {
                         help: Some(Cow::Borrowed(
@@ -4134,7 +4151,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             if local_tag.is_reserved() {
                 self.report(
-                    local.span(self.ast),
+                    local.span(&self.ast),
                     "A reserved word cannot be used as an exported binding without 'from'",
                     ReportOptions::default(),
                 );
@@ -4208,7 +4225,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let value = self.parse_string_literal()?;
         Some(
             self.ast
-                .import_attribute(Span::new(start, value.span(self.ast).end), key, value),
+                .import_attribute(Span::new(start, value.span(&self.ast).end), key, value),
         )
     }
 
@@ -4485,7 +4502,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 HeritageClause::Class(_) => unreachable!(),
             };
         let body = self.parse_interface_body()?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         let declaration = self.ast.ts_interface_declaration(
             Span::new(start, end),
             id,
@@ -4539,10 +4556,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-        let end = type_arguments.map_or(expression.span(self.ast).end, |arguments| {
-            arguments.span(self.ast).end
+        let end = type_arguments.map_or(expression.span(&self.ast).end, |arguments| {
+            arguments.span(&self.ast).end
         });
-        let span = Span::new(expression.span(self.ast).start, end);
+        let span = Span::new(expression.span(&self.ast).start, end);
         Some(match kind {
             HeritageKind::Interface => HeritageEntry::Interface(self.ast.ts_interface_heritage(
                 span,
@@ -4586,7 +4603,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         let id = self.parse_binding_identifier()?;
         let body = self.parse_enum_body()?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         let declaration =
             self.ast
                 .ts_enum_declaration(Span::new(start, end), id, body, is_const, declare);
@@ -4635,7 +4652,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn parse_enum_member(&mut self) -> Option<TsEnumMember> {
         let (id, computed) = self.parse_enum_member_name()?;
-        let start = id.span(self.ast).start;
+        let start = id.span(&self.ast).start;
         let initializer = if self.eat(TokenTag::Assign)? {
             Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
         } else {
@@ -4646,10 +4663,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 if computed {
                     self.lexer.state.prev_token_end
                 } else {
-                    id.span(self.ast).end
+                    id.span(&self.ast).end
                 }
             },
-            |expression| expression.span(self.ast).end,
+            |expression| expression.span(&self.ast).end,
         );
         Some(
             self.ast
@@ -4722,7 +4739,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.ts_context.ambient = outer_ambient;
         let body = body?;
         let end = if let Some(body) = body {
-            body.span(self.ast).end
+            body.span(&self.ast).end
         } else {
             self.eat_semicolon(self.lexer.state.prev_token_end)?
         };
@@ -4743,7 +4760,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let body = self.parse_module_block();
         self.ts_context.ambient = outer_ambient;
         let body = body?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         let declaration = self
             .ast
             .ts_global_declaration(Span::new(start, end), id, body, declare);
@@ -4755,12 +4772,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if self.current_token.tag != TokenTag::Dot {
             return Some(TsModuleName::BindingIdentifier(head));
         }
-        let start = head.span(self.ast).start;
+        let start = head.span(&self.ast).start;
         let left = TsQualifiedNameLeft::BindingIdentifier(head);
         let qualified = self.extend_qualified_name(left, start)?;
         Some(TsModuleName::TsQualifiedName(
             qualified
-                .as_ts_qualified_name(self.ast)
+                .as_ts_qualified_name(&self.ast)
                 .expect("a dotted module name is qualified"),
         ))
     }
@@ -4818,7 +4835,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let type_annotation = self.parse_type()?;
-        let end = type_annotation.span(self.ast).end;
+        let end = type_annotation.span(&self.ast).end;
         Some(
             self.ast
                 .ts_type_annotation(Span::new(start, end), type_annotation),
@@ -4830,7 +4847,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let type_annotation = self.parse_type_or_type_predicate()?;
-        let end = type_annotation.span(self.ast).end;
+        let end = type_annotation.span(&self.ast).end;
         Some(
             self.ast
                 .ts_type_annotation(Span::new(start, end), type_annotation),
@@ -4842,7 +4859,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return self.parse_type();
         }
         let parameter_name = TsTypePredicateName::IdentifierName(self.parse_identifier_name()?);
-        self.finish_type_predicate(parameter_name.span(self.ast).start, parameter_name, false)
+        self.finish_type_predicate(parameter_name.span(&self.ast).start, parameter_name, false)
     }
 
     fn parse_this_type_or_predicate(&mut self) -> Option<TsType> {
@@ -4884,13 +4901,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         parameter_name: TsTypePredicateName,
         asserts: bool,
     ) -> Option<TsType> {
-        let mut end = parameter_name.span(self.ast).end;
+        let mut end = parameter_name.span(&self.ast).end;
         let type_annotation =
             if self.current_token.tag == TokenTag::Is && !self.current_token.is_escaped() {
                 self.advance()?;
                 let inner = self.parse_type()?;
-                end = inner.span(self.ast).end;
-                Some(self.ast.ts_type_annotation(inner.span(self.ast), inner))
+                end = inner.span(&self.ast).end;
+                Some(self.ast.ts_type_annotation(inner.span(&self.ast), inner))
             } else {
                 None
             };
@@ -4993,8 +5010,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let false_type = self.parse_type()?;
         Some(TsType::TsConditionalType(self.ast.ts_conditional_type(
             Span::new(
-                check_type.span(self.ast).start,
-                false_type.span(self.ast).end,
+                check_type.span(&self.ast).start,
+                false_type.span(&self.ast).end,
             ),
             check_type,
             extends_type,
@@ -5038,8 +5055,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 self.scratch_a.append(last);
             }
             let span = Span::new(
-                leading_start.unwrap_or(first.span(self.ast).start),
-                last.span(self.ast).end,
+                leading_start.unwrap_or(first.span(&self.ast).start),
+                last.span(&self.ast).end,
             );
             let types = self.add_extra_from_scratch_a(checkpoint);
             Some(match kind {
@@ -5082,7 +5099,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_array_or_indexed_access_type(&mut self, object_type: TsType) -> Option<TsType> {
-        let start = object_type.span(self.ast).start;
+        let start = object_type.span(&self.ast).start;
         self.advance()?;
         if self.current_token.tag == TokenTag::RightBracket {
             let end = self.current_token.span.end;
@@ -5191,7 +5208,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_jsdoc_postfix(&mut self, inner: TsType, kind: JsDocKind) -> Option<TsType> {
-        let span = Span::new(inner.span(self.ast).start, self.current_token.span.end);
+        let span = Span::new(inner.span(&self.ast).start, self.current_token.span.end);
         self.advance()?;
         Some(self.jsdoc_node_data(inner, kind, true, span))
     }
@@ -5255,21 +5272,21 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             if let TsTupleElementData::TsNamedTupleMember(named) =
                 self.ast.ts_tuple_element_data(inner)
             {
-                let element_type = named.element_type(self.ast);
+                let element_type = named.element_type(&self.ast);
                 let rest = self.ast.ts_rest_type(
-                    Span::new(start, element_type.span(self.ast).end),
+                    Span::new(start, element_type.span(&self.ast).end),
                     element_type,
                 );
                 let named = self.ast.ts_named_tuple_member(
-                    Span::new(start, named.span(self.ast).end),
-                    named.label(self.ast),
+                    Span::new(start, named.span(&self.ast).end),
+                    named.label(&self.ast),
                     TsType::TsRestType(rest),
-                    named.optional(self.ast),
+                    named.optional(&self.ast),
                 );
                 return Some(TsTupleElement::TsNamedTupleMember(named));
             }
-            let inner_type = tuple_element_as_type(inner, self.ast);
-            let span = Span::new(start, inner_type.span(self.ast).end);
+            let inner_type = tuple_element_as_type(inner, &self.ast);
+            let span = Span::new(start, inner_type.span(&self.ast).end);
             return Some(TsTupleElement::TsType(TsType::TsRestType(
                 self.ast.ts_rest_type(span, inner_type),
             )));
@@ -5283,12 +5300,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let type_annotation = self.parse_type()?;
         if let TsTypeData::TsJsDocNullableType(nullable) = self.ast.ts_type_data(type_annotation)
-            && nullable.postfix(self.ast)
+            && nullable.postfix(&self.ast)
         {
             return Some(TsTupleElement::TsType(TsType::TsOptionalType(
                 self.ast.ts_optional_type(
-                    type_annotation.span(self.ast),
-                    nullable.type_annotation(self.ast),
+                    type_annotation.span(&self.ast),
+                    nullable.type_annotation(&self.ast),
                 ),
             )));
         }
@@ -5327,7 +5344,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let element_type = self.parse_type()?;
-        let span = Span::new(start, element_type.span(self.ast).end);
+        let span = Span::new(start, element_type.span(&self.ast).end);
         Some(TsTupleElement::TsNamedTupleMember(
             self.ast
                 .ts_named_tuple_member(span, label, element_type, optional),
@@ -5344,7 +5361,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         };
         self.advance()?;
         let type_annotation = self.parse_postfix_type()?;
-        let span = Span::new(token.span.start, type_annotation.span(self.ast).end);
+        let span = Span::new(token.span.start, type_annotation.span(&self.ast).end);
         Some(TsType::TsTypeOperator(self.ast.ts_type_operator(
             span,
             operator,
@@ -5359,7 +5376,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let name_start = self.current_token.span.start;
         let name = self.parse_binding_identifier()?;
         let constraint = self.parse_infer_constraint()?;
-        let end = constraint.map_or(name.span(self.ast).end, |ty| ty.span(self.ast).end);
+        let end = constraint.map_or(name.span(&self.ast).end, |ty| ty.span(&self.ast).end);
         let parameter = self.ast.ts_type_parameter(
             Span::new(name_start, end),
             name,
@@ -5498,7 +5515,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let arrow_start = self.current_token.span.start;
         self.advance()?;
         let return_type_inner = self.parse_type_or_type_predicate()?;
-        let end = return_type_inner.span(self.ast).end;
+        let end = return_type_inner.span(&self.ast).end;
         let return_type = self
             .ast
             .ts_type_annotation(Span::new(arrow_start, end), return_type_inner);
@@ -5543,13 +5560,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             TsTypeQueryExprName::TsTypeName(self.parse_entity_name()?)
         };
-        let type_arguments = if expr_name.is_ts_import_type(self.ast) {
+        let type_arguments = if expr_name.is_ts_import_type(&self.ast) {
             None
         } else {
             self.parse_type_arguments_after_entity_name()?
         };
-        let end =
-            type_arguments.map_or(expr_name.span(self.ast).end, |args| args.span(self.ast).end);
+        let end = type_arguments.map_or(expr_name.span(&self.ast).end, |args| {
+            args.span(&self.ast).end
+        });
         Some(TsType::TsTypeQuery(self.ast.ts_type_query(
             Span::new(start, end),
             expr_name,
@@ -5590,10 +5608,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let end = type_arguments.map_or_else(
             || {
                 qualifier.map_or(self.lexer.state.prev_token_end, |name| {
-                    name.span(self.ast).end
+                    name.span(&self.ast).end
                 })
             },
-            |args| args.span(self.ast).end,
+            |args| args.span(&self.ast).end,
         );
         Some(TsType::TsImportType(self.ast.ts_import_type(
             Span::new(start, end),
@@ -5622,9 +5640,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return Some(TsImportTypeQualifier::IdentifierName(identifier));
         }
         let left = TsQualifiedNameLeft::IdentifierName(identifier);
-        let qualified = self.extend_qualified_name(left, identifier.span(self.ast).start)?;
+        let qualified = self.extend_qualified_name(left, identifier.span(&self.ast).start)?;
         let qualified = qualified
-            .as_ts_qualified_name(self.ast)
+            .as_ts_qualified_name(&self.ast)
             .expect("qualified-name parsing produces a qualified name");
         Some(TsImportTypeQualifier::TsQualifiedName(qualified))
     }
@@ -5675,7 +5693,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ));
         }
         let type_annotation = self.parse_type()?;
-        let span = Span::new(token.span.start, type_annotation.span(self.ast).end);
+        let span = Span::new(token.span.start, type_annotation.span(&self.ast).end);
         Some(self.jsdoc_node_data(type_annotation, JsDocKind::Nullable, false, span))
     }
 
@@ -5684,7 +5702,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let type_annotation = self.parse_primary_type()?;
-        let span = Span::new(start, type_annotation.span(self.ast).end);
+        let span = Span::new(start, type_annotation.span(&self.ast).end);
         Some(self.jsdoc_node_data(type_annotation, JsDocKind::NonNullable, false, span))
     }
 
@@ -5736,7 +5754,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         };
         Some(TsType::TsLiteralType(self.ast.ts_literal_type(
-            Span::new(start, literal.span(self.ast).end),
+            Span::new(start, literal.span(&self.ast).end),
             literal,
         )))
     }
@@ -5755,7 +5773,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             UnaryOperator::Positive
         };
         Some(TsLiteral::UnaryExpression(self.ast.unary_expression(
-            Span::new(sign_token.span.start, expression.span(self.ast).end),
+            Span::new(sign_token.span.start, expression.span(&self.ast).end),
             expression,
             operator,
         )))
@@ -6019,9 +6037,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn extend_span_to<N: GetSpan + SetSpan>(&mut self, node: N, end: u32) {
-        let span = node.span(self.ast);
+        let span = node.span(&self.ast);
         if end > span.end {
-            node.set_span(self.ast, Span::new(span.start, end));
+            node.set_span(&mut self.ast, Span::new(span.start, end));
         }
     }
 
@@ -6070,7 +6088,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-        let end = return_type.map_or(self.lexer.state.prev_token_end, |ty| ty.span(self.ast).end);
+        let end = return_type.map_or(self.lexer.state.prev_token_end, |ty| ty.span(&self.ast).end);
         Some(if is_construct {
             self.ast.ts_type_element_ts_construct_signature_declaration(
                 Span::new(start, end),
@@ -6145,7 +6163,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let type_annotation = self.parse_type_annotation()?;
-        let end = type_annotation.span(self.ast).end;
+        let end = type_annotation.span(&self.ast).end;
         Some(self.ast.ts_type_element_ts_index_signature(
             Span::new(start, end),
             parameters,
@@ -6171,11 +6189,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let annotation = self.parse_type_annotation()?;
-        name.set_type_annotation(self.ast, Some(annotation));
-        name.set_span(
-            self.ast,
-            Span::new(name.span(self.ast).start, annotation.span(self.ast).end),
-        );
+        name.set_type_annotation(&mut self.ast, Some(annotation));
+        let span = Span::new(name.span(&self.ast).start, annotation.span(&self.ast).end);
+        name.set_span(&mut self.ast, span);
         Some(name)
     }
 
@@ -6198,7 +6214,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let computed = self.current_token.tag == TokenTag::LeftBracket;
         let key = self.parse_property_key(false)?;
-        let mut end = key.span(self.ast).end;
+        let mut end = key.span(&self.ast).end;
         let optional = if self.current_token.tag == TokenTag::Question {
             end = self.current_token.span.end;
             self.advance()?;
@@ -6216,7 +6232,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let type_annotation = if self.current_token.tag == TokenTag::Colon {
             let annotation = self.parse_type_annotation()?;
-            end = annotation.span(self.ast).end;
+            end = annotation.span(&self.ast).end;
             Some(annotation)
         } else {
             None
@@ -6249,7 +6265,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let annotation = self.parse_return_type_annotation()?;
             if kind == TsMethodSignatureKind::Set {
                 self.report(
-                    annotation.span(self.ast),
+                    annotation.span(&self.ast),
                     "A 'set' accessor cannot have a return type annotation",
                     ReportOptions::default(),
                 );
@@ -6259,7 +6275,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-        let end = return_type.map_or(self.lexer.state.prev_token_end, |ty| ty.span(self.ast).end);
+        let end = return_type.map_or(self.lexer.state.prev_token_end, |ty| ty.span(&self.ast).end);
         Some(self.ast.ts_type_element_ts_method_signature(
             Span::new(start, end),
             key,
@@ -6274,10 +6290,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn parse_type_reference(&mut self) -> Option<TsType> {
         let type_name = self.parse_entity_name()?;
-        let start = type_name.span(self.ast).start;
+        let start = type_name.span(&self.ast).start;
         let type_arguments = self.parse_type_arguments_after_entity_name()?;
-        let end =
-            type_arguments.map_or(type_name.span(self.ast).end, |args| args.span(self.ast).end);
+        let end = type_arguments.map_or(type_name.span(&self.ast).end, |args| {
+            args.span(&self.ast).end
+        });
         Some(
             self.ast
                 .ts_type_ts_type_reference(Span::new(start, end), type_name, type_arguments),
@@ -6309,7 +6326,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_qualified_segment(&mut self, left: TsTypeName) -> Option<TsTypeName> {
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         self.advance()?;
         let token = self.current_token;
         if !token.tag.is_identifier_like() {
@@ -6472,8 +6489,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             None
         };
         let end = default.map_or_else(
-            || constraint.map_or(name.span(self.ast).end, |ty| ty.span(self.ast).end),
-            |ty| ty.span(self.ast).end,
+            || constraint.map_or(name.span(&self.ast).end, |ty| ty.span(&self.ast).end),
+            |ty| ty.span(&self.ast).end,
         );
         Some(self.ast.ts_type_parameter(
             Span::new(start, end),
@@ -6652,11 +6669,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let checkpoint = self.scratch_a.begin();
         let declarators_result = (|| {
             let first = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
-            let mut declaration_end = first.span(self.ast).end;
+            let mut declaration_end = first.span(&self.ast).end;
             self.scratch_a.append(first);
             while self.eat(TokenTag::Comma)? {
                 let declarator = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
-                declaration_end = declarator.span(self.ast).end;
+                declaration_end = declarator.span(&self.ast).end;
                 self.scratch_a.append(declarator);
             }
             let declarators = self.add_extra_from_scratch_a(checkpoint);
@@ -6676,7 +6693,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             TokenTag::In => {
                 if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
                     self.report(
-                        declaration.span(self.ast),
+                        declaration.span(&self.ast),
                         Cow::Owned(format!(
                             "The left-hand side of a for...in statement cannot be an {} declaration.",
                             kind.as_str()
@@ -6747,7 +6764,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             if !is_for_await && self.is_async_identifier(expression) {
                 self.report(
-                    expression.span(self.ast),
+                    expression.span(&self.ast),
                     "'for (async of ...)' is not allowed, it is ambiguous with 'for await'",
                     ReportOptions::default(),
                 );
@@ -6814,7 +6831,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let body = self.parse_statement(StatementContext::Statement)?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(
             self.ast
                 .stmt_for_statement(Span::new(start, end), init, test, update, body),
@@ -6849,7 +6866,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let body = self.parse_statement(StatementContext::Statement)?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(
             self.ast
                 .stmt_for_in_statement(Span::new(start, end), left, right, body),
@@ -6873,7 +6890,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let body = self.parse_statement(StatementContext::Statement)?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(
             self.ast
                 .stmt_for_of_statement(Span::new(start, end), left, right, body, is_for_await),
@@ -6884,25 +6901,25 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         matches!(
             self.ast.expr_data(expression),
             ExprData::IdentifierReference(identifier)
-                if self.ast.get_utf8(identifier.name(self.ast)) == "async"
-                    && self.span_text(identifier.span(self.ast)) == "async"
+                if self.ast.get_utf8(identifier.name(&self.ast)) == "async"
+                    && self.span_text(identifier.span(&self.ast)) == "async"
         )
     }
 
     fn validate_regular_for_declarators(&mut self, declaration: VariableDeclaration) -> Option<()> {
-        let kind = declaration.kind(self.ast);
-        for index in 0..declaration.declarators(self.ast).len() {
+        let kind = declaration.kind(&self.ast);
+        for index in 0..declaration.declarators(&self.ast).len() {
             let declarator = declaration
-                .declarators(self.ast)
-                .get_node(self.ast, index)
+                .declarators(&self.ast)
+                .get_node(&self.ast, index)
                 .expect("variable declarator range contains its nodes");
-            if declarator.init(self.ast).is_some() {
+            if declarator.init(&self.ast).is_some() {
                 continue;
             }
-            let id = declarator.id(self.ast);
+            let id = declarator.id(&self.ast);
             if self.ast.node_kind(id.node_id()) != NodeKind::BindingIdentifier {
                 self.report(
-                    id.span(self.ast),
+                    id.span(&self.ast),
                     "Destructuring declaration in for loop initializer must be initialized",
                     ReportOptions::default(),
                 );
@@ -6910,7 +6927,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             if kind == VariableKind::Const {
                 self.report(
-                    id.span(self.ast),
+                    id.span(&self.ast),
                     "'const' declarations in for loop initializer must be initialized",
                     ReportOptions::default(),
                 );
@@ -6991,9 +7008,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             colon_end
         } else {
             consequent
-                .get_node(self.ast, consequent.len() - 1)
+                .get_node(&self.ast, consequent.len() - 1)
                 .expect("non-empty case consequent contains its last statement")
-                .span(self.ast)
+                .span(&self.ast)
                 .end
         };
         Some(
@@ -7014,12 +7031,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             if let StmtData::Declaration(declaration) = self.ast.stmt_data(statement)
                 && let DeclData::VariableDeclaration(declaration) = self.ast.decl_data(declaration)
                 && matches!(
-                    declaration.kind(self.ast),
+                    declaration.kind(&self.ast),
                     VariableKind::Using | VariableKind::AwaitUsing
                 )
             {
                 self.report(
-                    statement.span(self.ast),
+                    statement.span(&self.ast),
                     "Using declaration cannot appear in the bare case statement.",
                     ReportOptions {
                         help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
@@ -7061,8 +7078,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
         }
         let end = finalizer.map_or_else(
-            || handler.map_or(block.span(self.ast).end, |node| node.span(self.ast).end),
-            |node| node.span(self.ast).end,
+            || handler.map_or(block.span(&self.ast).end, |node| node.span(&self.ast).end),
+            |node| node.span(&self.ast).end,
         );
         Some(
             self.ast
@@ -7094,7 +7111,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let body = self.parse_block_statement()?;
         Some(
             self.ast
-                .catch_clause(Span::new(start, body.span(self.ast).end), param, body),
+                .catch_clause(Span::new(start, body.span(&self.ast).end), param, body),
         )
     }
 
@@ -7107,7 +7124,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let token = self.current_token;
             if is_ts
                 && is_angle_open(token.tag)
-                && max_left_precedence(left, self.ast) >= Precedence::Call
+                && max_left_precedence(left, &self.ast) >= Precedence::Call
                 && let Some(expression) = self.parse_type_argumented_call_or_instantiation(left)?
             {
                 left = expression;
@@ -7117,7 +7134,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             if precedence < minimum || precedence == Precedence::Lowest {
                 break;
             }
-            if precedence > max_left_precedence(left, self.ast) {
+            if precedence > max_left_precedence(left, &self.ast) {
                 break;
             }
             if opts.respect_in_parameter && token.tag == TokenTag::In && !self.context.r#in {
@@ -7596,14 +7613,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> Option<Expr> {
-        let start = tag.span(self.ast).start;
+        let start = tag.span(&self.ast).start;
         let quasi = if self.current_token.tag == TokenTag::NoSubstitutionTemplate {
             self.parse_no_substitution_template(true)?
         } else {
             self.parse_template_literal(true)?
         };
         Some(self.ast.expr_tagged_template_expression(
-            Span::new(start, quasi.span(self.ast).end),
+            Span::new(start, quasi.span(&self.ast).end),
             tag,
             quasi,
             type_arguments,
@@ -7693,7 +7710,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         },
                     )?;
                     Argument::SpreadElement(self.ast.spread_element(
-                        Span::new(spread_start, argument.span(self.ast).end),
+                        Span::new(spread_start, argument.span(&self.ast).end),
                         argument,
                     ))
                 } else {
@@ -7705,7 +7722,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         },
                     )?)
                 };
-                end = element.span(self.ast).end;
+                end = element.span(&self.ast).end;
                 self.scratch_cover.append(element);
                 if self.eat(TokenTag::Comma)? {
                     has_trailing_comma = self.current_token.tag == TokenTag::RightParen;
@@ -7773,7 +7790,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             .map(|index| {
                 cover
                     .elements
-                    .get_node(self.ast, index)
+                    .get_node(&self.ast, index)
                     .expect("parenthesized cover contains its arguments")
             })
             .collect::<Vec<_>>();
@@ -7787,7 +7804,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     }
                     ArgumentData::SpreadElement(spread) => {
                         self.report(
-                            spread.span(self.ast),
+                            spread.span(&self.ast),
                             "Rest element is not allowed in parenthesized expression",
                             ReportOptions::default(),
                         );
@@ -7811,7 +7828,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 };
                 let expressions = self.add_extra_from_scratch_cover(checkpoint);
                 self.ast.expr_sequence_expression(
-                    Span::new(first.span(self.ast).start, last.span(self.ast).end),
+                    Span::new(first.span(&self.ast).start, last.span(&self.ast).end),
                     expressions,
                 )
             })
@@ -7847,7 +7864,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             .map(|index| {
                 cover
                     .elements
-                    .get_node(self.ast, index)
+                    .get_node(&self.ast, index)
                     .expect("parenthesized cover contains its arguments")
             })
             .collect::<Vec<_>>();
@@ -7859,7 +7876,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     ArgumentData::Expr(expression) => {
                         if rest.is_some() {
                             self.report(
-                                expression.span(self.ast),
+                                expression.span(&self.ast),
                                 "Rest parameter must be last formal parameter",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -7876,7 +7893,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     ArgumentData::SpreadElement(spread) => {
                         if index + 1 != arguments.len() {
                             self.report(
-                                spread.span(self.ast),
+                                spread.span(&self.ast),
                                 "Rest parameter must be last formal parameter",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -7889,7 +7906,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         }
                         if cover.has_trailing_comma {
                             self.report(
-                                spread.span(self.ast),
+                                spread.span(&self.ast),
                                 "Rest parameter must be last formal parameter",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -7901,10 +7918,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             return None;
                         }
                         let argument =
-                            self.expression_to_binding_pattern(spread.argument(self.ast))?;
+                            self.expression_to_binding_pattern(spread.argument(&self.ast))?;
                         if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             self.report(
-                                argument.span(self.ast),
+                                argument.span(&self.ast),
                                 "A rest element cannot have an initializer",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -7915,7 +7932,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             );
                         }
                         let temporary = self.ast.binding_rest_element(
-                            spread.span(self.ast),
+                            spread.span(&self.ast),
                             argument,
                             TypedSubRange::empty(),
                             None,
@@ -8049,7 +8066,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         arrow_start: u32,
     ) -> Option<Expr> {
         let parameter = self.expression_to_parameter(identifier)?;
-        let parameter_span = parameter.span(self.ast);
+        let parameter_span = parameter.span(&self.ast);
         let parameters = self.ast.add_typed_sub_range([parameter]);
         let parameters = self.ast.formal_parameters(
             parameter_span,
@@ -8063,13 +8080,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_simple_arrow_function(&mut self, left: Expr) -> Option<Expr> {
         if self.ast.node_kind(left.node_id()) != NodeKind::IdentifierReference {
             self.report(
-                left.span(self.ast),
+                left.span(&self.ast),
                 "Unexpected '=>'",
                 ReportOptions::default(),
             );
             return None;
         }
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         self.identifier_to_arrow_function(left, false, start)
     }
 
@@ -8160,9 +8177,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         };
         let return_type = arrow
-            .as_arrow_function_expression(self.ast)
+            .as_arrow_function_expression(&self.ast)
             .expect("arrow speculation produces an arrow function")
-            .return_type(self.ast);
+            .return_type(&self.ast);
         if !self.ts_context.allow_arrow_return_type
             && return_type.is_some()
             && self.current_token.tag != TokenTag::Colon
@@ -8234,7 +8251,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             body,
             is_expression,
         } = body?;
-        let end = body.span(self.ast).end;
+        let end = body.span(&self.ast).end;
         Some(self.ast.expr_arrow_function_expression(
             Span::new(start, end),
             is_expression,
@@ -8263,7 +8280,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn expression_to_parameter(&mut self, expression: Expr) -> Option<FormalParameterItem> {
         let pattern = self.expression_to_binding_pattern(expression)?;
-        let span = pattern.span(self.ast);
+        let span = pattern.span(&self.ast);
         let pattern = FormalParameterPattern::BindingPattern(pattern);
         let parameter = self.ast.formal_parameter(span, pattern);
         Some(FormalParameterItem::FormalParameter(parameter))
@@ -8291,8 +8308,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ExprData::IdentifierReference(identifier) => {
                 let decorators = TypedSubRange::empty();
                 let binding = self.ast.binding_identifier(
-                    identifier.span(self.ast),
-                    identifier.name(self.ast),
+                    identifier.span(&self.ast),
+                    identifier.name(&self.ast),
                     decorators,
                     None,
                     false,
@@ -8303,10 +8320,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 Some(BindingPattern::BindingIdentifier(binding))
             }
             ExprData::AssignmentExpression(assignment)
-                if assignment.operator(self.ast) != AssignmentOperator::Assign =>
+                if assignment.operator(&self.ast) != AssignmentOperator::Assign =>
             {
                 self.report(
-                    expression.span(self.ast),
+                    expression.span(&self.ast),
                     if context == PatternContext::Binding {
                         "Invalid assignment operator in binding pattern"
                     } else {
@@ -8322,9 +8339,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 None
             }
             ExprData::MemberExpression(member) => {
-                if member_expression_is_optional(member, self.ast) {
+                if member_expression_is_optional(member, &self.ast) {
                     self.report(
-                        expression.span(self.ast),
+                        expression.span(&self.ast),
                         if context == PatternContext::Binding {
                             "Optional chaining is not allowed in binding pattern"
                         } else {
@@ -8341,7 +8358,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 }
                 if context != PatternContext::Assignment {
                     self.report(
-                        expression.span(self.ast),
+                        expression.span(&self.ast),
                         "Member expression is not allowed in binding pattern",
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -8361,7 +8378,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             | ExprData::TsNonNullExpression(_) => {
                 if context != PatternContext::Assignment {
                     self.report(
-                        expression.span(self.ast),
+                        expression.span(&self.ast),
                         "TypeScript assertion is not allowed in binding pattern",
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -8373,7 +8390,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 }
                 if !self.is_simple_assignment_target(expression) {
                     self.report(
-                        expression.span(self.ast),
+                        expression.span(&self.ast),
                         "Invalid assignment target",
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -8389,13 +8406,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 ))
             }
             ExprData::AssignmentExpression(assignment)
-                if assignment.operator(self.ast) == AssignmentOperator::Assign =>
+                if assignment.operator(&self.ast) == AssignmentOperator::Assign =>
             {
-                let left = self.assignment_target_to_pattern(assignment.left(self.ast), context)?;
-                let right = assignment.right(self.ast);
+                let left =
+                    self.assignment_target_to_pattern(assignment.left(&self.ast), context)?;
+                let right = assignment.right(&self.ast);
                 let decorators = TypedSubRange::empty();
                 let pattern = self.ast.assignment_pattern(
-                    assignment.span(self.ast),
+                    assignment.span(&self.ast),
                     left,
                     right,
                     decorators,
@@ -8411,7 +8429,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ExprData::ObjectExpression(object) => self.convert_object_pattern(object, context),
             ExprData::ParenthesizedExpression(_) if context == PatternContext::Binding => {
                 self.report(
-                    expression.span(self.ast),
+                    expression.span(&self.ast),
                     "Parentheses are not allowed in this binding pattern",
                     ReportOptions {
                         help: Some(Cow::Borrowed(
@@ -8423,10 +8441,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 None
             }
             ExprData::ParenthesizedExpression(parenthesized) => {
-                let inner = parenthesized.expression(self.ast);
+                let inner = parenthesized.expression(&self.ast);
                 if !self.is_simple_assignment_target(inner) {
                     self.report(
-                        inner.span(self.ast),
+                        inner.span(&self.ast),
                         "Parenthesized expression in assignment pattern must be a simple assignment target",
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -8441,7 +8459,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             ExprData::ChainExpression(_) => {
                 self.report(
-                    expression.span(self.ast),
+                    expression.span(&self.ast),
                     if context == PatternContext::Binding {
                         "Optional chaining is not allowed in binding pattern"
                     } else {
@@ -8458,7 +8476,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             _ => {
                 self.report(
-                    expression.span(self.ast),
+                    expression.span(&self.ast),
                     if context == PatternContext::Binding {
                         "Invalid element in binding pattern"
                     } else {
@@ -8495,8 +8513,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) -> Option<BindingPattern> {
         self.convert_array_pattern_impl(
             Some(array),
-            array.elements(self.ast),
-            array.span(self.ast),
+            array.elements(&self.ast),
+            array.span(&self.ast),
             context,
         )
     }
@@ -8527,7 +8545,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let none = NodeId::from_raw_unchecked(u32::MAX);
             let mut rest = None;
             for index in 0..source_elements_len {
-                let argument = elements_range.get_node(self.ast, index).unwrap();
+                let argument = elements_range.get_node(&self.ast, index).unwrap();
                 let Some(argument) = argument else {
                     self.scratch_cover.items.push(none);
                     continue;
@@ -8553,7 +8571,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         }
                         if index + 1 != source_elements_len {
                             self.report(
-                                spread.span(self.ast),
+                                spread.span(&self.ast),
                                 "Rest element must be the last element",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -8564,10 +8582,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             );
                         }
                         let argument =
-                            self.expression_to_pattern(spread.argument(self.ast), context)?;
+                            self.expression_to_pattern(spread.argument(&self.ast), context)?;
                         if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             self.report(
-                                spread.span(self.ast),
+                                spread.span(&self.ast),
                                 "A rest element cannot have an initializer",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -8578,7 +8596,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             );
                         }
                         let temporary = self.ast.binding_rest_element(
-                            spread.span(self.ast),
+                            spread.span(&self.ast),
                             argument,
                             TypedSubRange::empty(),
                             None,
@@ -8622,8 +8640,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) -> Option<BindingPattern> {
         self.convert_object_pattern_impl(
             Some(object),
-            object.properties(self.ast),
-            object.span(self.ast),
+            object.properties(&self.ast),
+            object.span(&self.ast),
             context,
         )
     }
@@ -8653,12 +8671,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let source_properties_len = properties_range.len();
             let mut rest = None;
             for index in 0..source_properties_len {
-                let property = properties_range.get_node(self.ast, index).unwrap();
+                let property = properties_range.get_node(&self.ast, index).unwrap();
                 match self.ast.object_property_kind_data(property) {
                     ObjectPropertyKindData::ObjectProperty(property) => {
-                        if property.method(self.ast) {
+                        if property.method(&self.ast) {
                             self.report(
-                                property.span(self.ast),
+                                property.span(&self.ast),
                                 "Method cannot appear in destructuring pattern",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -8669,9 +8687,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             );
                             continue;
                         }
-                        if property.kind(self.ast) != PropertyKind::Init {
+                        if property.kind(&self.ast) != PropertyKind::Init {
                             self.report(
-                                property.span(self.ast),
+                                property.span(&self.ast),
                                 "Getter/setter cannot appear in destructuring pattern",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -8683,13 +8701,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             continue;
                         }
                         let value =
-                            self.expression_to_pattern(property.value(self.ast), context)?;
+                            self.expression_to_pattern(property.value(&self.ast), context)?;
                         let temporary = self.ast.binding_property(
-                            property.span(self.ast),
-                            property.key(self.ast),
+                            property.span(&self.ast),
+                            property.key(&self.ast),
                             value,
-                            property.shorthand(self.ast),
-                            property.computed(self.ast),
+                            property.shorthand(&self.ast),
+                            property.computed(&self.ast),
                         );
                         // SAFETY: `temporary` is the unattached last node, and
                         // `property` is retired in favor of the returned handle.
@@ -8712,7 +8730,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         }
                         if index + 1 != source_properties_len {
                             self.report(
-                                spread.span(self.ast),
+                                spread.span(&self.ast),
                                 "Rest element must be the last property",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -8723,10 +8741,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             );
                         }
                         let argument =
-                            self.expression_to_pattern(spread.argument(self.ast), context)?;
+                            self.expression_to_pattern(spread.argument(&self.ast), context)?;
                         if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             self.report(
-                                spread.span(self.ast),
+                                spread.span(&self.ast),
                                 "A rest element cannot have an initializer",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -8737,7 +8755,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             );
                         }
                         let temporary = self.ast.binding_rest_element(
-                            spread.span(self.ast),
+                            spread.span(&self.ast),
                             argument,
                             TypedSubRange::empty(),
                             None,
@@ -8786,8 +8804,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
                         let decorators = TypedSubRange::empty();
                         let binding = self.ast.binding_identifier(
-                            identifier.span(self.ast),
-                            identifier.name(self.ast),
+                            identifier.span(&self.ast),
+                            identifier.name(&self.ast),
                             decorators,
                             None,
                             false,
@@ -8799,7 +8817,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     }
                     SimpleAssignmentTargetData::MemberExpression(_) => {
                         self.report(
-                            target.span(self.ast),
+                            target.span(&self.ast),
                             "Member expression is not allowed in binding pattern",
                             ReportOptions {
                                 help: Some(Cow::Borrowed(
@@ -8815,7 +8833,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     | SimpleAssignmentTargetData::TsTypeAssertion(_)
                     | SimpleAssignmentTargetData::TsNonNullExpression(_) => {
                         self.report(
-                            target.span(self.ast),
+                            target.span(&self.ast),
                             "TypeScript assertion is not allowed in binding pattern",
                             ReportOptions {
                                 help: Some(Cow::Borrowed(
@@ -8841,7 +8859,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::ArrayPattern(_) | BindingPatternData::ObjectPattern(_) => true,
             BindingPatternData::AssignmentPattern(pattern) => {
-                self.is_destructuring_pattern(pattern.left(self.ast))
+                self.is_destructuring_pattern(pattern.left(&self.ast))
             }
             _ => false,
         }
@@ -8857,45 +8875,48 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn validate_no_cover_initialized_syntax(&mut self, expression: Expr) -> Option<()> {
         match self.ast.expr_data(expression) {
             ExprData::ObjectExpression(object) => {
-                for id in object.properties(self.ast).iter() {
+                for id in object.properties(&self.ast).iter() {
                     let property = self.ast.get_node_in_sub_range(id);
                     match self.ast.object_property_kind_data(property) {
                         ObjectPropertyKindData::ObjectProperty(property) => {
-                            let value = property.value(self.ast);
-                            if property.shorthand(self.ast) && self.is_cover_initialized_name(value)
+                            let value = property.value(&self.ast);
+                            if property.shorthand(&self.ast)
+                                && self.is_cover_initialized_name(value)
                             {
-                                self.report_cover_initialized_name_error(property.span(self.ast));
+                                self.report_cover_initialized_name_error(property.span(&self.ast));
                             }
                             self.validate_no_cover_initialized_syntax(value)?;
                         }
                         ObjectPropertyKindData::SpreadElement(spread) => {
-                            self.validate_no_cover_initialized_syntax(spread.argument(self.ast))?;
+                            self.validate_no_cover_initialized_syntax(spread.argument(&self.ast))?;
                         }
                     }
                 }
             }
             ExprData::ArrayExpression(array) => {
-                for index in 0..array.elements(self.ast).len() {
-                    let Some(argument) =
-                        array.elements(self.ast).get_node(self.ast, index).unwrap()
+                for index in 0..array.elements(&self.ast).len() {
+                    let Some(argument) = array
+                        .elements(&self.ast)
+                        .get_node(&self.ast, index)
+                        .unwrap()
                     else {
                         continue;
                     };
                     let expression = match self.ast.argument_data(argument) {
                         ArgumentData::Expr(expression) => expression,
-                        ArgumentData::SpreadElement(spread) => spread.argument(self.ast),
+                        ArgumentData::SpreadElement(spread) => spread.argument(&self.ast),
                     };
                     self.validate_no_cover_initialized_syntax(expression)?;
                 }
             }
             ExprData::ParenthesizedExpression(parenthesized) => {
-                self.validate_no_cover_initialized_syntax(parenthesized.expression(self.ast))?;
+                self.validate_no_cover_initialized_syntax(parenthesized.expression(&self.ast))?;
             }
             ExprData::SequenceExpression(sequence) => {
-                for index in 0..sequence.expressions(self.ast).len() {
+                for index in 0..sequence.expressions(&self.ast).len() {
                     let expression = sequence
-                        .expressions(self.ast)
-                        .get_node(self.ast, index)
+                        .expressions(&self.ast)
+                        .get_node(&self.ast, index)
                         .unwrap();
                     self.validate_no_cover_initialized_syntax(expression)?;
                 }
@@ -8909,7 +8930,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         matches!(
             self.ast.expr_data(expression),
             ExprData::AssignmentExpression(assignment)
-                if assignment.operator(self.ast) == AssignmentOperator::Assign
+                if assignment.operator(&self.ast) == AssignmentOperator::Assign
         )
     }
 
@@ -8968,12 +8989,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     let argument = if self.eat(TokenTag::Spread)? {
                         let spread_start = self.lexer.state.prev_token_end - 3;
                         let expression = self.parse_assignment_expression_in_cover()?;
-                        let span = Span::new(spread_start, expression.span(self.ast).end);
+                        let span = Span::new(spread_start, expression.span(&self.ast).end);
                         Argument::SpreadElement(self.ast.spread_element(span, expression))
                     } else {
                         Argument::Expr(self.parse_assignment_expression_in_cover()?)
                     };
-                    end = argument.span(self.ast).end;
+                    end = argument.span(&self.ast).end;
                     self.scratch_cover.append(argument);
                     if self.eat(TokenTag::Comma)? {
                         if self.current_token.tag == TokenTag::RightBracket {
@@ -9043,14 +9064,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         },
                     )?;
                     let spread = self.ast.spread_element(
-                        Span::new(spread_start, expression.span(self.ast).end),
+                        Span::new(spread_start, expression.span(&self.ast).end),
                         expression,
                     );
                     ObjectPropertyKind::SpreadElement(spread)
                 } else {
                     self.parse_cover_property()?
                 };
-                end = property.span(self.ast).end;
+                end = property.span(&self.ast).end;
                 self.scratch_cover.append(property);
                 if self.eat(TokenTag::Comma)? {
                     if self.current_token.tag == TokenTag::RightBrace {
@@ -9171,7 +9192,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 self.parse_property_key(true)?
             }
         };
-        let key_span = key.span(self.ast);
+        let key_span = key.span(&self.ast);
 
         if self.current_token.tag == TokenTag::LeftParen
             || (self.lang.is_typescript() && is_angle_open(self.current_token.tag))
@@ -9211,7 +9232,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             )?;
             return Some(ObjectPropertyKind::ObjectProperty(
                 self.ast.object_property(
-                    Span::new(start, value.span(self.ast).end),
+                    Span::new(start, value.span(&self.ast).end),
                     key,
                     value,
                     PropertyKind::Init,
@@ -9262,12 +9283,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             )?;
             let identifier = self
                 .ast
-                .expr_identifier_reference(identifier.span(self.ast), identifier.name(self.ast));
+                .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast));
             let target = self.expression_to_assignment_target(identifier)?;
             let assignment = self.ast.expr_assignment_expression(
                 Span::new(
-                    identifier.span(self.ast).start,
-                    default_value.span(self.ast).end,
+                    identifier.span(&self.ast).start,
+                    default_value.span(&self.ast).end,
                 ),
                 target,
                 default_value,
@@ -9276,7 +9297,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.state.cover_has_init_name = true;
             return Some(ObjectPropertyKind::ObjectProperty(
                 self.ast.object_property(
-                    Span::new(start, default_value.span(self.ast).end),
+                    Span::new(start, default_value.span(&self.ast).end),
                     key,
                     assignment,
                     PropertyKind::Init,
@@ -9318,10 +9339,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         };
         let value = self
             .ast
-            .expr_identifier_reference(identifier.span(self.ast), identifier.name(self.ast));
+            .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast));
         Some(ObjectPropertyKind::ObjectProperty(
             self.ast.object_property(
-                Span::new(start, value.span(self.ast).end),
+                Span::new(start, value.span(&self.ast).end),
                 key,
                 value,
                 PropertyKind::Init,
@@ -9389,9 +9410,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         })();
         self.context = context;
         let (params, type_parameters, return_type, body) = result?;
-        let span = Span::new(start, body.span(self.ast).end);
+        let span = Span::new(start, body.span(&self.ast).end);
         let function = self.ast.function(
-            Span::new(function_start, body.span(self.ast).end),
+            Span::new(function_start, body.span(&self.ast).end),
             FunctionType::FunctionExpression,
             None,
             generator,
@@ -9552,7 +9573,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn parse_computed_member_expression(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
-        let start = object.span(self.ast).start;
+        let start = object.span(&self.ast).start;
         let open_bracket_span = self.current_token.span;
         self.advance()?;
         let context = enter_grammar_context![&mut self.context, +In];
@@ -9591,7 +9612,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     #[inline(always)]
     fn parse_member_property(&mut self, object: Expr, optional: bool) -> Option<Expr> {
-        let start = object.span(self.ast).start;
+        let start = object.span(&self.ast).start;
         let token = self.current_token;
         if !token.tag.is_identifier_like() && token.tag != TokenTag::PrivateIdentifier {
             self.report_expected(
@@ -9627,7 +9648,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftParen);
-        let start = callee.span(self.ast).start;
+        let start = callee.span(&self.ast).start;
         let open_paren_span = self.current_token.span;
         self.advance()?;
         let arguments = self.parse_arguments()?;
@@ -9665,19 +9686,19 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             .map(|index| {
                 cover
                     .elements
-                    .get_node(self.ast, index)
+                    .get_node(&self.ast, index)
                     .expect("call cover contains its arguments")
             })
             .collect::<Vec<_>>();
         for argument in arguments {
             let expression = match self.ast.argument_data(argument) {
                 ArgumentData::Expr(expression) => expression,
-                ArgumentData::SpreadElement(spread) => spread.argument(self.ast),
+                ArgumentData::SpreadElement(spread) => spread.argument(&self.ast),
             };
             self.validate_no_cover_initialized_syntax(expression)?;
         }
         Some(self.ast.expr_call_expression(
-            Span::new(callee.span(self.ast).start, cover.end),
+            Span::new(callee.span(&self.ast).start, cover.end),
             callee,
             cover.elements,
             false,
@@ -9686,7 +9707,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_optional_chain(&mut self, left: Expr) -> Option<Expr> {
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         self.advance()?;
         let mut expression = self.parse_optional_chain_element(left, true)?;
         loop {
@@ -9731,8 +9752,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
         }
         Some(
-            self.ast
-                .expr_chain_expression(Span::new(start, expression.span(self.ast).end), expression),
+            self.ast.expr_chain_expression(
+                Span::new(start, expression.span(&self.ast).end),
+                expression,
+            ),
         )
     }
 
@@ -9798,7 +9821,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     let expression =
                         self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
                     Argument::SpreadElement(self.ast.spread_element(
-                        Span::new(start, expression.span(self.ast).end),
+                        Span::new(start, expression.span(&self.ast).end),
                         expression,
                     ))
                 } else {
@@ -9857,10 +9880,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
         }
         if callee_starts_with_import
-            && is_import_expression_or_member_access_on_import_expression(callee, self.ast)
+            && is_import_expression_or_member_access_on_import_expression(callee, &self.ast)
         {
             self.report(
-                callee.span(self.ast),
+                callee.span(&self.ast),
                 "Dynamic import cannot be used as the target of 'new'",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -9900,7 +9923,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             .lexer
             .state
             .prev_token_end
-            .max(callee.span(self.ast).end);
+            .max(callee.span(&self.ast).end);
         Some(
             self.ast
                 .expr_new_expression(Span::new(start, end), callee, arguments, type_arguments),
@@ -9911,7 +9934,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Import);
         self.report_if_escaped_keyword(self.current_token);
         let import_name = self.parse_identifier_name()?;
-        let start = import_name.span(self.ast).start;
+        let start = import_name.span(&self.ast).start;
         match self.current_token.tag {
             TokenTag::Dot => self.parse_import_meta_or_phase_import(import_name),
             TokenTag::LeftParen => self.parse_dynamic_import(start, None),
@@ -9937,8 +9960,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 self.has_module_syntax = true;
                 return Some(self.ast.expr_meta_property(
                     Span::new(
-                        import_name.span(self.ast).start,
-                        property.span(self.ast).end,
+                        import_name.span(&self.ast).start,
+                        property.span(&self.ast).end,
                     ),
                     import_name,
                     property,
@@ -9957,7 +9980,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         };
         self.advance()?;
-        self.parse_dynamic_import(import_name.span(self.ast).start, phase)
+        self.parse_dynamic_import(import_name.span(&self.ast).start, phase)
     }
 
     fn parse_dynamic_import(&mut self, start: u32, phase: Option<ImportPhase>) -> Option<Expr> {
@@ -10007,7 +10030,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let property = self.parse_identifier_name()?;
         Some(self.ast.expr_meta_property(
-            Span::new(meta.span(self.ast).start, property.span(self.ast).end),
+            Span::new(meta.span(&self.ast).start, property.span(&self.ast).end),
             meta,
             property,
         ))
@@ -10033,19 +10056,19 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
 
         let opening = self.parse_jsx_opening_element(context)?;
-        if opening.self_closing(self.ast) {
+        if opening.self_closing(&self.ast) {
             let children = TypedSubRange::empty();
             return Some(Expr::JsxElement(self.ast.jsx_element(
-                Span::new(start, opening.span(self.ast).end),
+                Span::new(start, opening.span(&self.ast).end),
                 opening,
                 children,
                 None,
             )));
         }
         let children = self.parse_jsx_children()?;
-        let closing = self.parse_jsx_closing_element(opening.name(self.ast), context)?;
+        let closing = self.parse_jsx_closing_element(opening.name(&self.ast), context)?;
         Some(Expr::JsxElement(self.ast.jsx_element(
-            Span::new(start, closing.span(self.ast).end),
+            Span::new(start, closing.span(&self.ast).end),
             opening,
             children,
             Some(closing),
@@ -10158,9 +10181,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 self.advance()?;
             }
         }
-        let closing_span = closing_name.span(self.ast);
+        let closing_span = closing_name.span(&self.ast);
         if !self.jsx_names_match(opening_name, closing_name) {
-            let opening_span = opening_name.span(self.ast);
+            let opening_span = opening_name.span(&self.ast);
             self.report(
                 closing_span,
                 Cow::Owned(format!(
@@ -10188,8 +10211,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn jsx_names_match(&self, a: JsxElementName, b: JsxElementName) -> bool {
-        let a = a.span(self.ast);
-        let b = b.span(self.ast);
+        let a = a.span(&self.ast);
+        let b = b.span(&self.ast);
         a.end - a.start == b.end - b.start && self.span_text(a) == self.span_text(b)
     }
 
@@ -10444,13 +10467,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return self.parse_jsx_spread_attribute();
         }
         let name = self.parse_jsx_attribute_name()?;
-        let start = name.span(self.ast).start;
+        let start = name.span(&self.ast).start;
         let value = if self.eat(TokenTag::Assign)? {
             Some(self.parse_jsx_attribute_value()?)
         } else {
             None
         };
-        let end = value.map_or(name.span(self.ast).end, |value| value.span(self.ast).end);
+        let end = value.map_or(name.span(&self.ast).end, |value| value.span(&self.ast).end);
         Some(JsxAttributeItem::JsxAttribute(self.ast.jsx_attribute(
             Span::new(start, end),
             name,
@@ -10500,11 +10523,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             TokenTag::LeftBrace => {
                 let container = self.parse_jsx_expression_container(JsxExprContext::Tag)?;
                 if container
-                    .expression(self.ast)
-                    .is_jsx_empty_expression(self.ast)
+                    .expression(&self.ast)
+                    .is_jsx_empty_expression(&self.ast)
                 {
                     self.report(
-                        container.span(self.ast),
+                        container.span(&self.ast),
                         "JSX attribute value cannot be an empty expression",
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -10613,7 +10636,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let argument = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
             self.report(
-                Span::new(start, argument.span(self.ast).end),
+                Span::new(start, argument.span(&self.ast).end),
                 "The left-hand side of '**' cannot be an unparenthesized await expression",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -10625,7 +10648,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         Some(
             self.ast
-                .expr_await_expression(Span::new(start, argument.span(self.ast).end), argument),
+                .expr_await_expression(Span::new(start, argument.span(&self.ast).end), argument),
         )
     }
 
@@ -10645,8 +10668,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             _ => self.ast.expr_ts_instantiation_expression(
                 Span::new(
-                    callee.span(self.ast).start,
-                    type_arguments.span(self.ast).end,
+                    callee.span(&self.ast).start,
+                    type_arguments.span(&self.ast).end,
                 ),
                 callee,
                 type_arguments,
@@ -10694,7 +10717,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let expression = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
         Some(self.ast.expr_ts_type_assertion(
-            Span::new(start, expression.span(self.ast).end),
+            Span::new(start, expression.span(&self.ast).end),
             type_annotation,
             expression,
         ))
@@ -10705,8 +10728,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         let type_annotation = self.parse_type()?;
         let span = Span::new(
-            left.span(self.ast).start,
-            type_annotation.span(self.ast).end,
+            left.span(&self.ast).start,
+            type_annotation.span(&self.ast).end,
         );
         Some(if tag == TokenTag::As {
             self.ast.expr_ts_as_expression(span, left, type_annotation)
@@ -10722,7 +10745,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         Some(
             self.ast
-                .expr_ts_non_null_expression(Span::new(left.span(self.ast).start, end), left),
+                .expr_ts_non_null_expression(Span::new(left.span(&self.ast).start, end), left),
         )
     }
 
@@ -10768,7 +10791,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let end = argument.map_or(self.lexer.state.prev_token_end, |expr| {
-            expr.span(self.ast).end
+            expr.span(&self.ast).end
         });
         Some(
             self.ast
@@ -10783,7 +10806,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let argument = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
             self.report(
-                Span::new(token.span.start, argument.span(self.ast).end),
+                Span::new(token.span.start, argument.span(&self.ast).end),
                 "The left-hand side of '**' cannot be an unparenthesized unary expression",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -10804,7 +10827,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             _ => unreachable!(),
         };
         Some(self.ast.expr_unary_expression(
-            Span::new(token.span.start, argument.span(self.ast).end),
+            Span::new(token.span.start, argument.span(&self.ast).end),
             argument,
             operator,
         ))
@@ -10821,12 +10844,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let start = if prefix {
             token.span.start
         } else {
-            argument.span(self.ast).start
+            argument.span(&self.ast).start
         };
         let unwrapped = self.unwrap_parens(argument);
         if !self.is_simple_assignment_target(unwrapped) {
             self.report(
-                argument.span(self.ast),
+                argument.span(&self.ast),
                 "Invalid operand for increment/decrement operator",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -10844,7 +10867,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             UpdateOperator::Decrement
         };
         let end = if prefix {
-            argument.span(self.ast).end
+            argument.span(&self.ast).end
         } else {
             self.lexer.state.prev_token_end
         };
@@ -10855,7 +10878,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_binary_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
         let right = self.parse_expr(
@@ -10868,14 +10891,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         )?;
         if self.ast.node_kind(right.node_id()) == NodeKind::PrivateIdentifier {
             self.report(
-                right.span(self.ast),
+                right.span(&self.ast),
                 "Private names are only allowed in property accesses (`obj.#field`) or in `in` expressions (`#field in obj`)",
                 ReportOptions::default(),
             );
         }
         let operator = binary_operator(tag);
         Some(self.ast.expr_binary_expression(
-            Span::new(start, right.span(self.ast).end),
+            Span::new(start, right.span(&self.ast).end),
             left,
             right,
             operator,
@@ -10883,7 +10906,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_logical_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
         let right = self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
@@ -10894,9 +10917,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             _ => unreachable!(),
         };
         let operator_to_check = match self.ast.expr_data(left) {
-            ExprData::LogicalExpression(expression) => Some(expression.operator(self.ast)),
+            ExprData::LogicalExpression(expression) => Some(expression.operator(&self.ast)),
             _ => match self.ast.expr_data(right) {
-                ExprData::LogicalExpression(expression) => Some(expression.operator(self.ast)),
+                ExprData::LogicalExpression(expression) => Some(expression.operator(&self.ast)),
                 _ => None,
             },
         };
@@ -10905,7 +10928,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 != (operator_to_check == LogicalOperator::NullishCoalescing);
             if mixes_coalesce {
                 self.report(
-                    Span::new(start, right.span(self.ast).end),
+                    Span::new(start, right.span(&self.ast).end),
                     "Logical expressions and nullish coalescing cannot be mixed",
                     ReportOptions::default(),
                 );
@@ -10913,7 +10936,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         }
         Some(self.ast.expr_logical_expression(
-            Span::new(start, right.span(self.ast).end),
+            Span::new(start, right.span(&self.ast).end),
             left,
             right,
             operator,
@@ -10926,14 +10949,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         left: Expr,
         tag: TokenTag,
     ) -> Option<Expr> {
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         let target = if tag == TokenTag::Assign {
             self.expression_to_assignment_target(left)?
         } else if self.is_simple_assignment_target(left) {
             self.expression_to_assignment_target(self.unwrap_parens(left))?
         } else {
             self.report(
-                left.span(self.ast),
+                left.span(&self.ast),
                 "Invalid assignment target",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -10947,7 +10970,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.advance()?;
         let right = self.parse_expr(precedence, ParseExpressionOpts::default())?;
         Some(self.ast.expr_assignment_expression(
-            Span::new(start, right.span(self.ast).end),
+            Span::new(start, right.span(&self.ast).end),
             target,
             right,
             assignment_operator(tag),
@@ -10955,7 +10978,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_conditional_expression(&mut self, test: Expr) -> Option<Expr> {
-        let start = test.span(self.ast).start;
+        let start = test.span(&self.ast).start;
         debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         self.advance()?;
         let context = enter_grammar_context![&mut self.context, +In];
@@ -10982,7 +11005,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             },
         )?;
         Some(self.ast.expr_conditional_expression(
-            Span::new(start, alternate.span(self.ast).end),
+            Span::new(start, alternate.span(&self.ast).end),
             test,
             consequent,
             alternate,
@@ -10990,15 +11013,15 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_sequence_expression(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
-        let start = left.span(self.ast).start;
+        let start = left.span(&self.ast).start;
         let checkpoint = self.scratch_a.begin();
         self.scratch_a.append(left);
         let result = (|| {
-            let mut end = left.span(self.ast).end;
+            let mut end = left.span(&self.ast).end;
             while self.eat(TokenTag::Comma)? {
                 let expression =
                     self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
-                end = expression.span(self.ast).end;
+                end = expression.span(&self.ast).end;
                 self.scratch_a.append(expression);
             }
             let expressions = self.add_extra_from_scratch_a(checkpoint);
@@ -11017,7 +11040,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) -> Option<SimpleAssignmentTarget> {
         if !self.is_simple_assignment_target(expression) {
             self.report(
-                expression.span(self.ast),
+                expression.span(&self.ast),
                 "Invalid assignment target",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -11032,27 +11055,27 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ExprData::IdentifierReference(node) => {
                 Some(SimpleAssignmentTarget::IdentifierReference(node))
             }
-            ExprData::MemberExpression(node) if !member_expression_is_optional(node, self.ast) => {
+            ExprData::MemberExpression(node) if !member_expression_is_optional(node, &self.ast) => {
                 Some(SimpleAssignmentTarget::MemberExpression(node))
             }
             ExprData::TsAsExpression(node) => {
-                self.expression_to_simple_assignment_target(node.expression(self.ast))?;
+                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
                 Some(SimpleAssignmentTarget::TsAsExpression(node))
             }
             ExprData::TsSatisfiesExpression(node) => {
-                self.expression_to_simple_assignment_target(node.expression(self.ast))?;
+                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
                 Some(SimpleAssignmentTarget::TsSatisfiesExpression(node))
             }
             ExprData::TsTypeAssertion(node) => {
-                self.expression_to_simple_assignment_target(node.expression(self.ast))?;
+                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
                 Some(SimpleAssignmentTarget::TsTypeAssertion(node))
             }
             ExprData::TsNonNullExpression(node) => {
-                self.expression_to_simple_assignment_target(node.expression(self.ast))?;
+                self.expression_to_simple_assignment_target(node.expression(&self.ast))?;
                 Some(SimpleAssignmentTarget::TsNonNullExpression(node))
             }
             ExprData::ParenthesizedExpression(parenthesized) => {
-                self.expression_to_simple_assignment_target(parenthesized.expression(self.ast))
+                self.expression_to_simple_assignment_target(parenthesized.expression(&self.ast))
             }
             _ => unreachable!("simple assignment targets were validated above"),
         }
@@ -11061,21 +11084,21 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn is_simple_assignment_target(&self, expression: Expr) -> bool {
         match self.ast.expr_data(expression) {
             ExprData::IdentifierReference(_) => true,
-            ExprData::MemberExpression(member) => !member_expression_is_optional(member, self.ast),
+            ExprData::MemberExpression(member) => !member_expression_is_optional(member, &self.ast),
             ExprData::ParenthesizedExpression(parenthesized) => {
-                self.is_simple_assignment_target(parenthesized.expression(self.ast))
+                self.is_simple_assignment_target(parenthesized.expression(&self.ast))
             }
             ExprData::TsNonNullExpression(node) => {
-                self.is_simple_assignment_target(node.expression(self.ast))
+                self.is_simple_assignment_target(node.expression(&self.ast))
             }
             ExprData::TsAsExpression(node) => {
-                self.is_simple_assignment_target(node.expression(self.ast))
+                self.is_simple_assignment_target(node.expression(&self.ast))
             }
             ExprData::TsSatisfiesExpression(node) => {
-                self.is_simple_assignment_target(node.expression(self.ast))
+                self.is_simple_assignment_target(node.expression(&self.ast))
             }
             ExprData::TsTypeAssertion(node) => {
-                self.is_simple_assignment_target(node.expression(self.ast))
+                self.is_simple_assignment_target(node.expression(&self.ast))
             }
             _ => false,
         }
@@ -11084,7 +11107,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn unwrap_parens(&self, expression: Expr) -> Expr {
         match self.ast.expr_data(expression) {
             ExprData::ParenthesizedExpression(parenthesized) => {
-                self.unwrap_parens(parenthesized.expression(self.ast))
+                self.unwrap_parens(parenthesized.expression(&self.ast))
             }
             _ => expression,
         }
@@ -11105,13 +11128,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 }
             }
             ExprData::ParenthesizedExpression(parenthesized) => {
-                let inner = self.unwrap_parens(parenthesized.expression(self.ast));
+                let inner = self.unwrap_parens(parenthesized.expression(&self.ast));
                 if matches!(
                     self.ast.node_kind(inner.node_id()),
                     NodeKind::ArrayExpression | NodeKind::ObjectExpression
                 ) {
                     self.report(
-                        inner.span(self.ast),
+                        inner.span(&self.ast),
                         "Parenthesized expression in assignment pattern must be a simple assignment target",
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -11839,11 +11862,10 @@ mod tests {
     fn parse_expression() {
         let allocator = Allocator::default();
         let source = "1 + 1";
-        let mut ast = Ast::new(source, &allocator);
-        let parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
-        let expr = parser.parse_expression().unwrap();
+        let parser = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig);
+        let result = parser.parse_expression().unwrap();
         assert!(matches!(
-            ast.expr_data(expr),
+            result.ast.expr_data(result.expression),
             swc_next_ecma_ast::ExprData::BinaryExpression(_)
         ));
     }
@@ -11852,17 +11874,20 @@ mod tests {
     fn unambiguous() {
         fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
             let allocator = Allocator::new();
-            let mut ast = Ast::new(source, &allocator);
             let options = Options {
                 source_type: SourceType::Unambiguous,
                 lang: Lang::Ts,
                 ..Options::default()
             };
-            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
 
             assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-            assert_eq!(result.program.source_type(&ast), expected, "{source}");
-            assert_eq!(ast.source_type(), expected, "{source}");
+            assert_eq!(
+                result.program.source_type(&result.ast),
+                expected,
+                "{source}"
+            );
+            assert_eq!(result.ast.source_type(), expected, "{source}");
         }
 
         assert_unambiguous_source_type("const value = 1;", SourceType::Script);
@@ -11878,16 +11903,16 @@ mod tests {
     #[test]
     fn allows_return_outside_function() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new("return;", &allocator);
+        let source = "return;";
         let options = Options {
             source_type: SourceType::Unambiguous,
             allow_return_outside_function: true,
             ..Options::default()
         };
-        let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+        let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
 
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        assert_eq!(result.program.source_type(&ast), SourceType::Script);
+        assert_eq!(result.program.source_type(&result.ast), SourceType::Script);
     }
 
     #[test]
@@ -11924,7 +11949,6 @@ mod tests {
             preserve_parens: bool,
         ) -> Vec<Comment> {
             let allocator = Allocator::new();
-            let mut ast = Ast::new(source, &allocator);
             let options = Options {
                 lang,
                 source_type,
@@ -11932,10 +11956,10 @@ mod tests {
                 preserve_parens,
                 ..Options::default()
             };
-            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
 
             assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-            ast.comments().to_vec()
+            result.ast.comments().to_vec()
         }
 
         fn parse_comments(source: &str, lang: Lang) -> Vec<Comment> {

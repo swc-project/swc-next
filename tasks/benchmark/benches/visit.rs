@@ -11,9 +11,9 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 fn parse_program<'a>(src: &'a str, allocator: &'a Allocator, lang: Lang) -> (Ast<'a>, Program) {
-    let mut ast = Ast::new(src, allocator);
     let result = Parser::init(
-        &mut ast,
+        allocator,
+        src,
         Options {
             lang,
             ..Options::default()
@@ -22,7 +22,7 @@ fn parse_program<'a>(src: &'a str, allocator: &'a Allocator, lang: Lang) -> (Ast
     )
     .parse();
     assert!(result.diagnostics.is_empty());
-    (ast, result.program)
+    (result.ast, result.program)
 }
 
 fn bench_visit(b: &mut Bencher, src: &'static str, lang: Lang) {

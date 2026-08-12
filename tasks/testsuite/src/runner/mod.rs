@@ -34,9 +34,9 @@ fn parse<'a>(
     source_type: SourceType,
     lang: Lang,
 ) -> Result<(Program, Ast<'a>), String> {
-    let mut ast = Ast::new(source, allocator);
     let result = Parser::init(
-        &mut ast,
+        allocator,
+        source,
         Options {
             source_type,
             lang,
@@ -52,5 +52,5 @@ fn parse<'a>(
         ));
     }
 
-    Ok((result.program, ast))
+    Ok((result.program, result.ast))
 }

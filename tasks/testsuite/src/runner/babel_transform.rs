@@ -62,8 +62,7 @@ fn run_case(case: &BabelTransformCase) -> Result<(), String> {
 fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
     let source = case.input.as_str();
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source, &allocator);
-    let program = parse_program(&mut ast, case)?;
+    let (program, mut ast) = parse_program(source, &allocator, case)?;
     let semantic_ret = analyze(program, &ast, AnalyzeOptions { check_syntax: true });
     if let Some(diagnostic) = semantic_ret
         .diagnostics
@@ -86,21 +85,24 @@ fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
 fn normalize_expected_output(case: &BabelTransformCase) -> Result<String, String> {
     let source = case.output.as_str();
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source, &allocator);
-    let program = parse_program(&mut ast, case)?;
+    let (program, ast) = parse_program(source, &allocator, case)?;
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code
         .to_owned())
 }
 
-fn parse_program(ast: &mut Ast<'_>, case: &BabelTransformCase) -> Result<Program, String> {
+fn parse_program<'a>(
+    source: &'a str,
+    allocator: &'a Allocator,
+    case: &BabelTransformCase,
+) -> Result<(Program, Ast<'a>), String> {
     let options = ParserOptions {
         source_type: case.source_type(),
         lang: case.lang(),
         ..ParserOptions::default()
     };
-    let (program, error) = {
-        let result = Parser::init(ast, options, NoTokenParserConfig).parse();
+    let (program, ast, error) = {
+        let result = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
         let error = result
             .diagnostics
             .iter()
@@ -111,11 +113,11 @@ fn parse_program(ast: &mut Ast<'_>, case: &BabelTransformCase) -> Result<Program
                     diagnostic.message, diagnostic.span.start, diagnostic.span.end
                 )
             });
-        (result.program, error)
+        (result.program, result.ast, error)
     };
 
     if let Some(error) = error {
         return Err(error);
     }
-    Ok(program)
+    Ok((program, ast))
 }

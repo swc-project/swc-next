@@ -24,9 +24,9 @@ fn run_parse<'a>(
     src: &'a str,
     allocator: &'a Allocator,
 ) -> (Program, Ast<'a>, ArenaVec<'a, Token>) {
-    let mut ast = Ast::new(src, allocator);
     let result = Parser::init(
-        &mut ast,
+        allocator,
+        src,
         Options {
             preserve_parens: false,
             ..Options::default()
@@ -35,7 +35,7 @@ fn run_parse<'a>(
     )
     .parse();
     assert!(result.diagnostics.is_empty());
-    (result.program, ast, result.tokens)
+    (result.program, result.ast, result.tokens)
 }
 
 #[inline(never)]

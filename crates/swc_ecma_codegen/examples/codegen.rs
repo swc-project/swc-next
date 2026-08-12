@@ -7,7 +7,7 @@ use std::{fs, path::Path};
 
 use clap::Parser;
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, SourceType};
+use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 
@@ -43,14 +43,13 @@ fn main() -> Result<(), String> {
 
     // Parse the source code
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source, &allocator);
     let options = ParserOptions {
         source_type,
         lang,
         preserve_parens: args.preserve_parens,
         ..ParserOptions::default()
     };
-    let ret = EcmaParser::init(&mut ast, options, NoTokenParserConfig).parse();
+    let ret = EcmaParser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(ret.diagnostics.is_empty());
 
     // Generate JavaScript from the parsed program
@@ -59,7 +58,7 @@ fn main() -> Result<(), String> {
         ascii_only: args.ascii_only,
         ..CodegenOptions::default()
     };
-    let result = print(&allocator, &ast, ret.program, options);
+    let result = print(&allocator, &ret.ast, ret.program, options);
     print!("{}", result.code);
 
     Ok(())

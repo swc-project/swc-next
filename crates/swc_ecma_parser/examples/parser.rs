@@ -7,7 +7,7 @@ use std::{fs, path::Path};
 
 use clap::Parser;
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, SourceType};
+use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{Options, Parser as EcmaParser, TokenParserConfig};
 
 #[derive(Parser)]
@@ -34,14 +34,13 @@ fn main() -> Result<(), String> {
 
     // Parse the source code
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source, &allocator);
     let options = Options {
         source_type,
         lang,
         preserve_parens: args.preserve_parens,
         ..Options::default()
     };
-    let ret = EcmaParser::init(&mut ast, options, TokenParserConfig).parse();
+    let ret = EcmaParser::init(&allocator, source, options, TokenParserConfig).parse();
 
     for diagnostic in &ret.diagnostics {
         eprintln!(
@@ -67,8 +66,8 @@ fn main() -> Result<(), String> {
         "Parsed successfully as {} {:?}: {} nodes, {} extra-data entries.",
         source_type.as_str(),
         lang,
-        ast.node_count(),
-        ast.extra_data_count(),
+        ret.ast.node_count(),
+        ret.ast.extra_data_count(),
     );
 
     println!("Tokens: {:?}", ret.tokens);

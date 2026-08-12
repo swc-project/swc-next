@@ -153,17 +153,21 @@ fn main() -> Result<(), String> {
         fs::read_to_string(path).map_err(|_| format!("Missing '{}'", path.display()))?;
 
     let allocator = Allocator::new();
-    let mut ast = Ast::new(&source_text, &allocator);
     let parse_options = ParserOptions {
         source_type: SourceType::from_path(&args.filename),
         lang: Lang::from_path(&args.filename),
         preserve_parens: false,
         ..ParserOptions::default()
     };
-    let parse = EcmaParser::init(&mut ast, parse_options, NoTokenParserConfig).parse();
+    let parse =
+        EcmaParser::init(&allocator, &source_text, parse_options, NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
 
-    let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true });
+    let semantic = analyze(
+        parse.program,
+        &parse.ast,
+        AnalyzeOptions { check_syntax: true },
+    );
     for diagnostic in semantic.diagnostics {
         eprintln!(
             "{}:{}..{}: {}: {}",
@@ -186,7 +190,7 @@ fn main() -> Result<(), String> {
 
     print!(
         "{}",
-        ScopesTextWriter::new(&ast, &semantic.semantic).build()
+        ScopesTextWriter::new(&parse.ast, &semantic.semantic).build()
     );
     Ok(())
 }
