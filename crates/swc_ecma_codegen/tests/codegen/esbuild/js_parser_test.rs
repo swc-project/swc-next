@@ -3143,8 +3143,8 @@ fn test_ascii_only() {
     expect_printed("\u{10000}", "\u{10000};\n");
     expect_printed("var \u{3c0}", "var \u{3c0};\n");
     expect_printed("var \u{10000}", "var \u{10000};\n");
-    expect_printed("'\u{3c0}'", "\"\u{3c0}\";\n");
-    expect_printed("'\u{10000}'", "\"\u{10000}\";\n");
+    expect_printed("'\u{3c0}'", "'\u{3c0}';\n");
+    expect_printed("'\u{10000}'", "'\u{10000}';\n");
     expect_printed("x.\u{3c0}", "x.\u{3c0};\n");
     expect_printed("x.\u{10000}", "x[\"\u{10000}\"];\n");
     expect_printed("x?.\u{3c0}", "x?.\u{3c0};\n");

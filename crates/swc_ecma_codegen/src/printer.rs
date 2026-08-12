@@ -308,7 +308,8 @@ impl<'a> Printer<'a> {
         let expression = directive.expression(self.ast);
         let value = self.ast.get_wtf8(expression.value(self.ast));
         let raw = self.ast.get_utf8(expression.raw(self.ast));
-        let preserve_raw = value == "use strict" && raw.as_bytes().contains(&b'\\');
+        let preserve_raw = (value == "use strict" && raw.as_bytes().contains(&b'\\'))
+            || (!self.options.minify && (!self.options.ascii_only || raw.is_ascii()));
         if preserve_raw {
             self.print_bytes(raw);
         } else {
