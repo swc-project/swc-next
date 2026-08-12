@@ -1,44 +1,16 @@
 codegen * babel
 ========================
-Positive Passed: 2159/2238 (96.47%)
+Positive Passed: 2211/2238 (98.79%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/basic/arrow-function/input.js - comments/basic/arrow-function: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/basic/async-arrow-function/input.js - comments/basic/async-arrow-function: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/100/input.js - core/uncategorised/100: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/101/input.js - core/uncategorised/101: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/263/input.js - core/uncategorised/263: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/264/input.js - core/uncategorised/264: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/306/input.js - core/uncategorised/306: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/309/input.js - core/uncategorised/309: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/312/input.js - core/uncategorised/312: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/315/input.js - core/uncategorised/315: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/318/input.js - core/uncategorised/318: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/322/input.js - core/uncategorised/322: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/86/input.js - core/uncategorised/86: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/87/input.js - core/uncategorised/87: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/88/input.js - core/uncategorised/88: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/89/input.js - core/uncategorised/89: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/90/input.js - core/uncategorised/90: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/91/input.js - core/uncategorised/91: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/92/input.js - core/uncategorised/92: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/93/input.js - core/uncategorised/93: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/94/input.js - core/uncategorised/94: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/95/input.js - core/uncategorised/95: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/96/input.js - core/uncategorised/96: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/97/input.js - core/uncategorised/97: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/98/input.js - core/uncategorised/98: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/99/input.js - core/uncategorised/99: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/uncategorised/1/input.js - es2015/uncategorised/1: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/uncategorised/2/input.js - es2015/uncategorised/2: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-identifier-inside-async-call-inside-parameters-of-async-arrow/input.js - parser: Unexpected token ')' at 35..36
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-inside-async-call-inside-parameters-of-function-inside-async-function/input.js - parser: Unexpected token ')' at 49..50
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-inside-params-of-arrow-inside-arguments-of-async-call/input.js - parser: Unexpected token ')' at 18..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/valid-await-expr-using-in/input.js - parser: 'in' is reserved and cannot be used as a binding identifier at 35..37
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/valid-await-expr-using-instanceof/input.js - parser: 'instanceof' is reserved and cannot be used as a binding identifier at 35..45
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2019/json-strings/directive-line-separator/input.js - es2019/json-strings/directive-line-separator: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2019/json-strings/directive-paragraph-separator/input.js - es2019/json-strings/directive-paragraph-separator: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2021/for-async-of/for-statement/input.js - es2021/for-async-of/for-statement: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/await-identifier-in-computed-property-in-arguments-of-async-call/input.js - parser: Unexpected token ']' at 25..26
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/edge-cases/input.js - parser: Expected '(' for method definition, but found '}' at 249..250
@@ -51,30 +23,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resou
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-for-init/input.js - parser: Unexpected token ';' in binding pattern at 13..14
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-for-of/input.js - parser: Unexpected token '``' in binding pattern at 77..79
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-in/input.js - parser: 'in' is reserved and cannot be used as a binding identifier at 6..8
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/automatic-semicolon-insertion/migrated_0006/input.js - esprima/automatic-semicolon-insertion/migrated_0006: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/automatic-semicolon-insertion/migrated_0009/input.js - esprima/automatic-semicolon-insertion/migrated_0009: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/automatic-semicolon-insertion/migrated_0012/input.js - esprima/automatic-semicolon-insertion/migrated_0012: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/automatic-semicolon-insertion/migrated_0015/input.js - esprima/automatic-semicolon-insertion/migrated_0015: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/directive-prolog/migrated_0000/input.js - esprima/directive-prolog/migrated_0000: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/directive-prolog/migrated_0001/input.js - esprima/directive-prolog/migrated_0001: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-unicode-code-point-escape-sequence/migrated_0000/input.js - esprima/es2015-unicode-code-point-escape-sequence/migrated_0000: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-unicode-code-point-escape-sequence/migrated_0001/input.js - esprima/es2015-unicode-code-point-escape-sequence/migrated_0001: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-unicode-code-point-escape-sequence/migrated_0002/input.js - esprima/es2015-unicode-code-point-escape-sequence/migrated_0002: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0001/input.js - esprima/expression-primary-literal-string/migrated_0001: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0002/input.js - esprima/expression-primary-literal-string/migrated_0002: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0003/input.js - esprima/expression-primary-literal-string/migrated_0003: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0006/input.js - esprima/expression-primary-literal-string/migrated_0006: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0007/input.js - esprima/expression-primary-literal-string/migrated_0007: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0008/input.js - esprima/expression-primary-literal-string/migrated_0008: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0009/input.js - esprima/expression-primary-literal-string/migrated_0009: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0010/input.js - esprima/expression-primary-literal-string/migrated_0010: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0011/input.js - esprima/expression-primary-literal-string/migrated_0011: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0012/input.js - esprima/expression-primary-literal-string/migrated_0012: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0013/input.js - esprima/expression-primary-literal-string/migrated_0013: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0015/input.js - esprima/expression-primary-literal-string/migrated_0015: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0016/input.js - esprima/expression-primary-literal-string/migrated_0016: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0017/input.js - esprima/expression-primary-literal-string/migrated_0017: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0018/input.js - esprima/expression-primary-literal-string/migrated_0018: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/statement-iteration/migrated_0021/input.js - parser: Expected ';' after for-loop init, but found ')' at 23..24
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-call-in-conditional/input.ts - parser: Expected ',' or ')' in parenthesized expression, but found ':' at 365..366
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/function-rest-trailing-comma/input.ts - parser: Rest parameter must be the last parameter at 37..38

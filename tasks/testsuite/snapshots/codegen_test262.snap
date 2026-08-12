@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 91099/91145 (99.95%)
+Positive Passed: 91105/91145 (99.96%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91145 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse 
@@ -13,10 +13,6 @@ Failed: fixtures/test262/test/built-ins/Function/prototype/toString/getter-objec
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/getter-object.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/setter-object.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/setter-object.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-5.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-5.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/directive-prologue/14.1-4-s.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/directive-prologue/14.1-5-s.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/class/accessor-name-inst-computed-in.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/class/accessor-name-inst-computed-in.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/class/accessor-name-static-computed-in.js - sloppy: codegen output changed after reparse 
@@ -28,8 +24,6 @@ Failed: fixtures/test262/test/language/expressions/dynamic-import/import-attribu
 Failed: fixtures/test262/test/language/expressions/dynamic-import/import-attributes/2nd-param-in.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/object/accessor-name-computed-in.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/object/accessor-name-computed-in.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/literals/regexp/7.8.5-1.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/literals/regexp/7.8.5-1.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: codegen output changed after reparse 

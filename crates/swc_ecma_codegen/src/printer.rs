@@ -291,10 +291,7 @@ impl<'a> Printer<'a> {
         for id in program.directives(self.ast).iter() {
             let directive = self.ast.get_node_in_sub_range(id);
             self.print_indent();
-            self.print_quoted(
-                Wtf8::from_str(self.ast.get_utf8(directive.value(self.ast))),
-                false,
-            );
+            self.print_directive(directive);
             self.print(";");
             self.print_newline();
             self.print_semicolon_if_needed();
@@ -305,6 +302,18 @@ impl<'a> Printer<'a> {
             self.print_semicolon_if_needed();
         }
         self.print_comments_before(self.ast.source().len() as u32, true, false);
+    }
+
+    fn print_directive(&mut self, directive: Directive) {
+        let expression = directive.expression(self.ast);
+        let value = self.ast.get_wtf8(expression.value(self.ast));
+        let raw = self.ast.get_utf8(expression.raw(self.ast));
+        let preserve_raw = value == "use strict" && raw.as_bytes().contains(&b'\\');
+        if preserve_raw {
+            self.print_bytes(raw);
+        } else {
+            self.print_quoted(value, false);
+        }
     }
 
     fn print_comments_before(&mut self, offset: u32, statement: bool, preserve_all: bool) {
@@ -413,7 +422,10 @@ impl<'a> Printer<'a> {
             {
                 start += 1;
             }
-            if start != whitespace_start || value[start..].first() == Some(&b'*') {
+            if !self.options.minify
+                || start != whitespace_start
+                || value[start..].first() == Some(&b'*')
+            {
                 self.print(" ");
             }
         }
@@ -1009,10 +1021,7 @@ impl<'a> Printer<'a> {
             self.print_semicolon_if_needed();
             let directive = self.ast.get_node_in_sub_range(id);
             self.print_indent();
-            self.print_quoted(
-                Wtf8::from_str(self.ast.get_utf8(directive.value(self.ast))),
-                false,
-            );
+            self.print_directive(directive);
             self.print_semicolon_after_statement();
         }
         for id in statements.iter() {
@@ -3922,10 +3931,7 @@ impl<'a> Printer<'a> {
                     self.print_semicolon_if_needed();
                     let directive = self.ast.get_node_in_sub_range(id);
                     self.print_indent();
-                    self.print_quoted(
-                        Wtf8::from_str(self.ast.get_utf8(directive.value(self.ast))),
-                        false,
-                    );
+                    self.print_directive(directive);
                     self.print_semicolon_after_statement();
                 }
                 for id in statements.iter() {

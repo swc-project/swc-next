@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 443/4069 (10.89%)
-Failed: 60/4069 (1.47%)
+Passed: 446/4069 (10.96%)
+Failed: 57/4069 (1.40%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 415/560 (74.11%)
-Failed: 53/560 (9.46%)
+Passed: 418/560 (74.64%)
+Failed: 50/560 (8.93%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -32,13 +32,11 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/await-using-declar
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-class-method-computed-key-comment/input.js - babel-generator/test/fixtures/comments/async-class-method-computed-key-comment: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-comment/input.js - babel-generator/test/fixtures/comments/async-generator-class-method-comment: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-computed-key-comment/input.js - babel-generator/test/fixtures/comments/async-generator-class-method-computed-key-comment: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/concise-block-comment-indent-2/input.js - babel-generator/test/fixtures/comments/concise-block-comment-indent-2: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/return-no-argument/input.js - babel-generator/test/fixtures/comments/return-no-argument: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/compact/binary-expressions/input.js - babel-generator/test/fixtures/compact/binary-expressions: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/bitwise-precedence/input.js - babel-generator/test/fixtures/edgecase/bitwise-precedence: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/floating-point/input.js - babel-generator/test/fixtures/edgecase/floating-point: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-in-no-in/input.js - babel-generator/test/fixtures/edgecase/for-in-no-in: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/large-file-concise/input.js - babel-generator/test/fixtures/edgecase/large-file-concise: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/new-precedence/input.js - babel-generator/test/fixtures/edgecase/new-precedence: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option/input.js - babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/unary-op/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
@@ -78,7 +76,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/class-a
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/export-default-function-as/input.js - babel-generator/test/fixtures/typescript/export-default-function-as: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/non-null-parentheses/input.js - babel-generator/test/fixtures/typescript/non-null-parentheses: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies/input.js - babel-generator/test/fixtures/typescript/satisfies: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/types-parenthesized/input.js - babel-generator/test/fixtures/typescript/types-parenthesized: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/variance-annotations-with-jsx/input.tsx - parse: Expected a semicolon or an implicit semicolon after a statement, but found '<' at 27..28
 

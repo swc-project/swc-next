@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 13096/13156 (99.54%)
+Positive Passed: 13102/13156 (99.59%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/arrowExpressionBodyJSDoc.ts - mytest.js: codegen output changed after reparse 
@@ -21,7 +21,6 @@ Failed: fixtures/typescript/tests/cases/compiler/genericTypeAssertions3.ts - par
 Failed: fixtures/typescript/tests/cases/compiler/jsxNestedWithinTernaryParsesCorrectly.tsx - jsxNestedWithinTernaryParsesCorrectly.tsx: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/lambdaASIEmit.ts - lambdaASIEmit.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/matchReturnTypeInAllBranches.ts - matchReturnTypeInAllBranches.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - parser: Unexpected token '<' at 128..129
 Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found '++' at 74..76
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
@@ -52,13 +51,8 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwai
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - parser: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
 Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlFileWithinDeclarationFile.ts - parser: 'const' declarations must be initialized at 384..392
 Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlImport.ts - parser: 'const' declarations must be initialized at 384..392
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 29.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 30.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 33.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 34.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parser: Expected a type, but found 'break' at 34..39
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserForStatement9.ts - parserForStatement9.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerStringLiteralWithContainingNullCharacter1.ts - scannerStringLiteralWithContainingNullCharacter1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/statements/forStatements/forStatements.ts - forStatements.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/statements/forStatements/forStatementsMultipleInvalidDecl.ts - forStatementsMultipleInvalidDecl.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/statements/forStatements/forStatementsMultipleValidDecl.ts - forStatementsMultipleValidDecl.ts: codegen output changed after reparse 
