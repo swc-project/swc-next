@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 12670/13156 (96.31%)
+Positive Passed: 12675/13156 (96.34%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ambientConstLiterals.ts - ambientConstLiterals.ts: codegen output changed after reparse 
@@ -159,7 +159,6 @@ Failed: fixtures/typescript/tests/cases/compiler/fakeInfinity3.ts - fakeInfinity
 Failed: fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts - parser: Invalid character at start of identifier at 110..110
 Failed: fixtures/typescript/tests/cases/compiler/flowControlTypeGuardThenSwitch.ts - flowControlTypeGuardThenSwitch.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/genericRecursiveImplicitConstructorErrors2.ts - genericRecursiveImplicitConstructorErrors2.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/genericTupleWithSimplifiableElements.ts - parser: Expected a type, but found '...' at 64..67
 Failed: fixtures/typescript/tests/cases/compiler/genericTypeAssertions3.ts - parser: Unexpected token '<<' at 8..10
 Failed: fixtures/typescript/tests/cases/compiler/implicitIndexSignatures.ts - implicitIndexSignatures.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/importAliasFromNamespace.ts - internal.ts: codegen output changed after reparse 
@@ -168,7 +167,6 @@ Failed: fixtures/typescript/tests/cases/compiler/importElisionEnum.ts - index.ts
 Failed: fixtures/typescript/tests/cases/compiler/importedEnumMemberMergedWithExportedAliasIsError.ts - enum.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/indexIntoEnum.ts - indexIntoEnum.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/inferFromGenericFunctionReturnTypes3.ts - inferFromGenericFunctionReturnTypes3.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/inferTypesWithFixedTupleExtendsAtVariadicPosition.ts - parser: Expected a type, but found '...' at 359..362
 Failed: fixtures/typescript/tests/cases/compiler/initializersInAmbientEnums.ts - initializersInAmbientEnums.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnum.ts - internalAliasEnum.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideLocalModuleWithExport.ts - internalAliasEnumInsideLocalModuleWithExport.ts: codegen output changed after reparse 
@@ -229,7 +227,6 @@ Failed: fixtures/typescript/tests/cases/compiler/recursiveArrayNotCircular.ts - 
 Failed: fixtures/typescript/tests/cases/compiler/reducibleIndexedAccessTypes.ts - reducibleIndexedAccessTypes.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found '++' at 74..76
 Failed: fixtures/typescript/tests/cases/compiler/restInvalidArgumentType.ts - restInvalidArgumentType.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts - parser: Expected a type, but found '...' at 495..498
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/spreadInvalidArgumentType.ts - spreadInvalidArgumentType.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/spreadTupleAccessedByTypeParameter.ts - spreadTupleAccessedByTypeParameter.ts: codegen output changed after reparse 
@@ -454,10 +451,8 @@ Failed: fixtures/typescript/tests/cases/conformance/types/primitives/undefined/i
 Failed: fixtures/typescript/tests/cases/conformance/types/primitives/undefined/invalidUndefinedValues.ts - invalidUndefinedValues.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/primitives/void/invalidVoidAssignments.ts - invalidVoidAssignments.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/primitives/void/invalidVoidValues.ts - invalidVoidValues.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/types/rest/genericRestParameters3.ts - parser: Expected a type, but found '...' at 2066..2069
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeReferences/nonGenericTypeReferenceWithTypeArguments.ts - nonGenericTypeReferenceWithTypeArguments.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/castingTuple.ts - castingTuple.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/types/tuple/named/namedTupleMembers.ts - parser: Expected a type, but found '...' at 497..500
 Failed: fixtures/typescript/tests/cases/conformance/types/typeAliases/typeAliases.ts - typeAliases.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeParameterLists/typeParameterConstModifiersReturnsAndYields.ts - typeParameterConstModifiersReturnsAndYields.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/types/typeRelationships/assignmentCompatibility/anyAssignabilityInInheritance.ts - anyAssignabilityInInheritance.ts: codegen output changed after reparse 

@@ -72,4 +72,8 @@ fn test_optional_and_rest_tuple_elements() {
         "type Tuple = [string?, ...number[]]",
         "type Tuple = [string?, ...number[]];\n",
     );
+    expect_printed_ts(
+        "type Tuple = [first: string, second?: number, ...rest: boolean[]]",
+        "type Tuple = [first: string, second?: number, ...rest: boolean[]];\n",
+    );
 }
