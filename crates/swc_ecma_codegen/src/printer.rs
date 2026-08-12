@@ -1708,12 +1708,16 @@ impl<'a> Printer<'a> {
     fn print_expr(&mut self, expr: Expr, level: Precedence) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
         let is_at_export_default_start = self.js.len() == self.export_default_start;
+        let is_at_arrow_expr_start = self.js.len() == self.arrow_expr_start;
         self.print_comments_before(expr.span(self.ast).start, false, true);
         if is_at_stmt_start {
             self.stmt_start = self.js.len();
         }
         if is_at_export_default_start {
             self.export_default_start = self.js.len();
+        }
+        if is_at_arrow_expr_start {
+            self.arrow_expr_start = self.js.len();
         }
         match self.ast.expr_data(expr) {
             ExprData::IdentifierReference(e) => {
@@ -1798,13 +1802,18 @@ impl<'a> Printer<'a> {
             ExprData::UnaryExpression(e) => self.print_unary(e, level),
             ExprData::UpdateExpression(e) => self.print_update(e, level),
             ExprData::AssignmentExpression(e) => {
-                let destructuring_at_stmt = (self.js.len() == self.stmt_start
-                    || self.js.len() == self.arrow_expr_start)
+                let target = self.ast.assignment_target_data(e.left(self.ast));
+                let destructuring_at_stmt = self.js.len() == self.stmt_start
+                    && matches!(target, AssignmentTargetData::ObjectAssignmentTarget(_));
+                let destructuring_at_arrow = self.js.len() == self.arrow_expr_start
                     && matches!(
-                        self.ast.assignment_target_data(e.left(self.ast)),
-                        AssignmentTargetData::ObjectAssignmentTarget(_)
+                        target,
+                        AssignmentTargetData::ArrayAssignmentTarget(_)
+                            | AssignmentTargetData::ObjectAssignmentTarget(_)
                     );
-                let wrap = level > Precedence::Assignment || destructuring_at_stmt;
+                let wrap = level > Precedence::Assignment
+                    || destructuring_at_stmt
+                    || destructuring_at_arrow;
                 if wrap {
                     self.print("(");
                 }
@@ -2504,7 +2513,16 @@ impl<'a> Printer<'a> {
                 self.print_ts_annotation(t);
             }
             self.print_space();
-            self.print_function_body(f.body(self.ast));
+            let body = f.body(self.ast);
+            self.print_function_body(body);
+            if matches!(p.kind(self.ast), PropertyKind::Get | PropertyKind::Set) {
+                let body_end = body.span(self.ast).end;
+                while self.comments.get(self.next_comment).is_some_and(|comment| {
+                    comment.position == CommentPosition::Trailing && comment.attached_to == body_end
+                }) {
+                    self.next_comment += 1;
+                }
+            }
             return;
         }
         self.print_property_key(p.key(self.ast), p.computed(self.ast));
@@ -2653,7 +2671,7 @@ impl<'a> Printer<'a> {
         match self.ast.arrow_function_body_data(e.body(self.ast)) {
             ArrowFunctionBodyData::FunctionBody(body) => self.print_function_body(body),
             ArrowFunctionBodyData::Expr(value) => {
-                self.print_expr_without_leading_newline(value, Precedence::Assignment);
+                self.print_expr(value, Precedence::Assignment);
             }
         }
         if wrap {
