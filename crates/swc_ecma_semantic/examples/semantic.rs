@@ -18,7 +18,7 @@ use swc_next_ecma_semantic::{
 #[derive(Parser)]
 #[command(about = "Print the scope tree for a JavaScript or TypeScript file")]
 struct Args {
-    #[arg(default_value = "test.js")]
+    #[arg(default_value = "input.js")]
     filename: String,
 }
 

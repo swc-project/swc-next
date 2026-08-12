@@ -1,4 +1,4 @@
-//! Generate JavaScript from a JavaScript or TypeScript file.
+//! Generate JavaScript / TypeScript from a JavaScript / TypeScript file.
 //!
 //! Run with:
 //! `cargo run -p swc_next_ecma_codegen --example codegen -- [filename] [--minify] [--ascii-only] [--preserve-parens]`
@@ -14,7 +14,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser
 #[derive(Parser)]
 #[command(about = "Generate JavaScript from a JavaScript or TypeScript file")]
 struct Args {
-    #[arg(default_value = "test.js")]
+    #[arg(default_value = "input.js")]
     filename: String,
 
     /// Minify the generated JavaScript.
