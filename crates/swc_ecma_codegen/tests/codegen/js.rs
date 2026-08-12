@@ -24,3 +24,15 @@ fn test_multiline_block_comment_is_stable() {
         "while (true) {\n  continue;\n  /* Multiline\n   Comment */\n  there;\n}\n",
     );
 }
+
+#[test]
+fn test_for_destructuring_default_initializer() {
+    expect_printed(
+        "for (const [arrow = () => {}] = []; test;);",
+        "for (const [arrow = () => {\n}] = []; test; ) ;\n",
+    );
+    expect_printed(
+        "for (const { arrow = () => {} } = {}; test;);",
+        "for (const { arrow = () => {\n} } = {}; test; ) ;\n",
+    );
+}

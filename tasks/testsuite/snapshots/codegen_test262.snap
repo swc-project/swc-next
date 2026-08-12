@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 91105/91145 (99.96%)
+Positive Passed: 91117/91145 (99.97%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91145 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse 
@@ -29,17 +29,5 @@ Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/c
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-elem-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-elem-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/const-obj-ptrn-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/const-obj-ptrn-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/let-ary-ptrn-elem-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/let-ary-ptrn-elem-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/let-obj-ptrn-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/let-obj-ptrn-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/var-ary-ptrn-elem-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/var-ary-ptrn-elem-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/var-obj-ptrn-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/language/statements/for/dstr/var-obj-ptrn-id-init-fn-name-arrow.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - strict: codegen output changed after reparse 

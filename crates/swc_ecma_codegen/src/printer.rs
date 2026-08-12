@@ -1373,6 +1373,8 @@ impl<'a> Printer<'a> {
             BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id, true),
             BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
             BindingPatternData::AssignmentPattern(p) => {
+                let old_forbid_in = self.forbid_in;
+                self.forbid_in = false;
                 self.print_decorators(p.decorators(self.ast));
                 self.print_binding(p.left(self.ast));
                 if p.optional(self.ast) {
@@ -1385,6 +1387,7 @@ impl<'a> Printer<'a> {
                 self.print("=");
                 self.print_space();
                 self.print_expr(p.right(self.ast), Precedence::Assignment);
+                self.forbid_in = old_forbid_in;
             }
             BindingPatternData::BindingRestElement(r) => {
                 self.print_decorators(r.decorators(self.ast));
