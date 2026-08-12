@@ -1,6 +1,6 @@
 codegen * babel
 ========================
-Positive Passed: 2134/2238 (95.35%)
+Positive Passed: 2135/2238 (95.40%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
@@ -58,7 +58,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/automatic-sem
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/automatic-semicolon-insertion/migrated_0015/input.js - esprima/automatic-semicolon-insertion/migrated_0015: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/directive-prolog/migrated_0000/input.js - esprima/directive-prolog/migrated_0000: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/directive-prolog/migrated_0001/input.js - esprima/directive-prolog/migrated_0001: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-destructuring-assignment-array-pattern/dup-assignment/input.js - esprima/es2015-destructuring-assignment-array-pattern/dup-assignment: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-unicode-code-point-escape-sequence/migrated_0000/input.js - esprima/es2015-unicode-code-point-escape-sequence/migrated_0000: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-unicode-code-point-escape-sequence/migrated_0001/input.js - esprima/es2015-unicode-code-point-escape-sequence/migrated_0001: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/es2015-unicode-code-point-escape-sequence/migrated_0002/input.js - esprima/es2015-unicode-code-point-escape-sequence/migrated_0002: codegen output changed after reparse 

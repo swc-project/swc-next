@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 12675/13156 (96.34%)
+Positive Passed: 12683/13156 (96.40%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ambientConstLiterals.ts - ambientConstLiterals.ts: codegen output changed after reparse 
@@ -229,7 +229,6 @@ Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts
 Failed: fixtures/typescript/tests/cases/compiler/restInvalidArgumentType.ts - restInvalidArgumentType.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/spreadInvalidArgumentType.ts - spreadInvalidArgumentType.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/spreadTupleAccessedByTypeParameter.ts - spreadTupleAccessedByTypeParameter.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/stableTypeOrdering.ts - stableTypeOrdering.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/strictModeEnumMemberNameReserved.ts - strictModeEnumMemberNameReserved.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/systemModuleAmbientDeclarations.ts - file1.ts: codegen output changed after reparse 
@@ -284,21 +283,16 @@ Failed: fixtures/typescript/tests/cases/conformance/enums/enumMerging.ts - enumM
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumShadowedInfinityNaN.ts - enumShadowedInfinityNaN.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es2017/useObjectValuesAndEntries1.ts - useObjectValuesAndEntries1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/Symbols/symbolType19.ts - symbolType19.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/arrowFunction/emitArrowFunctionES6.ts - emitArrowFunctionES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames47_ES5.ts - computedPropertyNames47_ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames47_ES6.ts - computedPropertyNames47_ES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames48_ES5.ts - computedPropertyNames48_ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames48_ES6.ts - computedPropertyNames48_ES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames7_ES5.ts - computedPropertyNames7_ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames7_ES6.ts - computedPropertyNames7_ES6.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringArrayBindingPatternAndAssignment1ES5.ts - destructuringArrayBindingPatternAndAssignment1ES5.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringArrayBindingPatternAndAssignment1ES5iterable.ts - destructuringArrayBindingPatternAndAssignment1ES5iterable.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringArrayBindingPatternAndAssignment1ES6.ts - destructuringArrayBindingPatternAndAssignment1ES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringObjectBindingPatternAndAssignment7.ts - destructuringObjectBindingPatternAndAssignment7.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration3ES5.ts - destructuringParameterDeclaration3ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration3ES5iterable.ts - destructuringParameterDeclaration3ES5iterable.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration3ES6.ts - destructuringParameterDeclaration3ES6.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringVariableDeclaration2.ts - destructuringVariableDeclaration2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/for-ofStatements/for-of47.ts - for-of47.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/for-ofStatements/for-of48.ts - for-of48.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports1-amd.ts - t1.ts: codegen output changed after reparse 
@@ -340,7 +334,6 @@ Failed: fixtures/typescript/tests/cases/conformance/expressions/binaryOperators/
 Failed: fixtures/typescript/tests/cases/conformance/expressions/contextualTyping/functionExpressionContextualTyping1.ts - functionExpressionContextualTyping1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/elementAccess/stringEnumInElementAccess01.ts - stringEnumInElementAccess01.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/functionCalls/typeArgumentInferenceWithObjectLiteral.ts - typeArgumentInferenceWithObjectLiteral.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/expressions/functions/arrowFunctionExpressions.ts - arrowFunctionExpressions.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/optionalChaining/optionalChainingInArrow.ts - optionalChainingInArrow.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeAssertions/constAssertionOnEnum.ts - enum.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeAssertions/constAssertionOnEnum.ts - more.ts: codegen output changed after reparse 
@@ -415,7 +408,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statement
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource2.ts - parserRealSource2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource3.ts - parserRealSource3.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/pedantic/noUncheckedIndexedAccess.ts - noUncheckedIndexedAccess.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/pedantic/noUncheckedIndexedAccessDestructuring.ts - noUncheckedIndexedAccessDestructuring.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/salsa/enumMergeWithExpando.ts - lovefield-ts.d.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerEnum1.ts - scannerEnum1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerStringLiteralWithContainingNullCharacter1.ts - scannerStringLiteralWithContainingNullCharacter1.ts: codegen output changed after reparse 
