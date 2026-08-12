@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};
 use swc_next_ecma_transformer::{
-    TransformerOptions, assumptions::Assumptions, es2015::ES2015Options,
+    TransformerOptions, assumptions::Assumptions, es2015::ES2015Options, es2019::ES2019Options,
 };
 
 mod plugins;
@@ -84,6 +84,9 @@ impl From<BabelOptions> for TransformerOptions {
                 arrow_functions: plugins.arrow_function,
                 shorthand_properties: plugins.shorthand_properties,
                 sticky_regex: plugins.sticky_regex,
+            },
+            es2019: ES2019Options {
+                optional_catch_binding: plugins.optional_catch_binding,
             },
         }
     }

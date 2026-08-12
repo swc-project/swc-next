@@ -4,10 +4,10 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 443/4069 (10.89%)
+Passed: 447/4069 (10.99%)
 Failed: 60/4069 (1.47%)
 Panicked: 0/4069 (0.00%)
-Skipped: 3566/4069 (87.64%)
+Skipped: 3562/4069 (87.54%)
 
 Packages
 ========
@@ -589,10 +589,10 @@ Skipped: 22/22 (100.00%)
 babel-plugin-transform-optional-catch-binding
 ---------------------------------------------
 Cases: 4
-Passed: 0/4 (0.00%)
+Passed: 4/4 (100.00%)
 Failed: 0/4 (0.00%)
 Panicked: 0/4 (0.00%)
-Skipped: 4/4 (100.00%)
+Skipped: 0/4 (0.00%)
 
 babel-plugin-transform-optional-chaining
 ----------------------------------------

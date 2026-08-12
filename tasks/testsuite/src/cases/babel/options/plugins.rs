@@ -29,6 +29,9 @@ pub struct BabelPlugins {
     pub arrow_function: Option<ArrowFunctionsOptions>,
     pub shorthand_properties: bool,
     pub sticky_regex: bool,
+
+    // ES2019
+    pub optional_catch_binding: bool,
 }
 
 impl TryFrom<PluginPresetEntries> for BabelPlugins {
@@ -62,6 +65,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 }
                 "transform-shorthand-properties" => plugins.shorthand_properties = true,
                 "transform-sticky-regex" => plugins.sticky_regex = true,
+                "transform-optional-catch-binding" => plugins.optional_catch_binding = true,
                 _ => plugins.unsupported.push(entry.name().to_owned()),
             }
         }
