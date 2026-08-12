@@ -296,9 +296,9 @@ impl<'a> Printer<'a> {
             self.print_newline();
             self.print_semicolon_if_needed();
         }
-        for id in program.body(self.ast).iter() {
+        for (index, id) in program.body(self.ast).iter().enumerate() {
             let statement = self.ast.get_node_in_sub_range(id);
-            self.print_stmt(statement);
+            self.print_stmt_with_context(statement, index == 0);
             self.print_semicolon_if_needed();
         }
         self.print_comments_before(self.ast.source().len() as u32, true, false);
@@ -626,6 +626,10 @@ impl<'a> Printer<'a> {
     }
 
     fn print_stmt(&mut self, stmt: Stmt) {
+        self.print_stmt_with_context(stmt, false);
+    }
+
+    fn print_stmt_with_context(&mut self, stmt: Stmt, prevent_directive: bool) {
         self.print_comments_before(stmt.span(self.ast).start, true, true);
         self.add_source_mapping(stmt.span(self.ast).start);
         self.stmt_start = self.js.len();
@@ -698,7 +702,16 @@ impl<'a> Printer<'a> {
             StmtData::ExpressionStatement(s) => {
                 self.print_indent();
                 self.stmt_start = self.js.len();
-                self.print_expr(s.expression(self.ast), Precedence::Lowest);
+                let expression = s.expression(self.ast);
+                let wrap = prevent_directive
+                    && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(_));
+                if wrap {
+                    self.print("(");
+                }
+                self.print_expr(expression, Precedence::Lowest);
+                if wrap {
+                    self.print(")");
+                }
                 self.print_semicolon_after_statement();
             }
             StmtData::ForInStatement(s) => {
@@ -1031,10 +1044,10 @@ impl<'a> Printer<'a> {
             self.print_directive(directive);
             self.print_semicolon_after_statement();
         }
-        for id in statements.iter() {
+        for (index, id) in statements.iter().enumerate() {
             self.print_semicolon_if_needed();
             let statement = self.ast.get_node_in_sub_range(id);
-            self.print_stmt(statement);
+            self.print_stmt_with_context(statement, index == 0);
         }
         self.needs_semicolon = false;
         self.print_comments_before(body.span(self.ast).end.saturating_sub(1), true, true);
@@ -4046,10 +4059,10 @@ impl<'a> Printer<'a> {
                     self.print_directive(directive);
                     self.print_semicolon_after_statement();
                 }
-                for id in statements.iter() {
+                for (index, id) in statements.iter().enumerate() {
                     self.print_semicolon_if_needed();
                     let statement = self.ast.get_node_in_sub_range(id);
-                    self.print_stmt(statement);
+                    self.print_stmt_with_context(statement, index == 0);
                 }
                 self.needs_semicolon = false;
                 self.indent -= 1;
@@ -4084,10 +4097,10 @@ impl<'a> Printer<'a> {
         for _ in directives.iter() {
             self.print_semicolon_if_needed();
         }
-        for id in statements.iter() {
+        for (index, id) in statements.iter().enumerate() {
             self.print_semicolon_if_needed();
             let statement = self.ast.get_node_in_sub_range(id);
-            self.print_stmt(statement);
+            self.print_stmt_with_context(statement, index == 0);
         }
         self.needs_semicolon = false;
         self.indent -= 1;
