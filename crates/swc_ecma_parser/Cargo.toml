@@ -19,4 +19,4 @@ swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
 
 [dev-dependencies]
-pico-args = { workspace = true }
+clap = { workspace = true }

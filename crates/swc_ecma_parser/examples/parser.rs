@@ -1,28 +1,36 @@
 //! Parse a JavaScript or TypeScript file with the next parser.
 //!
 //! Run with:
-//! `cargo run -p swc_next_ecma_parser --example parser -- [filename] [--ast] [--comments]`
+//! `cargo run -p swc_next_ecma_parser --example parser -- [filename] [--preserve-parens]`
 
 use std::{fs, path::Path};
 
-use pico_args::Arguments;
+use clap::Parser;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, SourceType};
-use swc_next_ecma_parser::{Options, Parser, TokenParserConfig};
+use swc_next_ecma_parser::{Options, Parser as EcmaParser, TokenParserConfig};
+
+#[derive(Parser)]
+#[command(about = "Parse a JavaScript or TypeScript file with the next parser")]
+struct Args {
+    #[arg(default_value = "input.js")]
+    filename: String,
+
+    /// Represent parenthesized expressions and TypeScript types as explicit nodes.
+    #[arg(long)]
+    preserve_parens: bool,
+}
 
 fn main() -> Result<(), String> {
-    let mut args = Arguments::from_env();
-
-    let name = args
-        .free_from_str()
-        .unwrap_or_else(|_| "test.js".to_string());
+    let args = Args::parse();
 
     // Read source file
-    let path = Path::new(&name);
-    let source_text = fs::read_to_string(path).map_err(|_| format!("Missing '{name}'"))?;
+    let path = Path::new(&args.filename);
+    let source_text =
+        fs::read_to_string(path).map_err(|_| format!("Missing '{}'", path.display()))?;
     let source = source_text.as_str();
-    let source_type = SourceType::from_path(&name);
-    let lang = Lang::from_path(&name);
+    let source_type = SourceType::from_path(&args.filename);
+    let lang = Lang::from_path(&args.filename);
 
     // Parse the source code
     let allocator = Allocator::new();
@@ -30,9 +38,10 @@ fn main() -> Result<(), String> {
     let options = Options {
         source_type,
         lang,
+        preserve_parens: args.preserve_parens,
         ..Options::default()
     };
-    let ret = Parser::init(&mut ast, options, TokenParserConfig).parse();
+    let ret = EcmaParser::init(&mut ast, options, TokenParserConfig).parse();
 
     for diagnostic in &ret.diagnostics {
         eprintln!(
