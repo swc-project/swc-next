@@ -858,6 +858,7 @@ impl<'a> Printer<'a> {
                     DeclData::Function(_)
                         | DeclData::Class(_)
                         | DeclData::TsInterfaceDeclaration(_)
+                        | DeclData::TsEnumDeclaration(_)
                         | DeclData::TsModuleDeclaration(_)
                         | DeclData::TsGlobalDeclaration(_)
                 );
@@ -3168,6 +3169,7 @@ impl<'a> Printer<'a> {
                 DeclData::Function(_)
                     | DeclData::Class(_)
                     | DeclData::TsInterfaceDeclaration(_)
+                    | DeclData::TsEnumDeclaration(_)
                     | DeclData::TsModuleDeclaration(_)
             );
             if let DeclData::Class(class) = self.ast.decl_data(decl) {

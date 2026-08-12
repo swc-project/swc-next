@@ -1,12 +1,11 @@
 codegen * babel
 ========================
-Positive Passed: 2135/2238 (95.40%)
+Positive Passed: 2159/2238 (96.47%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/basic/arrow-function/input.js - comments/basic/arrow-function: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/basic/async-arrow-function/input.js - comments/basic/async-arrow-function: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/comments/typescript/TSEnumBody-trailing-comma/input.ts - comments/typescript/TSEnumBody-trailing-comma: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/100/input.js - core/uncategorised/100: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/101/input.js - core/uncategorised/101: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/uncategorised/263/input.js - core/uncategorised/263: codegen output changed after reparse 
@@ -77,32 +76,9 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-pr
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0017/input.js - esprima/expression-primary-literal-string/migrated_0017: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/expression-primary-literal-string/migrated_0018/input.js - esprima/expression-primary-literal-string/migrated_0018: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/statement-iteration/migrated_0021/input.js - parser: Expected ';' after for-loop init, but found ')' at 23..24
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/enum/input.js - estree/typescript/enum: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/loc-index-property/input.js - estree/typescript/loc-index-property: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-call-in-conditional/input.ts - parser: Expected ',' or ')' in parenthesized expression, but found ':' at 365..366
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/const/initializer-ambient-context/input.ts - typescript/const/initializer-ambient-context: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/function-rest-trailing-comma/input.ts - parser: Rest parameter must be the last parameter at 37..38
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/valid-trailing-comma-for-rest/input.ts - parser: Rest parameter must be the last parameter at 29..30
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/const/input.ts - typescript/enum/const: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/declare-const/input.ts - typescript/enum/declare-const: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/declare-new-line/input.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'enum' at 8..12
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/declare/input.ts - typescript/enum/declare: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/enum-as-or-satisfies-brackets/input.ts - typescript/enum/enum-as-or-satisfies-brackets: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/export-const/input.ts - typescript/enum/export-const: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/export-declare-const/input.ts - typescript/enum/export-declare-const: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/export/input.ts - typescript/enum/export: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/members-reserved-words/input.ts - typescript/enum/members-reserved-words: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/members-strings/input.ts - typescript/enum/members-strings: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/members-trailing-comma-with-initializer/input.ts - typescript/enum/members-trailing-comma-with-initializer: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/members-trailing-comma/input.ts - typescript/enum/members-trailing-comma: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/members/input.ts - typescript/enum/members: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/declare/input.ts - typescript/export/declare: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/export-value-declaration/input.ts - typescript/export/export-value-declaration: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/regression/is-default-export/input.ts - typescript/regression/is-default-export: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/enum-block-scoped/input.ts - typescript/scope/enum-block-scoped: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/export-enum-after/input.ts - typescript/scope/export-enum-after: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/export-enum-before/input.ts - typescript/scope/export-enum-before: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/redeclaration-constenum-constenum/input.ts - typescript/scope/redeclaration-constenum-constenum: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/redeclaration-enum-enum/input.ts - typescript/scope/redeclaration-enum-enum: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-false-positive-5/input.ts - parser: Invalid assignment target at 3..13
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/const-type-parameters/input.ts - parser: Type parameter modifiers must appear in the order 'const in out' at 346..351

@@ -50,7 +50,7 @@ fn test_export_declarations() {
     );
     expect_printed_ts(
         "export declare enum E { A }",
-        "export declare enum E {\n  A,\n};\n",
+        "export declare enum E {\n  A,\n}\n",
     );
     expect_printed_ts(
         "export declare namespace N { const value: string }",
@@ -75,5 +75,19 @@ fn test_optional_and_rest_tuple_elements() {
     expect_printed_ts(
         "type Tuple = [first: string, second?: number, ...rest: boolean[]]",
         "type Tuple = [first: string, second?: number, ...rest: boolean[]];\n",
+    );
+}
+
+#[test]
+fn test_enum_declarations_do_not_emit_semicolons() {
+    expect_printed_ts("enum E {}", "enum E {}\n");
+    expect_printed_ts(
+        "declare const enum E { A = 1 }",
+        "declare const enum E {\n  A = 1,\n}\n",
+    );
+    expect_printed_ts("export enum E { A }", "export enum E {\n  A,\n}\n");
+    expect_printed_ts(
+        "namespace N { enum E { A } }",
+        "namespace N {\n  enum E {\n    A,\n  }\n}\n",
     );
 }
