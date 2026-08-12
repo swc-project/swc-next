@@ -48,8 +48,16 @@ fn test_function_source_comments_are_stable() {
         "let f = async () => /* object */ ({});\nlet g = () => /* sequence */ (a, b);\nlet h = () => /* array */ ([] = []);\nlet i = () => /* object assignment */ ({} = {});\n",
     );
     expect_stable(
-        "foo({ get x() {} /* getter */ }, 0); foo({ set [x](value) {} /* setter */ }, 0);",
-        "foo({ get x() {\n} }, 0);\nfoo({ set [x](value) {\n} }, 0);\n",
+        "let f = () => (/* member */ {}).x; let g = () => (/* binary */ {}) + 1; let h = () => (/* conditional */ {}) ? 1 : 2;",
+        "let f = () => /* member */ ({}).x;\nlet g = () => /* binary */ ({}) + 1;\nlet h = () => /* conditional */ ({}) ? 1 : 2;\n",
+    );
+    expect_stable(
+        "foo({ get x() {} /* getter */, next() {} }, 0); foo({ set [x](value) {} /* setter */ }, 0);",
+        "foo({ get x() {\n} /* getter */, next() {\n} }, 0);\nfoo({ set [x](value) {\n} /* setter */ }, 0);\n",
+    );
+    expect_stable(
+        "function f() { foo({ get x() {} // getter\n, next() {} }, 0); }",
+        "function f() {\n  foo({ get x() {\n  } // getter\n  , next() {\n  } }, 0);\n}\n",
     );
 }
 
