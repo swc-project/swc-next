@@ -51,10 +51,7 @@ fn main() -> Result<(), String> {
         ..ParserOptions::default()
     };
     let ret = EcmaParser::init(&mut ast, options, NoTokenParserConfig).parse();
-
-    if !ret.diagnostics.is_empty() {
-        return Err(format!("Failed to parse '{}'", path.display()));
-    }
+    assert!(ret.diagnostics.is_empty());
 
     // Generate JavaScript from the parsed program
     let options = CodegenOptions {
