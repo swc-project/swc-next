@@ -16,6 +16,7 @@ oxc                    = { workspace = true }
 oxc_allocator          = { workspace = true }
 swc_next_allocator     = { workspace = true }
 swc_next_ecma_ast      = { workspace = true }
+swc_next_ecma_codegen  = { workspace = true }
 swc_next_ecma_parser   = { workspace = true, features = ["unstable"] }
 swc_next_ecma_semantic = { workspace = true }
 
