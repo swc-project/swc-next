@@ -81,6 +81,23 @@ struct Printer<'a> {
     int_to_bytes_buffer: [u8; 64],
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum TsTypePrecedence {
+    Lowest,
+    Function,
+    Conditional,
+    Union,
+    Intersection,
+    TypeOperator,
+    Postfix,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TsTypeParameterConstraintContext {
+    Declaration,
+    Infer,
+}
+
 pub fn print<'a>(
     allocator: &'a Allocator,
     tree: &'a Ast<'a>,
@@ -1540,18 +1557,18 @@ impl<'a> Printer<'a> {
             }
             SimpleAssignmentTargetData::MemberExpression(m) => self.print_member(m),
             SimpleAssignmentTargetData::TsAsExpression(e) => {
-                self.print_expr(e.expression(self.ast), Precedence::Assignment);
+                self.print_expr(e.expression(self.ast), Precedence::Compare);
                 self.print(" as ");
-                self.print_ts_type(e.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
             }
             SimpleAssignmentTargetData::TsSatisfiesExpression(e) => {
-                self.print_expr(e.expression(self.ast), Precedence::Assignment);
+                self.print_expr(e.expression(self.ast), Precedence::Compare);
                 self.print(" satisfies ");
-                self.print_ts_type(e.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
             }
             SimpleAssignmentTargetData::TsTypeAssertion(e) => {
                 self.print("<");
-                self.print_ts_type(e.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 self.print(">");
                 self.print_expr(e.expression(self.ast), Precedence::Prefix);
             }
@@ -1854,14 +1871,17 @@ impl<'a> Printer<'a> {
             ExprData::NewExpression(e) => self.print_new(e, level),
             ExprData::TaggedTemplateExpression(e) => {
                 let tag = e.tag(self.ast);
+                let type_arguments = e.type_arguments(self.ast);
                 if matches!(self.ast.expr_data(tag), ExprData::ChainExpression(_)) {
                     self.print("(");
                     self.print_expr(tag, Precedence::Lowest);
                     self.print(")");
+                } else if type_arguments.is_some() {
+                    self.print_expr_before_type_arguments(tag, Precedence::Call);
                 } else {
                     self.print_expr(tag, Precedence::Postfix);
                 }
-                if let Some(args) = e.type_arguments(self.ast) {
+                if let Some(args) = type_arguments {
                     self.print_ts_type_args(args);
                 }
                 self.print_template(e.quasi(self.ast), true);
@@ -1964,25 +1984,25 @@ impl<'a> Printer<'a> {
                 self.print_identifier(name);
             }
             ExprData::TsAsExpression(e) => {
-                let wrap = level > Precedence::Assignment;
+                let wrap = level >= Precedence::Compare;
                 if wrap {
                     self.print("(");
                 }
-                self.print_expr(e.expression(self.ast), Precedence::Assignment);
+                self.print_expr(e.expression(self.ast), Precedence::Compare);
                 self.print(" as ");
-                self.print_ts_type(e.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
                 }
             }
             ExprData::TsSatisfiesExpression(e) => {
-                let wrap = level > Precedence::Assignment;
+                let wrap = level >= Precedence::Compare;
                 if wrap {
                     self.print("(");
                 }
-                self.print_expr(e.expression(self.ast), Precedence::Assignment);
+                self.print_expr(e.expression(self.ast), Precedence::Compare);
                 self.print(" satisfies ");
-                self.print_ts_type(e.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
                 }
@@ -1994,7 +2014,7 @@ impl<'a> Printer<'a> {
                 }
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("<");
-                self.print_ts_type(e.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 self.print(">");
                 self.print_expr(e.expression(self.ast), Precedence::Prefix);
                 if wrap {
@@ -2002,11 +2022,18 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::TsNonNullExpression(e) => {
-                self.print_expr(e.expression(self.ast), Precedence::Postfix);
+                let expression = e.expression(self.ast);
+                if self.expr_ends_with_type_arguments(expression) {
+                    self.print("(");
+                    self.print_expr(expression, Precedence::Lowest);
+                    self.print(")");
+                } else {
+                    self.print_expr(expression, Precedence::Postfix);
+                }
                 self.print("!");
             }
             ExprData::TsInstantiationExpression(e) => {
-                self.print_expr(e.expression(self.ast), Precedence::Call);
+                self.print_expr_before_type_arguments(e.expression(self.ast), Precedence::Call);
                 self.print_ts_type_args(e.type_arguments(self.ast));
             }
             ExprData::JsxElement(e) => self.print_jsx_element(e),
@@ -2200,24 +2227,49 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn expr_ends_with_type_arguments(&self, mut expr: Expr) -> bool {
+        loop {
+            match self.ast.expr_data(expr) {
+                ExprData::TsInstantiationExpression(_) => return true,
+                ExprData::TsNonNullExpression(expression) => {
+                    expr = expression.expression(self.ast);
+                }
+                _ => return false,
+            }
+        }
+    }
+
+    fn print_expr_before_type_arguments(&mut self, expr: Expr, level: Precedence) {
+        if self.expr_ends_with_type_arguments(expr) {
+            self.print("(");
+            self.print_expr(expr, Precedence::Lowest);
+            self.print(")");
+        } else {
+            self.print_expr(expr, level);
+        }
+    }
+
     fn print_call(&mut self, e: CallExpression, level: Precedence) {
         let wrap = level > Precedence::Call;
         if wrap {
             self.print("(");
         }
         let callee = e.callee(self.ast);
-        self.print_expr(
-            callee,
-            if matches!(self.ast.expr_data(callee), ExprData::NewExpression(_)) {
-                Precedence::New
-            } else {
-                Precedence::Call
-            },
-        );
+        let callee_level = if matches!(self.ast.expr_data(callee), ExprData::NewExpression(_)) {
+            Precedence::New
+        } else {
+            Precedence::Call
+        };
+        let type_arguments = e.type_arguments(self.ast);
+        if type_arguments.is_some() {
+            self.print_expr_before_type_arguments(callee, callee_level);
+        } else {
+            self.print_expr(callee, callee_level);
+        }
         if e.optional(self.ast) {
             self.print("?.");
         }
-        if let Some(args) = e.type_arguments(self.ast) {
+        if let Some(args) = type_arguments {
             self.print_ts_type_args(args);
         }
         self.print_arguments(
@@ -2238,6 +2290,7 @@ impl<'a> Printer<'a> {
         self.print("new");
         self.print_space();
         let callee = e.callee(self.ast);
+        let type_arguments = e.type_arguments(self.ast);
         match self.ast.expr_data(callee) {
             ExprData::CallExpression(_)
             | ExprData::ImportExpression(_)
@@ -2291,9 +2344,15 @@ impl<'a> Printer<'a> {
                     self.print_property_key_plain(member.property(self.ast));
                 }
             }
-            _ => self.print_expr(callee, Precedence::New),
+            _ => {
+                if type_arguments.is_some() {
+                    self.print_expr_before_type_arguments(callee, Precedence::New);
+                } else {
+                    self.print_expr(callee, Precedence::New);
+                }
+            }
         }
-        if let Some(args) = e.type_arguments(self.ast) {
+        if let Some(args) = type_arguments {
             self.print_ts_type_args(args);
         }
         let arguments = e.arguments(self.ast);
@@ -2633,8 +2692,13 @@ impl<'a> Printer<'a> {
         }
         if let Some(s) = c.super_class(self.ast) {
             self.print(" extends ");
-            self.print_expr(s, Precedence::Compare);
-            if let Some(t) = c.super_type_arguments(self.ast) {
+            let type_arguments = c.super_type_arguments(self.ast);
+            if type_arguments.is_some() {
+                self.print_expr_before_type_arguments(s, Precedence::Call);
+            } else {
+                self.print_expr(s, Precedence::Compare);
+            }
+            if let Some(t) = type_arguments {
                 self.print_ts_type_args(t);
             }
         }
@@ -3413,7 +3477,28 @@ impl<'a> Printer<'a> {
     fn print_ts_annotation(&mut self, a: TsTypeAnnotation) {
         self.print(":");
         self.print_space();
-        self.print_ts_type(a.type_annotation(self.ast), Precedence::Lowest);
+        self.print_ts_type(a.type_annotation(self.ast), TsTypePrecedence::Lowest);
+    }
+
+    fn print_ts_type_parameter_constraint(
+        &mut self,
+        constraint: TsType,
+        context: TsTypeParameterConstraintContext,
+    ) {
+        let wrap = match self.ast.ts_type_data(constraint) {
+            TsTypeData::TsConditionalType(_) => true,
+            TsTypeData::TsFunctionType(_) | TsTypeData::TsConstructorType(_) => {
+                context == TsTypeParameterConstraintContext::Infer
+            }
+            _ => false,
+        };
+        if wrap {
+            self.print("(");
+        }
+        self.print_ts_type(constraint, TsTypePrecedence::Lowest);
+        if wrap {
+            self.print(")");
+        }
     }
 
     fn print_ts_type_params(&mut self, d: TsTypeParameterDeclaration) {
@@ -3436,13 +3521,16 @@ impl<'a> Printer<'a> {
             self.print_binding_identifier(p.name(self.ast), false);
             if let Some(t) = p.constraint(self.ast) {
                 self.print(" extends ");
-                self.print_ts_type(t, Precedence::Lowest);
+                self.print_ts_type_parameter_constraint(
+                    t,
+                    TsTypeParameterConstraintContext::Declaration,
+                );
             }
             if let Some(t) = p.default(self.ast) {
                 self.print_space();
                 self.print("=");
                 self.print_space();
-                self.print_ts_type(t, Precedence::Lowest);
+                self.print_ts_type(t, TsTypePrecedence::Lowest);
             }
         }
         self.print(">");
@@ -3455,12 +3543,12 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
-            self.print_ts_type(self.ast.get_node_in_sub_range(id), Precedence::Lowest);
+            self.print_ts_type(self.ast.get_node_in_sub_range(id), TsTypePrecedence::Lowest);
         }
         self.print(">");
     }
 
-    fn print_ts_type(&mut self, ty: TsType, level: Precedence) {
+    fn print_ts_type(&mut self, ty: TsType, level: TsTypePrecedence) {
         self.add_source_mapping(ty.span(self.ast).start);
         match self.ast.ts_type_data(ty) {
             TsTypeData::TsAnyKeyword(_) => self.print("any"),
@@ -3522,7 +3610,7 @@ impl<'a> Printer<'a> {
                         self.print("${");
                         self.print_ts_type(
                             types.get_node(self.ast, i).unwrap(),
-                            Precedence::Lowest,
+                            TsTypePrecedence::Lowest,
                         );
                         self.print("}");
                     }
@@ -3530,21 +3618,28 @@ impl<'a> Printer<'a> {
                 self.print("`");
             }
             TsTypeData::TsArrayType(t) => {
-                let wrap = level > Precedence::Postfix;
+                let wrap = level > TsTypePrecedence::Postfix;
                 if wrap {
                     self.print("(");
                 }
-                self.print_ts_type(t.element_type(self.ast), Precedence::Postfix);
+                self.print_ts_type(t.element_type(self.ast), TsTypePrecedence::Postfix);
+                self.print("[]");
                 if wrap {
                     self.print(")");
                 }
-                self.print("[]");
             }
             TsTypeData::TsIndexedAccessType(t) => {
-                self.print_ts_type(t.object_type(self.ast), Precedence::Postfix);
+                let wrap = level > TsTypePrecedence::Postfix;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_ts_type(t.object_type(self.ast), TsTypePrecedence::Postfix);
                 self.print("[");
-                self.print_ts_type(t.index_type(self.ast), Precedence::Lowest);
+                self.print_ts_type(t.index_type(self.ast), TsTypePrecedence::Lowest);
                 self.print("]");
+                if wrap {
+                    self.print(")");
+                }
             }
             TsTypeData::TsTupleType(t) => {
                 self.print("[");
@@ -3558,18 +3653,25 @@ impl<'a> Printer<'a> {
                 self.print("]");
             }
             TsTypeData::TsOptionalType(t) => {
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Postfix);
+                let wrap = level > TsTypePrecedence::Postfix;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::Postfix);
                 self.print("?");
+                if wrap {
+                    self.print(")");
+                }
             }
             TsTypeData::TsRestType(t) => {
                 self.print("...");
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Prefix);
+                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::Lowest);
             }
             TsTypeData::TsJsDocNullableType(t) => {
                 if !t.postfix(self.ast) {
                     self.print("?");
                 }
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Prefix);
+                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::TypeOperator);
                 if t.postfix(self.ast) {
                     self.print("?");
                 }
@@ -3578,54 +3680,83 @@ impl<'a> Printer<'a> {
                 if !t.postfix(self.ast) {
                     self.print("!");
                 }
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Prefix);
+                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::TypeOperator);
                 if t.postfix(self.ast) {
                     self.print("!");
                 }
             }
             TsTypeData::TsJsDocUnknownType(_) => self.print("?"),
             TsTypeData::TsUnionType(t) => {
-                self.print_ts_type_list(t.types(self.ast), " | ", Precedence::BitwiseOr, level)
+                self.print_ts_type_list(t.types(self.ast), " | ", TsTypePrecedence::Union, level)
             }
-            TsTypeData::TsIntersectionType(t) => {
-                self.print_ts_type_list(t.types(self.ast), " & ", Precedence::BitwiseAnd, level)
-            }
+            TsTypeData::TsIntersectionType(t) => self.print_ts_type_list(
+                t.types(self.ast),
+                " & ",
+                TsTypePrecedence::Intersection,
+                level,
+            ),
             TsTypeData::TsConditionalType(t) => {
-                let wrap = level > Precedence::Conditional;
+                let wrap = level > TsTypePrecedence::Conditional;
                 if wrap {
                     self.print("(");
                 }
-                self.print_ts_type(t.check_type(self.ast), Precedence::Compare);
+                self.print_ts_type(t.check_type(self.ast), TsTypePrecedence::Union);
                 self.print(" extends ");
-                self.print_ts_type(t.extends_type(self.ast), Precedence::Compare);
+                self.print_ts_type(t.extends_type(self.ast), TsTypePrecedence::Union);
                 self.print(" ? ");
-                self.print_ts_type(t.true_type(self.ast), Precedence::Lowest);
+                self.print_ts_type(t.true_type(self.ast), TsTypePrecedence::Lowest);
                 self.print(" : ");
-                self.print_ts_type(t.false_type(self.ast), Precedence::Lowest);
+                self.print_ts_type(t.false_type(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
                 }
             }
             TsTypeData::TsInferType(t) => {
-                self.print("infer ");
                 let p = t.type_parameter(self.ast);
+                let precedence = if p.constraint(self.ast).is_some() {
+                    TsTypePrecedence::Conditional
+                } else {
+                    TsTypePrecedence::TypeOperator
+                };
+                let wrap = level > precedence;
+                if wrap {
+                    self.print("(");
+                }
+                self.print("infer ");
                 self.print_binding_identifier(p.name(self.ast), false);
                 if let Some(c) = p.constraint(self.ast) {
                     self.print(" extends ");
-                    self.print_ts_type(c, Precedence::Lowest);
+                    self.print_ts_type_parameter_constraint(
+                        c,
+                        TsTypeParameterConstraintContext::Infer,
+                    );
+                }
+                if wrap {
+                    self.print(")");
                 }
             }
             TsTypeData::TsTypeOperator(t) => {
+                let wrap = level > TsTypePrecedence::TypeOperator;
+                if wrap {
+                    self.print("(");
+                }
                 self.print(t.operator(self.ast).as_str());
                 self.print(" ");
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Prefix);
+                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::TypeOperator);
+                if wrap {
+                    self.print(")");
+                }
             }
             TsTypeData::TsParenthesizedType(t) => {
                 self.print("(");
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Lowest);
+                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 self.print(")");
             }
             TsTypeData::TsFunctionType(t) => {
+                let wrap = level > TsTypePrecedence::Function;
+                if wrap {
+                    self.print("(");
+                }
                 if let Some(p) = t.type_parameters(self.ast) {
                     self.print_ts_type_params(p);
                 }
@@ -3633,10 +3764,17 @@ impl<'a> Printer<'a> {
                 self.print(" => ");
                 self.print_ts_type(
                     t.return_type(self.ast).type_annotation(self.ast),
-                    Precedence::Assignment,
+                    TsTypePrecedence::Function,
                 );
+                if wrap {
+                    self.print(")");
+                }
             }
             TsTypeData::TsConstructorType(t) => {
+                let wrap = level > TsTypePrecedence::Function;
+                if wrap {
+                    self.print("(");
+                }
                 if t.r#abstract(self.ast) {
                     self.print("abstract ");
                 }
@@ -3648,8 +3786,11 @@ impl<'a> Printer<'a> {
                 self.print(" => ");
                 self.print_ts_type(
                     t.return_type(self.ast).type_annotation(self.ast),
-                    Precedence::Assignment,
+                    TsTypePrecedence::Function,
                 );
+                if wrap {
+                    self.print(")");
+                }
             }
             TsTypeData::TsTypePredicate(t) => {
                 if t.asserts(self.ast) {
@@ -3666,7 +3807,7 @@ impl<'a> Printer<'a> {
                 };
                 if let Some(a) = t.type_annotation(self.ast) {
                     self.print(" is ");
-                    self.print_ts_type(a.type_annotation(self.ast), Precedence::Lowest);
+                    self.print_ts_type(a.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 }
             }
             TsTypeData::TsTypeLiteral(t) => self.print_ts_type_members(t.members(self.ast)),
@@ -3678,10 +3819,10 @@ impl<'a> Printer<'a> {
         &mut self,
         types: TypedSubRange<TsType>,
         sep: &str,
-        prec: Precedence,
-        level: Precedence,
+        precedence: TsTypePrecedence,
+        level: TsTypePrecedence,
     ) {
-        let wrap = level > prec;
+        let wrap = level > precedence;
         if wrap {
             self.print("(");
         }
@@ -3689,7 +3830,7 @@ impl<'a> Printer<'a> {
             if i != 0 {
                 self.print(sep);
             }
-            self.print_ts_type(self.ast.get_node_in_sub_range(id), prec.next());
+            self.print_ts_type(self.ast.get_node_in_sub_range(id), precedence);
         }
         if wrap {
             self.print(")");
@@ -3771,7 +3912,7 @@ impl<'a> Printer<'a> {
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
         match self.ast.ts_tuple_element_data(e) {
-            TsTupleElementData::TsType(t) => self.print_ts_type(t, Precedence::Lowest),
+            TsTupleElementData::TsType(t) => self.print_ts_type(t, TsTypePrecedence::Lowest),
             TsTupleElementData::TsNamedTupleMember(n) => {
                 let mut element_type = n.element_type(self.ast);
                 if let TsTypeData::TsRestType(rest) = self.ast.ts_type_data(element_type) {
@@ -3787,7 +3928,7 @@ impl<'a> Printer<'a> {
                 }
                 self.print(":");
                 self.print_space();
-                self.print_ts_type(element_type, Precedence::Lowest);
+                self.print_ts_type(element_type, TsTypePrecedence::Lowest);
             }
         }
     }
@@ -3892,10 +4033,10 @@ impl<'a> Printer<'a> {
         self.print("[");
         self.print_binding_identifier(t.key(self.ast), false);
         self.print(" in ");
-        self.print_ts_type(t.constraint(self.ast), Precedence::Lowest);
+        self.print_ts_type(t.constraint(self.ast), TsTypePrecedence::Lowest);
         if let Some(n) = t.name_type(self.ast) {
             self.print(" as ");
-            self.print_ts_type(n, Precedence::Lowest);
+            self.print_ts_type(n, TsTypePrecedence::Lowest);
         }
         self.print("]");
         match t.optional(self.ast) {
@@ -3907,7 +4048,7 @@ impl<'a> Printer<'a> {
         if let Some(a) = t.type_annotation(self.ast) {
             self.print(":");
             self.print_space();
-            self.print_ts_type(a, Precedence::Lowest);
+            self.print_ts_type(a, TsTypePrecedence::Lowest);
         }
         self.print(";");
         self.print_newline();
@@ -3928,7 +4069,7 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print("=");
         self.print_space();
-        self.print_ts_type(d.type_annotation(self.ast), Precedence::Lowest);
+        self.print_ts_type(d.type_annotation(self.ast), TsTypePrecedence::Lowest);
     }
     fn print_ts_interface(&mut self, d: TsInterfaceDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
