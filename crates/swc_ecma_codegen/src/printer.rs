@@ -829,7 +829,7 @@ impl<'a> Printer<'a> {
                     if !can_omit_space {
                         self.print(" ");
                     }
-                    self.print_expr(value, Precedence::Lowest);
+                    self.print_expr_without_leading_line_terminator(value, Precedence::Lowest);
                 }
                 self.print_semicolon_after_statement();
             }
@@ -839,7 +839,10 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("throw");
                 self.print_space();
-                self.print_expr(s.argument(self.ast), Precedence::Lowest);
+                self.print_expr_without_leading_line_terminator(
+                    s.argument(self.ast),
+                    Precedence::Lowest,
+                );
                 self.print_semicolon_after_statement();
             }
             StmtData::TryStatement(s) => self.print_try(s),
@@ -1546,25 +1549,127 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn comment_has_line_terminator(&self, comment: Comment) -> bool {
+        if comment.kind == CommentKind::Line {
+            return true;
+        }
+        self.ast
+            .get_utf8(comment.value(self.ast.source().as_bytes()))
+            .chars()
+            .any(|c| matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+    }
+
+    fn has_leading_line_terminator_before(&self, offset: u32) -> bool {
+        self.options.comments
+            && self.comments[self.next_comment..]
+                .iter()
+                .take_while(|comment| comment.span.end <= offset)
+                .any(|comment| self.comment_has_line_terminator(*comment))
+    }
+
+    fn assignment_target_first_token_offset(&self, target: AssignmentTarget) -> u32 {
+        match self.ast.assignment_target_data(target) {
+            AssignmentTargetData::SimpleAssignmentTarget(target) => {
+                self.simple_assignment_target_first_token_offset(target)
+            }
+            AssignmentTargetData::ArrayAssignmentTarget(_)
+            | AssignmentTargetData::ObjectAssignmentTarget(_) => target.span(self.ast).start,
+        }
+    }
+
+    fn simple_assignment_target_first_token_offset(&self, target: SimpleAssignmentTarget) -> u32 {
+        let expression = match self.ast.simple_assignment_target_data(target) {
+            SimpleAssignmentTargetData::MemberExpression(member) => member.object(self.ast),
+            SimpleAssignmentTargetData::TsAsExpression(expression) => {
+                expression.expression(self.ast)
+            }
+            SimpleAssignmentTargetData::TsSatisfiesExpression(expression) => {
+                expression.expression(self.ast)
+            }
+            SimpleAssignmentTargetData::TsNonNullExpression(expression) => {
+                expression.expression(self.ast)
+            }
+            SimpleAssignmentTargetData::IdentifierReference(_)
+            | SimpleAssignmentTargetData::TsTypeAssertion(_) => {
+                return target.span(self.ast).start;
+            }
+        };
+        self.expr_first_token_offset(expression)
+    }
+
+    fn expr_first_token_offset(&self, mut expr: Expr) -> u32 {
+        loop {
+            let offset = expr.span(self.ast).start;
+            expr = match self.ast.expr_data(expr) {
+                ExprData::MemberExpression(expression) => expression.object(self.ast),
+                ExprData::CallExpression(expression) => expression.callee(self.ast),
+                ExprData::ChainExpression(expression) => expression.expression(self.ast),
+                ExprData::TaggedTemplateExpression(expression) => expression.tag(self.ast),
+                ExprData::BinaryExpression(expression) => expression.left(self.ast),
+                ExprData::LogicalExpression(expression) => expression.left(self.ast),
+                ExprData::ConditionalExpression(expression) => expression.test(self.ast),
+                ExprData::SequenceExpression(expression) => {
+                    let Some(first) = expression.expressions(self.ast).get_node(self.ast, 0) else {
+                        return offset;
+                    };
+                    first
+                }
+                ExprData::AssignmentExpression(expression) => {
+                    return self.assignment_target_first_token_offset(expression.left(self.ast));
+                }
+                ExprData::UpdateExpression(expression) if !expression.prefix(self.ast) => {
+                    return self.simple_assignment_target_first_token_offset(
+                        expression.argument(self.ast),
+                    );
+                }
+                ExprData::TsAsExpression(expression) => expression.expression(self.ast),
+                ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
+                ExprData::TsNonNullExpression(expression) => expression.expression(self.ast),
+                ExprData::TsInstantiationExpression(expression) => expression.expression(self.ast),
+                _ => return offset,
+            };
+        }
+    }
+
+    fn expr_has_leading_line_terminator(&self, expr: Expr) -> bool {
+        // Locate the first token before scanning comments. Scanning at every
+        // node on the left spine would make deep expressions quadratic.
+        let offset = self.expr_first_token_offset(expr);
+        self.has_leading_line_terminator_before(offset)
+    }
+
     fn will_print_expr_comments(&self, expr: Expr) -> bool {
         !self.options.minify
+            && self.options.comments
             && self.comments[self.next_comment..]
                 .first()
                 .is_some_and(|comment| comment.span.end <= expr.span(self.ast).start)
     }
 
-    fn print_expr_without_leading_newline(&mut self, expr: Expr, level: Precedence) {
-        if self.will_print_expr_comments(expr) {
-            self.print("(");
-            self.print_newline();
-            self.indent += 1;
-            self.print_comments_before(expr.span(self.ast).start, true, true);
-            self.print_indent();
+    fn print_expr_with_leading_comments_in_parens(&mut self, expr: Expr, level: Precedence) {
+        self.print("(");
+        self.print_newline();
+        self.indent += 1;
+        self.print_comments_before(expr.span(self.ast).start, true, true);
+        self.print_indent();
+        self.print_expr(expr, level);
+        self.print_newline();
+        self.indent -= 1;
+        self.print_indent();
+        self.print(")");
+    }
+
+    fn print_expr_without_leading_line_terminator(&mut self, expr: Expr, level: Precedence) {
+        if self.expr_has_leading_line_terminator(expr) {
+            self.print_expr_with_leading_comments_in_parens(expr, level);
+        } else {
             self.print_expr(expr, level);
-            self.print_newline();
-            self.indent -= 1;
-            self.print_indent();
-            self.print(")");
+        }
+    }
+
+    fn print_expr_without_leading_newline(&mut self, expr: Expr, level: Precedence) {
+        if self.will_print_expr_comments(expr) || self.expr_has_leading_line_terminator(expr) {
+            self.print_expr_with_leading_comments_in_parens(expr, level);
             return;
         }
         self.print_expr(expr, level);
