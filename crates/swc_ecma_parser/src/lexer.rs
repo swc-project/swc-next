@@ -1146,8 +1146,16 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             let mut pos = self.cursor as usize;
 
             while pos < src.len() {
-                match src[pos] {
-                    b' ' | b'\t' | 0x0B | 0x0C => pos += 1,
+                let byte = src[pos];
+                if byte == b' ' {
+                    pos += 1;
+                    continue;
+                }
+                if byte > b' ' {
+                    break;
+                }
+                match byte {
+                    b'\t' | 0x0B | 0x0C => pos += 1,
                     b'\n' | b'\r' => {
                         self.set_token_flag(TokenFlag::LineTerminatorBefore);
                         self.state.had_line_break = true;
