@@ -7132,7 +7132,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if opts.respect_in_parameter && token.tag == TokenTag::In && !self.context.r#in {
                 break;
             }
-            left = self.parse_infix(precedence, left)?;
+            left = if token.tag.is_binary_operator() {
+                self.parse_binary_expression(left, token.tag)?
+            } else {
+                self.parse_infix(precedence, left)?
+            };
         }
         Some(left)
     }
@@ -7180,10 +7184,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return self.parse_non_null_expression(left);
             }
             _ => {}
-        }
-
-        if token.tag.is_binary_operator() {
-            return self.parse_binary_expression(left, token.tag);
         }
 
         if token.tag.is_logical_operator() {
