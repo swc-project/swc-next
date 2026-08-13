@@ -160,35 +160,31 @@ pub fn parse_unicode_escape(input: &[u8], start: usize) -> Option<ParsedCodePoin
     parse_hex4(input, start)
 }
 
-pub fn decode_identifier_escapes<'a>(raw: &'a str, buf: &'a mut [u8; 256]) -> &'a [u8] {
+pub fn decode_identifier_escapes<'a>(raw: &str, buf: &'a mut [u8]) -> Option<&'a [u8]> {
     let raw = raw.as_bytes();
     let mut out = 0usize;
     let mut i = 0usize;
     while i < raw.len() {
         if raw[i] == b'\\' && i + 1 < raw.len() && raw[i + 1] == b'u' {
-            let Some(parsed) = parse_unicode_escape(raw, i + 2) else {
-                return raw;
-            };
-            let Some(value) = parsed.value.to_char() else {
-                return raw;
-            };
+            let parsed = parse_unicode_escape(raw, i + 2)?;
+            let value = parsed.value.to_char()?;
             let len = value.len_utf8();
             if out + len > buf.len() {
-                return raw;
+                return None;
             }
             value.encode_utf8(&mut buf[out..out + len]);
             out += len;
             i = parsed.end;
         } else {
             if out >= buf.len() {
-                return raw;
+                return None;
             }
             buf[out] = raw[i];
             out += 1;
             i += 1;
         }
     }
-    &buf[..out]
+    Some(&buf[..out])
 }
 
 pub fn decode_string_escapes(raw_str: &str, out: &mut Wtf8Buf) {

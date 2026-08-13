@@ -890,9 +890,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn decode_escaped_identifier(&mut self, start: u32, end: u32) -> AstUtf8 {
+        let raw = &self.source[start as usize..end as usize];
         let mut buffer = [0u8; 256];
-        let value =
-            decode_identifier_escapes(&self.source[start as usize..end as usize], &mut buffer);
+        if let Some(value) = decode_identifier_escapes(raw, &mut buffer) {
+            // Safety: the lexer rejects lone surrogates and invalid identifier escapes.
+            return self
+                .ast
+                .add_utf8(unsafe { std::str::from_utf8_unchecked(value) });
+        }
+
+        let mut buffer = vec![0u8; raw.len()];
+        let value = decode_identifier_escapes(raw, &mut buffer)
+            .expect("the lexer validated this escaped identifier");
         // Safety:
         // Source code is guaranteed to be valid UTF-8.
         // Lone surrogates are not valid in identifiers.
