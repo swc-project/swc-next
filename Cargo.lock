@@ -2762,7 +2762,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_allocator"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "allocator-api2",
  "bumpalo",
@@ -2773,7 +2773,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ast_macros"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2782,7 +2782,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_core_napi"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "napi",
  "napi-build",
@@ -2793,7 +2793,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_ast"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "oxc_index",
  "swc_next_allocator",
@@ -2803,7 +2803,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_codegen"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "clap",
  "swc_next_allocator",
@@ -2813,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_parser"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "bitflags",
  "clap",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_semantic"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "bitflags",
  "clap",
@@ -2838,7 +2838,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_transformer"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "serde",
  "swc_next_ecma_ast",
@@ -2847,7 +2847,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_napi"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "napi",
  "napi-build",
@@ -2859,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_parser_napi"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "napi",
  "napi-build",
@@ -2870,7 +2870,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_regular_expression"
-version = "0.11.0"
+version = "0.1.0"
 dependencies = [
  "bitflags",
  "phf 0.14.0",

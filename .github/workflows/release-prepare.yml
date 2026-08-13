@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   prepare:
-    name: Prepare release
+    name: Create release PR
     runs-on: ubuntu-latest
     env:
       BUMP: ${{ inputs.bump }}
@@ -39,13 +39,25 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
 
-      - name: Install release tools
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install git-cliff
         uses: taiki-e/install-action@25435dc8dd3baed7417e0c96d3fe89013a5b2e09 # v2
         with:
           tool: git-cliff
 
       - name: Install cargo-workspaces
-        run: cargo install cargo-workspaces --locked
+        run: cargo install cargo-workspaces --version 0.4.2 --locked
 
       - name: Configure git
         env:
@@ -55,37 +67,43 @@ jobs:
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${APP_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
 
-      - name: Create release branch
-        id: branch
+      - name: Bump workspace versions
+        id: release
         run: |
-          branch="chore/release-$(date -u +%Y%m%d%H%M%S)"
+          cargo ws version "$BUMP" --force "swc*" --no-git-commit --yes
+          version="$(node .github/scripts/release/version.mjs cargo-version)"
+          branch="release/v${version}"
           git switch -c "$branch"
-          echo "name=$branch" >> "$GITHUB_OUTPUT"
-
-      - name: Generate release changelog
-        id: changelog
-        run: |
-          git-cliff --bump "$BUMP" --unreleased --output "$RUNNER_TEMP/release-changelog.md"
-          version="$(sed -nE 's/^## \[([^]]+)\].*/\1/p' "$RUNNER_TEMP/release-changelog.md" | head -n 1)"
-          if [ -z "$version" ] || [ "$version" = "unreleased" ]; then
-            echo "Failed to extract release version from changelog." >&2
-            exit 1
-          fi
+          node .github/scripts/release/version.mjs write "$version"
+          pnpm build
+          git-cliff --tag "v${version}" --unreleased --output "$RUNNER_TEMP/release-changelog.md"
+          git add -u
+          git commit -m "chore(release): prepare for v${version}"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Bump workspace versions
-        run: cargo ws version "$BUMP" --force "swc*" --allow-branch "chore/release-*" --no-git-push --yes
-
       - name: Push release branch
-        run: git push origin "${{ steps.branch.outputs.name }}"
+        env:
+          BRANCH_NAME: ${{ steps.release.outputs.branch }}
+        run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null; then
+            git fetch origin "$BRANCH_NAME:refs/remotes/origin/$BRANCH_NAME"
+          fi
+          git push --force-with-lease origin "HEAD:refs/heads/$BRANCH_NAME"
 
-      - name: Create pull request
+      - name: Create or update pull request
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          BRANCH_NAME: ${{ steps.branch.outputs.name }}
+          BRANCH_NAME: ${{ steps.release.outputs.branch }}
+          PR_TITLE: "chore(release): prepare for v${{ steps.release.outputs.version }}"
         run: |
-          gh pr create \
-            --base "${{ github.ref_name }}" \
-            --head "$BRANCH_NAME" \
-            --title "chore: release v${{ steps.changelog.outputs.version }}" \
-            --body-file "$RUNNER_TEMP/release-changelog.md"
+          pr_url="$(gh pr list --head "$BRANCH_NAME" --state open --json url --jq '.[0].url')"
+          if [ -n "$pr_url" ]; then
+            gh pr edit "$pr_url" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/release-changelog.md"
+          else
+            gh pr create \
+              --base "${{ github.ref_name }}" \
+              --head "$BRANCH_NAME" \
+              --title "$PR_TITLE" \
+              --body-file "$RUNNER_TEMP/release-changelog.md"
+          fi

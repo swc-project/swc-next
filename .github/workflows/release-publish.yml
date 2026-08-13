@@ -7,28 +7,62 @@ on:
         description: Release pull request number
         required: true
         type: number
+      release_crates:
+        description: Release Rust crates
+        required: true
+        type: boolean
+        default: true
+      release_npm:
+        description: Release NPM packages
+        required: true
+        type: boolean
+        default: true
+      dry_run:
+        description: Add --dry-run to publish commands
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    name: Publish crates
+  validate:
+    name: Validate inputs
     runs-on: ubuntu-latest
-    environment: release
+    steps:
+      - name: Require a release target
+        env:
+          RELEASE_CRATES: ${{ inputs.release_crates }}
+          RELEASE_NPM: ${{ inputs.release_npm }}
+        run: |
+          if [ "$RELEASE_CRATES" != "true" ] && [ "$RELEASE_NPM" != "true" ]; then
+            echo "At least one release target must be selected." >&2
+            exit 1
+          fi
+
+  release_crates:
+    name: Release crates
+    if: inputs.release_crates
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: crates
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout PR ref
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: refs/pull/${{ inputs.pr_number }}/head
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
 
       - name: Install cargo-workspaces
-        run: cargo install cargo-workspaces --locked
+        run: cargo install cargo-workspaces --version 0.4.2 --locked
 
       - name: Authenticate to crates.io
         id: crates-io-auth
@@ -37,5 +71,118 @@ jobs:
       - name: Publish workspace crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-io-auth.outputs.token }}
+        run: cargo ws publish --force "swc*" --publish-as-is ${{ inputs.dry_run && '--dry-run' || '' }}
+
+  build_npm:
+    name: Build ${{ matrix.target }}
+    if: inputs.release_npm
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            extra_args: ""
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            extra_args: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            extra_args: --use-napi-cross
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            extra_args: --use-napi-cross
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            extra_args: ""
+    steps:
+      - name: Enable long paths
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
+      - name: Checkout PR ref
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          ref: refs/pull/${{ inputs.pr_number }}/head
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build native bindings
+        shell: bash
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          EXTRA_ARGS: ${{ matrix.extra_args }}
+        run: pnpm build --release --target "$BUILD_TARGET" $EXTRA_ARGS
+
+      - name: Upload native bindings
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          if-no-files-found: error
+          name: bindings-${{ matrix.target }}
+          path: napi/*/src-js/*.node
+
+  release_npm:
+    name: Release NPM packages
+    if: inputs.release_npm
+    needs:
+      - validate
+      - build_npm
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout PR ref
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          ref: refs/pull/${{ inputs.pr_number }}/head
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download native bindings
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+
+      - name: Assemble NPM packages
         run: |
-          cargo ws publish --force "swc*" --publish-as-is
+          while IFS= read -r package_dir; do
+            component="${package_dir##*/}"
+            package_json="$package_dir/package.json"
+            npm_dir="release-dir/$component"
+            pnpm exec napi create-npm-dirs --package-json-path "$package_json" --npm-dir "$npm_dir"
+            pnpm exec napi artifacts --package-json-path "$package_json" --output-dir artifacts --npm-dir "$npm_dir"
+            pnpm exec napi pre-publish --package-json-path "$package_json" --npm-dir "$npm_dir" --tag-style npm --no-gh-release --skip-optional-publish
+          done < <(node .github/scripts/release/version.mjs npm-packages)
+
+      - name: Publish NPM packages
+        run: node .github/scripts/release/publish-npm.mjs release-dir ${{ inputs.dry_run && '--dry-run' || '' }}
