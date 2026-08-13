@@ -47,6 +47,24 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, as
     out.push(quote);
     let mut i = 0;
     while i < value.len() {
+        let start = i;
+        while let Some(&byte) = value.get(i) {
+            if byte <= 0x1f
+                || byte >= 0x7f
+                || matches!(byte, b'\\' | b'/')
+                || byte == quote
+                || (quote == b'`' && byte == b'$')
+            {
+                break;
+            }
+            i += 1;
+        }
+        if i != start {
+            out.extend_from_slice(&value[start..i]);
+            if i == value.len() {
+                break;
+            }
+        }
         let (cp, size) = next_wtf8_code_point(value, i);
         i += size;
         match cp {
