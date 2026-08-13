@@ -3969,6 +3969,7 @@ impl<'a> Printer<'a> {
                     self.print(u.operator(self.ast).as_str());
                     self.prev_op = Some(operator_code);
                     self.prev_op_end = self.js.len();
+                    self.print_comments_before(argument.span(self.ast).start, false, true);
                     self.add_source_mapping(argument.span(self.ast).start);
                     self.print_ts_numeric_literal(n);
                 } else {

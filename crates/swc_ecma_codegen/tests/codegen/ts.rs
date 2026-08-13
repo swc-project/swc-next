@@ -114,6 +114,15 @@ fn test_non_finite_numeric_literal_type() {
 }
 
 #[test]
+fn test_signed_numeric_literal_type_comments() {
+    let signed_literal = "type T = -/* note */1;";
+    let signed_literal_expected = "type T = - /* note */ 1;\n";
+    expect_printed_ts(signed_literal, signed_literal_expected);
+    expect_printed_ts(signed_literal_expected, signed_literal_expected);
+    expect_printed_ts_minify(signed_literal, "type T=- /* note */ 1;");
+}
+
+#[test]
 fn test_satisfies_assignment_targets() {
     let satisfies_targets = "let value = 0; ++(value satisfies number); (value satisfies number)--; (value satisfies number) = 1; [(value satisfies number)] = [1]; ({ key: (value satisfies number) } = { key: 1 }); for ((value satisfies number) of values) {} for ((value satisfies number) in values) {}";
     let satisfies_targets_expected = "let value = 0;\n++(value satisfies number);\n(value satisfies number)--;\n(value satisfies number) = 1;\n[(value satisfies number)] = [1];\n({ key: (value satisfies number) } = { key: 1 });\nfor ((value satisfies number) of values) {\n}\nfor ((value satisfies number) in values) {\n}\n";
