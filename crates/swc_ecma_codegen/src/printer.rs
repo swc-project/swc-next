@@ -3013,6 +3013,15 @@ impl<'a> Printer<'a> {
     }
 
     fn print_number(&mut self, raw: &str, level: Precedence) {
+        if matches!(
+            raw.as_bytes(),
+            [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
+        ) {
+            self.print_space_before_identifier();
+            self.print_bytes(raw);
+            self.need_space_before_dot = self.js.len();
+            return;
+        }
         let Some(value) = parse_numeric_literal(raw.as_bytes()) else {
             self.print_bytes(raw);
             return;
