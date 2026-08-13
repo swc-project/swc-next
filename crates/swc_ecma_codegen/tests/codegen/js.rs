@@ -38,6 +38,18 @@ fn test_for_destructuring_default_initializer() {
 }
 
 #[test]
+fn test_for_initializer_nested_in_context() {
+    let source = r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;); for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#;
+    expect_stable(
+        source,
+        "for (obj = { get [\"x\" in empty]() {\n}, value: \"x\" in empty }; ; ) ;\nfor (C = class {\n  get [\"x\" in empty]() {\n  }\n  static set [\"x\" in empty](value) {\n  }\n}; ; ) ;\n",
+    );
+    let minified = "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);";
+    expect_printed_minify(source, minified);
+    expect_printed_minify(minified, minified);
+}
+
+#[test]
 fn test_function_source_comments_are_stable() {
     expect_stable(
         "let f = () => /* arrow */ 0; let g = async () => /* async */ 0;",
