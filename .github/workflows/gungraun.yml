@@ -12,6 +12,10 @@ concurrency:
   group: gungraun-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+env:
+  CODEGEN_FILTER: "gungraun::codegen::*"
+  CUMULATIVE_BASE_SHA: 4b2507790b45be79426498d84add70eaa74f285b
+
 jobs:
   benchmarks:
     name: Compare Gungraun benchmarks
@@ -34,7 +38,7 @@ jobs:
         with:
           runner-version: 0.19.4
 
-      - name: Save base benchmark
+      - name: Save incremental base benchmark
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
@@ -55,8 +59,20 @@ jobs:
           fi
 
           cargo bench --quiet -p benchmark --bench gungraun -- \
-            --home="$RUNNER_TEMP/gungraun" \
-            --save-baseline=base
+            --home="$RUNNER_TEMP/gungraun/incremental" \
+            --save-baseline=base \
+            "$CODEGEN_FILTER"
+
+      - name: Save cumulative trunk benchmark
+        env:
+          GUNGRAUN_COLOR: never
+        run: |
+          git checkout --detach "$CUMULATIVE_BASE_SHA"
+
+          cargo bench --quiet -p benchmark --bench gungraun -- \
+            --home="$RUNNER_TEMP/gungraun/cumulative" \
+            --save-baseline=base \
+            "$CODEGEN_FILTER"
 
       - name: Compare merge benchmark
         env:
@@ -65,46 +81,96 @@ jobs:
         run: |
           git checkout --detach "$COMPARE_SHA"
 
-          report="$RUNNER_TEMP/gungraun-diff.txt"
-          summary="$RUNNER_TEMP/gungraun-summary.md"
-          set +e
-          cargo bench --quiet -p benchmark --bench gungraun -- \
-            --home="$RUNNER_TEMP/gungraun" \
-            --baseline=base \
-            --save-summary=json 2>&1 | tee "$report"
-          benchmark_status="${PIPESTATUS[0]}"
+          benchmark_status=0
+          summary_status=0
+          for comparison in incremental cumulative
+          do
+            home="$RUNNER_TEMP/gungraun/$comparison"
+            report="$RUNNER_TEMP/gungraun-$comparison-diff.txt"
+            summary="$RUNNER_TEMP/gungraun-$comparison-summary.md"
 
-          node .github/scripts/render-gungraun-summary.mjs \
-            "$RUNNER_TEMP/gungraun" > "$summary"
-          summary_status="$?"
-          set -e
+            set +e
+            cargo bench --quiet -p benchmark --bench gungraun -- \
+              --home="$home" \
+              --baseline=base \
+              --save-summary=json \
+              "$CODEGEN_FILTER" 2>&1 | tee "$report"
+            current_benchmark_status="${PIPESTATUS[0]}"
 
-          if [[ ! -s "$summary" ]]
-          then
+            node .github/scripts/render-gungraun-summary.mjs \
+              "$home" > "$summary"
+            current_summary_status="$?"
+            set -e
+
+            if [[ "$current_benchmark_status" -ne 0 ]]
+            then
+              benchmark_status="$current_benchmark_status"
+            fi
+            if [[ "$current_summary_status" -ne 0 ]]
+            then
+              summary_status="$current_summary_status"
+            fi
+
+            if [[ ! -s "$summary" ]]
+            then
+              {
+                echo "### Instruction-count changes"
+                echo
+                echo "⚠️ **The comparison summary could not be generated.** See the workflow log."
+              } > "$summary"
+            fi
+
             {
-              echo "### Instruction-count changes"
+              echo "## ${comparison^} Gungraun benchmark diff"
               echo
-              echo "⚠️ **The comparison summary could not be generated.** See the workflow log."
-            } > "$summary"
-          fi
-
-          {
-            echo "## Gungraun benchmark diff"
-            echo
-            echo 'Values are shown as `merge | base`.'
-            echo
-            cat "$summary"
-            echo
-            echo '```text'
-            cat "$report"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+              if [[ "$comparison" == "incremental" ]]
+              then
+                echo 'Values are shown as `merge | pull request base`.'
+              else
+                echo 'Values are shown as `merge | frozen trunk`.'
+              fi
+              echo
+              cat "$summary"
+              echo
+              echo '```text'
+              cat "$report"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
 
           if [[ "$benchmark_status" -ne 0 ]]
           then
             exit "$benchmark_status"
           fi
           exit "$summary_status"
+
+      - name: Annotate retained Callgrind profiles
+        if: always()
+        run: |
+          annotation_root="$RUNNER_TEMP/callgrind-annotations"
+          mkdir -p "$annotation_root"
+          profile_count=0
+          while IFS= read -r -d '' profile
+          do
+            relative="${profile#"$RUNNER_TEMP/gungraun/"}"
+            output_name="${relative//\//__}.txt"
+            callgrind_annotate \
+              --inclusive=yes \
+              --threshold=0.1 \
+              --tree=both \
+              "$profile" > "$annotation_root/$output_name" 2>&1 || true
+            profile_count=$((profile_count + 1))
+          done < <(
+            find "$RUNNER_TEMP/gungraun" \
+              -type f \
+              -name 'callgrind.*.out*' \
+              -print0
+          )
+          if [[ "$profile_count" -eq 0 ]]
+          then
+            echo "No Callgrind profiles were available to annotate." \
+              > "$annotation_root/README.txt"
+          fi
 
       - name: Prepare Valgrind artifact metadata
         if: always()
@@ -133,8 +199,10 @@ jobs:
             --arg artifact_name "$ARTIFACT_NAME" \
             --arg base_ref "$BASE_REF" \
             --arg base_sha "$BASE_SHA" \
+            --arg benchmark_filter "$CODEGEN_FILTER" \
             --arg cargo_version "$cargo_version" \
             --arg compare_sha "$COMPARE_SHA" \
+            --arg cumulative_base_sha "$CUMULATIVE_BASE_SHA" \
             --arg event_name "$GITHUB_EVENT_NAME" \
             --arg generated_at "$generated_at" \
             --arg gungraun_version "$gungraun_version" \
@@ -152,7 +220,7 @@ jobs:
             --arg valgrind_version "$valgrind_version" \
             --arg workflow_name "$GITHUB_WORKFLOW" \
             '{
-              schema_version: 1,
+              schema_version: 2,
               repository: $repository,
               workflow: {
                 name: $workflow_name,
@@ -184,13 +252,32 @@ jobs:
                 package: "benchmark",
                 bench: "gungraun",
                 baseline: "base",
-                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --save-baseline=base",
-                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json"
+                filter: $benchmark_filter,
+                profile: "bench",
+                features: "default",
+                allocator: "mimalloc",
+                comparisons: {
+                  incremental: {
+                    base_sha: $base_sha,
+                    base_command: ("cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun/incremental --save-baseline=base " + $benchmark_filter),
+                    compare_sha: $compare_sha,
+                    compare_command: ("cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun/incremental --baseline=base --save-summary=json " + $benchmark_filter)
+                  },
+                  cumulative: {
+                    base_sha: $cumulative_base_sha,
+                    base_command: ("cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun/cumulative --save-baseline=base " + $benchmark_filter),
+                    compare_sha: $compare_sha,
+                    compare_command: ("cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun/cumulative --baseline=base --save-summary=json " + $benchmark_filter)
+                  }
+                }
               },
               files: {
                 data_root: "gungraun",
-                diff_report: "gungraun-diff.txt",
-                rendered_summary: "gungraun-summary.md"
+                annotation_root: "callgrind-annotations",
+                incremental_diff_report: "gungraun-incremental-diff.txt",
+                incremental_rendered_summary: "gungraun-incremental-summary.md",
+                cumulative_diff_report: "gungraun-cumulative-diff.txt",
+                cumulative_rendered_summary: "gungraun-cumulative-summary.md"
               },
               artifact: {
                 name: $artifact_name,
@@ -202,11 +289,14 @@ jobs:
           jq -e \
             --arg base_sha "$BASE_SHA" \
             --arg compare_sha "$COMPARE_SHA" \
+            --arg cumulative_base_sha "$CUMULATIVE_BASE_SHA" \
             --arg pr_head_sha "$PR_HEAD_SHA" \
-            '.schema_version == 1 and
+            '.schema_version == 2 and
              .pull_request.base_sha == $base_sha and
              .pull_request.head_sha == $pr_head_sha and
              .pull_request.compare_sha == $compare_sha and
+             .benchmark.comparisons.incremental.base_sha == $base_sha and
+             .benchmark.comparisons.cumulative.base_sha == $cumulative_base_sha and
              .files.data_root == "gungraun" and
              .artifact.retention_days == 90' \
             "$metadata" > /dev/null
@@ -219,8 +309,11 @@ jobs:
           name: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/gungraun
-            ${{ runner.temp }}/gungraun-diff.txt
-            ${{ runner.temp }}/gungraun-summary.md
+            ${{ runner.temp }}/callgrind-annotations
+            ${{ runner.temp }}/gungraun-incremental-diff.txt
+            ${{ runner.temp }}/gungraun-incremental-summary.md
+            ${{ runner.temp }}/gungraun-cumulative-diff.txt
+            ${{ runner.temp }}/gungraun-cumulative-summary.md
             ${{ runner.temp }}/gungraun-metadata.json
           if-no-files-found: error
           retention-days: 90
@@ -249,35 +342,62 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          report="$RUNNER_TEMP/gungraun-diff.txt"
-          if [[ ! -f "$report" ]]
+          incremental_report="$RUNNER_TEMP/gungraun-incremental-diff.txt"
+          cumulative_report="$RUNNER_TEMP/gungraun-cumulative-diff.txt"
+          if [[ ! -f "$incremental_report" && ! -f "$cumulative_report" ]]
           then
             exit 0
           fi
 
-          summary="$RUNNER_TEMP/gungraun-summary.md"
+          incremental_summary="$RUNNER_TEMP/gungraun-incremental-summary.md"
+          cumulative_summary="$RUNNER_TEMP/gungraun-cumulative-summary.md"
           comment="$RUNNER_TEMP/gungraun-comment.md"
           {
             echo '<!-- gungraun-benchmark-diff -->'
             echo '## Gungraun benchmark diff'
-            echo
-            echo 'Values are shown as `merge | base`.'
             echo
             if [[ -n "$ARTIFACT_URL" ]]
             then
               echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
               echo
             fi
-            if [[ -s "$summary" ]]
+            echo '### Incremental comparison'
+            echo
+            echo 'Values are shown as `merge | pull request base`.'
+            echo
+            if [[ -s "$incremental_summary" ]]
             then
-              cat "$summary"
+              cat "$incremental_summary"
               echo
             fi
             echo '<details>'
-            echo '<summary>Benchmark results</summary>'
+            echo '<summary>Incremental benchmark results</summary>'
             echo
             echo '```text'
-            cat "$report"
+            if [[ -f "$incremental_report" ]]
+            then
+              cat "$incremental_report"
+            fi
+            echo '```'
+            echo '</details>'
+            echo
+            echo '### Cumulative comparison'
+            echo
+            echo 'Values are shown as `merge | frozen trunk`.'
+            echo
+            if [[ -s "$cumulative_summary" ]]
+            then
+              cat "$cumulative_summary"
+              echo
+            fi
+            echo '<details>'
+            echo '<summary>Cumulative benchmark results</summary>'
+            echo
+            echo '```text'
+            if [[ -f "$cumulative_report" ]]
+            then
+              cat "$cumulative_report"
+            fi
             echo '```'
             echo '</details>'
           } > "$comment"
