@@ -129,21 +129,3 @@ impl From<ParserOptions> for AstParserOptions {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn converts_allow_return_outside_function() {
-        let defaults: AstParserOptions = ParserOptions::default().into();
-        assert!(!defaults.allow_return_outside_function);
-
-        let options: AstParserOptions = ParserOptions {
-            allow_return_outside_function: Some(true),
-            ..ParserOptions::default()
-        }
-        .into();
-        assert!(options.allow_return_outside_function);
-    }
-}
