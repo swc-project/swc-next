@@ -122,12 +122,16 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, as
 fn next_wtf8_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
     // AST strings use WTF-8 so lone UTF-16 surrogates survive parsing. Go's
     // printer receives UTF-16 directly and escapes these code units verbatim.
-    if bytes[i] == 0xed
+    let byte = bytes[i];
+    if byte < 0x80 {
+        return (byte as u32, 1);
+    }
+    if byte == 0xed
         && let (Some(&b1 @ 0xa0..=0xbf), Some(&b2 @ 0x80..=0xbf)) =
             (bytes.get(i + 1), bytes.get(i + 2))
     {
         return (
-            (((bytes[i] & 0x0f) as u32) << 12) | (((b1 & 0x3f) as u32) << 6) | (b2 & 0x3f) as u32,
+            (((byte & 0x0f) as u32) << 12) | (((b1 & 0x3f) as u32) << 6) | (b2 & 0x3f) as u32,
             3,
         );
     }
