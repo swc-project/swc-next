@@ -1,19 +1,14 @@
 codegen * typescript
 ========================
-Positive Passed: 13116/13156 (99.70%)
+Positive Passed: 13121/13156 (99.73%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
-Failed: fixtures/typescript/tests/cases/compiler/deferredConditionalTypes2.ts - parser: Expected a type, but found '-' at 114..115
 Failed: fixtures/typescript/tests/cases/compiler/discriminateWithOptionalProperty4.ts - discriminateWithOptionalProperty4.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/fakeInfinity1.ts - parser: Expected a type, but found '-' at 117..118
 Failed: fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts - parser: Invalid character at start of identifier at 110..110
-Failed: fixtures/typescript/tests/cases/compiler/genericTypeAssertions3.ts - parser: Unexpected token '<<' at 8..10
 Failed: fixtures/typescript/tests/cases/compiler/jsxNestedWithinTernaryParsesCorrectly.tsx - jsxNestedWithinTernaryParsesCorrectly.tsx: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - parser: Unexpected token '<' at 128..129
-Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found '++' at 74..76
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
-Failed: fixtures/typescript/tests/cases/compiler/typeAssertionToGenericFunctionType.ts - parser: Unexpected token '<<' at 13..15
 Failed: fixtures/typescript/tests/cases/compiler/yieldExpressionInnerCommentEmit.ts - yieldExpressionInnerCommentEmit.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticAutoAccessorsWithDecorators.ts - staticAutoAccessorsWithDecorators.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticPropertyNameConflictsInAmbientContext.ts - parser: Classes may not have a static property named 'prototype' at 438..447

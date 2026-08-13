@@ -1,4 +1,4 @@
-use crate::expect_printed_ts;
+use crate::{expect_printed_ts, expect_printed_ts_minify};
 
 #[test]
 fn test_export_default() {
@@ -89,5 +89,38 @@ fn test_enum_declarations_do_not_emit_semicolons() {
     expect_printed_ts(
         "namespace N { enum E { A } }",
         "namespace N {\n  enum E {\n    A,\n  }\n}\n",
+    );
+}
+
+#[test]
+fn test_type_assertion_generic_function_type() {
+    let type_assertion = "const f = < <T>(value: T) => T > identity;";
+    let type_assertion_expected = "const f = < <T>(value: T) => T>identity;\n";
+    expect_printed_ts(type_assertion, type_assertion_expected);
+    expect_printed_ts(type_assertion_expected, type_assertion_expected);
+    expect_printed_ts_minify(type_assertion, "const f=< <T>(value:T) => T>identity;");
+}
+
+#[test]
+fn test_non_finite_numeric_literal_type() {
+    let non_finite_literals = "type Positive = 1e999; type Negative = -1e999;";
+    let non_finite_literals_expected = "type Positive = 1e999;\ntype Negative = -1e999;\n";
+    expect_printed_ts(non_finite_literals, non_finite_literals_expected);
+    expect_printed_ts(non_finite_literals_expected, non_finite_literals_expected);
+    expect_printed_ts_minify(
+        non_finite_literals,
+        "type Positive=1e999;type Negative=-1e999;",
+    );
+}
+
+#[test]
+fn test_satisfies_assignment_targets() {
+    let satisfies_targets = "let value = 0; ++(value satisfies number); (value satisfies number)--; (value satisfies number) = 1; [(value satisfies number)] = [1]; ({ key: (value satisfies number) } = { key: 1 }); for ((value satisfies number) of values) {} for ((value satisfies number) in values) {}";
+    let satisfies_targets_expected = "let value = 0;\n++(value satisfies number);\n(value satisfies number)--;\n(value satisfies number) = 1;\n[(value satisfies number)] = [1];\n({ key: (value satisfies number) } = { key: 1 });\nfor ((value satisfies number) of values) {\n}\nfor ((value satisfies number) in values) {\n}\n";
+    expect_printed_ts(satisfies_targets, satisfies_targets_expected);
+    expect_printed_ts(satisfies_targets_expected, satisfies_targets_expected);
+    expect_printed_ts_minify(
+        satisfies_targets,
+        "let value=0;++(value satisfies number);(value satisfies number)--;(value satisfies number)=1;[(value satisfies number)]=[1];({key:(value satisfies number)}={key:1});for((value satisfies number) of values){}for((value satisfies number) in values){}",
     );
 }

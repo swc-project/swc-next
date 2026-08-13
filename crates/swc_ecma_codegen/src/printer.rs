@@ -1558,14 +1558,14 @@ impl<'a> Printer<'a> {
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
             }
             SimpleAssignmentTargetData::TsSatisfiesExpression(e) => {
+                self.print("(");
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
                 self.print(" satisfies ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
+                self.print(")");
             }
             SimpleAssignmentTargetData::TsTypeAssertion(e) => {
-                self.print("<");
-                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
-                self.print(">");
+                self.print_ts_type_assertion_prefix(e.type_annotation(self.ast));
                 self.print_expr(e.expression(self.ast), Precedence::Prefix);
             }
             SimpleAssignmentTargetData::TsNonNullExpression(e) => {
@@ -2011,9 +2011,7 @@ impl<'a> Printer<'a> {
                     self.print("(");
                 }
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print("<");
-                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
-                self.print(">");
+                self.print_ts_type_assertion_prefix(e.type_annotation(self.ast));
                 self.print_expr(e.expression(self.ast), Precedence::Prefix);
                 if wrap {
                     self.print(")");
@@ -3593,6 +3591,18 @@ impl<'a> Printer<'a> {
         self.print(">");
     }
 
+    fn print_ts_type_assertion_prefix(&mut self, ty: TsType) {
+        self.print("<");
+        if matches!(
+            self.ast.ts_type_data(ty),
+            TsTypeData::TsFunctionType(function) if function.type_parameters(self.ast).is_some()
+        ) {
+            self.print(" ");
+        }
+        self.print_ts_type(ty, TsTypePrecedence::Lowest);
+        self.print(">");
+    }
+
     fn print_ts_type(&mut self, ty: TsType, level: TsTypePrecedence) {
         self.add_source_mapping(ty.span(self.ast).start);
         match self.ast.ts_type_data(ty) {
@@ -3944,15 +3954,39 @@ impl<'a> Printer<'a> {
             TsLiteralData::StringLiteral(s) => {
                 self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
             }
-            TsLiteralData::NumericLiteral(n) => {
-                self.print_number(self.ast.get_utf8(n.raw(self.ast)), Precedence::Lowest)
-            }
+            TsLiteralData::NumericLiteral(n) => self.print_ts_numeric_literal(n),
             TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.get_utf8(n.raw(self.ast))),
             TsLiteralData::BooleanLiteral(b) => {
                 self.print(if b.value(self.ast) { "true" } else { "false" })
             }
             TsLiteralData::TemplateLiteral(t) => self.print_template(t, false),
-            TsLiteralData::UnaryExpression(u) => self.print_unary(u, Precedence::Lowest),
+            TsLiteralData::UnaryExpression(u) => {
+                let argument = u.argument(self.ast);
+                if let ExprData::NumericLiteral(n) = self.ast.expr_data(argument) {
+                    let operator_code = OperatorCode::Unary(u.operator(self.ast));
+                    self.print_space_before_operator(operator_code);
+                    self.add_source_mapping(u.span(self.ast).start);
+                    self.print(u.operator(self.ast).as_str());
+                    self.prev_op = Some(operator_code);
+                    self.prev_op_end = self.js.len();
+                    self.add_source_mapping(argument.span(self.ast).start);
+                    self.print_ts_numeric_literal(n);
+                } else {
+                    self.print_unary(u, Precedence::Lowest);
+                }
+            }
+        }
+    }
+
+    fn print_ts_numeric_literal(&mut self, n: NumericLiteral) {
+        let raw = self.ast.get_utf8(n.raw(self.ast));
+        let preserve_raw = !raw.is_empty()
+            && (!self.options.minify
+                || parse_numeric_literal(raw.as_bytes()).is_some_and(f64::is_infinite));
+        if preserve_raw {
+            self.print_bytes(raw);
+        } else {
+            self.print_number(raw, Precedence::Lowest);
         }
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
