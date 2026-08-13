@@ -14,6 +14,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
     let mut node_impls = TokenStream::new();
     let mut data_accessors = TokenStream::new();
     let mut node_kind_variants = TokenStream::new();
+    let mut node_kind_enum_checks = TokenStream::new();
     let mut node_kind_data_variants = TokenStream::new();
     let mut node_kind_data_arms = TokenStream::new();
 
@@ -32,6 +33,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
             AstType::Enum(ast_enum) => {
                 node_impls.extend(generate_node_impls_for_enum(ast_enum));
                 data_accessors.extend(generate_data_accessor(ast_enum, schema));
+                node_kind_enum_checks.extend(generate_node_kind_enum_check(ast_enum, schema));
             }
             _ => {}
         }
@@ -49,6 +51,10 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
             #[derive(Debug, Clone, Copy, PartialEq, Eq)]
             pub enum NodeKind {
                 #node_kind_variants
+            }
+
+            impl NodeKind {
+                #node_kind_enum_checks
             }
 
             /// The typed wrapper for the concrete node stored at a node ID.
@@ -73,6 +79,26 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
         },
     }
     .into()
+}
+
+fn generate_node_kind_enum_check(ast: &AstEnum, schema: &Schema) -> TokenStream {
+    let fn_name = format_ident!("is_{}", ast.name.to_case(Case::Snake));
+    let mut seen = HashSet::new();
+    let node_kinds: Vec<_> = ast
+        .variants
+        .iter()
+        .filter_map(|variant| variant.type_id)
+        .flat_map(|type_id| concrete_node_kinds(type_id, schema))
+        .filter(|node_kind| seen.insert(node_kind.clone()))
+        .map(|node_kind| format_ident!("{node_kind}"))
+        .collect();
+
+    quote! {
+        #[inline]
+        pub const fn #fn_name(self) -> bool {
+            matches!(self, #(Self::#node_kinds)|*)
+        }
+    }
 }
 
 fn generate_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {

@@ -180,6 +180,749 @@ pub enum NodeKind {
     JsxText,
     JsxSpreadChild,
 }
+impl NodeKind {
+    #[inline]
+    pub const fn is_stmt(self) -> bool {
+        matches!(
+            self,
+            Self::BlockStatement
+                | Self::BreakStatement
+                | Self::ContinueStatement
+                | Self::DebuggerStatement
+                | Self::DoWhileStatement
+                | Self::EmptyStatement
+                | Self::ExpressionStatement
+                | Self::ForInStatement
+                | Self::ForOfStatement
+                | Self::ForStatement
+                | Self::IfStatement
+                | Self::LabeledStatement
+                | Self::ReturnStatement
+                | Self::SwitchStatement
+                | Self::ThrowStatement
+                | Self::TryStatement
+                | Self::WhileStatement
+                | Self::WithStatement
+                | Self::VariableDeclaration
+                | Self::Function
+                | Self::Class
+                | Self::TsFunction
+                | Self::TsTypeAliasDeclaration
+                | Self::TsInterfaceDeclaration
+                | Self::TsEnumDeclaration
+                | Self::TsModuleDeclaration
+                | Self::TsGlobalDeclaration
+                | Self::TsImportEqualsDeclaration
+                | Self::ImportDeclaration
+                | Self::ExportNamedDeclaration
+                | Self::ExportDefaultDeclaration
+                | Self::ExportAllDeclaration
+                | Self::TsExportAssignment
+                | Self::TsNamespaceExportDeclaration
+        )
+    }
+    #[inline]
+    pub const fn is_decl(self) -> bool {
+        matches!(
+            self,
+            Self::VariableDeclaration
+                | Self::Function
+                | Self::Class
+                | Self::TsFunction
+                | Self::TsTypeAliasDeclaration
+                | Self::TsInterfaceDeclaration
+                | Self::TsEnumDeclaration
+                | Self::TsModuleDeclaration
+                | Self::TsGlobalDeclaration
+                | Self::TsImportEqualsDeclaration
+        )
+    }
+    #[inline]
+    pub const fn is_expr(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+    #[inline]
+    pub const fn is_binding_pattern(self) -> bool {
+        matches!(
+            self,
+            Self::BindingIdentifier
+                | Self::IdentifierReference
+                | Self::MemberExpression
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::AssignmentPattern
+                | Self::BindingRestElement
+                | Self::ArrayPattern
+                | Self::ObjectPattern
+        )
+    }
+    #[inline]
+    pub const fn is_assignment_target(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::MemberExpression
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::ArrayPattern
+                | Self::ObjectPattern
+        )
+    }
+    #[inline]
+    pub const fn is_simple_assignment_target(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::MemberExpression
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+        )
+    }
+    #[inline]
+    pub const fn is_property_key(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierName
+                | Self::PrivateIdentifier
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+    #[inline]
+    pub const fn is_module_export_name(self) -> bool {
+        matches!(self, Self::IdentifierName | Self::StringLiteral)
+    }
+    #[inline]
+    pub const fn is_argument(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+                | Self::SpreadElement
+        )
+    }
+    #[inline]
+    pub const fn is_object_property_kind(self) -> bool {
+        matches!(self, Self::ObjectProperty | Self::SpreadElement)
+    }
+    #[inline]
+    pub const fn is_for_statement_init(self) -> bool {
+        matches!(
+            self,
+            Self::VariableDeclaration
+                | Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+    #[inline]
+    pub const fn is_for_statement_left(self) -> bool {
+        matches!(
+            self,
+            Self::VariableDeclaration
+                | Self::IdentifierReference
+                | Self::MemberExpression
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::ArrayPattern
+                | Self::ObjectPattern
+        )
+    }
+    #[inline]
+    pub const fn is_arrow_function_body(self) -> bool {
+        matches!(
+            self,
+            Self::FunctionBody
+                | Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+    #[inline]
+    pub const fn is_formal_parameter_item(self) -> bool {
+        matches!(self, Self::FormalParameter | Self::TsParameterProperty)
+    }
+    #[inline]
+    pub const fn is_formal_parameter_pattern(self) -> bool {
+        matches!(
+            self,
+            Self::BindingIdentifier
+                | Self::IdentifierReference
+                | Self::MemberExpression
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::AssignmentPattern
+                | Self::BindingRestElement
+                | Self::ArrayPattern
+                | Self::ObjectPattern
+                | Self::TsThisParameter
+        )
+    }
+    #[inline]
+    pub const fn is_class_element(self) -> bool {
+        matches!(
+            self,
+            Self::MethodDefinition
+                | Self::PropertyDefinition
+                | Self::StaticBlock
+                | Self::TsMethodDefinition
+                | Self::TsIndexSignature
+        )
+    }
+    #[inline]
+    pub const fn is_import_declaration_specifier(self) -> bool {
+        matches!(
+            self,
+            Self::ImportSpecifier | Self::ImportDefaultSpecifier | Self::ImportNamespaceSpecifier
+        )
+    }
+    #[inline]
+    pub const fn is_export_default_declaration_kind(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+                | Self::TsFunction
+                | Self::TsInterfaceDeclaration
+        )
+    }
+    #[inline]
+    pub const fn is_ts_type(self) -> bool {
+        matches!(
+            self,
+            Self::TsAnyKeyword
+                | Self::TsUnknownKeyword
+                | Self::TsNeverKeyword
+                | Self::TsVoidKeyword
+                | Self::TsNullKeyword
+                | Self::TsUndefinedKeyword
+                | Self::TsStringKeyword
+                | Self::TsNumberKeyword
+                | Self::TsBigIntKeyword
+                | Self::TsBooleanKeyword
+                | Self::TsSymbolKeyword
+                | Self::TsObjectKeyword
+                | Self::TsIntrinsicKeyword
+                | Self::TsThisType
+                | Self::TsTypeReference
+                | Self::TsTypeQuery
+                | Self::TsImportType
+                | Self::TsLiteralType
+                | Self::TsTemplateLiteralType
+                | Self::TsArrayType
+                | Self::TsIndexedAccessType
+                | Self::TsTupleType
+                | Self::TsOptionalType
+                | Self::TsRestType
+                | Self::TsJsDocNullableType
+                | Self::TsJsDocNonNullableType
+                | Self::TsJsDocUnknownType
+                | Self::TsUnionType
+                | Self::TsIntersectionType
+                | Self::TsConditionalType
+                | Self::TsInferType
+                | Self::TsTypeOperator
+                | Self::TsParenthesizedType
+                | Self::TsFunctionType
+                | Self::TsConstructorType
+                | Self::TsTypePredicate
+                | Self::TsTypeLiteral
+                | Self::TsMappedType
+        )
+    }
+    #[inline]
+    pub const fn is_ts_type_name(self) -> bool {
+        matches!(self, Self::IdentifierReference | Self::TsQualifiedName)
+    }
+    #[inline]
+    pub const fn is_ts_qualified_name_left(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::IdentifierName
+                | Self::BindingIdentifier
+                | Self::ThisExpression
+                | Self::TsQualifiedName
+        )
+    }
+    #[inline]
+    pub const fn is_ts_import_type_qualifier(self) -> bool {
+        matches!(self, Self::IdentifierName | Self::TsQualifiedName)
+    }
+    #[inline]
+    pub const fn is_ts_type_query_expr_name(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::TsQualifiedName
+                | Self::ThisExpression
+                | Self::TsImportType
+        )
+    }
+    #[inline]
+    pub const fn is_ts_literal(self) -> bool {
+        matches!(
+            self,
+            Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::TemplateLiteral
+                | Self::UnaryExpression
+        )
+    }
+    #[inline]
+    pub const fn is_ts_tuple_element(self) -> bool {
+        matches!(
+            self,
+            Self::TsAnyKeyword
+                | Self::TsUnknownKeyword
+                | Self::TsNeverKeyword
+                | Self::TsVoidKeyword
+                | Self::TsNullKeyword
+                | Self::TsUndefinedKeyword
+                | Self::TsStringKeyword
+                | Self::TsNumberKeyword
+                | Self::TsBigIntKeyword
+                | Self::TsBooleanKeyword
+                | Self::TsSymbolKeyword
+                | Self::TsObjectKeyword
+                | Self::TsIntrinsicKeyword
+                | Self::TsThisType
+                | Self::TsTypeReference
+                | Self::TsTypeQuery
+                | Self::TsImportType
+                | Self::TsLiteralType
+                | Self::TsTemplateLiteralType
+                | Self::TsArrayType
+                | Self::TsIndexedAccessType
+                | Self::TsTupleType
+                | Self::TsOptionalType
+                | Self::TsRestType
+                | Self::TsJsDocNullableType
+                | Self::TsJsDocNonNullableType
+                | Self::TsJsDocUnknownType
+                | Self::TsUnionType
+                | Self::TsIntersectionType
+                | Self::TsConditionalType
+                | Self::TsInferType
+                | Self::TsTypeOperator
+                | Self::TsParenthesizedType
+                | Self::TsFunctionType
+                | Self::TsConstructorType
+                | Self::TsTypePredicate
+                | Self::TsTypeLiteral
+                | Self::TsMappedType
+                | Self::TsNamedTupleMember
+        )
+    }
+    #[inline]
+    pub const fn is_ts_type_element(self) -> bool {
+        matches!(
+            self,
+            Self::TsPropertySignature
+                | Self::TsMethodSignature
+                | Self::TsCallSignatureDeclaration
+                | Self::TsConstructSignatureDeclaration
+                | Self::TsIndexSignature
+        )
+    }
+    #[inline]
+    pub const fn is_ts_type_predicate_name(self) -> bool {
+        matches!(self, Self::IdentifierName | Self::TsThisType)
+    }
+    #[inline]
+    pub const fn is_ts_enum_member_name(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierName
+                | Self::StringLiteral
+                | Self::TemplateLiteral
+                | Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+    #[inline]
+    pub const fn is_ts_module_name(self) -> bool {
+        matches!(
+            self,
+            Self::BindingIdentifier | Self::StringLiteral | Self::TsQualifiedName
+        )
+    }
+    #[inline]
+    pub const fn is_ts_module_body(self) -> bool {
+        matches!(self, Self::TsModuleBlock | Self::TsModuleDeclaration)
+    }
+    #[inline]
+    pub const fn is_ts_module_reference(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference | Self::TsQualifiedName | Self::TsExternalModuleReference
+        )
+    }
+    #[inline]
+    pub const fn is_jsx_element_name(self) -> bool {
+        matches!(
+            self,
+            Self::JsxIdentifier | Self::JsxNamespacedName | Self::JsxMemberExpression
+        )
+    }
+    #[inline]
+    pub const fn is_jsx_member_expression_object(self) -> bool {
+        matches!(self, Self::JsxIdentifier | Self::JsxMemberExpression)
+    }
+    #[inline]
+    pub const fn is_jsx_attribute_name(self) -> bool {
+        matches!(self, Self::JsxIdentifier | Self::JsxNamespacedName)
+    }
+    #[inline]
+    pub const fn is_jsx_attribute_item(self) -> bool {
+        matches!(self, Self::JsxAttribute | Self::JsxSpreadAttribute)
+    }
+    #[inline]
+    pub const fn is_jsx_attribute_value(self) -> bool {
+        matches!(
+            self,
+            Self::StringLiteral
+                | Self::JsxExpressionContainer
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+    #[inline]
+    pub const fn is_jsx_expression(self) -> bool {
+        matches!(
+            self,
+            Self::IdentifierReference
+                | Self::ThisExpression
+                | Self::Super
+                | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
+                | Self::BooleanLiteral
+                | Self::NullLiteral
+                | Self::RegExpLiteral
+                | Self::TemplateLiteral
+                | Self::BinaryExpression
+                | Self::LogicalExpression
+                | Self::UnaryExpression
+                | Self::UpdateExpression
+                | Self::AssignmentExpression
+                | Self::ConditionalExpression
+                | Self::SequenceExpression
+                | Self::MemberExpression
+                | Self::CallExpression
+                | Self::ChainExpression
+                | Self::NewExpression
+                | Self::TaggedTemplateExpression
+                | Self::ArrowFunctionExpression
+                | Self::ArrayExpression
+                | Self::ObjectExpression
+                | Self::ParenthesizedExpression
+                | Self::Function
+                | Self::Class
+                | Self::ImportExpression
+                | Self::AwaitExpression
+                | Self::YieldExpression
+                | Self::PrivateIdentifier
+                | Self::TsAsExpression
+                | Self::TsSatisfiesExpression
+                | Self::TsTypeAssertion
+                | Self::TsNonNullExpression
+                | Self::TsInstantiationExpression
+                | Self::JsxElement
+                | Self::JsxFragment
+                | Self::JsxEmptyExpression
+        )
+    }
+    #[inline]
+    pub const fn is_jsx_child(self) -> bool {
+        matches!(
+            self,
+            Self::JsxText
+                | Self::JsxExpressionContainer
+                | Self::JsxSpreadChild
+                | Self::JsxElement
+                | Self::JsxFragment
+        )
+    }
+}
 /// The typed wrapper for the concrete node stored at a node ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NodeKindData {
