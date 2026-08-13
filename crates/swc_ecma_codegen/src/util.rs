@@ -23,25 +23,23 @@ pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {
 }
 
 pub(crate) fn parse_numeric_literal(raw: &[u8]) -> Option<f64> {
-    let clean = remove_underscores(raw);
-    let text = std::str::from_utf8(&clean).ok()?;
-    let lower = text.to_ascii_lowercase();
-    if let Some(digits) = lower.strip_prefix("0x") {
-        return u128::from_str_radix(digits, 16)
-            .ok()
-            .map(|value| value as f64);
-    }
-    if let Some(digits) = lower.strip_prefix("0o") {
-        return u128::from_str_radix(digits, 8)
-            .ok()
-            .map(|value| value as f64);
-    }
-    if let Some(digits) = lower.strip_prefix("0b") {
-        return u128::from_str_radix(digits, 2)
-            .ok()
-            .map(|value| value as f64);
-    }
-    text.parse().ok()
+    let clean;
+    let raw = if raw.contains(&b'_') {
+        clean = remove_underscores(raw);
+        clean.as_slice()
+    } else {
+        raw
+    };
+    let text = std::str::from_utf8(raw).ok()?;
+    let radix = match raw {
+        [b'0', b'x' | b'X', ..] => 16,
+        [b'0', b'o' | b'O', ..] => 8,
+        [b'0', b'b' | b'B', ..] => 2,
+        _ => return text.parse().ok(),
+    };
+    u128::from_str_radix(&text[2..], radix)
+        .ok()
+        .map(|value| value as f64)
 }
 
 pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, ascii_only: bool) {
