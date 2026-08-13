@@ -7134,6 +7134,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             left = if token.tag.is_binary_operator() {
                 self.parse_binary_expression(left, token.tag)?
+            } else if token.tag.is_logical_operator() {
+                self.parse_logical_expression(left, token.tag)?
+            } else if token.tag.is_assignment_operator() {
+                self.parse_assignment_expression(precedence, left, token.tag)?
             } else {
                 self.parse_infix(precedence, left)?
             };
@@ -7184,14 +7188,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return self.parse_non_null_expression(left);
             }
             _ => {}
-        }
-
-        if token.tag.is_logical_operator() {
-            return self.parse_logical_expression(left, token.tag);
-        }
-
-        if token.tag.is_assignment_operator() {
-            return self.parse_assignment_expression(precedence, left, token.tag);
         }
 
         if token.tag == TokenTag::Arrow && !token.has_line_terminator_before() {
