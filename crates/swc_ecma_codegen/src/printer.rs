@@ -3954,40 +3954,15 @@ impl<'a> Printer<'a> {
             TsLiteralData::StringLiteral(s) => {
                 self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
             }
-            TsLiteralData::NumericLiteral(n) => self.print_ts_numeric_literal(n),
+            TsLiteralData::NumericLiteral(n) => {
+                self.print_number(self.ast.get_utf8(n.raw(self.ast)), Precedence::Lowest)
+            }
             TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.get_utf8(n.raw(self.ast))),
             TsLiteralData::BooleanLiteral(b) => {
                 self.print(if b.value(self.ast) { "true" } else { "false" })
             }
             TsLiteralData::TemplateLiteral(t) => self.print_template(t, false),
-            TsLiteralData::UnaryExpression(u) => {
-                let argument = u.argument(self.ast);
-                if let ExprData::NumericLiteral(n) = self.ast.expr_data(argument) {
-                    let operator_code = OperatorCode::Unary(u.operator(self.ast));
-                    self.print_space_before_operator(operator_code);
-                    self.add_source_mapping(u.span(self.ast).start);
-                    self.print(u.operator(self.ast).as_str());
-                    self.prev_op = Some(operator_code);
-                    self.prev_op_end = self.js.len();
-                    self.print_comments_before(argument.span(self.ast).start, false, true);
-                    self.add_source_mapping(argument.span(self.ast).start);
-                    self.print_ts_numeric_literal(n);
-                } else {
-                    self.print_unary(u, Precedence::Lowest);
-                }
-            }
-        }
-    }
-
-    fn print_ts_numeric_literal(&mut self, n: NumericLiteral) {
-        let raw = self.ast.get_utf8(n.raw(self.ast));
-        let preserve_raw = !raw.is_empty()
-            && (!self.options.minify
-                || parse_numeric_literal(raw.as_bytes()).is_some_and(f64::is_infinite));
-        if preserve_raw {
-            self.print_bytes(raw);
-        } else {
-            self.print_number(raw, Precedence::Lowest);
+            TsLiteralData::UnaryExpression(u) => self.print_unary(u, Precedence::Lowest),
         }
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {

@@ -1,9 +1,11 @@
 codegen * typescript
 ========================
-Positive Passed: 13121/13156 (99.73%)
+Positive Passed: 13119/13156 (99.72%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
+Failed: fixtures/typescript/tests/cases/compiler/deferredConditionalTypes2.ts - parser: Expected a type, but found '-' at 114..115
 Failed: fixtures/typescript/tests/cases/compiler/discriminateWithOptionalProperty4.ts - discriminateWithOptionalProperty4.ts: codegen output changed after reparse 
+Failed: fixtures/typescript/tests/cases/compiler/fakeInfinity1.ts - parser: Expected a type, but found '-' at 117..118
 Failed: fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts - parser: Invalid character at start of identifier at 110..110
 Failed: fixtures/typescript/tests/cases/compiler/jsxNestedWithinTernaryParsesCorrectly.tsx - jsxNestedWithinTernaryParsesCorrectly.tsx: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - parser: Unexpected token '<' at 12..13
