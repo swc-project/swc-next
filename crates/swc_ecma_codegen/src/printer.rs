@@ -76,7 +76,6 @@ struct Printer<'a> {
     prev_op: Option<OperatorCode>,
     need_space_before_dot: usize,
     prev_reg_exp_end: usize,
-    with_nesting: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
 }
@@ -127,7 +126,6 @@ pub fn print<'a>(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options) 
         prev_op: None,
         need_space_before_dot: usize::MAX,
         prev_reg_exp_end: usize::MAX,
-        with_nesting: 0,
         forbid_in: false,
         int_to_bytes_buffer: [0; 64],
     };
@@ -902,9 +900,7 @@ impl<'a> Printer<'a> {
                 self.print("(");
                 self.print_expr(s.object(self.ast), Precedence::Lowest);
                 self.print(")");
-                self.with_nesting += 1;
                 self.print_body(s.body(self.ast));
-                self.with_nesting -= 1;
             }
             StmtData::Declaration(d) => {
                 if !matches!(self.ast.decl_data(d), DeclData::Class(_)) {
@@ -1756,7 +1752,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::NumericLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print_number(self.ast.get_utf8(e.raw(self.ast)), level)
+                self.print_number_expr(self.ast.get_utf8(e.raw(self.ast)), level)
             }
             ExprData::BigIntLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
@@ -2582,7 +2578,7 @@ impl<'a> Printer<'a> {
                 self.print_quoted(self.ast.get_wtf8(e.value(self.ast)), true)
             }
             PropertyKeyData::NumericLiteral(e) => {
-                self.print_number(self.ast.get_utf8(e.raw(self.ast)), Precedence::Lowest)
+                self.print_number_expr(self.ast.get_utf8(e.raw(self.ast)), Precedence::Lowest);
             }
             PropertyKeyData::BigIntLiteral(e) => {
                 for byte in self.ast.get_utf8(e.raw(self.ast)).bytes() {
@@ -2606,6 +2602,8 @@ impl<'a> Printer<'a> {
                     self.print_quoted(Wtf8::from_str(name), true);
                 }
             }
+            PropertyKeyData::NumericLiteral(value) => self
+                .print_number_literal(self.ast.get_utf8(value.raw(self.ast)), Precedence::Lowest),
             _ => self.print_property_key_expr(key),
         }
     }
@@ -2746,9 +2744,9 @@ impl<'a> Printer<'a> {
             self.print(" extends ");
             let type_arguments = c.super_type_arguments(self.ast);
             if type_arguments.is_some() {
-                self.print_expr_before_type_arguments(s, Precedence::Call);
+                self.print_expr_before_type_arguments(s, Precedence::Postfix);
             } else {
-                self.print_expr(s, Precedence::Compare);
+                self.print_expr(s, Precedence::Postfix);
             }
             if let Some(t) = type_arguments {
                 self.print_ts_type_args(t);
@@ -3011,7 +3009,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_number(&mut self, raw: &str, level: Precedence) {
+    fn print_number_literal(&mut self, raw: &str, level: Precedence) {
         if matches!(
             raw.as_bytes(),
             [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
@@ -3025,52 +3023,35 @@ impl<'a> Printer<'a> {
             self.print_bytes(raw);
             return;
         };
-        let abs_value = value.abs();
-        if value.is_nan() {
+        self.print_number_value(raw, value, level);
+    }
+
+    fn print_number_expr(&mut self, raw: &str, level: Precedence) {
+        if matches!(
+            raw.as_bytes(),
+            [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
+        ) {
             self.print_space_before_identifier();
-            if self.with_nesting != 0 {
-                // "with (x) NaN" means "x.NaN", so avoid the identifier when
-                // a "with" statement is active.
-                let wrap = level >= Precedence::Multiply;
-                if wrap {
-                    self.print("(");
-                }
-                self.print("0");
-                self.print_space();
-                self.print("/");
-                self.print_space();
-                self.print("0");
-                if wrap {
-                    self.print(")");
-                }
-            } else {
-                self.print("NaN");
-            }
-        } else if value.is_infinite() {
-            // "with (x) Infinity" means "x.Infinity", so avoid the identifier
-            // when a "with" statement is active.
-            let wrap = (self.with_nesting != 0 && level >= Precedence::Multiply)
-                || (value.is_sign_negative() && level >= Precedence::Prefix);
-            if wrap {
-                self.print("(");
-            }
-            if value.is_sign_negative() {
-                self.print("-");
-            } else {
-                self.print_space_before_identifier();
-            }
-            if self.with_nesting == 0 {
-                self.print("Infinity");
-            } else {
-                self.print("1");
-                self.print_space();
-                self.print("/");
-                self.print_space();
-                self.print("0");
-            }
-            if wrap {
-                self.print(")");
-            }
+            self.print_bytes(raw);
+            self.need_space_before_dot = self.js.len();
+            return;
+        }
+        let Some(value) = parse_numeric_literal(raw.as_bytes()) else {
+            self.print_bytes(raw);
+            return;
+        };
+        if value.is_finite() || !self.options.minify {
+            self.print_number_value(raw, value, level);
+        } else {
+            self.print_non_finite_number_expr(value, level);
+        }
+    }
+
+    fn print_number_value(&mut self, raw: &str, value: f64, level: Precedence) {
+        let abs_value = value.abs();
+        if !value.is_finite() {
+            self.print_space_before_identifier();
+            self.print_bytes(raw);
         } else if !value.is_sign_negative() {
             self.print_space_before_identifier();
             self.print_non_negative_float(abs_value);
@@ -3083,6 +3064,36 @@ impl<'a> Printer<'a> {
         } else {
             self.print("-");
             self.print_non_negative_float(abs_value);
+        }
+    }
+
+    fn print_non_finite_number_expr(&mut self, value: f64, level: Precedence) {
+        let requires_parentheses = level > Precedence::Multiply;
+        if requires_parentheses && value == f64::INFINITY {
+            self.print_space_before_identifier();
+            self.print("2e308");
+        } else {
+            if requires_parentheses {
+                self.print("(");
+            }
+            if value.is_nan() {
+                self.print_space_before_identifier();
+                self.print("0");
+            } else {
+                if value.is_sign_negative() {
+                    self.print("-");
+                } else {
+                    self.print_space_before_identifier();
+                }
+                self.print("1");
+            }
+            self.print_space();
+            self.print("/");
+            self.print_space();
+            self.print("0");
+            if requires_parentheses {
+                self.print(")");
+            }
         }
     }
 
@@ -3977,15 +3988,39 @@ impl<'a> Printer<'a> {
                 self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
             }
             TsLiteralData::NumericLiteral(n) => {
-                self.print_number(self.ast.get_utf8(n.raw(self.ast)), Precedence::Lowest)
+                self.print_number_literal(self.ast.get_utf8(n.raw(self.ast)), Precedence::Lowest);
             }
             TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.get_utf8(n.raw(self.ast))),
             TsLiteralData::BooleanLiteral(b) => {
                 self.print(if b.value(self.ast) { "true" } else { "false" })
             }
             TsLiteralData::TemplateLiteral(t) => self.print_template(t, false),
-            TsLiteralData::UnaryExpression(u) => self.print_unary(u, Precedence::Lowest),
+            TsLiteralData::UnaryExpression(u) => self.print_ts_signed_numeric_literal(u),
         }
+    }
+
+    fn print_ts_signed_numeric_literal(&mut self, expression: UnaryExpression) {
+        let operator = expression.operator(self.ast);
+        let argument = expression.argument(self.ast);
+        let ExprData::NumericLiteral(number) = self.ast.expr_data(argument) else {
+            self.print_unary(expression, Precedence::Lowest);
+            return;
+        };
+        if !matches!(operator, UnaryOperator::Negate | UnaryOperator::Positive) {
+            self.print_unary(expression, Precedence::Lowest);
+            return;
+        }
+
+        self.print_comments_before(argument.span(self.ast).start, false, true);
+        let operator_code = OperatorCode::Unary(operator);
+        self.print_space_before_operator(operator_code);
+        self.add_source_mapping(expression.span(self.ast).start);
+        self.print(operator.as_str());
+        self.prev_op = Some(operator_code);
+        self.prev_op_end = self.js.len();
+
+        self.add_source_mapping(argument.span(self.ast).start);
+        self.print_number_literal(self.ast.get_utf8(number.raw(self.ast)), Precedence::Prefix);
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
         match self.ast.ts_tuple_element_data(e) {

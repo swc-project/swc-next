@@ -1173,6 +1173,21 @@ fn test_avoid_slash_script() {
 
 #[test]
 fn test_infinity() {
+    expect_printed(
+        "function f(Infinity) { return 1e999 }",
+        "function f(Infinity) {\n  return 1e999;\n}\n",
+    );
+    expect_printed_minify(
+        "function f(Infinity) { return 1e999 }",
+        "function f(Infinity){return 1/0}",
+    );
+    expect_printed("x = -1e999", "x = -1e999;\n");
+    expect_printed("x = (1e999).toString", "x = 1e999.toString;\n");
+    expect_printed_minify("x = (1e999).toString", "x=2e308.toString;");
+    expect_printed_minify("x = 1e999 * y", "x=1/0*y;");
+    expect_printed_minify("x = y * 1e999", "x=y*2e308;");
+    expect_printed_minify("class C extends 1e999 {}", "class C extends 2e308{}");
+    expect_printed_minify("x = { 1e999: 0, [1e999]: 1 }", "x={1e999:0,[1/0]:1};");
     expect_printed("x = Infinity", "x = Infinity;\n");
     expect_printed("x = -Infinity", "x = -Infinity;\n");
     expect_printed("x = (Infinity).toString", "x = Infinity.toString;\n");
@@ -1225,7 +1240,7 @@ fn test_control_flow_minify_and_with() {
         "if (x) y(); else z(); for (;;) x(); while(x)y(); do x(); while(y); switch(x){case 1:y();default:z()} try{x()}catch(e){y()}finally{z()} with(x)1e400",
         "if(x)y();else z();for(;;)x();while(x)y();do x();while(y);switch(x){case 1:y();default:z()}try{x()}catch(e){y()}finally{z()}with(x)1/0;",
     );
-    expect_printed("with (x) 1e400", "with (x) 1 / 0;\n");
+    expect_printed("with (x) 1e400", "with (x) 1e400;\n");
     expect_printed_minify(
         "switch(x){case\"a\":break;case{}:break} throw{}",
         "switch(x){case\"a\":break;case{}:break}throw{};",

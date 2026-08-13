@@ -182,3 +182,34 @@ fn test_satisfies_assignment_targets() {
         "for((value satisfies number) in values){}",
     );
 }
+
+#[test]
+fn test_non_finite_numeric_literal_types() {
+    let cases = [
+        (
+            "type Positive = 1e999;",
+            "type Positive = 1e999;\n",
+            "type Positive=1e999;",
+        ),
+        (
+            "type Negative = -1e999;",
+            "type Negative = -1e999;\n",
+            "type Negative=-1e999;",
+        ),
+    ];
+
+    for (source, expected, minified) in cases {
+        expect_printed_ts(source, expected);
+        expect_printed_ts(expected, expected);
+        expect_printed_ts_minify(source, minified);
+    }
+}
+
+#[test]
+fn test_signed_numeric_literal_type_comments() {
+    let source = "type T = -/* note */1;";
+    let expected = "type T = /* note */ -1;\n";
+    expect_printed_ts(source, expected);
+    expect_printed_ts(expected, expected);
+    expect_printed_ts_minify(source, "type T= /* note */ -1;");
+}
