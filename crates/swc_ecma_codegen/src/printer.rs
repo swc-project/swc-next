@@ -333,7 +333,19 @@ impl<'a> Printer<'a> {
         self.print_quoted(value, false);
     }
 
+    #[inline]
     fn print_comments_before(&mut self, offset: u32, statement: bool, preserve_all: bool) {
+        if self
+            .comments
+            .get(self.next_comment)
+            .is_some_and(|comment| comment.span.end <= offset)
+        {
+            self.print_comments_before_slow(offset, statement, preserve_all);
+        }
+    }
+
+    #[inline(never)]
+    fn print_comments_before_slow(&mut self, offset: u32, statement: bool, preserve_all: bool) {
         while self.next_comment < self.comments.len()
             && self.comments[self.next_comment].span.end <= offset
         {
