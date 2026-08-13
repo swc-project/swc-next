@@ -1184,6 +1184,15 @@ fn test_infinity() {
     expect_printed("x = -1e999", "x = -1e999;\n");
     expect_printed("x = (1e999).toString", "x = 1e999.toString;\n");
     expect_printed_minify("x = (1e999).toString", "x=2e308.toString;");
+    let overflowing_integer = "9".repeat(309);
+    expect_printed(
+        &format!("({overflowing_integer}).toString"),
+        &format!("{overflowing_integer} .toString;\n"),
+    );
+    expect_printed_minify(
+        &format!("({overflowing_integer}).toString"),
+        "2e308.toString;",
+    );
     expect_printed_minify("x = 1e999 * y", "x=1/0*y;");
     expect_printed_minify("x = y * 1e999", "x=y*2e308;");
     expect_printed_minify("class C extends 1e999 {}", "class C extends 2e308{}");

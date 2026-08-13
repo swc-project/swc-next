@@ -3052,6 +3052,7 @@ impl<'a> Printer<'a> {
         if !value.is_finite() {
             self.print_space_before_identifier();
             self.print_bytes(raw);
+            self.mark_raw_number_before_dot(raw);
         } else if !value.is_sign_negative() {
             self.print_space_before_identifier();
             self.print_non_negative_float(abs_value);
@@ -3064,6 +3065,19 @@ impl<'a> Printer<'a> {
         } else {
             self.print("-");
             self.print_non_negative_float(abs_value);
+        }
+    }
+
+    fn mark_raw_number_before_dot(&mut self, raw: &str) {
+        let mut bytes = raw.bytes().filter(|&byte| byte != b'_').peekable();
+        let Some(first) = bytes.next() else {
+            return;
+        };
+        if first.is_ascii_digit()
+            && !(first == b'0' && bytes.peek().is_some())
+            && bytes.all(|byte| byte.is_ascii_digit())
+        {
+            self.need_space_before_dot = self.js.len();
         }
     }
 
