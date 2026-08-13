@@ -7105,7 +7105,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[inline(always)]
     fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
-        let mut left = self.parse_prefix(opts.in_cover, minimum)?;
+        let mut left = if self.current_token.tag == TokenTag::Identifier {
+            self.parse_plain_identifier()?
+        } else {
+            self.parse_prefix(opts.in_cover, minimum)?
+        };
         let is_ts = self.lang.is_typescript();
 
         loop {
@@ -7229,10 +7233,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_prefix(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
         let tag = self.current_token.tag;
-
-        if tag == TokenTag::Identifier {
-            return self.parse_plain_identifier();
-        }
 
         if matches!(tag, TokenTag::Increment | TokenTag::Decrement) {
             return self.parse_update_expression(true, None);
