@@ -3047,6 +3047,7 @@ impl<'a> Printer<'a> {
         }
     }
 
+    #[inline]
     fn print_number_value(&mut self, raw: &str, value: f64, level: Precedence) {
         let abs_value = value.abs();
         if !value.is_finite() {
