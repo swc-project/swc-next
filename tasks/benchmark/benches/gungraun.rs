@@ -1,6 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+// Temporary marker used to establish the parser optimization profile stack.
 use std::hint::black_box;
 
 use gungraun::prelude::*;
