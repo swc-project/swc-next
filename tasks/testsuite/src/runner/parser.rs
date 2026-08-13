@@ -26,7 +26,7 @@ impl<C: Case> Runner<C> for ParserRunner {
             if !case.expects_error()
                 && let Some(expected) = case.expected_source_type()
             {
-                let actual = program.source_type(&ast);
+                let actual = ast.source_type();
                 if actual != expected {
                     return Err(format!(
                         "{}: expected source type {expected:?}, but parser produced {actual:?}",

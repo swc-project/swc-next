@@ -1428,12 +1428,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Program {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.directives(visitor.ast());
-        let field_value_2 = self.body(visitor.ast());
-        let field_value_3 = self.hashbang(visitor.ast());
-        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-        <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        let field_value_0 = self.directives(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        let field_value_2 = self.hashbang(visitor.ast());
+        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {

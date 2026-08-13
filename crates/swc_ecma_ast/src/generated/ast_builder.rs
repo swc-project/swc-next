@@ -11,13 +11,11 @@ impl<'a> Ast<'a> {
     pub fn program(
         &mut self,
         span: Span,
-        source_type: SourceType,
         directives: TypedSubRange<Directive>,
         body: TypedSubRange<Stmt>,
         hashbang: Option<Hashbang>,
     ) -> Program {
-        let _extra_data = [source_type.to_extra_data(self), body.to_extra_data(self)];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(body.to_extra_data(self));
         Program(self.add_node(
             span,
             NodeKind::Program,
@@ -26,7 +24,7 @@ impl<'a> Ast<'a> {
                     | ((unsafe { directives.to_extra_data(self).other } as u128) << 32usize)
                     | ((hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 0usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }

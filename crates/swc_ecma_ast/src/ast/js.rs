@@ -351,7 +351,6 @@ impl<'a> ExtraDataCompact<'a> for Option<ImportPhase> {
 /// prologue (`"use strict";`), while `body` contains imports and statements.
 #[ast]
 pub struct Program {
-    source_type: SourceType,
     directives: Vec<Directive>,
     /// Import and export declarations are classified as statements.
     body: Vec<Stmt>,

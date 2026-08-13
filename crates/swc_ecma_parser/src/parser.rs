@@ -802,13 +802,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             };
             self.ast.set_source_metadata(self.source_type, self.lang);
         }
-        let program = self.ast.program(
-            Span::new(0, end),
-            self.source_type,
-            directives,
-            body,
-            hashbang,
-        );
+        let program = self
+            .ast
+            .program(Span::new(0, end), directives, body, hashbang);
         if !self.preserve_parens {
             strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
         }
@@ -11882,11 +11878,6 @@ mod tests {
             let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
 
             assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-            assert_eq!(
-                result.program.source_type(&result.ast),
-                expected,
-                "{source}"
-            );
             assert_eq!(result.ast.source_type(), expected, "{source}");
         }
 
@@ -11912,7 +11903,7 @@ mod tests {
         let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
 
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        assert_eq!(result.program.source_type(&result.ast), SourceType::Script);
+        assert_eq!(result.ast.source_type(), SourceType::Script);
     }
 
     #[test]

@@ -127,6 +127,7 @@ export function decode(buffer, source) {
     const values = ENUMS[name];
     return values !== undefined && value < values.length ? values[value] : value;
   };
+  const sourceType = enumValue("SourceType", (_u32[8] >> 1) & 3);
   const optionalEnum = (name, value) =>
     value === 0xff ? null : enumValue(name, value);
   const optionalNode = index => index === NULL ? null : node(index);
@@ -148,14 +149,13 @@ export function decode(buffer, source) {
     switch (bytes[kinds + index]) {
       case 0: {
         const extraId = _u32[(payload + 12) >> 2];
-        const f_sourceType = enumValue("SourceType", _dv.getUint8(extra + (extraId + 0) * 8));
         const f_directives = nodeArray(_u32[(payload + 4) >> 2], _u32[(payload + 4 + 4) >> 2], false);
-        const f_body = nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false);
+        const f_body = nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
         const f_hashbang = optionalNode(_u32[(payload + 0) >> 2]);
         const body = [...f_directives, ...f_body];
         result = {
           type: "Program", start: isTs ? (body.length !== 0 ? body[0].start : end) : start, end,
-          sourceType: f_sourceType,
+          sourceType,
           hashbang: f_hashbang,
           body,
         };

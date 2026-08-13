@@ -20,27 +20,11 @@ impl Program {
         (raw != u32::MAX).then(|| Hashbang(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn source_type<'a>(self, ast: &crate::Ast<'a>) -> SourceType {
-        let offset = unsafe {
-            ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize),
-            )
-        };
-        debug_assert!(offset.index() < ast.extra_data.len());
-        unsafe {
-            ExtraDataCompact::from_extra_data(
-                *ast.extra_data.as_slice().get_unchecked(offset.index()),
-                ast,
-            )
-        }
-    }
-    #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(1usize),
+                    .wrapping_add(0usize),
             )
         };
         debug_assert!(offset.index() < ast.extra_data.len());
@@ -70,26 +54,11 @@ impl Program {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
-    pub fn set_source_type<'a>(self, ast: &mut crate::Ast<'a>, source_type: SourceType) {
-        let offset = unsafe {
-            ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize),
-            )
-        };
-        debug_assert!(offset.index() < ast.extra_data.len());
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = source_type.to_extra_data(ast);
-        };
-    }
-    #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(1usize),
+                    .wrapping_add(0usize),
             )
         };
         debug_assert!(offset.index() < ast.extra_data.len());

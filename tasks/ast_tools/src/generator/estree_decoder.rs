@@ -365,7 +365,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
             r#"        const body = [...f_directives, ...f_body];
         result = {
           type: "Program", start: isTs ? (body.length !== 0 ? body[0].start : end) : start, end,
-          sourceType: f_sourceType,
+          sourceType,
           hashbang: f_hashbang,
           body,
         };
@@ -905,6 +905,7 @@ export function decode(buffer, source) {
     const values = ENUMS[name];
     return values !== undefined && value < values.length ? values[value] : value;
   };
+  const sourceType = enumValue("SourceType", (_u32[8] >> 1) & 3);
   const optionalEnum = (name, value) =>
     value === 0xff ? null : enumValue(name, value);
   const optionalNode = index => index === NULL ? null : node(index);

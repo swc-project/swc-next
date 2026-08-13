@@ -11,8 +11,6 @@ pub use js::*;
 pub use jsx::*;
 pub use ts::*;
 
-use crate::{Ast, ExtraData, ExtraDataCompact};
-
 /// Source type of a JavaScript or TypeScript file.
 ///
 /// Determines whether the file is parsed as an ES module, a CommonJS module,
@@ -52,16 +50,6 @@ impl SourceType {
         } else {
             Self::Unambiguous
         }
-    }
-}
-
-impl<'a> ExtraDataCompact<'a> for SourceType {
-    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData { other: self as u64 }
-    }
-
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        unsafe { std::mem::transmute(data.other as u8) }
     }
 }
 

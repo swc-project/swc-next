@@ -6,11 +6,10 @@ impl<'a> CloneIn<'a> for Program {
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
-        let source_type = self.source_type(ast).clone_in(ast);
         let directives = self.directives(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
         let hashbang = self.hashbang(ast).clone_in(ast);
-        ast.program(span, source_type, directives, body, hashbang)
+        ast.program(span, directives, body, hashbang)
     }
 }
 impl<'a> CloneIn<'a> for Stmt {
