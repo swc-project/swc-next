@@ -1420,7 +1420,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 const IDENTIFIER_BATCH_SIZE: usize = 32;
+
+#[cfg(target_arch = "x86_64")]
+const SIMD_IDENTIFIER_BATCH_SIZE: usize = 16;
 
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     let mut table = [true; 256];
@@ -1444,12 +1448,57 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     table
 };
 
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+fn ascii_identifier_continue_mask(batch: &[u8; SIMD_IDENTIFIER_BATCH_SIZE]) -> u32 {
+    use std::arch::x86_64::{
+        _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_loadu_si128, _mm_movemask_epi8,
+        _mm_or_si128, _mm_set1_epi8,
+    };
+
+    // SAFETY: SSE2 is part of the x86-64 baseline, and `batch` contains the 16
+    // bytes loaded by `_mm_loadu_si128`.
+    unsafe {
+        let bytes = _mm_loadu_si128(batch.as_ptr().cast());
+        let lowercase = _mm_or_si128(bytes, _mm_set1_epi8(0x20));
+        let alphabetic = _mm_and_si128(
+            _mm_cmpgt_epi8(lowercase, _mm_set1_epi8((b'a' - 1) as i8)),
+            _mm_cmpgt_epi8(_mm_set1_epi8((b'z' + 1) as i8), lowercase),
+        );
+        let digit = _mm_and_si128(
+            _mm_cmpgt_epi8(bytes, _mm_set1_epi8((b'0' - 1) as i8)),
+            _mm_cmpgt_epi8(_mm_set1_epi8((b'9' + 1) as i8), bytes),
+        );
+        let underscore = _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'_' as i8));
+        let dollar = _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'$' as i8));
+        let allowed = _mm_or_si128(
+            _mm_or_si128(alphabetic, digit),
+            _mm_or_si128(underscore, dollar),
+        );
+        _mm_movemask_epi8(allowed) as u32
+    }
+}
+
 #[inline(always)]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
     let mut position = start as usize;
 
+    #[cfg(target_arch = "x86_64")]
+    while source.len() - position >= SIMD_IDENTIFIER_BATCH_SIZE {
+        let batch = source[position..]
+            .first_chunk::<SIMD_IDENTIFIER_BATCH_SIZE>()
+            .unwrap();
+        let invalid = !ascii_identifier_continue_mask(batch) & 0xFFFF;
+        if invalid != 0 {
+            position += invalid.trailing_zeros() as usize;
+            return position as u32;
+        }
+        position += SIMD_IDENTIFIER_BATCH_SIZE;
+    }
+
+    #[cfg(not(target_arch = "x86_64"))]
     'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
         let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
         for (offset, byte) in batch.iter().enumerate() {
@@ -1823,6 +1872,24 @@ mod tests {
                 .unwrap() as u32;
             assert_eq!(token.span, Span::new(start, start + 4));
             assert!(token.has_line_terminator_before());
+        }
+    }
+
+    #[test]
+    fn scans_ascii_identifier_boundaries() {
+        let mut source = [b'a'; 64];
+
+        for position in [0, 7, 15, 16, 23, 31] {
+            for byte in u8::MIN..=u8::MAX {
+                source.fill(b'a');
+                source[position] = byte;
+                let expected = if NOT_ASCII_IDENTIFIER_CONTINUE[byte as usize] {
+                    position as u32
+                } else {
+                    source.len() as u32
+                };
+                assert_eq!(scan_ascii_identifier_continue(&source, 0), expected);
+            }
         }
     }
 
