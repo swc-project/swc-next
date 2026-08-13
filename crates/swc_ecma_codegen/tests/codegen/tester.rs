@@ -61,6 +61,12 @@ pub fn expect_printed_script(source: &str, expected: &str) {
 }
 
 #[track_caller]
+pub fn expect_stable(source: &str, expected: &str) {
+    expect_printed(source, expected);
+    expect_printed(expected, expected);
+}
+
+#[track_caller]
 fn expect_printed_common(
     source: &str,
     expected: &str,

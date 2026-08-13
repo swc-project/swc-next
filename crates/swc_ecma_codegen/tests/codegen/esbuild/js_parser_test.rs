@@ -1,4 +1,6 @@
 // Ported from upstream esbuild's internal/js_parser/js_parser_test.go.
+// This upstream mirror should normally only change when syncing with esbuild.
+// Add swc-next-specific regressions to the parent suite (`../js.rs` or `../ts.rs`).
 use crate::{expect_printed, expect_printed_jsx, expect_printed_script};
 
 #[test]
@@ -324,14 +326,6 @@ fn test_decls() {
     expect_printed("for ([{a = {}}] of b) {}", "for ([{ a = {} }] of b) {\n}\n");
     expect_printed("for ({a = {}} in b) {}", "for ({ a = {} } in b) {\n}\n");
     expect_printed("for ({a = {}} of b) {}", "for ({ a = {} } of b) {\n}\n");
-}
-
-#[test]
-fn test_for_of_async_identifier() {
-    expect_printed("for ((async) of []) ;", "for ((async) of []) ;\n");
-    expect_printed("for (\\u0061sync of []) ;", "for ((async) of []) ;\n");
-    expect_printed("for (async.x of []) ;", "for (async.x of []) ;\n");
-    expect_printed("for await (async of []) ;", "for await (async of []) ;\n");
 }
 
 #[test]

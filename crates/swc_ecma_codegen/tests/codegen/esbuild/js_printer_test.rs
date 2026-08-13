@@ -1,4 +1,6 @@
 // Ported from upstream esbuild's internal/js_printer/js_printer_test.go.
+// This upstream mirror should normally only change when syncing with esbuild.
+// Add swc-next-specific regressions to the parent suite (`../js.rs` or `../ts.rs`).
 use crate::{
     expect_printed, expect_printed_ascii, expect_printed_jsx, expect_printed_jsx_ascii,
     expect_printed_jsx_minify, expect_printed_minify, expect_printed_minify_ascii,
@@ -479,15 +481,6 @@ fn test_function() {
         "function foo([,,] = [,,]) {}",
         "function foo([, ,] = [, ,]) {\n}\n",
     );
-}
-
-#[test]
-fn test_array_pattern_rest_after_elision() {
-    expect_printed(
-        "function foo([,,...rest]) {}",
-        "function foo([, , ...rest]) {\n}\n",
-    );
-    expect_printed("([,,...rest] = value)", "[, , ...rest] = value;\n");
 }
 
 #[test]

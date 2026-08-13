@@ -59,7 +59,8 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 ### Adding Unit Tests
 
 - Add tests to the existing module; do not create dedicated test files.
-- Keep each case small and test one JavaScript/TypeScript statement, not several statements at once.
+- Keep each input small; do not combine independently testable JavaScript/TypeScript statements.
+- Write assertions flat; do not define a cases table and iterate over it.
 - Keep input and expected output on one source line; encode line breaks as `\n`.
 
 Update this file when the commands or workflows above change; otherwise do not edit it.

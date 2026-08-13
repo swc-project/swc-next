@@ -103,47 +103,82 @@ fn test_type_assertion_generic_function_type() {
 
 #[test]
 fn test_satisfies_assignment_targets() {
-    let cases = [
-        (
-            "++(value satisfies number);",
-            "++(value satisfies number);\n",
-            "++(value satisfies number);",
-        ),
-        (
-            "(value satisfies number)--;",
-            "(value satisfies number)--;\n",
-            "(value satisfies number)--;",
-        ),
-        (
-            "(value satisfies number) = 1;",
-            "(value satisfies number) = 1;\n",
-            "(value satisfies number)=1;",
-        ),
-        (
-            "[(value satisfies number)] = [1];",
-            "[(value satisfies number)] = [1];\n",
-            "[(value satisfies number)]=[1];",
-        ),
-        (
-            "({ key: (value satisfies number) } = { key: 1 });",
-            "({ key: (value satisfies number) } = { key: 1 });\n",
-            "({key:(value satisfies number)}={key:1});",
-        ),
-        (
-            "for ((value satisfies number) of values) {}",
-            "for ((value satisfies number) of values) {\n}\n",
-            "for((value satisfies number) of values){}",
-        ),
-        (
-            "for ((value satisfies number) in values) {}",
-            "for ((value satisfies number) in values) {\n}\n",
-            "for((value satisfies number) in values){}",
-        ),
-    ];
-
-    for (source, expected, minified) in cases {
-        expect_printed_ts(source, expected);
-        expect_printed_ts(expected, expected);
-        expect_printed_ts_minify(source, minified);
-    }
+    expect_printed_ts(
+        "++(value satisfies number);",
+        "++(value satisfies number);\n",
+    );
+    expect_printed_ts(
+        "++(value satisfies number);\n",
+        "++(value satisfies number);\n",
+    );
+    expect_printed_ts_minify("++(value satisfies number);", "++(value satisfies number);");
+    expect_printed_ts(
+        "(value satisfies number)--;",
+        "(value satisfies number)--;\n",
+    );
+    expect_printed_ts(
+        "(value satisfies number)--;\n",
+        "(value satisfies number)--;\n",
+    );
+    expect_printed_ts_minify("(value satisfies number)--;", "(value satisfies number)--;");
+    expect_printed_ts(
+        "(value satisfies number) = 1;",
+        "(value satisfies number) = 1;\n",
+    );
+    expect_printed_ts(
+        "(value satisfies number) = 1;\n",
+        "(value satisfies number) = 1;\n",
+    );
+    expect_printed_ts_minify(
+        "(value satisfies number) = 1;",
+        "(value satisfies number)=1;",
+    );
+    expect_printed_ts(
+        "[(value satisfies number)] = [1];",
+        "[(value satisfies number)] = [1];\n",
+    );
+    expect_printed_ts(
+        "[(value satisfies number)] = [1];\n",
+        "[(value satisfies number)] = [1];\n",
+    );
+    expect_printed_ts_minify(
+        "[(value satisfies number)] = [1];",
+        "[(value satisfies number)]=[1];",
+    );
+    expect_printed_ts(
+        "({ key: (value satisfies number) } = { key: 1 });",
+        "({ key: (value satisfies number) } = { key: 1 });\n",
+    );
+    expect_printed_ts(
+        "({ key: (value satisfies number) } = { key: 1 });\n",
+        "({ key: (value satisfies number) } = { key: 1 });\n",
+    );
+    expect_printed_ts_minify(
+        "({ key: (value satisfies number) } = { key: 1 });",
+        "({key:(value satisfies number)}={key:1});",
+    );
+    expect_printed_ts(
+        "for ((value satisfies number) of values) {}",
+        "for ((value satisfies number) of values) {\n}\n",
+    );
+    expect_printed_ts(
+        "for ((value satisfies number) of values) {\n}\n",
+        "for ((value satisfies number) of values) {\n}\n",
+    );
+    expect_printed_ts_minify(
+        "for ((value satisfies number) of values) {}",
+        "for((value satisfies number) of values){}",
+    );
+    expect_printed_ts(
+        "for ((value satisfies number) in values) {}",
+        "for ((value satisfies number) in values) {\n}\n",
+    );
+    expect_printed_ts(
+        "for ((value satisfies number) in values) {\n}\n",
+        "for ((value satisfies number) in values) {\n}\n",
+    );
+    expect_printed_ts_minify(
+        "for ((value satisfies number) in values) {}",
+        "for((value satisfies number) in values){}",
+    );
 }
