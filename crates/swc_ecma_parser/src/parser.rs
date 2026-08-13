@@ -9592,6 +9592,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    #[inline(always)]
     fn parse_static_member_expression(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Dot);
         self.advance()?;
