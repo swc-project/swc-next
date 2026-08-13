@@ -14,9 +14,9 @@ use swc_next_ecma_ast::{
     ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody,
     FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier,
     JsxClosingElement, JsxOpeningElement, Label, MemberExpression, NodeId, NodeKind, NodeKindData,
-    ObjectPattern, ParenthesizedExpression, Program, PropertyDefinition, PropertyKey, ScopeId,
-    Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, TsArrayType,
-    TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    ObjectPattern, ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId, Severity,
+    Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, TsArrayType, TsAsExpression,
+    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
@@ -54,10 +54,10 @@ struct CheckerState<'a> {
 }
 
 impl<'traverse, 'a> Checker<'traverse, 'a> {
-    pub fn new(root: Program, ast: &'traverse Ast<'a>, check_syntax: bool) -> Self {
+    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool) -> Self {
         Self {
             checks: CheckerState::new(ast.allocator()),
-            context: SemanticVisitCtx::new(ast, SemanticContext::init(root, ast)),
+            context: SemanticVisitCtx::new(ast, SemanticContext::init(ast)),
             check_syntax,
             in_ts_module_name: false,
         }

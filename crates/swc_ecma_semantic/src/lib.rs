@@ -11,7 +11,7 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::Vec as ArenaVec,
 };
-use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, Program, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{binder::Range, checker::Checker, scope::ScopeTree};
 
@@ -417,8 +417,9 @@ pub struct AnalyzeOptions {
 /// When [`AnalyzeOptions::check_syntax`] is enabled, scope-dependent early
 /// errors are returned separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
-pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
-    let mut visitor = Checker::new(root, ast, options.check_syntax);
+pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
+    let root = ast.root_program();
+    let mut visitor = Checker::new(ast, options.check_syntax);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {
@@ -453,7 +454,7 @@ mod tests {
         .parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true })
+        analyze(&ast, AnalyzeOptions { check_syntax: true })
             .diagnostics
             .into_iter()
             .map(|diagnostic| diagnostic.message.into_owned())
@@ -478,7 +479,7 @@ mod tests {
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
         let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
         let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
         let a_declarations = semantic.declarations(a);
@@ -579,7 +580,7 @@ mod tests {
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
         let exported = |name: &[u8]| {
             semantic
                 .iter_symbols()
@@ -614,7 +615,7 @@ mod tests {
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-        let statement = parse.program.body(&ast).get_node(&ast, 0).unwrap();
+        let statement = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
         let declaration = statement.as_declaration(&ast).unwrap();
         let declaration = declaration.as_ts_module_declaration(&ast).unwrap();
         let NodeKindData::TsQualifiedName(name) = ast.kind_data(declaration.id(&ast).node_id())
@@ -623,7 +624,7 @@ mod tests {
         };
         let head = name.left(&ast).node_id();
 
-        let result = analyze(parse.program, &ast, AnalyzeOptions::default());
+        let result = analyze(&ast, AnalyzeOptions::default());
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         let declaration = result.semantic.declaration_of(head).unwrap();
         let symbol = result.semantic.declaration(declaration).symbol;
@@ -657,7 +658,7 @@ mod tests {
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-        let body = parse.program.body(&ast);
+        let body = ast.root_program().body(&ast);
         let export_name = |index| {
             let statement = body.get_node(&ast, index).unwrap();
             let declaration = statement.as_export_named_declaration(&ast).unwrap();
@@ -668,7 +669,7 @@ mod tests {
         let type_node = export_name(1);
         let re_export_node = export_name(2);
 
-        let result = analyze(parse.program, &ast, AnalyzeOptions::default());
+        let result = analyze(&ast, AnalyzeOptions::default());
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
 
         let value_reference = result.semantic.reference_of(value_node).unwrap();
@@ -710,7 +711,7 @@ mod tests {
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-        let body = parse.program.body(&ast);
+        let body = ast.root_program().body(&ast);
         let specifier = |index| {
             let statement = body.get_node(&ast, index).unwrap();
             let declaration = statement.as_export_named_declaration(&ast).unwrap();
@@ -720,7 +721,7 @@ mod tests {
         let re_export_specifier = specifier(1);
         let local_node = local_specifier.local(&ast).node_id();
 
-        let result = analyze(parse.program, &ast, AnalyzeOptions::default());
+        let result = analyze(&ast, AnalyzeOptions::default());
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         let local_reference = result.semantic.reference_of(local_node).unwrap();
         let local_symbol = result.semantic.reference(local_reference).symbol.unwrap();
@@ -770,7 +771,7 @@ mod tests {
         .parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
         let type_only = semantic
             .iter_symbols()
             .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"TypeOnly")
@@ -851,7 +852,7 @@ mod tests {
             let ast = parse.ast;
             assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-            let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+            let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
             let reference = semantic
                 .iter_references()
                 .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
@@ -924,7 +925,7 @@ mod tests {
         .parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
         let references = |name: &[u8]| {
             semantic
                 .iter_references()
@@ -994,7 +995,7 @@ mod tests {
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
         let flags = |name: &[u8]| {
             semantic
                 .iter_references()
@@ -1056,7 +1057,7 @@ mod tests {
         .parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions::default()).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
         let accesses = semantic
             .iter_references()
             .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"Base")
@@ -1155,7 +1156,7 @@ mod tests {
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
 
         let outer = semantic
             .iter_symbols()
@@ -1257,7 +1258,7 @@ mod tests {
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
 
         let declaration = |name: &[u8]| {
             semantic
@@ -1333,7 +1334,7 @@ mod tests {
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
 
         let function_scope = |name: &[u8]| {
             let entry = semantic
@@ -1391,7 +1392,7 @@ mod tests {
         .parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true }).semantic;
+        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
         let contains_direct_eval = |name: &[u8]| {
             semantic
                 .iter_scopes()

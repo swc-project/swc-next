@@ -43,6 +43,8 @@ use crate::strings::StringPool;
 pub struct Ast<'a> {
     allocator: &'a Allocator,
 
+    root: Option<NodeId>,
+
     source_type: SourceType,
 
     lang: Lang,
@@ -103,17 +105,37 @@ impl ExtraData {
 }
 
 impl<'a> Ast<'a> {
-    /// Create a flattening AST backed by `source` and `allocator`.
-    pub fn new(source: &'a str, allocator: &'a Allocator) -> Self {
-        Self {
-            allocator,
-            source_type: SourceType::Module,
-            lang: Lang::Js,
-            attached_comments: ArenaVec::new_in(allocator),
-            nodes: NodeData::new_in(allocator),
-            extra_data: ArenaVec::with_capacity_in(0, allocator),
-            strings: StringPool::new_in(allocator, source),
-        }
+    /// Returns the AST's root program.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the AST has no root or its root is not a program.
+    #[inline]
+    pub fn root_program(&self) -> Program {
+        let root = self.root.expect("AST has no root");
+        assert_eq!(
+            self.node_kind(root),
+            NodeKind::Program,
+            "AST root is not a program"
+        );
+        // SAFETY: The node kind was checked above.
+        unsafe { Program::from_node_id_unchecked(root) }
+    }
+
+    /// Returns the AST's root expression.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the AST has no root or its root is not an expression.
+    #[inline]
+    pub fn root_expression(&self) -> Expr {
+        let root = self.root.expect("AST has no root");
+        assert!(
+            self.node_kind(root).is_expr(),
+            "AST root is not an expression"
+        );
+        // SAFETY: The node kind was checked above.
+        unsafe { Expr::from_node_id_unchecked(root) }
     }
 
     #[inline]
@@ -225,17 +247,6 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn allocator(&self) -> &'a Allocator {
         self.allocator
-    }
-
-    #[inline]
-    pub fn set_source_metadata(&mut self, source_type: SourceType, lang: Lang) {
-        self.source_type = source_type;
-        self.lang = lang;
-    }
-
-    /// Replaces attached comments while preserving source order.
-    pub fn set_attached_comments(&mut self, comments: ArenaVec<'a, Comment>) {
-        self.attached_comments = comments;
     }
 
     /// Creates a map grouping attached comments by attachment offset.
@@ -359,6 +370,58 @@ impl<'a> Ast<'a> {
         self.extra_data.len()
     }
 
+    /// Returns the concrete type stored at `node_id`.
+    #[inline]
+    pub fn node_kind(&self, node_id: NodeId) -> NodeKind {
+        *self.nodes.kind(node_id)
+    }
+
+    /// Returns the source span stored for `node_id`.
+    #[inline]
+    pub fn span(&self, node_id: NodeId) -> Span {
+        *self.nodes.span(node_id)
+    }
+}
+
+#[doc(hidden)]
+impl<'a> Ast<'a> {
+    /// Create a flattening AST backed by `source` and `allocator`.
+    pub fn new(source: &'a str, allocator: &'a Allocator) -> Self {
+        Self {
+            allocator,
+            root: None,
+            source_type: SourceType::Module,
+            lang: Lang::Js,
+            attached_comments: ArenaVec::new_in(allocator),
+            nodes: NodeData::new_in(allocator),
+            extra_data: ArenaVec::with_capacity_in(0, allocator),
+            strings: StringPool::new_in(allocator, source),
+        }
+    }
+
+    #[inline]
+    pub fn set_source_metadata(&mut self, source_type: SourceType, lang: Lang) {
+        self.source_type = source_type;
+        self.lang = lang;
+    }
+
+    /// Replaces attached comments while preserving source order.
+    pub fn set_attached_comments(&mut self, comments: ArenaVec<'a, Comment>) {
+        self.attached_comments = comments;
+    }
+
+    /// Sets a program as the AST root.
+    #[inline]
+    pub fn set_root_program(&mut self, root: Program) {
+        self.root = Some(root.node_id());
+    }
+
+    /// Sets an expression as the AST root.
+    #[inline]
+    pub fn set_root_expression(&mut self, root: Expr) {
+        self.root = Some(root.node_id());
+    }
+
     /// Reserves storage for parser output without changing logical lengths.
     #[inline]
     pub fn reserve(&mut self, additional_nodes: usize, additional_extra_data: usize) {
@@ -373,18 +436,6 @@ impl<'a> Ast<'a> {
         assert!(extra_data_len <= self.extra_data.len());
         self.nodes.truncate(nodes_len);
         self.extra_data.truncate(extra_data_len);
-    }
-
-    /// Returns the concrete type stored at `node_id`.
-    #[inline]
-    pub fn node_kind(&self, node_id: NodeId) -> NodeKind {
-        *self.nodes.kind(node_id)
-    }
-
-    /// Returns the source span stored for `node_id`.
-    #[inline]
-    pub fn span(&self, node_id: NodeId) -> Span {
-        *self.nodes.span(node_id)
     }
 }
 

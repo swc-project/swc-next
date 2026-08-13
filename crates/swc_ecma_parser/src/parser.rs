@@ -634,15 +634,9 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
 }
 
 pub struct ParseReturn<'a> {
-    pub program: Program,
     pub ast: Ast<'a>,
     pub tokens: ArenaVec<'a, Token>,
     pub diagnostics: Vec<Diagnostic<'static>>,
-}
-
-pub struct ParseExpressionReturn<'a> {
-    pub expression: Expr,
-    pub ast: Ast<'a>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -812,6 +806,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.comment_mode == CommentMode::Attached {
             self.ast.set_attached_comments(self.lexer.comments);
         }
+        self.ast.set_root_program(program);
 
         let diagnostics = self.diagnostics;
         let mut tokens = self.lexer.tokens;
@@ -824,14 +819,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         ParseReturn {
-            program,
             ast: self.ast,
             tokens,
             diagnostics,
         }
     }
 
-    pub fn parse_expression(mut self) -> Result<ParseExpressionReturn<'a>, Vec<Diagnostic<'a>>> {
+    pub fn parse_expression(mut self) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
         self.context = self.source_type.into();
         self.context.r#return |= self.allow_return_outside_function;
         if self.advance().is_none() {
@@ -848,10 +842,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if self.comment_mode == CommentMode::Attached {
                     self.ast.set_attached_comments(self.lexer.comments);
                 }
-                Ok(ParseExpressionReturn {
-                    expression: expr,
-                    ast: self.ast,
-                })
+                self.ast.set_root_expression(expr);
+                Ok(self.ast)
             }
             _ => Err(self.diagnostics),
         }
@@ -11859,9 +11851,9 @@ mod tests {
         let allocator = Allocator::default();
         let source = "1 + 1";
         let parser = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig);
-        let result = parser.parse_expression().unwrap();
+        let ast = parser.parse_expression().unwrap();
         assert!(matches!(
-            result.ast.expr_data(result.expression),
+            ast.expr_data(ast.root_expression()),
             swc_next_ecma_ast::ExprData::BinaryExpression(_)
         ));
     }

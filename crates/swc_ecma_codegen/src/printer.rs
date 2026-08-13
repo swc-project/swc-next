@@ -98,12 +98,8 @@ enum TsTypeParameterConstraintContext {
     Infer,
 }
 
-pub fn print<'a>(
-    allocator: &'a Allocator,
-    tree: &'a Ast<'a>,
-    root: Program,
-    options: Options,
-) -> PrintResult<'a> {
+pub fn print<'a>(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options) -> PrintResult<'a> {
+    let root = tree.root_program();
     let wants_map = options.source_map_path.is_some();
     let comments = tree.comments();
     let line_offset_tables = if wants_map {

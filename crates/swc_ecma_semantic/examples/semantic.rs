@@ -163,11 +163,7 @@ fn main() -> Result<(), String> {
         EcmaParser::init(&allocator, &source_text, parse_options, NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
 
-    let semantic = analyze(
-        parse.program,
-        &parse.ast,
-        AnalyzeOptions { check_syntax: true },
-    );
+    let semantic = analyze(&parse.ast, AnalyzeOptions { check_syntax: true });
     for diagnostic in semantic.diagnostics {
         eprintln!(
             "{}:{}..{}: {}: {}",

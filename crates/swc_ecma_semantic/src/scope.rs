@@ -2,7 +2,7 @@ use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, ClassType, Directive, Function, FunctionBody,
-    FunctionType, NodeId, NodeKindData, Program, ScopeId, SourceType,
+    FunctionType, NodeId, NodeKindData, ScopeId, SourceType,
 };
 
 use crate::ecmascript;
@@ -186,9 +186,10 @@ pub(crate) struct ScopeTracker<'a> {
 }
 
 impl<'a> ScopeTracker<'a> {
-    pub fn init(root: Program, tree: &Ast<'a>) -> Self {
+    pub fn init(tree: &Ast<'a>) -> Self {
         assert!(tree.node_count() > 0);
 
+        let root = tree.root_program();
         let allocator = tree.allocator();
         let estimated_scopes = 16usize.max(tree.node_count() / 16);
         let mut tracker = Self {

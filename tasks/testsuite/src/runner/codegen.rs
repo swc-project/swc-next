@@ -42,11 +42,11 @@ impl<C: Case> Runner<C> for CodegenRunner {
 fn run_case<C: Case>(case: &C) -> Result<(), String> {
     let allocator = Allocator::new();
 
-    let (program, ast) = parse_case(&allocator, case)?;
-    let codegen1 = print(&allocator, &ast, program, CodegenOptions::default()).code;
+    let ast = parse_case(&allocator, case)?;
+    let codegen1 = print(&allocator, &ast, CodegenOptions::default()).code;
 
-    let (program, ast) = parse(&allocator, codegen1, case.source_type(), case.lang())?;
-    let codegen2 = print(&allocator, &ast, program, CodegenOptions::default()).code;
+    let ast = parse(&allocator, codegen1, case.source_type(), case.lang())?;
+    let codegen2 = print(&allocator, &ast, CodegenOptions::default()).code;
 
     if codegen1 == codegen2 {
         return Ok(());

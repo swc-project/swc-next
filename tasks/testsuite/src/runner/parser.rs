@@ -18,7 +18,7 @@ impl<C: Case> Runner<C> for ParserRunner {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let allocator = Allocator::new();
-            let (program, ast) = match parse_case(&allocator, case) {
+            let ast = match parse_case(&allocator, case) {
                 Ok(result) => result,
                 Err(_) if case.expects_error() => return Ok(()),
                 Err(error) => return Err(format!("{}: {error}", case.name())),
@@ -34,7 +34,7 @@ impl<C: Case> Runner<C> for ParserRunner {
                     ));
                 }
             }
-            let semantic_ret = analyze(program, &ast, AnalyzeOptions { check_syntax: true });
+            let semantic_ret = analyze(&ast, AnalyzeOptions { check_syntax: true });
             match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),
                 (false, Some(_)) if !case.asserts_semantic_success() => Ok(()),

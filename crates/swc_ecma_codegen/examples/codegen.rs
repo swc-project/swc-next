@@ -58,7 +58,7 @@ fn main() -> Result<(), String> {
         ascii_only: args.ascii_only,
         ..CodegenOptions::default()
     };
-    let result = print(&allocator, &ret.ast, ret.program, options);
+    let result = print(&allocator, &ret.ast, options);
     print!("{}", result.code);
 
     Ok(())

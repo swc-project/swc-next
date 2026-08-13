@@ -34,12 +34,12 @@ impl ES2015 {
 impl ES2015 {
     pub(crate) fn transform<'a>(
         &mut self,
-        node: Program,
+        _node: Program,
         semantic: &Semantic,
         ctx: &mut TransformerCtx<'_, 'a>,
     ) {
         if let Some(arrow) = &mut self.arrow {
-            arrow.transform(node, ctx.ast, semantic);
+            arrow.transform(ctx.ast, semantic);
         }
     }
 

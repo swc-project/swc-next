@@ -8,8 +8,8 @@ use gungraun::{Callgrind, EventKind};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, Program, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit,
-    VisitMut, VisitMutWith, VisitWith,
+    PrivateIdentifier, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit, VisitMut,
+    VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
@@ -54,12 +54,7 @@ fn bench_parser(source: &str, lang: Lang) {
     );
 }
 
-struct ParsedProgram {
-    ast: Ast<'static>,
-    program: Program,
-}
-
-fn setup_program(source: &'static str, lang: Lang) -> ParsedProgram {
+fn setup_program(source: &'static str, lang: Lang) -> Ast<'static> {
     let allocator = Box::leak(Box::new(Allocator::new()));
     let result = Parser::init(
         allocator,
@@ -72,43 +67,30 @@ fn setup_program(source: &'static str, lang: Lang) -> ParsedProgram {
     )
     .parse();
     assert!(result.diagnostics.is_empty());
-    let program = result.program;
-    ParsedProgram {
-        ast: result.ast,
-        program,
-    }
+    result.ast
 }
 
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_semantic(parsed: ParsedProgram) {
-    black_box(analyze(
-        parsed.program,
-        &parsed.ast,
-        AnalyzeOptions::default(),
-    ));
+fn bench_semantic(parsed: Ast<'static>) {
+    black_box(analyze(&parsed, AnalyzeOptions::default()));
 }
 
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_semantic_with_syntax_check(parsed: ParsedProgram) {
-    black_box(analyze(
-        parsed.program,
-        &parsed.ast,
-        AnalyzeOptions { check_syntax: true },
-    ));
+fn bench_semantic_with_syntax_check(parsed: Ast<'static>) {
+    black_box(analyze(&parsed, AnalyzeOptions { check_syntax: true }));
 }
 
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_codegen(parsed: ParsedProgram) {
+fn bench_codegen(parsed: Ast<'static>) {
     black_box(print(
-        parsed.ast.allocator(),
-        &parsed.ast,
-        parsed.program,
+        parsed.allocator(),
+        &parsed,
         CodegenOptions::default(),
     ));
 }
@@ -244,11 +226,12 @@ impl<'ast> Traverse<'ast> for TraverseCounter {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_visit(parsed: ParsedProgram) {
+    let program = parsed.ast.root_program();
     let mut counter = VisitCounter {
         ast: &parsed.ast,
         count: 0,
     };
-    parsed.program.visit_with(&mut counter);
+    program.visit_with(&mut counter);
     black_box(counter.count);
 }
 
@@ -256,11 +239,12 @@ fn bench_visit(parsed: ParsedProgram) {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_visit_mut(mut parsed: ParsedProgram) {
+    let program = parsed.ast.root_program();
     let mut counter = VisitMutCounter {
         ast: &mut parsed.ast,
         count: 0,
     };
-    parsed.program.visit_mut_with(&mut counter);
+    program.visit_mut_with(&mut counter);
     black_box(counter.count);
 }
 
@@ -268,10 +252,9 @@ fn bench_visit_mut(mut parsed: ParsedProgram) {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_traverse(mut parsed: ParsedProgram) {
+    let program = parsed.ast.root_program();
     let mut counter = TraverseCounter { count: 0 };
-    let _ = parsed
-        .program
-        .traverse_with(&mut counter, &mut TraverseCtx::new(&mut parsed.ast, ()));
+    let _ = program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut parsed.ast, ()));
     black_box(counter.count);
 }
 

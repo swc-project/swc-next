@@ -4,26 +4,23 @@ use swc_next_ecma_ast::{
     Ast, AstUtf8, BindingIdentifier, BreakStatement, ClassElement, ClassElementData,
     ContinueStatement, DebuggerStatement, ExportAllDeclaration, ExportDefaultDeclaration,
     ExportNamedDeclaration, ExpressionStatement, GetSpan, IdentifierReference, ImportDeclaration,
-    LabelIdentifier, Program, ReturnStatement, Span, ThrowStatement, UpdateExpression,
-    VariableDeclaration, Visit, VisitWith, YieldExpression,
+    LabelIdentifier, ReturnStatement, Span, ThrowStatement, UpdateExpression, VariableDeclaration,
+    Visit, VisitWith, YieldExpression,
 };
 use swc_next_ecma_parser::{Options, Parser, Token, TokenParserConfig, TokenTag};
 use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
 
 pub fn run(src: &'static str) {
     let allocator = Allocator::new();
-    let (program, ast, tokens) = run_parse(src, &allocator);
-    let semantic = run_semantic(program, &ast);
-    let semicolons = run_collect_semicolons(&ast, program, &tokens);
-    let idents = run_scan_dependencies(program, &ast);
+    let (ast, tokens) = run_parse(src, &allocator);
+    let semantic = run_semantic(&ast);
+    let semicolons = run_collect_semicolons(&ast, &tokens);
+    let idents = run_scan_dependencies(&ast);
     drop((ast, semantic, tokens, semicolons, idents));
 }
 
 #[inline(never)]
-fn run_parse<'a>(
-    src: &'a str,
-    allocator: &'a Allocator,
-) -> (Program, Ast<'a>, ArenaVec<'a, Token>) {
+fn run_parse<'a>(src: &'a str, allocator: &'a Allocator) -> (Ast<'a>, ArenaVec<'a, Token>) {
     let result = Parser::init(
         allocator,
         src,
@@ -35,34 +32,34 @@ fn run_parse<'a>(
     )
     .parse();
     assert!(result.diagnostics.is_empty());
-    (result.program, result.ast, result.tokens)
+    (result.ast, result.tokens)
 }
 
 #[inline(never)]
 #[allow(dead_code)]
-fn run_semantic<'a>(root: Program, ast: &Ast<'a>) -> Semantic<'a> {
-    analyze(root, ast, AnalyzeOptions::default()).semantic
+fn run_semantic<'a>(ast: &Ast<'a>) -> Semantic<'a> {
+    analyze(ast, AnalyzeOptions::default()).semantic
 }
 
 #[inline(never)]
-fn run_scan_dependencies(root: Program, ast: &Ast<'_>) -> Vec<AstUtf8> {
+fn run_scan_dependencies(ast: &Ast<'_>) -> Vec<AstUtf8> {
     let mut parser = JavascriptParser {
         ast,
         idents: Vec::new(),
     };
-    root.visit_with(&mut parser);
+    ast.root_program().visit_with(&mut parser);
     parser.idents
 }
 
 #[inline(never)]
-fn run_collect_semicolons(ast: &Ast<'_>, root: Program, tokens: &[Token]) -> FxHashSet<u32> {
+fn run_collect_semicolons(ast: &Ast<'_>, tokens: &[Token]) -> FxHashSet<u32> {
     let mut semicolons = FxHashSet::default();
     InsertedSemicolons {
         ast,
         semicolons: &mut semicolons,
         tokens,
     }
-    .visit_program(root);
+    .visit_program(ast.root_program());
     semicolons
 }
 

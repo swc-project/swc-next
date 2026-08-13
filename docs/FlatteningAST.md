@@ -166,14 +166,13 @@ The safety of these functions are guaranteed by the typed AST wrapper, which ens
 
 ### API diff
 
-The AST Context will be returnt by the `Parser`:
+The parser returns the AST context with its typed root stored on it:
 
 ```rs
-let parser = Parser::new_from(lexer);
-let ret = parser.parse_program().unwrap();
+let result = Parser::init(&allocator, source, options, config).parse();
 
-let program = ret.root;
-let ast = ret.ast; // AST Context
+let ast = result.ast;
+let program = ast.root_program();
 ```
 
 As is said above, all typed ASTs are just typed wrappers of `NodeId`. Therefore it's impossble to directly access the properties from them. Instead, Getter and setter functions are needed with AST context.

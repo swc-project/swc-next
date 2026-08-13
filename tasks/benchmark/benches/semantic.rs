@@ -39,11 +39,10 @@ fn bench_semantic(c: &mut Criterion) {
                     )
                     .parse();
                     assert!(result.diagnostics.is_empty());
-                    let program = result.program;
-                    (program, result.ast)
+                    result.ast
                 },
-                |(program, ast)| {
-                    black_box(analyze(program, &ast, AnalyzeOptions::default()));
+                |ast| {
+                    black_box(analyze(&ast, AnalyzeOptions::default()));
                 },
                 BatchSize::SmallInput,
             );

@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use swc_next_ecma_ast::{
     Ast, Class, DUMMY_SP, Expr, FormalParameterKind, Function, FunctionType, GetSpan,
-    IdentifierReference, MethodDefinition, MethodDefinitionKind, Program, StaticBlock, Stmt,
-    TypedSubRange, VisitMut, VisitMutWith,
+    IdentifierReference, MethodDefinition, MethodDefinitionKind, StaticBlock, Stmt, TypedSubRange,
+    VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -24,7 +24,8 @@ impl ArrowFunctions {
         Self { _options: options }
     }
 
-    pub fn transform<'a>(&mut self, program: Program, ast: &mut Ast<'a>, semantic: &Semantic) {
+    pub fn transform<'a>(&mut self, ast: &mut Ast<'a>, semantic: &Semantic) {
+        let program = ast.root_program();
         let mut visitor = ArrowVisitor::new(ast, semantic);
         program.visit_mut_children_with(&mut visitor);
         let frame = visitor.hoister.take_frame();

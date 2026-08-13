@@ -1,7 +1,6 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, Program,
-    ScopeId,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, ScopeId,
 };
 
 use crate::{
@@ -74,14 +73,14 @@ pub(crate) struct SemanticContext<'a> {
 }
 
 impl<'a> SemanticContext<'a> {
-    pub fn init(root: Program, tree: &Ast<'a>) -> Self {
+    pub fn init(tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         node_scopes.resize(tree.node_count(), ScopeId::ROOT);
         node_parents.resize(tree.node_count(), None);
         Self {
-            scope: ScopeTracker::init(root, tree),
+            scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
             module_record: ModuleRecordBuilder::new(allocator),
             type_position_depth: 0,

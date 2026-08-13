@@ -18,6 +18,6 @@ pub fn parse_to_buffer(source: &str, options: Option<ParserOptions>) -> Vec<u8> 
 
     let buffer_size = buffer_size(&result.ast);
     let mut buffer = vec![0; buffer_size];
-    serialize_into(result.program, &result.ast, &mut buffer);
+    serialize_into(&result.ast, &mut buffer);
     buffer
 }

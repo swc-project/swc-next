@@ -18,7 +18,7 @@
 
 use std::{mem::size_of, slice};
 
-use crate::{Ast, ExtraData, NodeKind, NodePayload, Program, Span};
+use crate::{Ast, ExtraData, NodeKind, NodePayload, Span};
 
 const HEADER_SIZE: usize = 36;
 const SPAN_SIZE: usize = 8;
@@ -50,7 +50,7 @@ pub fn buffer_size(tree: &Ast<'_>) -> usize {
 ///
 /// When `buf` is too small, including when it is empty, this returns the
 /// required size without writing a partial payload.
-pub fn serialize_into(program: Program, tree: &Ast<'_>, buf: &mut [u8]) -> usize {
+pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
     let required = buffer_size(tree);
     if buf.len() < required {
         return required;
@@ -73,7 +73,7 @@ pub fn serialize_into(program: Program, tree: &Ast<'_>, buf: &mut [u8]) -> usize
         0, // comment_count
         0, // attached_comment_count
         0, // diag_count
-        program.node_id().index() as u32,
+        tree.root_program().node_id().index() as u32,
         (if tree.is_ts() { FLAG_TS } else { 0 })
             | ((tree.source_type() as u32) << FLAG_SOURCE_TYPE_SHIFT),
     ] {

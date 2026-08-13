@@ -80,14 +80,12 @@ fn expect_printed_common(
     if has_errors {
         return;
     }
-    let program = result.program;
-
     let print_options = PrintOptions {
         minify,
         ascii_only,
         ..PrintOptions::default()
     };
-    let result = print(&allocator, &result.ast, program, print_options);
+    let result = print(&allocator, &result.ast, print_options);
 
     assert_eq!(
         result.code, expected,
