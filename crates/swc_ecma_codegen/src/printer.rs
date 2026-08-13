@@ -4526,8 +4526,23 @@ impl Printer<'_> {
             && !identifier.optional(ast)
     }
 
+    #[inline]
     fn can_print_identifier(&self, name: &str) -> bool {
-        is_identifier_es5_and_esnext(name.as_bytes())
+        let bytes = name.as_bytes();
+        let Some((&first, rest)) = bytes.split_first() else {
+            return false;
+        };
+        if is_ident_start_ascii(first) {
+            if rest.iter().all(|&byte| is_ident_continue_ascii(byte)) {
+                return true;
+            }
+            if bytes.is_ascii() {
+                return false;
+            }
+        } else if first.is_ascii() {
+            return false;
+        }
+        is_identifier_es5_and_esnext(bytes)
     }
 
     fn module_name(&self, n: ModuleExportName) -> &Wtf8 {
