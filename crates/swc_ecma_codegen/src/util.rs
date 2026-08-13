@@ -22,7 +22,7 @@ pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {
     raw.iter().copied().filter(|&b| b != b'_').collect()
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn parse_numeric_literal(raw: &[u8]) -> Option<f64> {
     let clean;
     let raw = if raw.contains(&b'_') {
