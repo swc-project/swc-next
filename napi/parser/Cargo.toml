@@ -6,7 +6,7 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next_parser_napi"
 repository.workspace  = true
-version               = "0.1.0"
+version               = "0.1.1"
 
 [lib]
 crate-type = ["cdylib"]
