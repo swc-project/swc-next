@@ -2618,6 +2618,7 @@ impl<'a> Printer<'a> {
         }
     }
 
+    #[inline(always)]
     fn print_property_key_plain(&mut self, key: PropertyKey) {
         match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(value) => {
