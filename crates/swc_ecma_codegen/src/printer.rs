@@ -1920,6 +1920,8 @@ impl<'a> Printer<'a> {
             ExprData::Function(e) => self.print_function(e),
             ExprData::Class(e) => self.print_class(e, false),
             ExprData::ImportExpression(e) => {
+                let old_forbid_in = self.forbid_in;
+                self.forbid_in = false;
                 self.add_source_mapping(expr.span(self.ast).start);
                 if e.phase(self.ast) == Some(ImportPhase::Source) {
                     self.print("import.source(");
@@ -1968,6 +1970,7 @@ impl<'a> Printer<'a> {
                     }
                 }
                 self.print(")");
+                self.forbid_in = old_forbid_in;
             }
             ExprData::AwaitExpression(e) => {
                 let wrap = level > Precedence::Prefix;
