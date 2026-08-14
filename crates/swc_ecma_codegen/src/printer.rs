@@ -1852,12 +1852,12 @@ impl<'a> Printer<'a> {
                 self.print("?");
                 self.print_space();
                 self.forbid_in = false;
-                self.print_expr_without_leading_newline(e.consequent(self.ast), Precedence::Yield);
+                self.print_expr(e.consequent(self.ast), Precedence::Yield);
                 self.print_space();
                 self.print(":");
                 self.print_space();
                 self.forbid_in = old_forbid_in && !wrap;
-                self.print_expr_without_leading_newline(e.alternate(self.ast), Precedence::Yield);
+                self.print_expr(e.alternate(self.ast), Precedence::Yield);
                 if wrap {
                     self.print(")");
                 }
