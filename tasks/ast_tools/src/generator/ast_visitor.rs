@@ -6,7 +6,10 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstType, Schema, TypeId},
-    util::{EXTRA_DATA_ID_BIT_OFFSET, calculate_inline_layout, safe_ident},
+    util::{
+        EXTRA_DATA_ID_BIT_OFFSET, InlineStorageMode, calculate_inline_layout,
+        generate_u32_to_field, generate_u64_to_field, safe_ident,
+    },
 };
 
 pub fn ast_visitor(schema: &Schema) -> RawOutput {
@@ -77,14 +80,37 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 // VisitWith/VisitMutWith
-                let uses_extra_data = calculate_inline_layout(ast, schema).is_none();
+                let layout = calculate_inline_layout(ast, schema);
                 let mut getter_field_loads = TokenStream::new();
-                let mut extra_data_field_loads = TokenStream::new();
+                let mut grouped_field_loads = TokenStream::new();
                 let mut field_values = Vec::new();
+                let mut extra_data_offset = 0usize;
+                let mut loads_extra_data = false;
                 let mut visit_children = TokenStream::new();
                 let mut visit_mut_children = TokenStream::new();
 
                 for (field_index, field) in ast.fields.iter().enumerate() {
+                    let inline_layout = layout.as_ref().and_then(|layout| {
+                        layout
+                            .fields
+                            .iter()
+                            .find(|(inline_index, _, _)| *inline_index == field_index)
+                            .copied()
+                    });
+                    let field_extra_data_offset = if inline_layout.is_some() {
+                        None
+                    } else {
+                        match layout.as_ref().map(|layout| layout.mode) {
+                            Some(InlineStorageMode::Full) => None,
+                            Some(InlineStorageMode::Partial) => {
+                                let offset = extra_data_offset;
+                                extra_data_offset += 1;
+                                Some(offset)
+                            }
+                            None => Some(field_index),
+                        }
+                    };
+
                     if !should_visit_type(field.type_id, schema) {
                         continue;
                     }
@@ -97,16 +123,58 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     getter_field_loads.extend(quote! {
                         let #field_value = self.#getter_name(visitor.ast());
                     });
-                    extra_data_field_loads.extend(quote! {
-                        let offset = extra_data_start.wrapping_add(#field_index);
-                        debug_assert!(offset < extra_data.len());
-                        let #field_value: #field_ty_ident = unsafe {
-                            ExtraDataCompact::from_extra_data(
-                                *extra_data.get_unchecked(offset),
-                                ast,
-                            )
+                    if let Some((_, byte_offset, byte_size)) = inline_layout {
+                        let bit_offset = byte_offset * 8;
+                        let shifted_data = if bit_offset == 0 {
+                            quote!(data)
+                        } else {
+                            quote!(data >> #bit_offset)
                         };
-                    });
+                        let decode = if byte_size == std::mem::size_of::<u64>() {
+                            let cast = generate_u64_to_field(field_ty, schema);
+                            quote! {
+                                let raw = (#shifted_data) as u64;
+                                #cast
+                            }
+                        } else {
+                            let bit_size = byte_size * 8;
+                            let mask = if bit_size >= 32 {
+                                u32::MAX
+                            } else {
+                                (1u32 << bit_size) - 1
+                            };
+                            let cast = generate_u32_to_field(field_ty, schema);
+                            if mask == u32::MAX {
+                                quote! {
+                                    let raw = (#shifted_data) as u32;
+                                    #cast
+                                }
+                            } else {
+                                quote! {
+                                    let raw = (#shifted_data as u32) & #mask;
+                                    #cast
+                                }
+                            }
+                        };
+                        grouped_field_loads.extend(quote! {
+                            let #field_value: #field_ty_ident = { #decode };
+                        });
+                    } else if let Some(offset) = field_extra_data_offset {
+                        loads_extra_data = true;
+                        let extra_data_index = if offset == 0 {
+                            quote!(extra_data_start)
+                        } else {
+                            quote!(extra_data_start + #offset)
+                        };
+                        grouped_field_loads.extend(quote! {
+                            let #field_value: #field_ty_ident = unsafe {
+                                ExtraDataCompact::from_extra_data(
+                                    *extra_data.get_unchecked(#extra_data_index),
+                                    ast,
+                                )
+                            };
+                        });
+                    }
                     field_values.push(field_value.clone());
                     visit_children.extend(quote! {
                         <#field_ty_ident as VisitWith<'a, V>>::visit_with(#field_value, visitor);
@@ -122,21 +190,23 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     });
                 }
 
-                // Keep inline-data access behind the typed getters. For extra-data nodes, decode
-                // all visitable fields in one block so the node's base offset and the extra-data
-                // slice are loaded once. The block also releases the immutable AST borrow before
-                // calling back into the mutable visitor.
-                let field_loads = if uses_extra_data && field_values.len() > 1 {
+                // Decode all visitable fields in one block so the node payload, and the extra-data
+                // slice when used, are loaded once. The block also releases the immutable AST
+                // borrow before calling back into the mutable visitor.
+                let field_loads = if field_values.len() > 1 {
+                    let extra_data_setup = loads_extra_data.then(|| {
+                        quote! {
+                            let extra_data_start =
+                                (data >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize;
+                            let extra_data = ast.extra_data.as_slice();
+                        }
+                    });
                     quote! {
                         let (#(#field_values,)*) = {
                             let ast = visitor.ast();
-                            let extra_data_start = unsafe {
-                                (ast.nodes.data_unchecked(self.0).0
-                                    >> #EXTRA_DATA_ID_BIT_OFFSET)
-                                    as u32 as usize
-                            };
-                            let extra_data = ast.extra_data.as_slice();
-                            #extra_data_field_loads
+                            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+                            #extra_data_setup
+                            #grouped_field_loads
                             (#(#field_values,)*)
                         };
                     }

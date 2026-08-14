@@ -1428,9 +1428,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Program {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.directives(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        let field_value_2 = self.hashbang(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<Directive> = {
+                let raw = (data >> 32usize) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: TypedSubRange<Stmt> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_2: Option<Hashbang> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX).then(|| Hashbang(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2050,8 +2065,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TemplateLiteral {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.quasis(visitor.ast());
-        let field_value_1 = self.expressions(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<TemplateElement> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: TypedSubRange<Expr> = {
+                let raw = (data >> 64usize) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2087,8 +2113,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingIdentifier {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.decorators(visitor.ast());
-        let field_value_2 = self.type_annotation(visitor.ast());
+        let (field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_1: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            let field_value_2: Option<TsTypeAnnotation> = {
+                let raw = (data >> 8usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_1, field_value_2)
+        };
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -2116,10 +2157,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentPattern {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
-        let field_value_2 = self.decorators(visitor.ast());
-        let field_value_3 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: BindingPattern = {
+                let raw = (data >> 8usize) as u32;
+                BindingPattern(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 40usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_3: Option<TsTypeAnnotation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2133,9 +2194,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingRestElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.argument(visitor.ast());
-        let field_value_1 = self.decorators(visitor.ast());
-        let field_value_2 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: BindingPattern = {
+                let raw = (data >> 8usize) as u32;
+                BindingPattern(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_2: Option<TsTypeAnnotation> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2148,10 +2224,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayPattern {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.elements(visitor.ast());
-        let field_value_1 = self.rest(visitor.ast());
-        let field_value_2 = self.decorators(visitor.ast());
-        let field_value_3 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<Option<BindingPattern>> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_1: Option<BindingRestElement> = {
+                let raw = (data >> 8usize) as u32;
+                (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            let field_value_3: Option<TsTypeAnnotation> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <TypedSubRange<Option<BindingPattern>> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -2168,10 +2264,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPattern {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.properties(visitor.ast());
-        let field_value_1 = self.rest(visitor.ast());
-        let field_value_2 = self.decorators(visitor.ast());
-        let field_value_3 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<BindingProperty> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_1: Option<BindingRestElement> = {
+                let raw = (data >> 8usize) as u32;
+                (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            let field_value_3: Option<TsTypeAnnotation> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <TypedSubRange<BindingProperty> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2185,8 +2301,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingProperty {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: PropertyKey = {
+                let raw = (data) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: BindingPattern = {
+                let raw = (data >> 32usize) as u32;
+                BindingPattern(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2198,8 +2325,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BinaryExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2211,8 +2349,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LogicalExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2224,9 +2373,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ConditionalExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.consequent(visitor.ast());
-        let field_value_2 = self.alternate(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Expr = {
+                let raw = (data >> 64usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2261,8 +2424,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: AssignmentTarget = {
+                let raw = (data) as u32;
+                AssignmentTarget(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <AssignmentTarget as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2285,8 +2459,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VariableDeclarator {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.init(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: BindingPattern = {
+                let raw = (data) as u32;
+                BindingPattern(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<Expr> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2298,9 +2483,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IfStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.consequent(visitor.ast());
-        let field_value_2 = self.alternate(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Stmt = {
+                let raw = (data >> 32usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Option<Stmt> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| Stmt(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Stmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2313,8 +2512,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.discriminant(visitor.ast());
-        let field_value_1 = self.cases(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data >> 64usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<SwitchCase> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<SwitchCase> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2326,8 +2536,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.consequent(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<Expr> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: TypedSubRange<Stmt> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            (field_value_0, field_value_1)
+        };
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2339,10 +2560,27 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.init(visitor.ast());
-        let field_value_1 = self.test(visitor.ast());
-        let field_value_2 = self.update(visitor.ast());
-        let field_value_3 = self.body(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<ForStatementInit> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX).then(|| ForStatementInit(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: Option<Expr> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: Option<Expr> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_3: Stmt = {
+                let raw = (data >> 96usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <Option<ForStatementInit> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2356,9 +2594,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForInStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
-        let field_value_2 = self.body(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: ForStatementLeft = {
+                let raw = (data) as u32;
+                ForStatementLeft(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Stmt = {
+                let raw = (data >> 64usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <ForStatementLeft as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2371,9 +2623,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForOfStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
-        let field_value_2 = self.body(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: ForStatementLeft = {
+                let raw = (data) as u32;
+                ForStatementLeft(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Stmt = {
+                let raw = (data >> 64usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <ForStatementLeft as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2386,9 +2652,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TryStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.block(visitor.ast());
-        let field_value_1 = self.handler(visitor.ast());
-        let field_value_2 = self.finalizer(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: BlockStatement = {
+                let raw = (data) as u32;
+                BlockStatement(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<CatchClause> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| CatchClause(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: Option<BlockStatement> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| BlockStatement(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <BlockStatement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<CatchClause> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BlockStatement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2401,8 +2681,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CatchClause {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.param(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<BindingPattern> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX).then(|| BindingPattern(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: BlockStatement = {
+                let raw = (data >> 32usize) as u32;
+                BlockStatement(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Option<BindingPattern> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BlockStatement as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2436,8 +2727,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LabeledStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.label(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: LabelIdentifier = {
+                let raw = (data) as u32;
+                LabelIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Stmt = {
+                let raw = (data >> 32usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <LabelIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2520,13 +2822,64 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.decorators(visitor.ast());
-        let field_value_2 = self.id(visitor.ast());
-        let field_value_3 = self.super_class(visitor.ast());
-        let field_value_4 = self.body(visitor.ast());
-        let field_value_5 = self.type_parameters(visitor.ast());
-        let field_value_6 = self.super_type_arguments(visitor.ast());
-        let field_value_7 = self.implements(visitor.ast());
+        let (
+            field_value_1,
+            field_value_2,
+            field_value_3,
+            field_value_4,
+            field_value_5,
+            field_value_6,
+            field_value_7,
+        ) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_1: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_2: Option<BindingIdentifier> = {
+                let raw = (data >> 24usize) as u32;
+                (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_3: Option<Expr> = {
+                let raw = (data >> 56usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_4: ClassBody = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            let field_value_5: Option<TsTypeParameterDeclaration> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 2usize),
+                    ast,
+                )
+            };
+            let field_value_6: Option<TsTypeParameterInstantiation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 3usize),
+                    ast,
+                )
+            };
+            let field_value_7: TypedSubRange<TsClassImplements> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 4usize),
+                    ast,
+                )
+            };
+            (
+                field_value_1,
+                field_value_2,
+                field_value_3,
+                field_value_4,
+                field_value_5,
+                field_value_6,
+                field_value_7,
+            )
+        };
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -2560,9 +2913,26 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodDefinition {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decorators(visitor.ast());
-        let field_value_1 = self.key(visitor.ast());
-        let field_value_2 = self.value(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_1: PropertyKey = {
+                let raw = (data >> 56usize) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Function = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2575,10 +2945,34 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyDefinition {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decorators(visitor.ast());
-        let field_value_1 = self.key(visitor.ast());
-        let field_value_2 = self.value(visitor.ast());
-        let field_value_6 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_6) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_1: PropertyKey = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            let field_value_2: Option<Expr> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 2usize),
+                    ast,
+                )
+            };
+            let field_value_6: Option<TsTypeAnnotation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 3usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_6)
+        };
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2603,11 +2997,42 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.id(visitor.ast());
-        let field_value_4 = self.params(visitor.ast());
-        let field_value_5 = self.body(visitor.ast());
-        let field_value_6 = self.type_parameters(visitor.ast());
-        let field_value_7 = self.return_type(visitor.ast());
+        let (field_value_1, field_value_4, field_value_5, field_value_6, field_value_7) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_1: Option<BindingIdentifier> = {
+                let raw = (data >> 24usize) as u32;
+                (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_4: FormalParameters = {
+                let raw = (data >> 56usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_5: FunctionBody = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_6: Option<TsTypeParameterDeclaration> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            let field_value_7: Option<TsTypeAnnotation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 2usize),
+                    ast,
+                )
+            };
+            (
+                field_value_1,
+                field_value_4,
+                field_value_5,
+                field_value_6,
+                field_value_7,
+            )
+        };
         <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
         <FunctionBody as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
@@ -2625,8 +3050,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionBody {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.directives(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<Directive> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: TypedSubRange<Stmt> = {
+                let raw = (data >> 64usize) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2649,8 +3085,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WhileStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Stmt = {
+                let raw = (data >> 32usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2662,8 +3109,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DoWhileStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.body(visitor.ast());
-        let field_value_1 = self.test(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Stmt = {
+                let raw = (data) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2675,8 +3133,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WithStatement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.object(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Stmt = {
+                let raw = (data >> 32usize) as u32;
+                Stmt(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2688,8 +3157,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameters {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.items(visitor.ast());
-        let field_value_1 = self.rest(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<FormalParameterItem> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: Option<BindingRestElement> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<FormalParameterItem> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -2748,8 +3228,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectProperty {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: PropertyKey = {
+                let raw = (data) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2772,10 +3263,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowFunctionExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_2 = self.params(visitor.ast());
-        let field_value_3 = self.body(visitor.ast());
-        let field_value_4 = self.type_parameters(visitor.ast());
-        let field_value_5 = self.return_type(visitor.ast());
+        let (field_value_2, field_value_3, field_value_4, field_value_5) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_2: FormalParameters = {
+                let raw = (data >> 16usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_3: ArrowFunctionBody = {
+                let raw = (data >> 48usize) as u32;
+                ArrowFunctionBody(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_4: Option<TsTypeParameterDeclaration> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_5: Option<TsTypeAnnotation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_2, field_value_3, field_value_4, field_value_5)
+        };
         <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <ArrowFunctionBody as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
@@ -2803,8 +3314,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.object(visitor.ast());
-        let field_value_1 = self.property(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: PropertyKey = {
+                let raw = (data >> 32usize) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2816,9 +3338,25 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CallExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.callee(visitor.ast());
-        let field_value_1 = self.arguments(visitor.ast());
-        let field_value_3 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: Expr = {
+                let raw = (data >> 8usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<Argument> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_3: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_3)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
@@ -2845,9 +3383,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TaggedTemplateExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.tag(visitor.ast());
-        let field_value_1 = self.quasi(visitor.ast());
-        let field_value_2 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TemplateLiteral = {
+                let raw = (data >> 32usize) as u32;
+                TemplateLiteral(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TemplateLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
@@ -2863,9 +3416,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NewExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.callee(visitor.ast());
-        let field_value_1 = self.arguments(visitor.ast());
-        let field_value_2 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data >> 64usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<Argument> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_2: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 96usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
@@ -2903,8 +3471,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MetaProperty {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.meta(visitor.ast());
-        let field_value_1 = self.property(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: IdentifierName = {
+                let raw = (data) as u32;
+                IdentifierName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: IdentifierName = {
+                let raw = (data >> 32usize) as u32;
+                IdentifierName(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2916,8 +3495,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.source(visitor.ast());
-        let field_value_1 = self.options(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<Expr> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2929,9 +3519,26 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.specifiers(visitor.ast());
-        let field_value_1 = self.source(visitor.ast());
-        let field_value_2 = self.attributes(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<ImportDeclarationSpecifier> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_1: StringLiteral = {
+                let raw = (data >> 8usize) as u32;
+                StringLiteral(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TypedSubRange<ImportAttribute> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <TypedSubRange<ImportDeclarationSpecifier> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -2947,8 +3554,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportSpecifier {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.imported(visitor.ast());
-        let field_value_1 = self.local(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: ModuleExportName = {
+                let raw = (data) as u32;
+                ModuleExportName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: BindingIdentifier = {
+                let raw = (data >> 32usize) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2982,8 +3600,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportAttribute {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: ModuleExportName = {
+                let raw = (data) as u32;
+                ModuleExportName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: StringLiteral = {
+                let raw = (data >> 32usize) as u32;
+                StringLiteral(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2995,10 +3624,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamedDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.declaration(visitor.ast());
-        let field_value_1 = self.specifiers(visitor.ast());
-        let field_value_2 = self.source(visitor.ast());
-        let field_value_3 = self.attributes(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: Option<Decl> = {
+                let raw = (data >> 8usize) as u32;
+                (raw != u32::MAX).then(|| Decl(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: TypedSubRange<ExportSpecifier> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_2: Option<StringLiteral> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX).then(|| StringLiteral(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_3: TypedSubRange<ImportAttribute> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <Option<Decl> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<ExportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<StringLiteral> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3023,9 +3672,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportAllDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.exported(visitor.ast());
-        let field_value_1 = self.source(visitor.ast());
-        let field_value_2 = self.attributes(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: Option<ModuleExportName> = {
+                let raw = (data >> 8usize) as u32;
+                (raw != u32::MAX).then(|| ModuleExportName(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: StringLiteral = {
+                let raw = (data >> 40usize) as u32;
+                StringLiteral(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TypedSubRange<ImportAttribute> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Option<ModuleExportName> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3038,8 +3702,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportSpecifier {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.local(visitor.ast());
-        let field_value_1 = self.exported(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: ModuleExportName = {
+                let raw = (data) as u32;
+                ModuleExportName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: ModuleExportName = {
+                let raw = (data >> 32usize) as u32;
+                ModuleExportName(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3422,10 +4097,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsFunction {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_4 = self.params(visitor.ast());
-        let field_value_5 = self.type_parameters(visitor.ast());
-        let field_value_6 = self.return_type(visitor.ast());
+        let (field_value_0, field_value_4, field_value_5, field_value_6) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: Option<BindingIdentifier> = {
+                let raw = (data >> 24usize) as u32;
+                (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_4: FormalParameters = {
+                let raw = (data >> 56usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_5: Option<TsTypeParameterDeclaration> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_6: Option<TsTypeAnnotation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_4, field_value_5, field_value_6)
+        };
         <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
@@ -3442,9 +4137,26 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMethodDefinition {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decorators(visitor.ast());
-        let field_value_1 = self.key(visitor.ast());
-        let field_value_2 = self.value(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: TypedSubRange<Decorator> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_1: PropertyKey = {
+                let raw = (data >> 56usize) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TsFunction = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TsFunction as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3580,8 +4292,20 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeReference {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.type_name(visitor.ast());
-        let field_value_1 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsTypeName = {
+                let raw = (data) as u32;
+                TsTypeName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsTypeName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -3596,8 +4320,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsQualifiedName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsQualifiedNameLeft = {
+                let raw = (data) as u32;
+                TsQualifiedNameLeft(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: IdentifierName = {
+                let raw = (data >> 32usize) as u32;
+                IdentifierName(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsQualifiedNameLeft as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3609,8 +4344,20 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeQuery {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr_name(visitor.ast());
-        let field_value_1 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsTypeQueryExprName = {
+                let raw = (data) as u32;
+                TsTypeQueryExprName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsTypeQueryExprName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -3625,10 +4372,28 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsImportType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.source(visitor.ast());
-        let field_value_1 = self.options(visitor.ast());
-        let field_value_2 = self.qualifier(visitor.ast());
-        let field_value_3 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: StringLiteral = {
+                let raw = (data) as u32;
+                StringLiteral(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<Expr> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: Option<TsImportTypeQualifier> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| TsImportTypeQualifier(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_3: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 96usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsImportTypeQualifier> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3645,9 +4410,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameter {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.name(visitor.ast());
-        let field_value_1 = self.constraint(visitor.ast());
-        let field_value_2 = self.default(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: BindingIdentifier = {
+                let raw = (data) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsType> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| TsType(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: Option<TsType> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| TsType(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3693,8 +4472,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTemplateLiteralType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.quasis(visitor.ast());
-        let field_value_1 = self.types(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<TemplateElement> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: TypedSubRange<TsType> = {
+                let raw = (data >> 64usize) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3717,8 +4507,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIndexedAccessType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.object_type(visitor.ast());
-        let field_value_1 = self.index_type(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsType = {
+                let raw = (data) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsType = {
+                let raw = (data >> 32usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3741,8 +4542,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNamedTupleMember {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.label(visitor.ast());
-        let field_value_1 = self.element_type(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: IdentifierName = {
+                let raw = (data) as u32;
+                IdentifierName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsType = {
+                let raw = (data >> 32usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3828,10 +4640,27 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConditionalType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.check_type(visitor.ast());
-        let field_value_1 = self.extends_type(visitor.ast());
-        let field_value_2 = self.true_type(visitor.ast());
-        let field_value_3 = self.false_type(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsType = {
+                let raw = (data) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsType = {
+                let raw = (data >> 32usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TsType = {
+                let raw = (data >> 64usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_3: TsType = {
+                let raw = (data >> 96usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3878,9 +4707,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsFunctionType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.type_parameters(visitor.ast());
-        let field_value_1 = self.params(visitor.ast());
-        let field_value_2 = self.return_type(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<TsTypeParameterDeclaration> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: FormalParameters = {
+                let raw = (data >> 32usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TsTypeAnnotation = {
+                let raw = (data >> 64usize) as u32;
+                TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -3896,9 +4740,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConstructorType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.type_parameters(visitor.ast());
-        let field_value_1 = self.params(visitor.ast());
-        let field_value_2 = self.return_type(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<TsTypeParameterDeclaration> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: FormalParameters = {
+                let raw = (data >> 32usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: TsTypeAnnotation = {
+                let raw = (data >> 64usize) as u32;
+                TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -3914,8 +4773,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypePredicate {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.parameter_name(visitor.ast());
-        let field_value_1 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsTypePredicateName = {
+                let raw = (data) as u32;
+                TsTypePredicateName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeAnnotation> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsTypePredicateName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3938,10 +4808,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMappedType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.constraint(visitor.ast());
-        let field_value_2 = self.name_type(visitor.ast());
-        let field_value_3 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: BindingIdentifier = {
+                let raw = (data >> 16usize) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsType = {
+                let raw = (data >> 48usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Option<TsType> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_3: Option<TsType> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3955,8 +4845,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsPropertySignature {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: PropertyKey = {
+                let raw = (data) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeAnnotation> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3968,10 +4869,31 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMethodSignature {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.type_parameters(visitor.ast());
-        let field_value_2 = self.params(visitor.ast());
-        let field_value_3 = self.return_type(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: PropertyKey = {
+                let raw = (data >> 24usize) as u32;
+                PropertyKey(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterDeclaration> = {
+                let raw = (data >> 56usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: FormalParameters = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_3: Option<TsTypeAnnotation> = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -3988,9 +4910,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsCallSignatureDeclaration 
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.type_parameters(visitor.ast());
-        let field_value_1 = self.params(visitor.ast());
-        let field_value_2 = self.return_type(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<TsTypeParameterDeclaration> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: FormalParameters = {
+                let raw = (data >> 32usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Option<TsTypeAnnotation> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -4006,9 +4943,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConstructSignatureDeclara
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.type_parameters(visitor.ast());
-        let field_value_1 = self.params(visitor.ast());
-        let field_value_2 = self.return_type(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Option<TsTypeParameterDeclaration> = {
+                let raw = (data) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_1: FormalParameters = {
+                let raw = (data >> 32usize) as u32;
+                FormalParameters(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_2: Option<TsTypeAnnotation> = {
+                let raw = (data >> 64usize) as u32;
+                (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
@@ -4024,8 +4976,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIndexSignature {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.parameters(visitor.ast());
-        let field_value_1 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<BindingIdentifier> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: TsTypeAnnotation = {
+                let raw = (data >> 64usize) as u32;
+                TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsTypeAnnotation as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4037,9 +5000,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeAliasDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.type_parameters(visitor.ast());
-        let field_value_2 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: BindingIdentifier = {
+                let raw = (data) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterDeclaration> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: TsType = {
+                let raw = (data >> 64usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -4055,10 +5033,31 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.type_parameters(visitor.ast());
-        let field_value_2 = self.extends(visitor.ast());
-        let field_value_3 = self.body(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: BindingIdentifier = {
+                let raw = (data >> 8usize) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterDeclaration> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+            };
+            let field_value_2: TypedSubRange<TsInterfaceHeritage> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_3: TsInterfaceBody = unsafe {
+                ExtraDataCompact::from_extra_data(
+                    *extra_data.get_unchecked(extra_data_start + 1usize),
+                    ast,
+                )
+            };
+            (field_value_0, field_value_1, field_value_2, field_value_3)
+        };
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -4089,8 +5088,20 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceHeritage {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expression(visitor.ast());
-        let field_value_1 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -4105,8 +5116,20 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsClassImplements {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expression(visitor.ast());
-        let field_value_1 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -4121,8 +5144,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: BindingIdentifier = {
+                let raw = (data) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsEnumBody = {
+                let raw = (data >> 32usize) as u32;
+                TsEnumBody(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsEnumBody as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4145,8 +5179,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMember {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.initializer(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsEnumMemberName = {
+                let raw = (data) as u32;
+                TsEnumMemberName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<Expr> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsEnumMemberName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4158,8 +5203,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsModuleName = {
+                let raw = (data) as u32;
+                TsModuleName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<TsModuleBody> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| TsModuleBody(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsModuleName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsModuleBody> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4171,8 +5227,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBlock {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.directives(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<Directive> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: TypedSubRange<Stmt> = {
+                let raw = (data >> 64usize) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4184,8 +5251,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsGlobalDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: IdentifierName = {
+                let raw = (data) as u32;
+                IdentifierName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsModuleBlock = {
+                let raw = (data >> 32usize) as u32;
+                TsModuleBlock(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsModuleBlock as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4197,8 +5275,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsParameterProperty {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decorators(visitor.ast());
-        let field_value_1 = self.parameter(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TypedSubRange<Decorator> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_1: BindingPattern = {
+                let raw = (data >> 64usize) as u32;
+                BindingPattern(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4221,8 +5310,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsAsExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expression(visitor.ast());
-        let field_value_1 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsType = {
+                let raw = (data >> 32usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4234,8 +5334,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsSatisfiesExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expression(visitor.ast());
-        let field_value_1 = self.type_annotation(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsType = {
+                let raw = (data >> 32usize) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4247,8 +5358,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeAssertion {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.type_annotation(visitor.ast());
-        let field_value_1 = self.expression(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: TsType = {
+                let raw = (data) as u32;
+                TsType(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Expr = {
+                let raw = (data >> 32usize) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4271,8 +5393,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInstantiationExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expression(visitor.ast());
-        let field_value_1 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: Expr = {
+                let raw = (data) as u32;
+                Expr(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsTypeParameterInstantiation = {
+                let raw = (data >> 32usize) as u32;
+                TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsTypeParameterInstantiation as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4306,8 +5439,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsImportEqualsDeclaration {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.module_reference(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: BindingIdentifier = {
+                let raw = (data) as u32;
+                BindingIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TsModuleReference = {
+                let raw = (data >> 32usize) as u32;
+                TsModuleReference(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsModuleReference as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4463,9 +5607,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.opening_element(visitor.ast());
-        let field_value_1 = self.children(visitor.ast());
-        let field_value_2 = self.closing_element(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: JsxOpeningElement = {
+                let raw = (data >> 64usize) as u32;
+                JsxOpeningElement(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<JsxChild> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_2: Option<JsxClosingElement> = {
+                let raw = (data >> 96usize) as u32;
+                (raw != u32::MAX).then(|| JsxClosingElement(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <JsxOpeningElement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<JsxClosingElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -4478,9 +5636,25 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxOpeningElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.name(visitor.ast());
-        let field_value_1 = self.attributes(visitor.ast());
-        let field_value_3 = self.type_arguments(visitor.ast());
+        let (field_value_0, field_value_1, field_value_3) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let extra_data_start = (data >> 96usize) as u32 as usize;
+            let extra_data = ast.extra_data.as_slice();
+            let field_value_0: JsxElementName = {
+                let raw = (data >> 8usize) as u32;
+                JsxElementName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<JsxAttributeItem> = unsafe {
+                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(extra_data_start), ast)
+            };
+            let field_value_3: Option<TsTypeParameterInstantiation> = {
+                let raw = (data >> 40usize) as u32;
+                (raw != u32::MAX)
+                    .then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1, field_value_3)
+        };
         <JsxElementName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<JsxAttributeItem> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
@@ -4507,9 +5681,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxFragment {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.opening_fragment(visitor.ast());
-        let field_value_1 = self.children(visitor.ast());
-        let field_value_2 = self.closing_fragment(visitor.ast());
+        let (field_value_0, field_value_1, field_value_2) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: JsxOpeningFragment = {
+                let raw = (data >> 64usize) as u32;
+                JsxOpeningFragment(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: TypedSubRange<JsxChild> = {
+                let raw = (data) as u64;
+                unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+            };
+            let field_value_2: JsxClosingFragment = {
+                let raw = (data >> 96usize) as u32;
+                JsxClosingFragment(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1, field_value_2)
+        };
         <JsxOpeningFragment as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <JsxClosingFragment as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -4546,8 +5734,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxNamespacedName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.namespace(visitor.ast());
-        let field_value_1 = self.name(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: JsxIdentifier = {
+                let raw = (data) as u32;
+                JsxIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: JsxIdentifier = {
+                let raw = (data >> 32usize) as u32;
+                JsxIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <JsxIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <JsxIdentifier as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4559,8 +5758,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxMemberExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.object(visitor.ast());
-        let field_value_1 = self.property(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: JsxMemberExpressionObject = {
+                let raw = (data) as u32;
+                JsxMemberExpressionObject(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: JsxIdentifier = {
+                let raw = (data >> 32usize) as u32;
+                JsxIdentifier(NodeId::from_raw_unchecked(raw))
+            };
+            (field_value_0, field_value_1)
+        };
         <JsxMemberExpressionObject as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <JsxIdentifier as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -4572,8 +5782,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttribute {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.name(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
+        let (field_value_0, field_value_1) = {
+            let ast = visitor.ast();
+            let data = unsafe { ast.nodes.data_unchecked(self.0).0 };
+            let field_value_0: JsxAttributeName = {
+                let raw = (data) as u32;
+                JsxAttributeName(NodeId::from_raw_unchecked(raw))
+            };
+            let field_value_1: Option<JsxAttributeValue> = {
+                let raw = (data >> 32usize) as u32;
+                (raw != u32::MAX).then(|| JsxAttributeValue(NodeId::from_raw_unchecked(raw)))
+            };
+            (field_value_0, field_value_1)
+        };
         <JsxAttributeName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<JsxAttributeValue> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
