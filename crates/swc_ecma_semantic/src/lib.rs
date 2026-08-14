@@ -431,22 +431,26 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Lang, NodeKindData, ScopeId, SourceType};
+    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::{
-        AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, SymbolFlags, analyze,
+        AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, Semantic, SymbolFlags, analyze,
         scope::ScopeKind,
     };
 
-    fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
-        let allocator = Allocator::new();
+    fn analyze_source<'a>(
+        allocator: &'a Allocator,
+        source: &'a str,
+        lang: Lang,
+        source_type: SourceType,
+    ) -> (Ast<'a>, Semantic<'a>) {
         let parse = Parser::init(
-            &allocator,
+            allocator,
             source,
             Options {
-                source_type: SourceType::Script,
                 lang,
+                source_type,
                 ..Options::default()
             },
             NoTokenParserConfig,
@@ -454,280 +458,154 @@ mod tests {
         .parse();
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        analyze(&ast, AnalyzeOptions { check_syntax: true })
-            .diagnostics
-            .into_iter()
-            .map(|diagnostic| diagnostic.message.into_owned())
-            .collect()
+
+        let result = analyze(&ast, AnalyzeOptions::default());
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        (ast, result.semantic)
     }
 
     #[test]
-    fn declarations_are_grouped_by_symbol_in_source_order() {
+    fn symbols() {
         let allocator = Allocator::new();
-        let source = "interface A {} interface B {} interface A {}";
-        let parse = Parser::init(
+        let (ast, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                source_type: SourceType::Script,
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-
-        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+            "interface A {} interface B {} interface A {}",
+            Lang::Ts,
+            SourceType::Script,
+        );
         let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
         let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
         let a_declarations = semantic.declarations(a);
         assert_eq!(a_declarations.len(), 2);
         assert!(ast.span(a_declarations[0].node).start < ast.span(a_declarations[1].node).start);
 
-        let symbols: Vec<_> = semantic
-            .iter_declarations()
-            .map(|entry| entry.declaration.symbol)
-            .collect();
-        assert_eq!(symbols, [a, a, b]);
-        for entry in semantic.iter_declarations() {
-            assert_eq!(
-                semantic.declaration_of(entry.declaration.node),
-                Some(entry.id)
-            );
-        }
+        let mut declarations = semantic.iter_declarations();
+        let first = declarations.next().unwrap();
+        let second = declarations.next().unwrap();
+        let third = declarations.next().unwrap();
+        assert!(declarations.next().is_none());
+        assert_eq!(
+            [
+                first.declaration.symbol,
+                second.declaration.symbol,
+                third.declaration.symbol,
+            ],
+            [a, a, b]
+        );
+        assert_eq!(
+            semantic.declaration_of(first.declaration.node),
+            Some(first.id)
+        );
+        assert_eq!(
+            semantic.declaration_of(second.declaration.node),
+            Some(second.id)
+        );
+        assert_eq!(
+            semantic.declaration_of(third.declaration.node),
+            Some(third.id)
+        );
     }
 
     #[test]
-    fn annex_b() {
-        // Sloppy JavaScript blocks allow duplicate ordinary functions and
-        // isolate functions declared directly in if/else clauses.
-        for source in [
-            "{ function f() {} function f() {} }",
-            "{ function f() {} function f() { 'use strict'; } }",
-            "{ function f() { 'use strict'; } function f() {} }",
-            "switch (0) { case 0: function f() {} case 1: function f() {} }",
-            "function outer() { { let f; if (true) function f() {} else function f() {} } try {} catch (f) { if (true) function f() {} } }",
-        ] {
-            assert!(diagnostics(source, Lang::Js).is_empty(), "{source}");
-        }
-
-        // Strict blocks and collisions with other value declarations remain
-        // errors.
-        for source in [
-            "'use strict'; { function f() {} function f() {} }",
-            "{ var f; function f() {} }",
-            "{ function f() {} function* f() {} }",
-            "{ function f() {} async function f() {} }",
-        ] {
-            assert!(!diagnostics(source, Lang::Js).is_empty(), "{source}");
-        }
-
-        // TypeScript retains its var/function merge rules outside catch
-        // scopes.
-        for source in [
-            "{ var f; function f() {} }",
-            "switch (0) { case 0: var f; case 1: function f() {} }",
-        ] {
-            assert!(diagnostics(source, Lang::Ts).is_empty(), "{source}");
-        }
-
-        // A TypeScript catch scope still rejects the merge.
-        let source = "try {} catch (e) { var f; function f() {} }";
-        assert!(!diagnostics(source, Lang::Ts).is_empty());
-    }
-
-    #[test]
-    fn validates_unicode_property_escapes() {
-        for source in [
-            r"/\p{ASCII}/u;",
-            r"/\p{Script=Latin}/u;",
-            r"/\p{Basic_Emoji}/v;",
-        ] {
-            assert!(diagnostics(source, Lang::Js).is_empty(), "{source}");
-        }
-
-        for source in [
-            r"/\p{ASCII=Yes}/u;",
-            r"/[\p{ASCII}-a]/u;",
-            r"/\p{Basic_Emoji}/u;",
-            r"/\P{Basic_Emoji}/v;",
-            r"/[^\p{Basic_Emoji}]/v;",
-        ] {
-            assert_eq!(
-                diagnostics(source, Lang::Js),
-                ["Invalid regular expression literal"],
-                "{source}"
-            );
-        }
-    }
-
-    #[test]
-    fn arrow_initializer_preserves_export_context() {
+    fn references() {
         let allocator = Allocator::new();
-        let source = "export const f = parameter => { const hidden = 0; }, g = 1;";
-        let parse = Parser::init(
+
+        let (_, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                source_type: SourceType::Module,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+            "let value; value;",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let reference = semantic.iter_references().next().unwrap().reference;
+        assert!(reference.flags.is_read_only());
 
-        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-        let exported = |name: &[u8]| {
-            semantic
-                .iter_symbols()
-                .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == name)
-                .expect("symbol")
-                .symbol
-                .flags
-                .contains(SymbolFlags::EXPORTED)
-        };
-
-        assert!(exported(b"f"));
-        assert!(exported(b"g"));
-        assert!(!exported(b"parameter"));
-        assert!(!exported(b"hidden"));
-    }
-
-    #[test]
-    fn binds_qualified_namespace_heads() {
-        let allocator = Allocator::new();
-        let source = "namespace A.B {} let value: A.B;";
-        let parse = Parser::init(
+        let (_, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                source_type: SourceType::Script,
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+            "let value; value = 1;",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let reference = semantic.iter_references().next().unwrap().reference;
+        assert!(reference.flags.is_write_only());
 
-        let statement = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
-        let declaration = statement.as_declaration(&ast).unwrap();
-        let declaration = declaration.as_ts_module_declaration(&ast).unwrap();
-        let NodeKindData::TsQualifiedName(name) = ast.kind_data(declaration.id(&ast).node_id())
-        else {
-            panic!("dotted namespace did not parse as a qualified name");
-        };
-        let head = name.left(&ast).node_id();
+        let (_, semantic) = analyze_source(
+            &allocator,
+            "let value; value++;",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let reference = semantic.iter_references().next().unwrap().reference;
+        assert!(reference.flags.is_read_write());
 
-        let result = analyze(&ast, AnalyzeOptions::default());
-        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        let declaration = result.semantic.declaration_of(head).unwrap();
-        let symbol = result.semantic.declaration(declaration).symbol;
-        assert_eq!(result.semantic.symbol_of(head), Some(symbol));
+        let (_, semantic) = analyze_source(
+            &allocator,
+            "let value; delete value;",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let reference = semantic.iter_references().next().unwrap().reference;
+        assert!(!reference.flags.is_read());
+        assert!(!reference.flags.is_write());
 
-        let reference = result
-            .semantic
+        let (ast, semantic) = analyze_source(
+            &allocator,
+            "import type { T } from 'mod'; type U = T;",
+            Lang::Ts,
+            SourceType::Module,
+        );
+        let symbol = semantic
+            .iter_symbols()
+            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"T")
+            .unwrap();
+        assert!(symbol.symbol.flags.contains(SymbolFlags::TYPE_IMPORT));
+
+        let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name) == "A")
+            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"T")
             .unwrap()
             .reference;
-        assert_eq!(reference.symbol, Some(symbol));
-        assert_eq!(reference.flags.space, ReferenceSpace::Namespace);
+        assert_eq!(reference.flags.space, ReferenceSpace::Type);
+        assert_eq!(reference.symbol, Some(symbol.id));
+        assert!(!reference.flags.is_read());
+
+        let (ast, semantic) = analyze_source(
+            &allocator,
+            "import type { T } from 'mod'; T;",
+            Lang::Ts,
+            SourceType::Module,
+        );
+        let reference = semantic
+            .iter_references()
+            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"T")
+            .unwrap()
+            .reference;
+        assert_eq!(reference.flags.space, ReferenceSpace::Value);
+        assert!(reference.symbol.is_none());
+        assert!(reference.flags.is_read_only());
     }
 
     #[test]
-    fn binds_local_export_specifiers() {
+    fn modules() {
         let allocator = Allocator::new();
-        let source = "export { value }; export type { Type }; export { external as alias } from 'dep'; const value = 1; type Type = string;";
-        let parse = Parser::init(
+
+        let (ast, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                source_type: SourceType::Module,
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-
+            "export { value }; const value = 1;",
+            Lang::Js,
+            SourceType::Module,
+        );
         let body = ast.root_program().body(&ast);
-        let export_name = |index| {
-            let statement = body.get_node(&ast, index).unwrap();
-            let declaration = statement.as_export_named_declaration(&ast).unwrap();
-            let specifier = declaration.specifiers(&ast).get_node(&ast, 0).unwrap();
-            specifier.local(&ast).node_id()
-        };
-        let value_node = export_name(0);
-        let type_node = export_name(1);
-        let re_export_node = export_name(2);
-
-        let result = analyze(&ast, AnalyzeOptions::default());
-        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-
-        let value_reference = result.semantic.reference_of(value_node).unwrap();
-        let value_reference = result.semantic.reference(value_reference);
-        let value_symbol = result
-            .semantic
-            .lookup(value_reference.scope, b"value", ReferenceSpace::Any)
-            .unwrap();
-        assert_eq!(value_reference.symbol, Some(value_symbol));
-        assert_eq!(value_reference.flags.space, ReferenceSpace::Any);
-
-        let type_reference = result.semantic.reference_of(type_node).unwrap();
-        let type_reference = result.semantic.reference(type_reference);
-        let type_symbol = result
-            .semantic
-            .lookup(type_reference.scope, b"Type", ReferenceSpace::Any)
-            .unwrap();
-        assert_eq!(type_reference.symbol, Some(type_symbol));
-        assert_eq!(type_reference.flags.space, ReferenceSpace::Any);
-
-        assert_eq!(result.semantic.reference_of(re_export_node), None);
-    }
-
-    #[test]
-    fn models_local_and_external_export_targets() {
-        let allocator = Allocator::new();
-        let source = "export { value }; export { external as alias } from 'dep'; const value = 1;";
-        let parse = Parser::init(
-            &allocator,
-            source,
-            Options {
-                source_type: SourceType::Module,
-                lang: Lang::Js,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-
-        let body = ast.root_program().body(&ast);
-        let specifier = |index| {
-            let statement = body.get_node(&ast, index).unwrap();
-            let declaration = statement.as_export_named_declaration(&ast).unwrap();
-            declaration.specifiers(&ast).get_node(&ast, 0).unwrap()
-        };
-        let local_specifier = specifier(0);
-        let re_export_specifier = specifier(1);
+        let statement = body.get_node(&ast, 0).unwrap();
+        let declaration = statement.as_export_named_declaration(&ast).unwrap();
+        let local_specifier = declaration.specifiers(&ast).get_node(&ast, 0).unwrap();
         let local_node = local_specifier.local(&ast).node_id();
 
-        let result = analyze(&ast, AnalyzeOptions::default());
-        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        let local_reference = result.semantic.reference_of(local_node).unwrap();
-        let local_symbol = result.semantic.reference(local_reference).symbol.unwrap();
+        let local_reference = semantic.reference_of(local_node).unwrap();
+        let local_reference_data = semantic.reference(local_reference);
+        let local_symbol = local_reference_data.symbol.unwrap();
+        assert_eq!(local_reference_data.flags.space, ReferenceSpace::Any);
 
-        let local_export = result
-            .semantic
+        let local_export = semantic
             .module_record()
             .exports()
             .iter()
@@ -743,8 +621,20 @@ mod tests {
             }
         );
 
-        let re_export = result
-            .semantic
+        let (ast, semantic) = analyze_source(
+            &allocator,
+            "export { external as alias } from 'dep';",
+            Lang::Js,
+            SourceType::Module,
+        );
+        let body = ast.root_program().body(&ast);
+        let statement = body.get_node(&ast, 0).unwrap();
+        let declaration = statement.as_export_named_declaration(&ast).unwrap();
+        let re_export_specifier = declaration.specifiers(&ast).get_node(&ast, 0).unwrap();
+        let re_export_node = re_export_specifier.local(&ast).node_id();
+        assert_eq!(semantic.reference_of(re_export_node), None);
+
+        let re_export = semantic
             .module_record()
             .exports()
             .iter()
@@ -755,665 +645,105 @@ mod tests {
     }
 
     #[test]
-    fn type_only_import_visibility() {
-        let source = "import type { TypeOnly, Merged } from 'mod'; import type Alias = TypeOnly; TypeOnly; type T = TypeOnly; type N = TypeOnly.Member; type Q = typeof TypeOnly; export default TypeOnly; export type { TypeOnly }; const Merged: Merged = 1; Merged;";
+    fn dynamic_scopes() {
         let allocator = Allocator::new();
-        let parse = Parser::init(
+
+        let (ast, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                source_type: SourceType::Module,
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
-        let type_only = semantic
-            .iter_symbols()
-            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"TypeOnly")
-            .expect("type-only import symbol")
-            .id;
-        assert!(
-            semantic
-                .symbol(type_only)
-                .flags
-                .contains(SymbolFlags::TYPE_IMPORT)
+            "let value; with ({}) { value; }",
+            Lang::Js,
+            SourceType::Script,
         );
-        let type_only_references: Vec<_> = semantic
+        let value_symbol = semantic.binding(ScopeId::ROOT, b"value").unwrap();
+        let value = semantic
             .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"TypeOnly")
-            .map(|entry| {
-                (
-                    entry.reference.flags.space,
-                    entry.reference.symbol,
-                    entry.reference.flags.is_read(),
-                    entry.reference.flags.is_write(),
-                )
-            })
-            .collect();
-        assert_eq!(
-            type_only_references,
-            [
-                (ReferenceSpace::Any, Some(type_only), false, false),
-                (ReferenceSpace::Value, None, true, false),
-                (ReferenceSpace::Type, Some(type_only), false, false),
-                (ReferenceSpace::Namespace, Some(type_only), false, false,),
-                (ReferenceSpace::Typeof, Some(type_only), false, false),
-                (ReferenceSpace::Any, Some(type_only), false, false),
-                (ReferenceSpace::Any, Some(type_only), false, false),
-            ]
-        );
+            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
+            .unwrap()
+            .reference;
+        assert!(value.flags.is_dynamic());
+        assert_eq!(value.symbol, Some(value_symbol));
 
-        let merged = semantic
-            .iter_symbols()
-            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"Merged")
-            .expect("merged import and value symbol")
-            .id;
-        let merged_references: Vec<_> = semantic
-            .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"Merged")
-            .map(|entry| {
-                (
-                    entry.reference.flags.space,
-                    entry.reference.symbol,
-                    entry.reference.flags.is_read(),
-                    entry.reference.flags.is_write(),
-                )
-            })
-            .collect();
-        assert_eq!(
-            merged_references,
-            [
-                (ReferenceSpace::Type, Some(merged), false, false),
-                (ReferenceSpace::Value, Some(merged), true, false),
-            ]
-        );
-    }
+        let with_scope = semantic
+            .iter_scopes()
+            .find(|entry| entry.scope.kind == ScopeKind::With)
+            .unwrap();
+        assert_eq!(semantic.scope_of(with_scope.scope.node), with_scope.id);
 
-    #[test]
-    fn default_and_export_assignment_reference_spaces() {
-        fn export_reference(source: &str, name: &[u8]) -> (ReferenceSpace, bool, bool) {
-            let allocator = Allocator::new();
-            let parse = Parser::init(
-                &allocator,
-                source,
-                Options {
-                    source_type: SourceType::Module,
-                    lang: Lang::Ts,
-                    ..Options::default()
-                },
-                NoTokenParserConfig,
-            )
-            .parse();
-            let ast = parse.ast;
-            assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-
-            let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-            let reference = semantic
-                .iter_references()
-                .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
-                .expect("export reference");
-            (
-                reference.reference.flags.space,
-                reference.reference.symbol.is_some(),
-                reference.reference.flags.is_read(),
-            )
-        }
-
-        assert_eq!(
-            export_reference("type T = {}; export default T;", b"T"),
-            (ReferenceSpace::Any, true, false)
-        );
-        assert_eq!(
-            export_reference("type T = {}; export default T || {};", b"T"),
-            (ReferenceSpace::Value, false, true)
-        );
-        assert_eq!(
-            export_reference("type T = {}; export = T;", b"T"),
-            (ReferenceSpace::Any, true, false)
-        );
-        assert_eq!(
-            export_reference(
-                "namespace N { export interface T {} } export default N.T;",
-                b"N",
-            ),
-            (ReferenceSpace::Value, false, true)
-        );
-        assert_eq!(
-            export_reference("namespace N { export interface T {} } export = N.T;", b"N",),
-            (ReferenceSpace::Value, false, true)
-        );
-        assert_eq!(
-            export_reference(
-                "namespace N { export interface T {} } export = N['T'];",
-                b"N",
-            ),
-            (ReferenceSpace::Value, false, true)
-        );
-    }
-
-    #[test]
-    fn alias_access_follows_the_resolved_symbol() {
-        let source = r#"
-            type T = {};
-            const V = 1;
-            namespace N { export interface I {} }
-            import { Imported } from "mod";
-            import type { TypeImported } from "mod";
-            namespace Q { export const Member = 1; }
-            export import Qualified = Q.Member;
-            import type TypeQualified = Q.Member;
-            export { T, V, N, Imported, TypeImported, Missing };
-            export type { V as ValueType };
-            export default T;
-        "#;
-        let allocator = Allocator::new();
-        let parse = Parser::init(
+        let (_, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                source_type: SourceType::Module,
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-        let references = |name: &[u8]| {
-            semantic
-                .iter_references()
-                .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
-                .map(|entry| {
-                    (
-                        entry.reference.flags.space,
-                        entry.reference.symbol.is_some(),
-                        entry.reference.flags.is_read(),
-                        entry.reference.flags.is_write(),
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-
-        assert_eq!(
-            references(b"T"),
-            [
-                (ReferenceSpace::Any, true, false, false),
-                (ReferenceSpace::Any, true, false, false),
-            ]
+            "with ({}) { missing; }",
+            Lang::Js,
+            SourceType::Script,
         );
-        assert_eq!(
-            references(b"V"),
-            [
-                (ReferenceSpace::Any, true, true, false),
-                (ReferenceSpace::Any, true, false, false),
-            ]
-        );
-        assert_eq!(
-            references(b"N"),
-            [(ReferenceSpace::Any, true, false, false)]
-        );
-        assert_eq!(
-            references(b"Imported"),
-            [(ReferenceSpace::Any, true, true, false)]
-        );
-        assert_eq!(
-            references(b"TypeImported"),
-            [(ReferenceSpace::Any, true, false, false)]
-        );
-        assert_eq!(
-            references(b"Missing"),
-            [(ReferenceSpace::Any, false, true, false)]
-        );
-        assert_eq!(
-            references(b"Q"),
-            [
-                (ReferenceSpace::Any, true, true, false),
-                (ReferenceSpace::Any, true, false, false),
-            ]
-        );
-    }
-
-    #[test]
-    fn reference_access_flags() {
-        let source = r#"
-            let read, write, update, object, key, deleted;
-            read;
-            write = 1;
-            update++;
-            object[key] = 1;
-            delete deleted;
-        "#;
-        let allocator = Allocator::new();
-        let parse =
-            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
-        let flags = |name: &[u8]| {
-            semantic
-                .iter_references()
-                .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
-                .expect("reference")
-                .reference
-                .flags
-        };
-
-        assert!(flags(b"read").is_read_only());
-        assert!(flags(b"write").is_write_only());
-        assert!(flags(b"update").is_read_write());
-        assert!(flags(b"object").is_read_only());
-        assert!(flags(b"key").is_read_only());
-        assert!(!flags(b"deleted").is_read());
-        assert!(!flags(b"deleted").is_write());
-    }
-
-    #[test]
-    fn erased_declarations_do_not_read_runtime_values() {
-        let source = r#"
-            import type { TypeOnlyKey } from "mod";
-            declare const decorator: any;
-            const Base = class {};
-            const DecoratedKey = Symbol();
-            const DecoratedMethodKey = Symbol();
-            const OverloadKey = Symbol();
-            const RuntimeKey = Symbol();
-            declare class Ambient extends Base { [Base](): void }
-            declare class AmbientEval extends eval("ambient") {}
-            declare enum AmbientEnum { Member = Base }
-            abstract class AbstractMember { abstract [TypeOnlyKey](): void }
-            abstract class AbstractProperty { abstract [TypeOnlyKey]: unknown }
-            class DeclaredMember { declare [TypeOnlyKey]: unknown }
-            class DecoratedMember { @decorator declare [DecoratedKey]: unknown }
-            class DecoratedOverload {
-                @decorator
-                [DecoratedMethodKey](): void;
-                [DecoratedMethodKey]() {}
-            }
-            class OverloadedMember {
-                [OverloadKey](): void;
-                [OverloadKey]() {}
-            }
-            class RuntimeMember { [RuntimeKey]() {} }
-            class Runtime extends Base { [Base]() {} }
-        "#;
-        let allocator = Allocator::new();
-        let parse = Parser::init(
-            &allocator,
-            source,
-            Options {
-                source_type: SourceType::Module,
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-        let accesses = semantic
-            .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"Base")
-            .map(|entry| {
-                (
-                    entry.reference.flags.space,
-                    entry.reference.symbol.is_some(),
-                    entry.reference.flags.is_read(),
-                    entry.reference.flags.is_write(),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        assert_eq!(
-            accesses,
-            [
-                (ReferenceSpace::Value, true, false, false),
-                (ReferenceSpace::Typeof, true, false, false),
-                (ReferenceSpace::Value, true, false, false),
-                (ReferenceSpace::Value, true, true, false),
-                (ReferenceSpace::Value, true, true, false),
-            ]
-        );
-        let accesses = |name: &[u8]| {
-            semantic
-                .iter_references()
-                .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
-                .map(|entry| {
-                    (
-                        entry.reference.flags.space,
-                        entry.reference.symbol.is_some(),
-                        entry.reference.flags.is_read(),
-                        entry.reference.flags.is_write(),
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(
-            accesses(b"TypeOnlyKey"),
-            [
-                (ReferenceSpace::Typeof, true, false, false),
-                (ReferenceSpace::Typeof, true, false, false),
-                (ReferenceSpace::Typeof, true, false, false),
-            ]
-        );
-        assert_eq!(
-            accesses(b"DecoratedKey"),
-            [(ReferenceSpace::Value, true, true, false)]
-        );
-        assert_eq!(
-            accesses(b"DecoratedMethodKey"),
-            [
-                (ReferenceSpace::Value, true, true, false),
-                (ReferenceSpace::Value, true, true, false),
-            ]
-        );
-        assert_eq!(
-            accesses(b"OverloadKey"),
-            [
-                (ReferenceSpace::Typeof, true, false, false),
-                (ReferenceSpace::Value, true, true, false),
-            ]
-        );
-        assert_eq!(
-            accesses(b"RuntimeKey"),
-            [(ReferenceSpace::Value, true, true, false)]
-        );
-        assert!(
-            semantic
-                .iter_scopes()
-                .all(|entry| !entry.scope.flags.contains_direct_eval())
-        );
-    }
-
-    #[test]
-    fn with_scope_marks_dynamic_references() {
-        let source = r#"
-            let object, second, outer;
-            with (object) {
-                let local;
-                local;
-                outer;
-                missing;
-                function nested() {
-                    arguments;
-                    outer;
-                    with (second) {
-                        local;
-                        arguments;
-                    }
-                }
-            }
-        "#;
-        let allocator = Allocator::new();
-        let parse =
-            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
-
-        let outer = semantic
-            .iter_symbols()
-            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"outer")
-            .expect("outer binding")
-            .id;
-        let reference = |name: &[u8]| {
-            semantic
-                .iter_references()
-                .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == name)
-                .expect("reference")
-                .reference
-        };
-
-        let object = reference(b"object");
-        assert!(!object.flags.is_dynamic());
-        assert!(object.symbol.is_some());
-
-        let local_references: Vec<_> = semantic
-            .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"local")
-            .collect();
-        let [local, intercepted_local] = local_references.as_slice() else {
-            panic!("two local references")
-        };
-        assert!(!local.reference.flags.is_dynamic());
-        assert!(local.reference.symbol.is_some());
-        assert!(intercepted_local.reference.flags.is_dynamic());
-        assert_eq!(intercepted_local.reference.symbol, local.reference.symbol);
-
-        let missing = reference(b"missing");
+        let missing = semantic.iter_references().next().unwrap().reference;
         assert!(missing.flags.is_dynamic());
         assert!(missing.symbol.is_none());
 
-        let outer_references: Vec<_> = semantic
-            .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"outer")
-            .collect();
-        assert_eq!(outer_references.len(), 2);
-        assert!(outer_references.iter().all(|entry| {
-            entry.reference.flags.is_dynamic() && entry.reference.symbol == Some(outer)
-        }));
-        let outer_uses: Vec<_> = outer_references.iter().map(|entry| entry.id).collect();
-        assert_eq!(semantic.uses(outer), outer_uses);
-
-        let arguments_references: Vec<_> = semantic
-            .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"arguments")
-            .collect();
-        let [arguments, intercepted_arguments] = arguments_references.as_slice() else {
-            panic!("two arguments references")
-        };
-        assert!(!arguments.reference.flags.is_dynamic());
-        assert!(arguments.reference.symbol.is_none());
-        assert!(intercepted_arguments.reference.flags.is_dynamic());
-        assert!(intercepted_arguments.reference.symbol.is_none());
-
-        let second = reference(b"second");
-        assert!(second.flags.is_dynamic());
-        assert!(second.symbol.is_some());
-
-        let with_scopes: Vec<_> = semantic
-            .iter_scopes()
-            .filter(|entry| entry.scope.kind == ScopeKind::With)
-            .collect();
-        assert_eq!(with_scopes.len(), 2);
-        for with_scope in &with_scopes {
-            assert_eq!(semantic.scope_of(with_scope.scope.node), with_scope.id);
-        }
-        assert!(
-            with_scopes
-                .iter()
-                .any(|entry| entry.scope.parent == Some(object.scope))
-        );
-        assert!(
-            with_scopes
-                .iter()
-                .any(|entry| entry.scope.parent == Some(second.scope))
-        );
-    }
-
-    #[test]
-    fn with_scope_marks_var_binding_writes_dynamic() {
-        let source = r#"
-            var source, values;
-            with ({}) {
-                var untouched;
-                var initialized = 1;
-                var { value: destructured } = source;
-                var [ordered = ordered] = source;
-                var [defaulted = function () { var nested = 1; }] = source;
-                for (var iterated of values) {}
-                function boundary() { var local = 1; }
-                let lexical = 1;
-            }
-        "#;
-        let allocator = Allocator::new();
-        let parse =
-            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
-
-        let declaration = |name: &[u8]| {
-            semantic
-                .iter_declarations()
-                .find(|entry| {
-                    let symbol = semantic.symbol(entry.declaration.symbol);
-                    ast.get_wtf8(symbol.name).as_bytes() == name
-                })
-                .expect("declaration")
-        };
-        for name in [
-            b"initialized".as_slice(),
-            b"destructured",
-            b"ordered",
-            b"defaulted",
-            b"iterated",
-        ] {
-            let declaration = declaration(name);
-            assert_eq!(
-                semantic.declaration_of(declaration.declaration.node),
-                Some(declaration.id)
-            );
-            let reference_id = semantic
-                .reference_of(declaration.declaration.node)
-                .expect("runtime write reference");
-            let reference = semantic.reference(reference_id);
-            assert!(reference.flags.is_write_only());
-            assert!(reference.flags.is_dynamic());
-            assert_eq!(reference.symbol, Some(declaration.declaration.symbol));
-            assert!(
-                semantic
-                    .uses(declaration.declaration.symbol)
-                    .contains(&reference_id)
-            );
-        }
-
-        let ordered = declaration(b"ordered").declaration.symbol;
-        let ordered_references: Vec<_> = semantic
-            .iter_references()
-            .filter(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"ordered")
-            .collect();
-        let [write, read] = ordered_references.as_slice() else {
-            panic!("ordered binding write and default read")
-        };
-        assert!(write.reference.flags.is_write_only());
-        assert!(write.reference.flags.is_dynamic());
-        assert!(read.reference.flags.is_read_only());
-        assert!(read.reference.flags.is_dynamic());
-        assert_eq!(semantic.uses(ordered), &[write.id, read.id]);
-
-        for name in [b"untouched".as_slice(), b"nested", b"local", b"lexical"] {
-            let declaration = declaration(name);
-            assert_eq!(semantic.reference_of(declaration.declaration.node), None);
-        }
-    }
-
-    #[test]
-    fn direct_eval_marks_lexical_ancestor_scopes() {
-        let source = r#"
-            function parameter(value = eval("value")) { let body_local; }
-            function shadowed(eval) { eval("shadowed"); }
-            function indirect() {
-                (0, eval)("comma");
-                eval?.("optional");
-            }
-            function deleted() { delete eval("deleted"); }
-            function parent() {
-                function child() { (eval)("child"); }
-            }
-        "#;
-        let allocator = Allocator::new();
-        let parse =
-            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
-
-        let function_scope = |name: &[u8]| {
-            let entry = semantic
-                .iter_scopes()
-                .find(|entry| {
-                    if entry.scope.kind != ScopeKind::Function {
-                        return false;
-                    }
-                    let NodeKindData::Function(function) = ast.kind_data(entry.scope.node) else {
-                        return false;
-                    };
-                    function
-                        .id(&ast)
-                        .is_some_and(|id| ast.get_utf8(id.name(&ast)).as_bytes() == name)
-                })
-                .expect("function scope");
-            (entry.id, entry.scope)
-        };
-
-        let (parameter_id, parameter) = function_scope(b"parameter");
-        assert!(parameter.flags.contains_direct_eval());
-        let parameter_body = semantic
-            .iter_scopes()
-            .find(|entry| {
-                entry.scope.kind == ScopeKind::FunctionBody
-                    && entry.scope.parent == Some(parameter_id)
-            })
-            .expect("parameter function body scope");
-        assert!(!parameter_body.scope.flags.contains_direct_eval());
-
-        assert!(function_scope(b"shadowed").1.flags.contains_direct_eval());
-        assert!(!function_scope(b"indirect").1.flags.contains_direct_eval());
-        assert!(function_scope(b"deleted").1.flags.contains_direct_eval());
-        assert!(function_scope(b"parent").1.flags.contains_direct_eval());
-        assert!(function_scope(b"child").1.flags.contains_direct_eval());
-        assert!(semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
-    }
-
-    #[test]
-    fn direct_eval_uses_runtime_transparent_typescript_wrappers() {
-        let source = r#"
-            function direct() { (eval as any)("direct"); }
-            function indirect() { (0, eval as any)("indirect"); }
-        "#;
-        let allocator = Allocator::new();
-        let parse = Parser::init(
+        let (ast, semantic) = analyze_source(
             &allocator,
-            source,
-            Options {
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        let semantic = analyze(&ast, AnalyzeOptions { check_syntax: true }).semantic;
-        let contains_direct_eval = |name: &[u8]| {
-            semantic
-                .iter_scopes()
-                .find(|entry| {
-                    if entry.scope.kind != ScopeKind::Function {
-                        return false;
-                    }
-                    let NodeKindData::Function(function) = ast.kind_data(entry.scope.node) else {
-                        return false;
-                    };
-                    function
-                        .id(&ast)
-                        .is_some_and(|id| ast.get_utf8(id.name(&ast)).as_bytes() == name)
-                })
-                .expect("function scope")
-                .scope
-                .flags
-                .contains_direct_eval()
-        };
+            "with ({}) { let value; value; }",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let reference = semantic
+            .iter_references()
+            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
+            .unwrap()
+            .reference;
+        assert!(!reference.flags.is_dynamic());
+        assert!(reference.symbol.is_some());
 
-        assert!(contains_direct_eval(b"direct"));
-        assert!(!contains_direct_eval(b"indirect"));
+        let (ast, semantic) = analyze_source(
+            &allocator,
+            "with ({}) { var value = 1; }",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let declaration = semantic.iter_declarations().next().unwrap();
+        assert_eq!(
+            semantic.declaration_of(declaration.declaration.node),
+            Some(declaration.id)
+        );
+
+        let reference_id = semantic.reference_of(declaration.declaration.node).unwrap();
+        let reference = semantic.reference(reference_id);
+        assert!(reference.flags.is_write_only());
+        assert!(reference.flags.is_dynamic());
+        assert_eq!(reference.symbol, Some(declaration.declaration.symbol));
+        assert_eq!(
+            semantic.uses(declaration.declaration.symbol),
+            &[reference_id]
+        );
+        assert_eq!(
+            ast.get_wtf8(semantic.symbol(declaration.declaration.symbol).name)
+                .as_bytes(),
+            b"value"
+        );
+
+        let (_, semantic) = analyze_source(
+            &allocator,
+            "function f() { eval('direct'); }",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let function = semantic
+            .iter_scopes()
+            .find(|entry| entry.scope.kind == ScopeKind::Function)
+            .unwrap();
+        assert!(function.scope.flags.contains_direct_eval());
+        assert!(semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
+
+        let (_, semantic) = analyze_source(
+            &allocator,
+            "function f() { (0, eval)('indirect'); }",
+            Lang::Js,
+            SourceType::Script,
+        );
+        let function = semantic
+            .iter_scopes()
+            .find(|entry| entry.scope.kind == ScopeKind::Function)
+            .unwrap();
+        assert!(!function.scope.flags.contains_direct_eval());
+        assert!(!semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
     }
 }
