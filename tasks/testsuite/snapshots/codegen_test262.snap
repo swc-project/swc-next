@@ -1,10 +1,8 @@
 codegen * test262
 ========================
-Positive Passed: 91139/91145 (99.99%)
+Positive Passed: 91141/91145 (100.00%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91145 (0.00%)
-Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse 
-Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/dynamic-import/import-attributes/2nd-param-in.js - sloppy: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/expressions/dynamic-import/import-attributes/2nd-param-in.js - strict: codegen output changed after reparse 
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - sloppy: codegen output changed after reparse 

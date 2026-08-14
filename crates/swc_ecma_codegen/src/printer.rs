@@ -476,6 +476,23 @@ impl<'a> Printer<'a> {
         self.print_bytes(&text[start..]);
     }
 
+    fn print_attached_trailing_comments(&mut self, attached_to: u32) {
+        let mut trim_trailing_space = false;
+        while attached_to != 0
+            && let Some(comment) = self.comments.get(self.next_comment).copied()
+        {
+            if comment.position != CommentPosition::Trailing || comment.attached_to != attached_to {
+                break;
+            }
+            self.print_comments_before(comment.span.end, false, true);
+            trim_trailing_space =
+                comment.kind == CommentKind::Block && !self.comment_has_line_terminator(comment);
+        }
+        if trim_trailing_space && self.js.last() == Some(&b' ') {
+            self.js.pop();
+        }
+    }
+
     fn discard_comments_before_trailing_comma(&mut self, close_offset: u32) {
         while let Some(comment) = self.comments.get(self.next_comment).copied() {
             if comment.span.end > close_offset || is_legal_comment(self.ast, comment) {
@@ -2476,10 +2493,34 @@ impl<'a> Printer<'a> {
                 ObjectPropertyKindData::ObjectProperty(p) => self.print_object_property(p),
             }
         }
+        let close_offset = e.span(self.ast).end.saturating_sub(1);
+        if self
+            .comments
+            .get(self.next_comment)
+            .is_some_and(|comment| comment.span.end <= close_offset)
+            && let Some(id) = props.last()
+        {
+            match self
+                .ast
+                .object_property_kind_data(self.ast.get_node_in_sub_range(id))
+            {
+                ObjectPropertyKindData::SpreadElement(s) => {
+                    self.print_attached_trailing_comments(s.argument(self.ast).span(self.ast).end);
+                }
+                ObjectPropertyKindData::ObjectProperty(p)
+                    if !p.method(self.ast)
+                        && p.kind(self.ast) == PropertyKind::Init
+                        && !self.can_use_shorthand_property(p) =>
+                {
+                    self.print_attached_trailing_comments(p.value(self.ast).span(self.ast).end);
+                }
+                _ => {}
+            }
+        }
         if !props.is_empty() {
             self.print_space();
         }
-        self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
+        self.add_source_mapping(close_offset);
         self.print("}");
         if wrap {
             self.print(")");
@@ -2515,23 +2556,7 @@ impl<'a> Printer<'a> {
             let body = f.body(self.ast);
             self.print_function_body(body);
             if matches!(kind, PropertyKind::Get | PropertyKind::Set) {
-                let body_end = body.span(self.ast).end;
-                let mut trim_trailing_space = false;
-                while body_end != 0
-                    && let Some(comment) = self.comments.get(self.next_comment).copied()
-                {
-                    if comment.position != CommentPosition::Trailing
-                        || comment.attached_to != body_end
-                    {
-                        break;
-                    }
-                    self.print_comments_before(comment.span.end, false, true);
-                    trim_trailing_space = comment.kind == CommentKind::Block
-                        && !self.comment_has_line_terminator(comment);
-                }
-                if trim_trailing_space && self.js.last() == Some(&b' ') {
-                    self.js.pop();
-                }
+                self.print_attached_trailing_comments(body.span(self.ast).end);
             }
             return;
         }
