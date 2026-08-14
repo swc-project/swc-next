@@ -2,7 +2,7 @@
 
 const NULL = 0xffffffff;
 const HEADER_SIZE = 36;
-const textDecoder = new TextDecoder();
+const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
 
 const ENUMS = Object.freeze({
   SourceType: ["module", "script", "commonjs"],

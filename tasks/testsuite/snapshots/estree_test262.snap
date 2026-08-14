@@ -1,15 +1,11 @@
 AST Parsed     : 47030/47030 (100.00%)
-Positive Passed: 47007/47030 (99.95%)
+Positive Passed: 47012/47030 (99.96%)
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/JSON/parse/15.12.1.1-0-6.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/RegExp/escape/escaped-whitespace.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/trim/15.5.4.20-4-10.js
-Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/trim/15.5.4.20-4-34.js
 Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/String/raw/special-characters.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/fn-name-lhs-cover.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/target-cover-id.js
@@ -19,7 +15,6 @@ Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/prefix-decr
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/prefix-increment/target-cover-id.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/tv-line-continuation.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/tv-line-terminator-sequence.js
-Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/tv-zwnbsp.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/statements/for-in/head-lhs-cover.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-lhs-async-parens.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-lhs-cover.js
