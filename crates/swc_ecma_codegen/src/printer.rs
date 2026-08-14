@@ -2568,6 +2568,7 @@ impl<'a> Printer<'a> {
         }
     }
 
+    #[inline(always)]
     fn can_use_shorthand_property(&self, property: ObjectProperty) -> bool {
         property.shorthand(self.ast)
             && !property.computed(self.ast)
