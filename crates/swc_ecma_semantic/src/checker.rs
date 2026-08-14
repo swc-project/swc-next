@@ -240,8 +240,8 @@ impl<'a> CheckerState<'a> {
     }
 
     fn report(&mut self, span: Span, message: &'a str, options: ReportOptions<'a>) {
-        assert!(span.start <= span.end);
-        assert!(!message.is_empty());
+        debug_assert!(span.start <= span.end);
+        debug_assert!(!message.is_empty());
         self.diagnostics.push(Diagnostic {
             severity: options.severity,
             message: Cow::Borrowed(message),
@@ -381,7 +381,7 @@ fn unwrap_parentheses(tree: &Ast<'_>, node: NodeId) -> NodeId {
     // The parser builds at most one parenthesis node per syntactic
     // level, so this chain is bounded by source nesting depth.
     loop {
-        assert!(depth < 1_000_000);
+        debug_assert!(depth < 1_000_000);
         let NodeKindData::ParenthesizedExpression(parenthesized) = tree.kind_data(current) else {
             return current;
         };
@@ -543,7 +543,7 @@ enum LabelSearch {
 }
 
 fn find_label(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> LabelSearch {
-    assert!(!name.is_empty());
+    debug_assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
         match context.ast.kind_data(ancestor) {
@@ -578,7 +578,7 @@ enum ContinueLabelSearch {
 }
 
 fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> ContinueLabelSearch {
-    assert!(!name.is_empty());
+    debug_assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
         match context.ast.kind_data(ancestor) {
@@ -2579,7 +2579,7 @@ impl<'a> CheckerState<'a> {
         context: &mut SemanticVisitCtx<'_, 'a>,
         existing_id: Option<SymbolId>,
     ) {
-        assert!(!name.is_empty());
+        debug_assert!(!name.is_empty());
         let target = context.state.symbols.pending.scope;
         let excludes = context.state.symbols.pending.excludes;
         if let Some(existing_id) = existing_id {

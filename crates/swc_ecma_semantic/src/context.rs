@@ -131,7 +131,7 @@ impl<'a> SemanticContext<'a> {
 
     #[inline]
     pub fn exit_type_position(&mut self) {
-        assert!(self.type_position_depth > 0);
+        debug_assert!(self.type_position_depth > 0);
         self.type_position_depth -= 1;
         self.reference_flags = self.default_reference_flags();
     }

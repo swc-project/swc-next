@@ -590,7 +590,6 @@ struct SavedContext {
 
 impl<'a> SymbolTracker<'a> {
     pub fn init(tree: &Ast<'a>) -> Self {
-        assert!(tree.node_count() > 0);
         let allocator = tree.allocator();
         let nodes = tree.node_count();
         Self {
@@ -1271,8 +1270,7 @@ impl<'a> SymbolTracker<'a> {
     /// as a declaration for error recovery.
     pub fn declare(&mut self, tree: &Ast, name: AstWtf8, node: NodeId) -> SymbolId {
         let target = self.pending.scope;
-        assert!(target.index() < self.scope_maps.len());
-        assert!(node.index() < tree.node_count());
+        debug_assert!(node.index() < tree.node_count());
 
         let mut declaration_flags = self.pending.flags;
         declaration_flags.set(SymbolFlags::EXPORTED, self.export_state.is_exported());
@@ -1296,7 +1294,6 @@ impl<'a> SymbolTracker<'a> {
             }
             existing
         } else {
-            assert!(self.symbols.len() < u32::MAX as usize);
             let new_id = symbol_id(self.symbols.len());
             self.symbols.push(Symbol {
                 name,
@@ -1327,8 +1324,7 @@ impl<'a> SymbolTracker<'a> {
         node: NodeId,
         flags: ReferenceFlags,
     ) -> ReferenceId {
-        assert!(node.index() < tree.node_count());
-        assert!(self.references.len() < u32::MAX as usize);
+        debug_assert!(node.index() < tree.node_count());
         // Ambient syntax still resolves through the same declaration space,
         // but its erased expressions do not access the binding at runtime.
         // Normalize only actual references instead of checking ambient state
@@ -1351,14 +1347,12 @@ impl<'a> SymbolTracker<'a> {
 
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
-        assert!(id.index() < self.symbols.len());
         self.symbols[id.index()]
     }
 
     /// The `binding_identifier` node of the earliest declaration of `id`.
     /// Later declarations merged into the symbol do not change it.
     pub fn first_decl_of(&self, id: SymbolId) -> NodeId {
-        assert!(id.index() < self.first_decls.len());
         self.first_decls[id.index()]
     }
 
@@ -1413,8 +1407,8 @@ impl<'a> SymbolTracker<'a> {
         module_record: ModuleRecordBuilder<'a>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
-        assert!(self.saved_stack.is_empty());
-        assert_eq!(self.export_state, ExportState::None);
+        debug_assert!(self.saved_stack.is_empty());
+        debug_assert_eq!(self.export_state, ExportState::None);
         self.sync_scope_maps(scopes.list.len());
 
         // Declaration index: count, prefix-sum, assign destinations, then
@@ -1435,7 +1429,7 @@ impl<'a> SymbolTracker<'a> {
             symbol.declarations.len = 0;
             declaration_offset += count;
         }
-        assert_eq!(declaration_offset as usize, self.declarations.len());
+        debug_assert_eq!(declaration_offset as usize, self.declarations.len());
 
         let node_count = tree.node_count();
         let mut node_declarations = ArenaVec::with_capacity_in(node_count, self.allocator);
@@ -1445,7 +1439,8 @@ impl<'a> SymbolTracker<'a> {
             let index = (symbol.declarations.start + symbol.declarations.len) as usize;
             let declaration_id = DeclarationId::from_usize(index);
             let node_declaration = &mut node_declarations[declaration.node.index()];
-            assert!(node_declaration.replace(declaration_id).is_none());
+            let previous = node_declaration.replace(declaration_id);
+            debug_assert!(previous.is_none());
             symbol.declarations.len += 1;
         }
 
@@ -1899,12 +1894,12 @@ fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
 
 #[inline]
 fn symbol_id(index: usize) -> SymbolId {
-    assert!(index < SymbolId::MAX);
+    debug_assert!(index < SymbolId::MAX);
     SymbolId::from_usize(index)
 }
 
 #[inline]
 fn reference_id(index: usize) -> ReferenceId {
-    assert!(index < ReferenceId::MAX);
+    debug_assert!(index < ReferenceId::MAX);
     ReferenceId::from_usize(index)
 }

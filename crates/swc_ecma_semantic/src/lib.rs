@@ -67,19 +67,16 @@ pub struct Semantic<'a> {
 impl<'a> Semantic<'a> {
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
-        assert!(id.index() < self.symbols.len());
         self.symbols[id.index()]
     }
 
     /// The reference with the given id.
     pub fn reference(&self, id: ReferenceId) -> Reference {
-        assert!(id.index() < self.references.len());
         self.references[id.index()]
     }
 
     /// The declaration with the given id.
     pub fn declaration(&self, id: DeclarationId) -> Declaration {
-        assert!(id.index() < self.declarations.len());
         self.declarations[id.index()]
     }
 
@@ -105,7 +102,6 @@ impl<'a> Semantic<'a> {
     /// //         ^ the same symbol, through the reference
     /// ```
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
-        assert!(node.index() < self.node_declarations.len());
         self.node_declarations[node.index()]
             .map(|id| self.declaration(id).symbol)
             .or_else(|| self.node_references[node.index()].and_then(|id| self.reference(id).symbol))
@@ -114,14 +110,12 @@ impl<'a> Semantic<'a> {
     /// The declaration recorded at `node`, or `None` when the node is not a
     /// declaration site.
     pub fn declaration_of(&self, node: NodeId) -> Option<DeclarationId> {
-        assert!(node.index() < self.node_declarations.len());
         self.node_declarations[node.index()]
     }
 
     /// The reference recorded at `node`, or `None` when the node is
     /// not a reference site.
     pub fn reference_of(&self, node: NodeId) -> Option<ReferenceId> {
-        assert!(node.index() < self.node_references.len());
         self.node_references[node.index()]
     }
 
@@ -129,19 +123,16 @@ impl<'a> Semantic<'a> {
     /// node (function, block, class, ...) maps to the scope it creates;
     /// that scope's parent is the enclosing scope.
     pub fn scope_of(&self, node: NodeId) -> ScopeId {
-        assert!(node.index() < self.node_scopes.len());
         self.node_scopes[node.index()]
     }
 
     /// The structural parent of `node`, or `None` at the root.
     pub fn parent_of(&self, node: NodeId) -> Option<NodeId> {
-        assert!(node.index() < self.node_parents.len());
         self.node_parents[node.index()]
     }
 
     /// Walks from `node` up to the root, yielding `node` first.
     pub fn ancestors(&self, node: Option<NodeId>) -> SemanticAncestorIterator<'_> {
-        assert!(node.is_none_or(|node| node.index() < self.node_parents.len()));
         SemanticAncestorIterator {
             node_parents: &self.node_parents,
             current: node,
@@ -165,7 +156,6 @@ impl<'a> Semantic<'a> {
         let range = self.symbol(id).declarations;
         let start = range.start as usize;
         let end = start + range.len as usize;
-        assert!(end <= self.declarations.len());
         &self.declarations[start..end]
     }
 
@@ -173,7 +163,6 @@ impl<'a> Semantic<'a> {
     /// not uses; those are returned by [`Semantic::declarations`]. A dynamic
     /// `with` reference is included under its potential lexical fallback.
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
-        assert!(id.index() < self.use_ranges.len());
         let range = self.use_ranges[id.index()];
         let start = range.start as usize;
         &self.use_ids[start..start + range.len as usize]
@@ -190,7 +179,6 @@ impl<'a> Semantic<'a> {
     /// //               lives in the function scope
     /// ```
     pub fn binding(&self, scope_id: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        assert!(scope_id.index() < self.scope_maps.len());
         self.scope_maps[scope_id.index()]
             .get(name)
             .copied()
@@ -200,7 +188,6 @@ impl<'a> Semantic<'a> {
     /// Every symbol declared directly in `scope`. A hoisting `var`
     /// appears in its hoist target, not in blocks it passes through.
     pub fn bindings(&self, scope_id: ScopeId) -> BindingIterator<'_> {
-        assert!(scope_id.index() < self.scope_maps.len());
         BindingIterator {
             inner: self.scope_maps[scope_id.index()].values(),
         }
@@ -323,7 +310,6 @@ impl Iterator for SemanticAncestorIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.current?;
-        assert!(node.index() < self.node_parents.len());
         self.current = self.node_parents[node.index()];
         Some(node)
     }
