@@ -1,13 +1,12 @@
 codegen * typescript
 ========================
-Positive Passed: 13139/13156 (99.87%)
+Positive Passed: 13140/13156 (99.88%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts - parser: Invalid character at start of identifier at 110..110
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - parser: Unexpected token '<' at 128..129
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
-Failed: fixtures/typescript/tests/cases/compiler/yieldExpressionInnerCommentEmit.ts - yieldExpressionInnerCommentEmit.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticPropertyNameConflictsInAmbientContext.ts - parser: Classes may not have a static property named 'prototype' at 438..447
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 11..19
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 18..26

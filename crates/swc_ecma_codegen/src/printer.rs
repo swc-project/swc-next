@@ -1689,14 +1689,6 @@ impl<'a> Printer<'a> {
         self.has_leading_line_terminator_before(offset)
     }
 
-    fn will_print_expr_comments(&self, expr: Expr) -> bool {
-        !self.options.minify
-            && self.options.comments
-            && self.comments[self.next_comment..]
-                .first()
-                .is_some_and(|comment| comment.span.end <= expr.span(self.ast).start)
-    }
-
     fn print_expr_with_leading_comments_in_parens(&mut self, expr: Expr, level: Precedence) {
         self.print("(");
         self.print_newline();
@@ -1716,14 +1708,6 @@ impl<'a> Printer<'a> {
         } else {
             self.print_expr(expr, level);
         }
-    }
-
-    fn print_expr_without_leading_newline(&mut self, expr: Expr, level: Precedence) {
-        if self.will_print_expr_comments(expr) || self.expr_has_leading_line_terminator(expr) {
-            self.print_expr_with_leading_comments_in_parens(expr, level);
-            return;
-        }
-        self.print_expr(expr, level);
     }
 
     fn print_expr(&mut self, expr: Expr, level: Precedence) {
@@ -1997,7 +1981,7 @@ impl<'a> Printer<'a> {
                 }
                 if let Some(value) = e.argument(self.ast) {
                     self.print(" ");
-                    self.print_expr_without_leading_newline(value, Precedence::Yield);
+                    self.print_expr_without_leading_line_terminator(value, Precedence::Yield);
                 }
                 if wrap {
                     self.print(")");

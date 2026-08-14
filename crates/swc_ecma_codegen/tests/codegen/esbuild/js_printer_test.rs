@@ -524,7 +524,7 @@ fn test_comments_and_parentheses() {
     );
     expect_printed(
         "function *x() { yield (/* foo */ y) }",
-        "function* x() {\n  yield (\n    /* foo */\n    y\n  );\n}\n",
+        "function* x() {\n  yield /* foo */ y;\n}\n",
     );
 }
 
