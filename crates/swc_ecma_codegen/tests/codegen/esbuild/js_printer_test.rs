@@ -453,7 +453,7 @@ fn test_for() {
     expect_printed("for (x(a in b);;);", "for (x(a in b); ; ) ;\n");
     expect_printed("for (x[a in b];;);", "for (x[a in b]; ; ) ;\n");
     expect_printed("for (x?.[a in b];;);", "for (x?.[a in b]; ; ) ;\n");
-    expect_printed("for ((x => a in b);;);", "for (((x) => a in b); ; ) ;\n");
+    expect_printed("for ((x => a in b);;);", "for ((x) => (a in b); ; ) ;\n");
     expect_printed("for (let a in b, c);", "for (let a in b, c) ;\n");
     expect_printed("for (let a of (b, c));", "for (let a of (b, c)) ;\n");
 }

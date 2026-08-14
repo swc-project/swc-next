@@ -2673,9 +2673,11 @@ impl<'a> Printer<'a> {
 
     fn print_arrow(&mut self, e: ArrowFunctionExpression, level: Precedence) {
         let old_forbid_in = self.forbid_in;
-        let wrap = level > Precedence::Assignment || self.forbid_in;
+        let wrap = level > Precedence::Assignment;
         if wrap {
             self.print("(");
+        }
+        if old_forbid_in {
             self.forbid_in = false;
         }
         if e.r#async(self.ast) {
@@ -2712,6 +2714,9 @@ impl<'a> Printer<'a> {
         match self.ast.arrow_function_body_data(e.body(self.ast)) {
             ArrowFunctionBodyData::FunctionBody(body) => self.print_function_body(body),
             ArrowFunctionBodyData::Expr(value) => {
+                if old_forbid_in && !wrap {
+                    self.forbid_in = true;
+                }
                 if self.options.comments {
                     let span = value.span(self.ast);
                     if self

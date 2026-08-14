@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 13131/13156 (99.81%)
+Positive Passed: 13134/13156 (99.83%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/discriminateWithOptionalProperty4.ts - discriminateWithOptionalProperty4.ts: codegen output changed after reparse 
@@ -25,6 +25,3 @@ Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.t
 Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlFileWithinDeclarationFile.ts - parser: 'const' declarations must be initialized at 384..392
 Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlImport.ts - parser: 'const' declarations must be initialized at 384..392
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parser: Expected a type, but found 'break' at 34..39
-Failed: fixtures/typescript/tests/cases/conformance/statements/forStatements/forStatements.ts - forStatements.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/statements/forStatements/forStatementsMultipleInvalidDecl.ts - forStatementsMultipleInvalidDecl.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/statements/forStatements/forStatementsMultipleValidDecl.ts - forStatementsMultipleValidDecl.ts: codegen output changed after reparse 
