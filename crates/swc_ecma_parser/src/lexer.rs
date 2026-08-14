@@ -1769,7 +1769,7 @@ mod tests {
     }
 
     #[test]
-    fn reserves_capacity_only_when_collecting_comments() {
+    fn initialization() {
         let allocator = Allocator::new();
         let small_source = " ".repeat(512);
 
@@ -1785,26 +1785,26 @@ mod tests {
     }
 
     #[test]
-    fn skips_ascii_and_slow_path_trivia() {
+    fn trivia() {
         let token = next_after_trivia(" \t\x0B\x0Cname", false);
         assert_eq!(token.span, Span::new(4, 8));
         assert!(!token.has_line_terminator_before());
 
-        for source in [
-            "\r\nname",
-            "// line\nname",
-            "/* block\ncomment */name",
-            "\u{2028}name",
-        ] {
-            let token = next_after_trivia(source, false);
-            let start = source
-                .as_bytes()
-                .windows(4)
-                .position(|window| window == b"name")
-                .unwrap() as u32;
-            assert_eq!(token.span, Span::new(start, start + 4));
-            assert!(token.has_line_terminator_before());
-        }
+        let token = next_after_trivia("\r\nname", false);
+        assert_eq!(token.span, Span::new(2, 6));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("// line\nname", false);
+        assert_eq!(token.span, Span::new(8, 12));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("/* block\ncomment */name", false);
+        assert_eq!(token.span, Span::new(19, 23));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("\u{2028}name", false);
+        assert_eq!(token.span, Span::new(3, 7));
+        assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia("\u{00A0}name", false);
         assert_eq!(token.span, Span::new(2, 6));
@@ -1814,20 +1814,17 @@ mod tests {
         assert_eq!(token.span, Span::new(13, 17));
         assert!(token.has_line_terminator_before());
 
-        for source in ["--> comment\nname", " \t--> comment\nname"] {
-            let token = next_after_trivia(source, true);
-            let start = source
-                .as_bytes()
-                .windows(4)
-                .position(|window| window == b"name")
-                .unwrap() as u32;
-            assert_eq!(token.span, Span::new(start, start + 4));
-            assert!(token.has_line_terminator_before());
-        }
+        let token = next_after_trivia("--> comment\nname", true);
+        assert_eq!(token.span, Span::new(12, 16));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia(" \t--> comment\nname", true);
+        assert_eq!(token.span, Span::new(14, 18));
+        assert!(token.has_line_terminator_before());
     }
 
     #[test]
-    fn scans_template_sentinels() {
+    fn template() {
         let token = next_template("`plain $ value`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert_eq!(token.span, Span::new(0, 15));
@@ -1839,17 +1836,11 @@ mod tests {
         let token = next_template("`escaped \\` value`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
-    }
 
-    #[test]
-    fn marks_carriage_returns_for_template_normalization() {
         let token = next_template("`first\r\nsecond`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
-    }
 
-    #[test]
-    fn scans_template_continuations() {
         let allocator = Allocator::new();
 
         let mut lexer = Lexer::init(
@@ -1867,10 +1858,7 @@ mod tests {
         let token = lexer.re_scan_template_continuation(0).unwrap();
         assert_eq!(token.tag, TokenTag::TemplateTail);
         assert_eq!(token.span, Span::new(0, 6));
-    }
 
-    #[test]
-    fn reports_unterminated_templates() {
         assert_eq!(
             next_template("`unterminated"),
             Err(LexicalError::NonTerminatedTemplateLiteral)
