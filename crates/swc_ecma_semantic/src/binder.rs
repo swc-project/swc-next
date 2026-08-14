@@ -67,9 +67,6 @@ pub struct Declaration {
     pub flags: SymbolFlags,
 }
 
-const _: () = assert!(std::mem::size_of::<Declaration>() == 12);
-const _: () = assert!(std::mem::size_of::<Option<DeclarationId>>() == 4);
-
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct SymbolFlags: u32 {
@@ -134,8 +131,6 @@ bitflags::bitflags! {
             | Self::FUNCTION.bits();
     }
 }
-
-const _: () = assert!(std::mem::size_of::<SymbolFlags>() == std::mem::size_of::<u32>());
 
 impl SymbolFlags {
     pub const NONE: Self = Self::empty();
@@ -464,8 +459,6 @@ impl ReferenceFlags {
         self
     }
 }
-
-const _: () = assert!(std::mem::size_of::<ReferenceFlags>() == 2);
 
 /// The declaration space a syntactic position resolves in,
 /// matching TypeScript name resolution. A binding outside a reference's

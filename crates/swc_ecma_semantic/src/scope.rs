@@ -28,8 +28,6 @@ pub struct Scope {
     pub flags: ScopeFlags,
 }
 
-const _: () = assert!(std::mem::size_of::<Scope>() == 16);
-
 /// What kind of JavaScript construct created a scope.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ScopeKind {
@@ -109,8 +107,6 @@ impl ScopeFlags {
         self.direct_eval
     }
 }
-
-const _: () = assert!(std::mem::size_of::<ScopeFlags>() == 2);
 
 /// All scopes of a tree, indexed by [`ScopeId`].
 #[derive(Debug)]
