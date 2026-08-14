@@ -2962,6 +2962,7 @@ impl<'a> Printer<'a> {
             loop {
                 match ast.expr_data(expression) {
                     ExprData::IdentifierReference(_) => return false,
+                    ExprData::ParenthesizedExpression(_) => return false,
                     ExprData::CallExpression(call) => expression = call.callee(ast),
                     ExprData::MemberExpression(member) if !member.computed(ast) => {
                         let name = match ast.property_key_data(member.property(ast)) {

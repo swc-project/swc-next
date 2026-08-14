@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 13119/13156 (99.72%)
+Positive Passed: 13129/13156 (99.79%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/deferredConditionalTypes2.ts - parser: Expected a type, but found '-' at 114..115
@@ -12,25 +12,15 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - par
 Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - parser: Unexpected token '<' at 128..129
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - parser: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/yieldExpressionInnerCommentEmit.ts - yieldExpressionInnerCommentEmit.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticAutoAccessorsWithDecorators.ts - staticAutoAccessorsWithDecorators.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticPropertyNameConflictsInAmbientContext.ts - parser: Classes may not have a static property named 'prototype' at 438..447
-Failed: fixtures/typescript/tests/cases/conformance/decorators/class/decoratorChecksFunctionBodies.ts - decoratorChecksFunctionBodies.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/decorators/legacyDecorators-contextualTypes.ts - legacyDecorators-contextualTypes.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck59.ts - generatorTypeCheck59.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck61.ts - generatorTypeCheck61.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 11..19
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 18..26
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 18..26
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 26..34
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - parser: Expected 'class' keyword, but found 'abstract' at 26..34
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-arguments.ts - esDecorators-arguments.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-contextualTypes.ts - esDecorators-contextualTypes.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-decoratorExpression.2.ts - esDecorators-decoratorExpression.2.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-preservesThis.ts - esDecorators-preservesThis.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardsInConditionalExpression.ts - typeGuardsInConditionalExpression.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardsInFunctionAndModuleBlock.ts - typeGuardsInFunctionAndModuleBlock.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardsInRightOperandOfAndAndOperator.ts - typeGuardsInRightOperandOfAndAndOperator.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.1.ts - index.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.2.ts - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 30..35
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.3.ts - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 86..91
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - parser: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
