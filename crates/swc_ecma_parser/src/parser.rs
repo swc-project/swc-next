@@ -8031,23 +8031,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        let context = if escaped_async {
-            self.context
-        } else {
-            enter_grammar_context![&mut self.context, +Await]
-        };
-        let cover = self.parse_parenthesized_cover();
-        self.context = context;
-        let cover = cover?;
+        let checkpoint = self.checkpoint();
+        let cover = self.parse_parenthesized_cover()?;
 
         let is_arrow = self.current_token.tag == TokenTag::Arrow
             && !self.current_token.has_line_terminator_before()
             && minimum <= Precedence::Assignment;
         if is_arrow {
+            self.rewind(checkpoint);
             if escaped_async {
                 self.report_escaped_keyword(async_span);
             }
-            return self.cover_to_arrow_function(cover, true, async_span.start);
+            return self.parse_arrow(true, async_span.start);
         }
         self.cover_to_call_expression(cover, async_identifier)
     }

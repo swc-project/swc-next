@@ -1,7 +1,7 @@
 parser * babel
 ========================
-Positive Passed: 2210/2238 (98.75%)
-Negative Passed: 1599/1743 (91.74%)
+Positive Passed: 2214/2238 (98.93%)
+Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js - core/opts/allowAwaitOutsideFunction-false: expected a parse or early error, but pipeline succeeded
@@ -16,11 +16,7 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/in
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/invalid-single-binding-unary-argument/input.js - es2017/async-arrow/invalid-single-binding-unary-argument: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/parenthesized-array-pattern-nested-2/input.js - es2017/async-arrow/parenthesized-array-pattern-nested-2: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/parenthesized-array-pattern-nested/input.js - es2017/async-arrow/parenthesized-array-pattern-nested: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/parenthesized-binding-member-expression/input.js - es2017/async-arrow/parenthesized-binding-member-expression: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/async-await-as-arrow-binding-identifier/input.js - es2017/async-functions/async-await-as-arrow-binding-identifier: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-identifier-inside-async-call-inside-parameters-of-async-arrow/input.js - es2017/async-functions/await-identifier-inside-async-call-inside-parameters-of-async-arrow: parser: Unexpected token ')' at 35..36
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-inside-async-call-inside-parameters-of-function-inside-async-function/input.js - es2017/async-functions/await-inside-async-call-inside-parameters-of-function-inside-async-function: parser: Unexpected token ')' at 49..50
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-inside-params-of-arrow-inside-arguments-of-async-call/input.js - es2017/async-functions/await-inside-params-of-arrow-inside-arguments-of-async-call: parser: Unexpected token ')' at 18..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/valid-await-expr-using-in/input.js - es2017/async-functions/valid-await-expr-using-in: parser: 'in' is reserved and cannot be used as a binding identifier at 35..37
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/valid-await-expr-using-instanceof/input.js - es2017/async-functions/valid-await-expr-using-instanceof: parser: 'instanceof' is reserved and cannot be used as a binding identifier at 35..45
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/16/input.js - es2018/object-rest-spread/16: expected a parse or early error, but pipeline succeeded
@@ -34,7 +30,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-sp
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest/input.js - es2018/object-rest-spread/no-pattern-in-rest: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2020/nullish-coalescing-operator/no-paren-nullish-or/input.js - es2020/nullish-coalescing-operator/no-paren-nullish-or: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/arguments-in-key/input.js - es2022/class-properties/arguments-in-key: semantic: 'arguments' is not allowed in class field initializers or static blocks at 33..42
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/await-identifier-in-computed-property-in-arguments-of-async-call/input.js - es2022/class-properties/await-identifier-in-computed-property-in-arguments-of-async-call: parser: Unexpected token ']' at 25..26
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/edge-cases/input.js - es2022/class-properties/edge-cases: parser: Expected '(' for method definition, but found '}' at 249..250
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-4/input.js - es2022/private-in/invalid-private-followed-by-in-4: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak/input.js - es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak: expected a parse or early error, but pipeline succeeded

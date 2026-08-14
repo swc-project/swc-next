@@ -1,15 +1,11 @@
 codegen * babel
 ========================
-Positive Passed: 2214/2238 (98.93%)
+Positive Passed: 2218/2238 (99.11%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-identifier-inside-async-call-inside-parameters-of-async-arrow/input.js - parser: Unexpected token ')' at 35..36
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-inside-async-call-inside-parameters-of-function-inside-async-function/input.js - parser: Unexpected token ')' at 49..50
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/await-inside-params-of-arrow-inside-arguments-of-async-call/input.js - parser: Unexpected token ')' at 18..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/valid-await-expr-using-in/input.js - parser: 'in' is reserved and cannot be used as a binding identifier at 35..37
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/valid-await-expr-using-instanceof/input.js - parser: 'instanceof' is reserved and cannot be used as a binding identifier at 35..45
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/await-identifier-in-computed-property-in-arguments-of-async-call/input.js - parser: Unexpected token ']' at 25..26
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/edge-cases/input.js - parser: Expected '(' for method definition, but found '}' at 249..250
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-await-expr-using-in/input.js - parser: 'in' is reserved and cannot be used as a binding identifier at 35..37
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-await-expr-using-instanceof/input.js - parser: 'instanceof' is reserved and cannot be used as a binding identifier at 35..45
