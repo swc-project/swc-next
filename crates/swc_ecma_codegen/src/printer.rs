@@ -121,7 +121,7 @@ pub fn print<'a>(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options) 
         allocator,
         ast: tree,
         options,
-        js: ArenaVec::new_in(allocator),
+        js: ArenaVec::with_capacity_in(tree.source().len(), allocator),
         comments,
         expr_visitor_stack: ArenaVec::new_in(allocator),
         builder: make_chunk_builder(allocator, line_offset_tables),
