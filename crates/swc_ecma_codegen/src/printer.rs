@@ -51,6 +51,17 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
     if was_negative { -n } else { n }
 }
 
+#[inline(always)]
+fn can_print_decimal_verbatim(raw: &[u8]) -> bool {
+    matches!(
+        raw,
+        [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
+    ) || ((4..=12).contains(&raw.len())
+        && matches!(raw.first(), Some(b'1'..=b'9'))
+        && matches!(raw.last(), Some(b'1'..=b'9'))
+        && raw[1..raw.len() - 1].iter().all(u8::is_ascii_digit))
+}
+
 struct Printer<'a> {
     allocator: &'a Allocator,
     ast: &'a Ast<'a>,
@@ -3029,10 +3040,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_number_literal(&mut self, raw: &str, level: Precedence) {
-        if matches!(
-            raw.as_bytes(),
-            [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
-        ) {
+        if can_print_decimal_verbatim(raw.as_bytes()) {
             self.print_space_before_identifier();
             self.print_bytes(raw);
             self.need_space_before_dot = self.js.len();
@@ -3046,10 +3054,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_number_expr(&mut self, raw: &str, level: Precedence) {
-        if matches!(
-            raw.as_bytes(),
-            [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
-        ) {
+        if can_print_decimal_verbatim(raw.as_bytes()) {
             self.print_space_before_identifier();
             self.print_bytes(raw);
             self.need_space_before_dot = self.js.len();
