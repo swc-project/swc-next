@@ -7153,7 +7153,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else if token.tag.is_logical_operator() {
                 self.parse_logical_expression(left, token.tag)?
             } else if token.tag.is_assignment_operator() {
-                self.parse_assignment_expression(precedence, left, token.tag)?
+                self.parse_assignment_expression(
+                    precedence,
+                    left,
+                    token.tag,
+                    opts.respect_in_parameter,
+                )?
             } else {
                 self.parse_infix(precedence, left)?
             };
@@ -10943,6 +10948,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         precedence: Precedence,
         left: Expr,
         tag: TokenTag,
+        respect_in_parameter: bool,
     ) -> Option<Expr> {
         let start = left.span(&self.ast).start;
         let target = if tag == TokenTag::Assign {
@@ -10963,7 +10969,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         };
         self.advance()?;
-        let right = self.parse_expr(precedence, ParseExpressionOpts::default())?;
+        let right = self.parse_expr(
+            precedence,
+            ParseExpressionOpts {
+                respect_in_parameter,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(&self.ast).end),
             target,
