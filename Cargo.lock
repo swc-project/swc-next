@@ -2806,6 +2806,7 @@ name = "swc_next_ecma_codegen"
 version = "0.1.1"
 dependencies = [
  "clap",
+ "memchr",
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",

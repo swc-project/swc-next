@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use memchr::memchr3;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
@@ -430,7 +431,8 @@ impl<'a> Printer<'a> {
         while start < value.len() {
             let mut end = start;
             let mut newline_width = 0;
-            while end < value.len() {
+            while let Some(index) = memchr3(b'\n', b'\r', 0xe2, &value[end..]) {
+                end += index;
                 newline_width = match value[end] {
                     b'\n' => 1,
                     b'\r' => usize::from(value.get(end + 1) == Some(&b'\n')) + 1,
