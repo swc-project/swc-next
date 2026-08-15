@@ -6605,16 +6605,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             TokenTag::Using => {
                 let next = self.peek_ahead()?;
-                if next.has_line_terminator_before()
-                    || matches!(
-                        next.tag,
-                        TokenTag::In
-                            | TokenTag::Dot
-                            | TokenTag::LeftParen
-                            | TokenTag::LeftBracket
-                            | TokenTag::LeftBrace
-                    )
-                {
+                if next.has_line_terminator_before() || !can_start_binding_identifier(next.tag) {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
 

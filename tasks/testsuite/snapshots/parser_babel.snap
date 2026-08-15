@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2220/2238 (99.20%)
+Positive Passed: 2223/2238 (99.33%)
 Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -34,9 +34,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/invalid-for-using-of-no-initializer/input.js - es2026/explicit-resource-management/invalid-for-using-of-no-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 7..8
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-for-in/input.js - es2026/explicit-resource-management/valid-using-as-identifier-for-in: parser: Unexpected token '``' in binding pattern at 77..79
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-for-init/input.js - es2026/explicit-resource-management/valid-using-as-identifier-for-init: parser: Unexpected token ';' in binding pattern at 13..14
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-for-of/input.js - es2026/explicit-resource-management/valid-using-as-identifier-for-of: parser: Unexpected token '``' in binding pattern at 77..79
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/invalid-syntax/migrated_0216/input.js - esprima/invalid-syntax/migrated_0216: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/statement-iteration/migrated_0021/input.js - esprima/statement-iteration/migrated_0021: parser: Expected ';' after for-loop init, but found ')' at 23..24
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
