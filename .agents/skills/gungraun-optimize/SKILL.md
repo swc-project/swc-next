@@ -13,7 +13,10 @@ Act as a performance engineer. Measure in GitHub Actions, inspect Gungraun profi
 - Start a dedicated stack from the repository trunk. Do not inspect, adopt, reuse, modify, rebase, wait for, or otherwise interact with unrelated pull requests or their branches.
 - Keep exactly one focused optimization commit in every accepted stack layer relative to its parent. Keep exactly one accepted optimization in the corresponding pull request diff.
 - Never modify AST code or its generated representation. In this repository, treat `crates/swc_ecma_ast/**` and `crates/swc_ast_macros/**` as forbidden paths. Also reject changes elsewhere that alter AST types, fields, variants, layout, schema, serialization shape, generators, or generated AST output.
-- Check staged and committed path lists before every publication. Abandon any hypothesis that requires an AST change; do not request an exception.
+- Default to target-independent production changes. Unless the user explicitly requests optimization for a named architecture, do not introduce or expand architecture-specific code paths or build configuration, including `cfg(target_arch = ...)`, `cfg!(target_arch = ...)`, `CARGO_CFG_TARGET_ARCH`, `std::arch` or `core::arch` intrinsics, inline assembly, `#[target_feature]`, runtime CPU-feature detection, or architecture-specific `RUSTFLAGS`, `target-cpu`, or `target-feature` settings.
+- Treat the Linux x86_64 Gungraun runner as a measurement environment only. Never use its architecture, profiles, or an existing architecture-specific implementation as permission to specialize production code for x86_64.
+- When the user explicitly requests a named-architecture optimization, scope every performance claim to that architecture, retain a correct portable fallback and compatibility with supported targets, run available cross-target correctness checks, and report every target that was not validated.
+- Check staged and committed path lists and inspect the staged diff before every publication. Abandon any hypothesis that requires an AST change; do not request an exception. Unless the user explicitly requested a named architecture, also abandon any hypothesis that violates the architecture-portability guard instead of asking for permission to retain it.
 - Never push the default branch.
 
 ## Enforce the measurement contract
@@ -63,6 +66,7 @@ When temporary CI is required:
 - Inspect regular and differential flamegraphs or annotate the retained Callgrind data. Find functions with high self cost, unexpectedly repeated work, avoidable allocations, poor locality, expensive conversions, or unnecessary library calls.
 - Before creating or measuring a provisional layer, record and freeze the comparable target portfolio, related cases, user-designated or workload-critical protected cases, and case frequencies. Use trustworthy documented production frequencies when available; otherwise assign and disclose an equal frequency of one to every case. Do not change these classifications or weights after seeing provisional results without disclosing the reason and obtaining user approval.
 - Select one hypothesis that the available profile evidence supports. Do not optimize from intuition alone.
+- Reject a hypothesis that requires new or expanded architecture-specific production code or build settings unless the user explicitly requested optimization for that named architecture. Do not infer such a request from the CI runner or profile evidence.
 
 ### 2. Create one provisional layer
 
@@ -71,7 +75,7 @@ When temporary CI is required:
 - Preserve semantics and public compatibility unless the user explicitly allows a non-AST change.
 - Keep the patch small enough that its benchmark effect is attributable to one idea.
 - Run narrow correctness tests first, then the broader relevant checks required by the repository.
-- Stage only intended files, verify the AST path guard, and create one provisional optimization commit.
+- Stage only intended files, verify the AST path guard, and inspect staged additions for `target_arch`, `CARGO_CFG_TARGET_ARCH`, `std::arch`, `core::arch`, `target_feature`, runtime feature-detection macros, assembly, and architecture-specific compiler flags or equivalents. Accept such additions only under the explicit named-architecture exception, then create one provisional optimization commit.
 
 ### 3. Submit and measure
 
@@ -131,5 +135,6 @@ Report:
 - exact before/after metrics and percentages from the associated Actions runs;
 - benchmark names, base/head SHAs, run links, and relevant profile or flamegraph evidence;
 - correctness checks and any existing wall-time corroboration;
+- for explicitly requested architecture-specific work, the named architecture, portable fallback, target-scoped claims, cross-target checks, and validation gaps;
 - rejected attempts, remaining tradeoffs, and promising next targets;
 - the final `gh stack` order and proof that temporary CI changes, commits, pull requests, and branches were cleaned up as required.
