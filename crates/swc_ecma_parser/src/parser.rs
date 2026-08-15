@@ -1340,6 +1340,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_await_expression_statement(&mut self, start: u32) -> Option<Stmt> {
         let expression = self.parse_await_expression(start)?;
+        let expression = self.parse_binary_expression_from_left(expression)?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -1403,7 +1404,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn is_using_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Using);
         let next = self.peek_ahead()?;
-        if next.tag.is_identifier_like() && !self.can_insert_implicit_semicolon(next) {
+        if can_start_binding_identifier(next.tag) && !self.can_insert_implicit_semicolon(next) {
             return Some(false);
         }
         Some(true)
@@ -10863,6 +10864,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.ast
                 .expr_update_expression(Span::new(start, end), target, operator, prefix),
         )
+    }
+
+    fn parse_binary_expression_from_left(&mut self, mut left: Expr) -> Option<Expr> {
+        loop {
+            let tag = self.current_token.tag;
+            left = if tag.is_binary_operator() {
+                self.parse_binary_expression(left, tag)?
+            } else if tag.is_logical_operator() {
+                self.parse_logical_expression(left, tag)?
+            } else {
+                return Some(left);
+            };
+        }
     }
 
     fn parse_binary_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
