@@ -15,13 +15,13 @@ Act as a performance engineer. Measure in GitHub Actions, inspect Gungraun profi
 - Never modify AST code or its generated representation. In this repository, treat `crates/swc_ecma_ast/**` and `crates/swc_ast_macros/**` as forbidden paths. Also reject changes elsewhere that alter AST types, fields, variants, layout, schema, serialization shape, generators, or generated AST output.
 - Default to target-independent production changes. Unless the user explicitly requests optimization for a named architecture, do not introduce or expand architecture-specific code paths or build configuration, including `cfg(target_arch = ...)`, `cfg!(target_arch = ...)`, `CARGO_CFG_TARGET_ARCH`, `std::arch` or `core::arch` intrinsics, inline assembly, `#[target_feature]`, runtime CPU-feature detection, or architecture-specific `RUSTFLAGS`, `target-cpu`, or `target-feature` settings.
 - Treat the Linux x86_64 Gungraun runner as a measurement environment only. Never use its architecture, profiles, or an existing architecture-specific implementation as permission to specialize production code for x86_64.
-- When the user explicitly requests a named-architecture optimization, scope every performance claim to that architecture, retain a correct portable fallback and compatibility with supported targets, run available cross-target correctness checks, and report every target that was not validated.
+- When the user explicitly requests a named-architecture optimization, first confirm that a Linux Actions runner, Valgrind, and a valid Gungraun harness are available on that architecture. Require a GitHub Actions base/head comparison on that architecture which executes the optimized path; if it cannot be established, stop before editing and report the measurement blocker. Scope every performance claim to the measured architecture, retain a correct portable fallback and compatibility with supported targets, run available cross-target correctness checks, and report every target that was not validated.
 - Check staged and committed path lists and inspect the staged diff before every publication. Abandon any hypothesis that requires an AST change; do not request an exception. Unless the user explicitly requested a named architecture, also abandon any hypothesis that violates the architecture-portability guard instead of asking for permission to retain it.
 - Never push the default branch.
 
 ## Enforce the measurement contract
 
-- Treat Gungraun results produced by GitHub Actions for the relevant base and head revisions as the source of truth for comparative performance.
+- Treat Gungraun results produced by GitHub Actions for the relevant base and head revisions on the architecture that executes the evaluated code path as the source of truth for comparative performance.
 - Use local runs only to check correctness or that a harness starts successfully. Never support a performance claim with local benchmark output.
 - Default to Callgrind `Ir` (executed instructions). Use cache metrics or Cachegrind for cache work and DHAT for heap allocation or memory work.
 - Describe `Ir`, cache simulation, and estimated cycles as profiling metrics, not wall-clock time. Use an existing wall-time suite only as optional final corroboration; do not create one unless the user asks.
@@ -35,7 +35,7 @@ Act as a performance engineer. Measure in GitHub Actions, inspect Gungraun profi
 3. Read repository instructions and inspect only the worktree, trunk, remotes, stack state owned by this task, and existing user changes. Preserve unrelated work without investigating unrelated pull requests.
 4. Search manifests, benchmark targets, Gungraun macros and configuration, GitHub workflows, summary renderers, and wall-time suites. Prefer `rg` and `git grep`.
 5. Confirm GitHub authentication, runner access, the workflow trigger, and the installed `gh stack` commands. Never substitute another stacked-pull-request tool.
-6. Record the benchmark filter, base revision, Rust toolchain, Gungraun library version, runner version, build features, and relevant environment. Keep these invariant across comparisons.
+6. Record the benchmark filter, base revision, Rust toolchain, Gungraun library version, runner version and architecture, build features, and relevant environment. Keep these invariant across comparisons.
 
 ## Establish a valid CI harness
 
@@ -75,7 +75,7 @@ When temporary CI is required:
 - Preserve semantics and public compatibility unless the user explicitly allows a non-AST change.
 - Keep the patch small enough that its benchmark effect is attributable to one idea.
 - Run narrow correctness tests first, then the broader relevant checks required by the repository.
-- Stage only intended files, verify the AST path guard, and inspect staged additions for `target_arch`, `CARGO_CFG_TARGET_ARCH`, `std::arch`, `core::arch`, `target_feature`, runtime feature-detection macros, assembly, and architecture-specific compiler flags or equivalents. Accept such additions only under the explicit named-architecture exception, then create one provisional optimization commit.
+- Stage only intended files and verify the AST path guard. Inspect both the staged diff and each affected function or module's enclosing configuration, inherited `cfg` or `target_feature` attributes, and relevant existing Cargo configuration, build scripts, and compiler flags for `target_arch`, `CARGO_CFG_TARGET_ARCH`, `std::arch`, `core::arch`, runtime feature-detection macros, assembly, architecture-specific flags, or equivalents. Treat a change inside an existing architecture-gated scope as expanding that implementation. Accept it only under the explicit named-architecture exception, then create one provisional optimization commit.
 
 ### 3. Submit and measure
 
@@ -135,6 +135,6 @@ Report:
 - exact before/after metrics and percentages from the associated Actions runs;
 - benchmark names, base/head SHAs, run links, and relevant profile or flamegraph evidence;
 - correctness checks and any existing wall-time corroboration;
-- for explicitly requested architecture-specific work, the named architecture, portable fallback, target-scoped claims, cross-target checks, and validation gaps;
+- for explicitly requested architecture-specific work, the named and measured architecture, matching-architecture Actions run and exact base/head metrics, portable fallback, target-scoped claims, cross-target checks, and validation gaps;
 - rejected attempts, remaining tradeoffs, and promising next targets;
 - the final `gh stack` order and proof that temporary CI changes, commits, pull requests, and branches were cleaned up as required.
