@@ -1322,6 +1322,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     )
                     .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
             }
+            self.report_await_using_if_disallowed(await_span);
             return self.parse_await_expression_statement(start);
         }
         self.parse_expression_or_labeled_statement()
@@ -11871,6 +11872,63 @@ mod tests {
             ast.expr_data(ast.root_expression()),
             swc_next_ecma_ast::ExprData::BinaryExpression(_)
         ));
+    }
+
+    #[test]
+    fn await_using_context() {
+        let allocator = Allocator::new();
+        let options = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        let script = Parser::init(
+            &allocator,
+            "await using in object;",
+            options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert_eq!(script.diagnostics.len(), 1, "{:#?}", script.diagnostics);
+        assert_eq!(
+            script.diagnostics[0].message,
+            "'await using' is only valid in async functions or modules"
+        );
+
+        let function = Parser::init(
+            &allocator,
+            "function f() { await using instanceof C; }",
+            options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert_eq!(function.diagnostics.len(), 1, "{:#?}", function.diagnostics);
+        assert_eq!(
+            function.diagnostics[0].message,
+            "'await using' is only valid in async functions or modules"
+        );
+
+        let async_function = Parser::init(
+            &allocator,
+            "async function f() { await using in object; }",
+            options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(
+            async_function.diagnostics.is_empty(),
+            "{:#?}",
+            async_function.diagnostics
+        );
+
+        let module = Parser::init(
+            &allocator,
+            "await using in object;",
+            Options::default(),
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(module.diagnostics.is_empty(), "{:#?}", module.diagnostics);
     }
 
     #[test]
