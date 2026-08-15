@@ -11645,10 +11645,7 @@ fn can_start_element_key(tag: TokenTag) -> bool {
 }
 
 fn requires_same_line(tag: TokenTag) -> bool {
-    !matches!(
-        tag,
-        TokenTag::Static | TokenTag::Async | TokenTag::Get | TokenTag::Set
-    )
+    !matches!(tag, TokenTag::Static | TokenTag::Get | TokenTag::Set)
 }
 
 fn is_const_enum_head(after_const: Token) -> bool {

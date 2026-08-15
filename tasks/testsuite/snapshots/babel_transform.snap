@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 452/4069 (11.11%)
-Failed: 51/4069 (1.25%)
+Passed: 453/4069 (11.13%)
+Failed: 50/4069 (1.23%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 424/560 (75.71%)
-Failed: 44/560 (7.86%)
+Passed: 425/560 (75.89%)
+Failed: 43/560 (7.68%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -61,7 +61,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionPare
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg-createParenthesizedExpressions: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg/input.js - babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file1/input.ts - babel-generator/test/fixtures/sourcemaps/real-world-babel-file1: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/ClassBody-ClassProperty/input.js - parse: Expected '(' for method definition, but found '}' at 629..630
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpression/input.js - babel-generator/test/fixtures/types/LogicalExpression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/UnaryExpression/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/WithStatement/input.js - semantic: 'with' statements are not allowed in strict mode at 0..13
