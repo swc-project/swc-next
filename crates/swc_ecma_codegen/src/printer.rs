@@ -4664,10 +4664,19 @@ fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
     let value = ast
         .get_utf8(comment.value(ast.source().as_bytes()))
         .as_bytes();
-    ast.source()
+    if ast
+        .source()
         .as_bytes()
         .get(comment.span.start as usize..comment.span.start as usize + 3)
         .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
-        || value.windows(8).any(|window| window == b"@license")
-        || value.windows(9).any(|window| window == b"@preserve")
+    {
+        return true;
+    }
+
+    value.iter().enumerate().any(|(index, &byte)| {
+        byte == b'@'
+            && value
+                .get(index..)
+                .is_some_and(|rest| rest.starts_with(b"@license") || rest.starts_with(b"@preserve"))
+    })
 }
