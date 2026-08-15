@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2225/2238 (99.42%)
+Positive Passed: 2226/2238 (99.46%)
 Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -37,7 +37,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/invalid-synta
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-arrow-function-after-binary-operator/input.ts - typescript/arrow-function/async-arrow-function-after-binary-operator: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-call-in-conditional/input.ts - typescript/arrow-function/async-call-in-conditional: parser: Expected ',' or ')' in parenthesized expression, but found ':' at 365..366
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/async-call/with-optional-parameter/input.ts - typescript/async-call/with-optional-parameter: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/invalid/input.ts - typescript/cast/invalid: expected a parse or early error, but pipeline succeeded

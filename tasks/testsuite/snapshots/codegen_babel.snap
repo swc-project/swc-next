@@ -1,12 +1,11 @@
 codegen * babel
 ========================
-Positive Passed: 2229/2238 (99.60%)
+Positive Passed: 2230/2238 (99.64%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-module-block-top-level-using-binding/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 7..8
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-call-in-conditional/input.ts - parser: Expected ',' or ')' in parenthesized expression, but found ':' at 365..366
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/function-rest-trailing-comma/input.ts - parser: Rest parameter must be the last parameter at 37..38
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/valid-trailing-comma-for-rest/input.ts - parser: Rest parameter must be the last parameter at 29..30
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/declare-new-line/input.ts - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'enum' at 8..12
