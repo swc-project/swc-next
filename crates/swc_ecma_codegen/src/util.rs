@@ -46,6 +46,16 @@ pub(crate) fn parse_numeric_literal(raw: &[u8]) -> Option<f64> {
 pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, ascii_only: bool) {
     let value = value.as_bytes();
     out.push(quote);
+
+    // Most strings in JavaScript sources are printable ASCII and need no
+    // escaping. Copy those strings in one operation instead of growing the
+    // output one byte at a time.
+    if can_copy_quoted_ascii(value, quote) {
+        out.extend_from_slice(value);
+        out.push(quote);
+        return;
+    }
+
     let mut i = 0;
     while i < value.len() {
         let (cp, size) = next_wtf8_code_point(value, i);
@@ -118,6 +128,28 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, as
         }
     }
     out.push(quote);
+}
+
+fn can_copy_quoted_ascii(value: &[u8], quote: u8) -> bool {
+    let mut i = 0;
+    while i < value.len() {
+        let byte = value[i];
+        if !matches!(byte, b' '..=b'~') || byte == quote || byte == b'\\' {
+            return false;
+        }
+        if quote == b'`' && byte == b'$' && value.get(i + 1) == Some(&b'{') {
+            return false;
+        }
+        if byte == b'<'
+            && value
+                .get(i + 1..i.saturating_add(8))
+                .is_some_and(|tail| tail[0] == b'/' && tail[1..].eq_ignore_ascii_case(b"script"))
+        {
+            return false;
+        }
+        i += 1;
+    }
+    true
 }
 
 fn next_wtf8_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
