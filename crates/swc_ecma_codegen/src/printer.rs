@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use memchr::memchr;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
@@ -463,15 +464,19 @@ impl<'a> Printer<'a> {
     fn print_comment_text(&mut self, text: &[u8]) {
         // Avoid generating a comment containing the sequence "</script".
         let mut start = 0;
-        for index in 0..text.len().saturating_sub(7) {
-            if text[index] == b'<'
-                && text[index + 1] == b'/'
-                && text[index + 2..index + 8].eq_ignore_ascii_case(b"script")
+        let mut search_start = 0;
+        let search_end = text.len().saturating_sub(7);
+        while search_start < search_end
+            && let Some(relative_index) = memchr(b'<', &text[search_start..search_end])
+        {
+            let index = search_start + relative_index;
+            if text[index + 1] == b'/' && text[index + 2..index + 8].eq_ignore_ascii_case(b"script")
             {
                 self.print_bytes(&text[start..index + 1]);
                 self.print("\\");
                 start = index + 1;
             }
+            search_start = index + 1;
         }
         self.print_bytes(&text[start..]);
     }
