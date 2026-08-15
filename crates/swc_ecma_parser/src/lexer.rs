@@ -194,6 +194,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    #[inline(always)]
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
         self.handle_token(*target, HandleTokenMode::Append);
