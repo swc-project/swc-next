@@ -1420,8 +1420,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 }
 
-const IDENTIFIER_BATCH_SIZE: usize = 32;
-
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     let mut table = [true; 256];
     let mut byte = b'0' as usize;
@@ -1450,16 +1448,11 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!((start as usize) <= source.len());
     let mut position = start as usize;
 
-    'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
-        let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
-        for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
-                position += offset;
-                break 'search;
-            }
-        }
-        position += IDENTIFIER_BATCH_SIZE;
+    #[cfg(target_arch = "x86_64")]
+    {
+        position = scan_ascii_identifier_continue_x86_64(source, position);
     }
+
     while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
         position += 1;
     }
@@ -1467,6 +1460,53 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(position >= start as usize);
     debug_assert!(position <= source.len());
     position as u32
+}
+
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+fn scan_ascii_identifier_continue_x86_64(source: &[u8], mut position: usize) -> usize {
+    use std::arch::x86_64::{
+        __m128i, _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_loadu_si128, _mm_movemask_epi8,
+        _mm_or_si128, _mm_set1_epi8,
+    };
+
+    // SSE2 is part of the x86-64 baseline. Loads are bounded by the loop
+    // condition and may be unaligned.
+    unsafe {
+        let before_a = _mm_set1_epi8((b'a' - 1) as i8);
+        let after_z = _mm_set1_epi8((b'z' + 1) as i8);
+        let before_zero = _mm_set1_epi8((b'0' - 1) as i8);
+        let after_nine = _mm_set1_epi8((b'9' + 1) as i8);
+        let ascii_case_bit = _mm_set1_epi8(0x20);
+        let underscore = _mm_set1_epi8(b'_' as i8);
+        let dollar = _mm_set1_epi8(b'$' as i8);
+
+        while source.len() - position >= 16 {
+            let bytes = _mm_loadu_si128(source.as_ptr().add(position).cast::<__m128i>());
+            let lowercased = _mm_or_si128(bytes, ascii_case_bit);
+            let letters = _mm_and_si128(
+                _mm_cmpgt_epi8(lowercased, before_a),
+                _mm_cmpgt_epi8(after_z, lowercased),
+            );
+            let digits = _mm_and_si128(
+                _mm_cmpgt_epi8(bytes, before_zero),
+                _mm_cmpgt_epi8(after_nine, bytes),
+            );
+            let special = _mm_or_si128(
+                _mm_cmpeq_epi8(bytes, underscore),
+                _mm_cmpeq_epi8(bytes, dollar),
+            );
+            let valid = _mm_or_si128(_mm_or_si128(letters, digits), special);
+            let valid_mask = _mm_movemask_epi8(valid) as u16;
+
+            if valid_mask != u16::MAX {
+                return position + (!valid_mask).trailing_zeros() as usize;
+            }
+            position += 16;
+        }
+    }
+
+    position
 }
 
 fn is_surrogate_codepoint(cp: u32) -> bool {
