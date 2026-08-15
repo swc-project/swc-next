@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2219/2238 (99.15%)
+Positive Passed: 2220/2238 (99.20%)
 Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -31,7 +31,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properti
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/edge-cases/input.js - es2022/class-properties/edge-cases: parser: Expected '(' for method definition, but found '}' at 249..250
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-4/input.js - es2022/private-in/invalid-private-followed-by-in-4: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak/input.js - es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-await-expr-using/input.js - es2026/async-explicit-resource-management/valid-await-expr-using: parser: Expected a semicolon or an implicit semicolon after a statement, but found '?' at 72..73
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/invalid-for-using-of-no-initializer/input.js - es2026/explicit-resource-management/invalid-for-using-of-no-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 7..8

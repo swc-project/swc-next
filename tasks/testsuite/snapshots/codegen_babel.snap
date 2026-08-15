@@ -1,11 +1,10 @@
 codegen * babel
 ========================
-Positive Passed: 2223/2238 (99.33%)
+Positive Passed: 2224/2238 (99.37%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/edge-cases/input.js - parser: Expected '(' for method definition, but found '}' at 249..250
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-await-expr-using/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '?' at 72..73
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-module-block-top-level-using-binding/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 7..8
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-using-as-identifier-for-in/input.js - parser: Unexpected token '``' in binding pattern at 77..79

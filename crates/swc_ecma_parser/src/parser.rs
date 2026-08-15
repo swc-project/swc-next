@@ -1340,7 +1340,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_await_expression_statement(&mut self, start: u32) -> Option<Stmt> {
         let expression = self.parse_await_expression(start)?;
-        let expression = self.parse_binary_expression_from_left(expression)?;
+        let expression = self.parse_expr_from_left(
+            expression,
+            Precedence::Comma,
+            ParseExpressionOpts::default(),
+        )?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -7115,11 +7119,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[inline(always)]
     fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
-        let mut left = if self.current_token.tag == TokenTag::Identifier {
+        let left = if self.current_token.tag == TokenTag::Identifier {
             self.parse_plain_identifier()?
         } else {
             self.parse_prefix(opts.in_cover, minimum)?
         };
+        self.parse_expr_from_left(left, minimum, opts)
+    }
+
+    #[inline(always)]
+    fn parse_expr_from_left(
+        &mut self,
+        mut left: Expr,
+        minimum: Precedence,
+        opts: ParseExpressionOpts,
+    ) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
 
         loop {
@@ -10864,19 +10878,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.ast
                 .expr_update_expression(Span::new(start, end), target, operator, prefix),
         )
-    }
-
-    fn parse_binary_expression_from_left(&mut self, mut left: Expr) -> Option<Expr> {
-        loop {
-            let tag = self.current_token.tag;
-            left = if tag.is_binary_operator() {
-                self.parse_binary_expression(left, tag)?
-            } else if tag.is_logical_operator() {
-                self.parse_logical_expression(left, tag)?
-            } else {
-                return Some(left);
-            };
-        }
     }
 
     fn parse_binary_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
