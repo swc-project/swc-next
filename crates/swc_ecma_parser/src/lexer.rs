@@ -567,7 +567,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let mut has_decimal_or_exponent = false;
         let mut is_leading_zero = false;
 
-        if self.peek(0) == b'0' {
+        if lead == b'0' {
             self.cursor += 1;
 
             match self.peek(0) {
