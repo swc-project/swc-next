@@ -1325,12 +1325,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let mut pos = start as usize + 2;
         while pos < src.len() {
             let rest = &src[pos..];
-            let ascii_offset = memchr3(b'*', b'\n', b'\r', rest).unwrap_or(rest.len());
-            let unicode_offset = memchr(0xE2, &rest[..ascii_offset]).unwrap_or(ascii_offset);
-            pos += ascii_offset.min(unicode_offset);
-            if pos == src.len() {
+            let Some(offset) = find_block_comment_special(rest) else {
+                pos = src.len();
                 break;
-            }
+            };
+            pos += offset;
 
             match src[pos] {
                 b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => {
@@ -1415,6 +1414,51 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             flags: self.consume_token_flags(),
         }
     }
+}
+
+#[inline(always)]
+fn find_block_comment_special(source: &[u8]) -> Option<usize> {
+    #[cfg(target_arch = "x86_64")]
+    let mut offset = 0;
+    #[cfg(not(target_arch = "x86_64"))]
+    let offset = 0;
+
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        use std::arch::x86_64::{
+            __m128i, _mm_cmpeq_epi8, _mm_loadu_si128, _mm_movemask_epi8, _mm_or_si128,
+            _mm_set1_epi8,
+        };
+
+        let star = _mm_set1_epi8(b'*' as i8);
+        let line_feed = _mm_set1_epi8(b'\n' as i8);
+        let carriage_return = _mm_set1_epi8(b'\r' as i8);
+        let unicode_separator_lead = _mm_set1_epi8(0xE2u8 as i8);
+
+        while source.len() - offset >= 16 {
+            // The loop condition guarantees that this unaligned load stays
+            // within `source`; SSE2 is part of the x86-64 baseline.
+            let bytes = _mm_loadu_si128(source.as_ptr().add(offset).cast::<__m128i>());
+            let ascii = _mm_or_si128(
+                _mm_cmpeq_epi8(bytes, star),
+                _mm_or_si128(
+                    _mm_cmpeq_epi8(bytes, line_feed),
+                    _mm_cmpeq_epi8(bytes, carriage_return),
+                ),
+            );
+            let special = _mm_or_si128(ascii, _mm_cmpeq_epi8(bytes, unicode_separator_lead));
+            let mask = _mm_movemask_epi8(special) as u16;
+            if mask != 0 {
+                return Some(offset + mask.trailing_zeros() as usize);
+            }
+            offset += 16;
+        }
+    }
+
+    source[offset..]
+        .iter()
+        .position(|byte| matches!(*byte, b'*' | b'\n' | b'\r' | 0xE2))
+        .map(|tail| offset + tail)
 }
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
