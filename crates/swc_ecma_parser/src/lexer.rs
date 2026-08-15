@@ -1139,7 +1139,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
-        let at_start_of_source = self.cursor == 0;
+        let initial_cursor = self.cursor;
 
         loop {
             let src = self.source;
@@ -1160,7 +1160,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.cursor = pos as u32;
             if pos == src.len()
                 || !matches!(src[pos], b'/' | b'<' | b'-' | 0x80..=0xFF)
-                || !self.skip_ws_and_comments_slow(at_start_of_source)?
+                || !self.skip_ws_and_comments_slow(initial_cursor)?
             {
                 return Ok(());
             }
@@ -1169,10 +1169,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn skip_ws_and_comments_slow(
-        &mut self,
-        at_start_of_source: bool,
-    ) -> Result<bool, LexicalError> {
+    fn skip_ws_and_comments_slow(&mut self, initial_cursor: u32) -> Result<bool, LexicalError> {
         let src = self.source;
         let pos = self.cursor as usize;
         debug_assert!(pos < src.len());
@@ -1196,7 +1193,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
             b'-' => {
                 let can_be_html_close_comment =
-                    at_start_of_source || self.has_token_flag(TokenFlag::LineTerminatorBefore);
+                    initial_cursor == 0 || self.has_token_flag(TokenFlag::LineTerminatorBefore);
                 if !self.allow_html_like_comments
                     || !can_be_html_close_comment
                     || pos + 2 >= src.len()
