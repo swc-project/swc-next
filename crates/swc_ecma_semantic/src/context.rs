@@ -1,8 +1,7 @@
 use std::vec::Vec;
 
-use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, ScopeId,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId,
 };
 
 use crate::{
@@ -29,7 +28,7 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
 
     pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
         self.path.push(node);
-        self.state.enter_node(node)
+        self.state.enter_node()
     }
 
     pub fn leave_node(&mut self, node: NodeId) {
@@ -66,15 +65,11 @@ pub(crate) struct SemanticContext<'a> {
     type_position_depth: u32,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
-    // per-node tables carried into the final `Semantic`
-    node_scopes: ArenaVec<'a, ScopeId>,
 }
 
 impl<'a> SemanticContext<'a> {
     pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
         let allocator = tree.allocator();
-        let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
-        node_scopes.resize(tree.node_count(), ScopeId::ROOT);
         Self {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
@@ -82,7 +77,6 @@ impl<'a> SemanticContext<'a> {
             type_position_depth: 0,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
-            node_scopes,
         }
     }
 
@@ -97,8 +91,7 @@ impl<'a> SemanticContext<'a> {
     }
 
     #[inline]
-    pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
-        self.node_scopes[node.index()] = self.scope.current;
+    pub fn enter_node(&mut self) -> ReferenceFlags {
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
         flags
@@ -156,10 +149,6 @@ impl<'a> SemanticContext<'a> {
 
     pub fn enter_with_statement(&mut self, node: NodeId) {
         self.scope.enter_with_scope(node);
-        // The object expression evaluates in the enclosing environment, so
-        // the with scope is created only after visiting it. Keep the creator
-        // node associated with the scope it creates.
-        self.node_scopes[node.index()] = self.scope.current;
     }
 
     pub fn exit_with_statement(&mut self, node: NodeId) {
@@ -232,11 +221,6 @@ impl<'a> SemanticContext<'a> {
 
     pub fn enter_ts_conditional_type(&mut self, node: NodeId) {
         self.enter_block_scope(node);
-        // `check_type` is visited before this scope is entered, and
-        // `false_type` after it is exited. Keep the scope-creating node mapped
-        // to the conditional scope rather than the enclosing scope in which
-        // the node itself was entered.
-        self.node_scopes[node.index()] = self.scope.current;
     }
 
     pub fn enter_ts_module_block(&mut self, node: NodeId) {
@@ -272,12 +256,7 @@ impl<'a> SemanticContext<'a> {
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
         let (scopes, has_with_statement) = self.scope.into_scope_tree();
-        self.symbols.finalize(
-            tree,
-            scopes,
-            has_with_statement,
-            self.node_scopes,
-            self.module_record,
-        )
+        self.symbols
+            .finalize(tree, scopes, has_with_statement, self.module_record)
     }
 }

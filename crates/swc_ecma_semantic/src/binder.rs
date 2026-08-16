@@ -1408,7 +1408,6 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast,
         scopes: ScopeTree<'a>,
         has_with_statement: bool,
-        node_scopes: ArenaVec<'a, ScopeId>,
         module_record: ModuleRecordBuilder<'a>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
@@ -1535,7 +1534,6 @@ impl<'a> SymbolTracker<'a> {
             use_ranges,
             scope_maps: self.scope_maps,
             hoisting_variables: self.hoisting_variables,
-            node_scopes,
             node_symbols,
             node_references,
         }

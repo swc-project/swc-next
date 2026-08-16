@@ -60,7 +60,6 @@ pub struct Semantic<'a> {
     use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
-    node_scopes: ArenaVec<'a, ScopeId>,
 
     /// The symbol declared by each node, indexed by [`NodeId`].
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
@@ -108,11 +107,9 @@ impl<'a> Semantic<'a> {
         self.node_references[node.index()]
     }
 
-    /// The innermost lexical scope containing `node`. A scope-creating
-    /// node (function, block, class, ...) maps to the scope it creates;
-    /// that scope's parent is the enclosing scope.
-    pub fn scope_of(&self, node: NodeId) -> ScopeId {
-        self.node_scopes[node.index()]
+    /// The scope of the given symbol id.
+    pub fn scope_of(&self, id: SymbolId) -> ScopeId {
+        self.symbols[id.index()].scope
     }
 
     /// The ids of every declaration of `id`, in source order.
@@ -645,12 +642,6 @@ mod tests {
             .reference;
         assert!(value.flags.is_dynamic());
         assert_eq!(value.symbol, Some(value_symbol));
-
-        let with_scope = semantic
-            .iter_scopes()
-            .find(|entry| entry.scope.kind == ScopeKind::With)
-            .unwrap();
-        assert_eq!(semantic.scope_of(with_scope.scope.node), with_scope.id);
 
         let (_, semantic) = analyze_source(
             &allocator,
