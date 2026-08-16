@@ -509,7 +509,7 @@ pub(crate) struct SymbolTracker<'a> {
     references: ArenaVec<'a, Reference>,
     declarations: ArenaVec<'a, Declaration>,
     // first declarator of each symbol, parallel to `symbols`
-    first_decls: ArenaVec<'a, NodeId>,
+    first_decls: Vec<NodeId>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
 
@@ -525,7 +525,7 @@ pub(crate) struct SymbolTracker<'a> {
 
     // snapshots taken before declaration nodes rewrite the context,
     // restored on exit
-    saved_stack: ArenaVec<'a, SavedContext>,
+    saved_stack: Vec<SavedContext>,
 }
 
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
@@ -597,14 +597,14 @@ impl<'a> SymbolTracker<'a> {
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
             declarations: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
-            first_decls: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            first_decls: Vec::with_capacity(16usize.max(nodes / 12)),
             scope_maps: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             hoisting_variables: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             pending: PendingBinding::default(),
             export_state: ExportState::None,
             // A declaration file is ambient in its entirety.
             ambient: tree.lang() == swc_next_ecma_ast::Lang::Dts,
-            saved_stack: ArenaVec::with_capacity_in(32, allocator),
+            saved_stack: Vec::with_capacity(32),
         }
     }
 

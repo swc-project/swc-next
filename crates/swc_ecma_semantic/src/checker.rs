@@ -1,11 +1,8 @@
 //! The early-error checker, a semantic-traverser visitor that reports
 //! the scope-dependent early errors the specification requires.
 
-use std::{borrow::Cow, fmt::Write};
-
-use swc_next_allocator::{
-    Allocator, CloneIn, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec,
-};
+use std::{borrow::Cow, collections::HashMap};
+use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
@@ -47,16 +44,15 @@ pub struct Checker<'traverse, 'a> {
 }
 
 struct CheckerState<'a> {
-    allocator: &'a Allocator,
-    exported_names: ArenaHashMap<'a, &'a [u8], NodeId>,
-    export_specifiers: ArenaVec<'a, ExportSpecifierInfo<'a>>,
+    exported_names: HashMap<Vec<u8>, NodeId>,
+    export_specifiers: Vec<ExportSpecifierInfo>,
     diagnostics: Vec<Diagnostic<'a>>,
 }
 
 impl<'traverse, 'a> Checker<'traverse, 'a> {
     pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool) -> Self {
         Self {
-            checks: CheckerState::new(ast.allocator()),
+            checks: CheckerState::new(),
             context: SemanticVisitCtx::new(ast, SemanticContext::init(ast)),
             check_syntax,
             in_ts_module_name: false,
@@ -148,18 +144,16 @@ fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace
     }
 }
 
-#[derive(Clone, Copy)]
-struct ExportSpecifierInfo<'a> {
-    local_name: &'a [u8],
+struct ExportSpecifierInfo {
+    local_name: Vec<u8>,
     node: NodeId,
 }
 
 impl<'a> CheckerState<'a> {
-    pub fn new(allocator: &'a Allocator) -> Self {
+    pub fn new() -> Self {
         Self {
-            allocator,
-            exported_names: ArenaHashMap::new_in(allocator),
-            export_specifiers: ArenaVec::new_in(allocator),
+            exported_names: HashMap::new(),
+            export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -175,14 +169,14 @@ impl<'a> CheckerState<'a> {
             return;
         }
         for index in 0..self.export_specifiers.len() {
-            let specifier = self.export_specifiers[index];
+            let specifier = &self.export_specifiers[index];
             if symbols
-                .binding(ScopeId::MODULE, specifier.local_name)
+                .binding(ScopeId::MODULE, &specifier.local_name)
                 .is_none()
             {
                 let message = self.fmt(format_args!(
                     "Export '{}' is not defined",
-                    String::from_utf8_lossy(specifier.local_name)
+                    String::from_utf8_lossy(&specifier.local_name)
                 ));
                 self.report(tree.span(specifier.node), message, ReportOptions::default());
             }
@@ -229,7 +223,7 @@ impl<'a> CheckerState<'a> {
             current_span,
             message,
             ReportOptions {
-                help: Some(help),
+                help: Some(Cow::Owned(help)),
                 labels: self.labels(&[
                     self.label(existing_span, first),
                     self.label(current_span, "cannot be redeclared here"),
@@ -239,22 +233,23 @@ impl<'a> CheckerState<'a> {
         );
     }
 
-    fn report(&mut self, span: Span, message: &'a str, options: ReportOptions<'a>) {
+    fn report(&mut self, span: Span, message: impl Into<Cow<'a, str>>, options: ReportOptions<'a>) {
+        let message = message.into();
         debug_assert!(span.start <= span.end);
         debug_assert!(!message.is_empty());
         self.diagnostics.push(Diagnostic {
             severity: options.severity,
-            message: Cow::Borrowed(message),
+            message,
             span,
-            help: options.help.map(Cow::Borrowed),
+            help: options.help,
             labels: options.labels,
         });
     }
 
-    fn label(&self, span: Span, message: &'a str) -> Label<'a> {
+    fn label(&self, span: Span, message: impl Into<Cow<'a, str>>) -> Label<'a> {
         Label {
             span,
-            message: Cow::Borrowed(message),
+            message: message.into(),
         }
     }
 
@@ -262,26 +257,8 @@ impl<'a> CheckerState<'a> {
         items.to_vec()
     }
 
-    fn fmt(&self, arguments: std::fmt::Arguments<'_>) -> &'a str {
-        let mut writer = ArenaWriter {
-            bytes: ArenaVec::new_in(self.allocator),
-        };
-        writer
-            .write_fmt(arguments)
-            .expect("formatting into an arena vector is infallible");
-        std::str::from_utf8(writer.bytes.into_bump_slice())
-            .expect("Rust formatting produces valid UTF-8")
-    }
-}
-
-struct ArenaWriter<'a> {
-    bytes: ArenaVec<'a, u8>,
-}
-
-impl Write for ArenaWriter<'_> {
-    fn write_str(&mut self, value: &str) -> std::fmt::Result {
-        self.bytes.extend_from_slice_copy(value.as_bytes());
-        Ok(())
+    fn fmt(&self, arguments: std::fmt::Arguments<'_>) -> String {
+        arguments.to_string()
     }
 }
 
@@ -690,7 +667,7 @@ fn has_octal_escape(value: &[u8]) -> bool {
 
 struct ReportOptions<'a> {
     severity: Severity,
-    help: Option<&'a str>,
+    help: Option<Cow<'a, str>>,
     labels: Vec<Label<'a>>,
 }
 
@@ -724,7 +701,9 @@ impl Checker<'_, '_> {
                         span,
                         "Octal escape sequences are not allowed in strict mode",
                         ReportOptions {
-                            help: Some("Use \\xHH (hex) or \\uHHHH (unicode) escape instead"),
+                            help: Some(Cow::Borrowed(
+                                "Use \\xHH (hex) or \\uHHHH (unicode) escape instead",
+                            )),
                             ..ReportOptions::default()
                         },
                     );
@@ -755,7 +734,7 @@ impl Checker<'_, '_> {
                     span,
                     message,
                     ReportOptions {
-                        help: Some(help),
+                        help: Some(Cow::Borrowed(help)),
                         ..ReportOptions::default()
                     },
                 );
@@ -763,8 +742,9 @@ impl Checker<'_, '_> {
             NodeKindData::RegExpLiteral(literal) => {
                 let pattern = context.ast.get_utf8(literal.pattern(context.ast));
                 let flags = context.ast.get_utf8(literal.flags(context.ast));
+                let allocator = Allocator::new();
                 if swc_next_regular_expression::LiteralParser::new(
-                    checks.allocator,
+                    &allocator,
                     pattern,
                     Some(flags),
                     swc_next_regular_expression::Options::default(),
@@ -1007,9 +987,9 @@ impl Checker<'_, '_> {
                         context.ast.span(statement.node_id()),
                         "Illegal break statement",
                         ReportOptions {
-                            help: Some(
+                            help: Some(Cow::Borrowed(
                                 "A 'break' statement can only be used within an enclosing iteration or switch statement",
-                            ),
+                            )),
                             ..ReportOptions::default()
                         },
                     );
@@ -1040,9 +1020,9 @@ impl Checker<'_, '_> {
                                     "Label '{}' does not denote an iteration statement",
                                     String::from_utf8_lossy(name)
                                 )),
-                                Some(
+                                Some(Cow::Borrowed(
                                     "A 'continue' statement can only jump to a label of an enclosing 'for', 'while', 'do-while', 'for-in', or 'for-of' statement",
-                                ),
+                                )),
                             ),
                             ContinueLabelSearch::Found => unreachable!(),
                         };
@@ -1060,9 +1040,9 @@ impl Checker<'_, '_> {
                         context.ast.span(statement.node_id()),
                         "Illegal continue statement",
                         ReportOptions {
-                            help: Some(
+                            help: Some(Cow::Borrowed(
                                 "A 'continue' statement can only be used within an enclosing iteration statement",
-                            ),
+                            )),
                             ..ReportOptions::default()
                         },
                     );
@@ -1325,9 +1305,9 @@ impl Checker<'_, '_> {
                         context.ast.span(expression.node_id()),
                         "'super' property access is only valid inside a method or class body",
                         ReportOptions {
-                            help: Some(
+                            help: Some(Cow::Borrowed(
                                 "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                            ),
+                            )),
                             ..ReportOptions::default()
                         },
                     );
@@ -1369,9 +1349,9 @@ impl Checker<'_, '_> {
                             context.ast.span(call.node_id()),
                             message,
                             ReportOptions {
-                                help: Some(
+                                help: Some(Cow::Borrowed(
                                     "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                                ),
+                                )),
                                 ..ReportOptions::default()
                             },
                         ),
@@ -1379,9 +1359,9 @@ impl Checker<'_, '_> {
                             context.ast.span(call.node_id()),
                             message,
                             ReportOptions {
-                                help: Some(
+                                help: Some(Cow::Borrowed(
                                     "Add an 'extends' clause to the class or remove the 'super()' call",
-                                ),
+                                )),
                                 ..ReportOptions::default()
                             },
                         ),
@@ -1508,7 +1488,7 @@ impl Checker<'_, '_> {
                     let local =
                         module_export_name(context.ast, specifier.local(context.ast).node_id());
                     checks.export_specifiers.push(ExportSpecifierInfo {
-                        local_name: local.clone_in(checks.allocator),
+                        local_name: local.to_vec(),
                         node: specifier.node_id(),
                     });
                 }
@@ -2982,8 +2962,7 @@ impl<'a> CheckerState<'a> {
                 },
             );
         } else {
-            let key = name.clone_in(self.allocator);
-            self.exported_names.insert(key, node);
+            self.exported_names.insert(name.to_vec(), node);
         }
     }
 }

@@ -1,5 +1,5 @@
 use oxc_index::Idx;
-use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
+use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, ClassType, Directive, Function, FunctionBody,
     FunctionType, NodeId, NodeKindData, ScopeId, SourceType,
@@ -163,7 +163,6 @@ impl Iterator for AncestorIterator<'_> {
 }
 
 pub(crate) struct ScopeTracker<'a> {
-    allocator: &'a Allocator,
     pub(crate) scopes: ArenaVec<'a, Scope>,
     // active scope. follow the parent chain to walk the path.
     pub(crate) current: ScopeId,
@@ -172,10 +171,10 @@ pub(crate) struct ScopeTracker<'a> {
     has_with_statement: bool,
     // Active `with` scopes, used only while walking their statement bodies.
     // The heap allocation is therefore paid only by files containing `with`.
-    active_with_scopes: std::vec::Vec<ScopeId>,
+    active_with_scopes: Vec<ScopeId>,
     // scopes saved while a decorator subtree retargets `current`,
     // one entry per nested decorator. see `enter` on `Decorator`.
-    decorator_saved: ArenaVec<'a, ScopeId>,
+    decorator_saved: Vec<ScopeId>,
 }
 
 impl<'a> ScopeTracker<'a> {
@@ -184,12 +183,11 @@ impl<'a> ScopeTracker<'a> {
         let allocator = tree.allocator();
         let estimated_scopes = 16usize.max(tree.node_count() / 16);
         let mut tracker = Self {
-            allocator,
             scopes: ArenaVec::with_capacity_in(estimated_scopes, allocator),
             current: ScopeId::ROOT,
             has_with_statement: false,
-            active_with_scopes: std::vec::Vec::new(),
-            decorator_saved: ArenaVec::new_in(allocator),
+            active_with_scopes: Vec::new(),
+            decorator_saved: Vec::new(),
         };
         tracker.push_root(root.node_id(), tree.source_type());
         tracker
@@ -228,7 +226,6 @@ impl<'a> ScopeTracker<'a> {
     }
 
     pub fn push_scope(&mut self, kind: ScopeKind, node: NodeId, flags: ScopeFlags) {
-        let _allocator = self.allocator;
         // The current length is the about-to-be-assigned id and must fit u32.
         debug_assert!(self.scopes.len() < u32::MAX as usize);
         let id = ScopeId::from_usize(self.scopes.len());
