@@ -81,6 +81,7 @@ impl<'a> Semantic<'a> {
     }
 
     /// The source text module's export occurrences and resolved targets.
+    /// Empty unless [`AnalyzeOptions::build_module_record`] was enabled.
     pub fn module_record(&self) -> &ModuleRecord<'a> {
         &self.module_record
     }
@@ -396,16 +397,23 @@ pub struct AnalyzeOptions {
     ///
     /// Disabled by default.
     pub check_syntax: bool,
+    /// Whether to collect the source text module's export occurrences and
+    /// resolved targets in [`Semantic::module_record`].
+    ///
+    /// Disabled by default.
+    pub build_module_record: bool,
 }
 
-/// Runs semantic analysis on a tree and builds the complete [`Semantic`] model.
+/// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
 ///
 /// When [`AnalyzeOptions::check_syntax`] is enabled, scope-dependent early
 /// errors are returned separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
+/// When [`AnalyzeOptions::build_module_record`] is disabled, the returned
+/// module record is empty.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = Checker::new(ast, options.check_syntax);
+    let mut visitor = Checker::new(ast, options.check_syntax, options.build_module_record);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {
@@ -431,6 +439,22 @@ mod tests {
         lang: Lang,
         source_type: SourceType,
     ) -> (Ast<'a>, Semantic<'a>) {
+        analyze_source_with_options(
+            allocator,
+            source,
+            lang,
+            source_type,
+            AnalyzeOptions::default(),
+        )
+    }
+
+    fn analyze_source_with_options<'a>(
+        allocator: &'a Allocator,
+        source: &'a str,
+        lang: Lang,
+        source_type: SourceType,
+        options: AnalyzeOptions,
+    ) -> (Ast<'a>, Semantic<'a>) {
         let parse = Parser::init(
             allocator,
             source,
@@ -445,7 +469,7 @@ mod tests {
         let ast = parse.ast;
         assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
 
-        let result = analyze(&ast, AnalyzeOptions::default());
+        let result = analyze(&ast, options);
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         (ast, result.semantic)
     }
@@ -574,11 +598,23 @@ mod tests {
     fn modules() {
         let allocator = Allocator::new();
 
-        let (ast, semantic) = analyze_source(
+        let (_, semantic) = analyze_source(
+            &allocator,
+            "export const value = 1; export { value }; export * from 'dep'; export default value;",
+            Lang::Js,
+            SourceType::Module,
+        );
+        assert!(semantic.module_record().exports().is_empty());
+
+        let (ast, semantic) = analyze_source_with_options(
             &allocator,
             "export { value }; const value = 1;",
             Lang::Js,
             SourceType::Module,
+            AnalyzeOptions {
+                build_module_record: true,
+                ..AnalyzeOptions::default()
+            },
         );
         let body = ast.root_program().body(&ast);
         let statement = body.get_node(&ast, 0).unwrap();
@@ -607,11 +643,15 @@ mod tests {
             }
         );
 
-        let (ast, semantic) = analyze_source(
+        let (ast, semantic) = analyze_source_with_options(
             &allocator,
             "export { external as alias } from 'dep';",
             Lang::Js,
             SourceType::Module,
+            AnalyzeOptions {
+                build_module_record: true,
+                ..AnalyzeOptions::default()
+            },
         );
         let body = ast.root_program().body(&ast);
         let statement = body.get_node(&ast, 0).unwrap();

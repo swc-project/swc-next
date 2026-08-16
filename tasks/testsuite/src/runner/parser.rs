@@ -34,7 +34,13 @@ impl<C: Case> Runner<C> for ParserRunner {
                     ));
                 }
             }
-            let semantic_ret = analyze(&ast, AnalyzeOptions { check_syntax: true });
+            let semantic_ret = analyze(
+                &ast,
+                AnalyzeOptions {
+                    check_syntax: true,
+                    ..AnalyzeOptions::default()
+                },
+            );
             match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),
                 (false, Some(_)) if !case.asserts_semantic_success() => Ok(()),

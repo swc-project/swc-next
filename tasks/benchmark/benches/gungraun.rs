@@ -81,7 +81,13 @@ fn bench_semantic(ast: Ast<'static>) {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_semantic_with_syntax_check(ast: Ast<'static>) {
-    black_box(analyze(&ast, AnalyzeOptions { check_syntax: true }));
+    black_box(analyze(
+        &ast,
+        AnalyzeOptions {
+            check_syntax: true,
+            ..AnalyzeOptions::default()
+        },
+    ));
 }
 
 #[library_benchmark]

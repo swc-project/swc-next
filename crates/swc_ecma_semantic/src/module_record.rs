@@ -103,18 +103,23 @@ pub struct ExportEntry {
 
 pub(crate) struct ModuleRecordBuilder<'a> {
     allocator: &'a Allocator,
+    enabled: bool,
     exports: RawVec<RawExportEntry>,
 }
 
 impl<'a> ModuleRecordBuilder<'a> {
-    pub fn new(allocator: &'a Allocator) -> Self {
+    pub fn new(allocator: &'a Allocator, enabled: bool) -> Self {
         Self {
             allocator,
+            enabled,
             exports: RawVec::new(),
         }
     }
 
     pub fn add_direct_export(&mut self, tree: &Ast, binding: NodeId, statement: NodeId) {
+        if !self.enabled {
+            return;
+        }
         let name = module_name(tree, binding);
         self.exports.push(RawExportEntry {
             node: binding,
@@ -132,6 +137,9 @@ impl<'a> ModuleRecordBuilder<'a> {
         declaration: ExportNamedDeclaration,
         specifier: ExportSpecifier,
     ) {
+        if !self.enabled {
+            return;
+        }
         let type_only = declaration.export_kind(tree) == ImportOrExportKind::Type
             || specifier.export_kind(tree) == ImportOrExportKind::Type;
         let exported = ExportName::Named(module_name(tree, specifier.exported(tree).node_id()));
@@ -165,6 +173,9 @@ impl<'a> ModuleRecordBuilder<'a> {
     }
 
     pub fn add_export_all(&mut self, tree: &Ast, declaration: ExportAllDeclaration) {
+        if !self.enabled {
+            return;
+        }
         let source = string_name(tree, declaration.source(tree).node_id());
         let type_only = declaration.export_kind(tree) == ImportOrExportKind::Type;
         let (exported, origin, target) = if let Some(exported) = declaration.exported(tree) {
@@ -197,6 +208,9 @@ impl<'a> ModuleRecordBuilder<'a> {
     }
 
     pub fn add_default_export(&mut self, tree: &Ast, declaration: ExportDefaultDeclaration) {
+        if !self.enabled {
+            return;
+        }
         let value = declaration.declaration(tree);
         let expression = value.is_expr(tree);
         let binding = if let Some(function) = value.as_function(tree) {

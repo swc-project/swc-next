@@ -63,7 +63,13 @@ fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
     let source = case.input.as_str();
     let allocator = Allocator::new();
     let mut ast = parse_program(source, &allocator, case)?;
-    let semantic_ret = analyze(&ast, AnalyzeOptions { check_syntax: true });
+    let semantic_ret = analyze(
+        &ast,
+        AnalyzeOptions {
+            check_syntax: true,
+            ..AnalyzeOptions::default()
+        },
+    );
     if let Some(diagnostic) = semantic_ret
         .diagnostics
         .iter()

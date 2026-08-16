@@ -73,7 +73,7 @@ pub(crate) struct SemanticContext<'a> {
 }
 
 impl<'a> SemanticContext<'a> {
-    pub fn init(tree: &Ast<'a>) -> Self {
+    pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
@@ -82,7 +82,7 @@ impl<'a> SemanticContext<'a> {
         Self {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
-            module_record: ModuleRecordBuilder::new(allocator),
+            module_record: ModuleRecordBuilder::new(allocator, build_module_record),
             type_position_depth: 0,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),

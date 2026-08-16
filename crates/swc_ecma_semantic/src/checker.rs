@@ -50,10 +50,10 @@ struct CheckerState<'a> {
 }
 
 impl<'traverse, 'a> Checker<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool) -> Self {
+    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
         Self {
             checks: CheckerState::new(),
-            context: SemanticVisitCtx::new(ast, SemanticContext::init(ast)),
+            context: SemanticVisitCtx::new(ast, SemanticContext::init(ast, build_module_record)),
             check_syntax,
             in_ts_module_name: false,
         }
