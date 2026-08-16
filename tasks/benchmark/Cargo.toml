@@ -24,7 +24,6 @@ criterion  = { workspace = true }
 gungraun   = { workspace = true }
 mimalloc   = { workspace = true }
 rustc-hash = { workspace = true }
-swc_core   = { workspace = true, features = ["ecma_parser_unstable"] }
 
 [[bench]]
 harness = false

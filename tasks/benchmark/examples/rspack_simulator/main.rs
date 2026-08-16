@@ -1,6 +1,5 @@
 use std::env;
 
-pub mod legacy;
 pub mod next;
 pub mod oxc;
 
@@ -23,9 +22,6 @@ pub fn main() {
 
     let source = include_str!("../../files/typescript.js");
     let target = env::var("TARGET").unwrap();
-    if target == "legacy" {
-        legacy::run(source);
-    }
 
     if target == "next" {
         next::run(source);
