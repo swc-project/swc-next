@@ -793,15 +793,15 @@ pub struct LabelIdentifier {
 /// ```
 #[ast]
 pub struct AssignmentPattern {
-    /// any binding pattern
-    left: BindingPattern,
-    /// any expression
-    right: Expr,
     /// `decorator[]`. Decorators on a parameter binding (legacy
     /// `experimentalDecorators`).
     decorators: Vec<Decorator>,
+    /// any binding pattern
+    left: BindingPattern,
     /// `ts_type_annotation`. `None` when absent.
     type_annotation: Option<TsTypeAnnotation>,
+    /// any expression
+    right: Expr,
     /// true when marked optional in a parameter position.
     optional: bool,
 }
@@ -816,11 +816,11 @@ pub struct AssignmentPattern {
 /// ```
 #[ast]
 pub struct BindingRestElement {
-    /// any binding pattern
-    argument: BindingPattern,
     /// `decorator[]`. Decorators on a parameter rest element (legacy
     /// `experimentalDecorators`).
     decorators: Vec<Decorator>,
+    /// any binding pattern
+    argument: BindingPattern,
     /// `ts_type_annotation`. `None` when absent.
     type_annotation: Option<TsTypeAnnotation>,
     /// true when marked optional in a parameter position.
@@ -840,13 +840,13 @@ pub struct BindingRestElement {
 /// `elements[1]` is `None` (the hole between the two commas).
 #[ast]
 pub struct ArrayPattern {
+    /// `decorator[]`. Decorators on a parameter binding (legacy
+    /// `experimentalDecorators`).
+    decorators: Vec<Decorator>,
     /// any binding pattern. Entries are `None` for holes.
     elements: Vec<Option<BindingPattern>>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
-    /// `decorator[]`. Decorators on a parameter binding (legacy
-    /// `experimentalDecorators`).
-    decorators: Vec<Decorator>,
     /// `ts_type_annotation`. `None` when absent.
     type_annotation: Option<TsTypeAnnotation>,
     /// true when marked optional in a parameter position.
@@ -864,13 +864,13 @@ pub struct ArrayPattern {
 /// ```
 #[ast]
 pub struct ObjectPattern {
+    /// `decorator[]`. Decorators on a parameter binding (legacy
+    /// `experimentalDecorators`).
+    decorators: Vec<Decorator>,
     /// `binding_property[]`
     properties: Vec<BindingProperty>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
-    /// `decorator[]`. Decorators on a parameter binding (legacy
-    /// `experimentalDecorators`).
-    decorators: Vec<Decorator>,
     /// `ts_type_annotation`. `None` when absent.
     type_annotation: Option<TsTypeAnnotation>,
     /// true when marked optional in a parameter position.
@@ -1346,19 +1346,19 @@ pub struct Class {
     decorators: Vec<Decorator>,
     /// `binding_identifier`. `None` for anonymous class expressions.
     id: Option<BindingIdentifier>,
-    /// any expression. `None` when the class has no `extends` clause.
-    super_class: Option<Expr>,
-    /// `class_body`
-    body: ClassBody,
     /// `ts_type_parameter_declaration`. `None` when the class has no `<T, U>`
     /// parameters.
     type_parameters: Option<TsTypeParameterDeclaration>,
+    /// any expression. `None` when the class has no `extends` clause.
+    super_class: Option<Expr>,
     /// `ts_type_parameter_instantiation`. `None` when `extends` has no `<T>`
     /// arguments.
     super_type_arguments: Option<TsTypeParameterInstantiation>,
     /// `ts_class_implements[]`. Empty when the class has no `implements`
     /// clause.
     implements: Vec<TsClassImplements>,
+    /// `class_body`
+    body: ClassBody,
     r#abstract: bool,
     /// true for `declare class`.
     declare: bool,
@@ -1431,6 +1431,8 @@ pub struct PropertyDefinition {
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
+    /// `ts_type_annotation`. `None` when the field has no annotation.
+    type_annotation: Option<TsTypeAnnotation>,
     /// any expression. `None` when the field has no initializer.
     value: Option<Expr>,
     /// true when the key is written inside `[...]`.
@@ -1438,8 +1440,6 @@ pub struct PropertyDefinition {
     r#static: bool,
     /// true for `accessor x;` auto-accessor fields.
     accessor: bool,
-    /// `ts_type_annotation`. `None` when the field has no annotation.
-    type_annotation: Option<TsTypeAnnotation>,
     /// true for the `declare` modifier.
     declare: bool,
     r#override: bool,
@@ -1489,16 +1489,16 @@ pub struct Function {
     function_type: FunctionType,
     /// `binding_identifier`. `None` for anonymous functions.
     id: Option<BindingIdentifier>,
-    generator: bool,
-    r#async: bool,
-    /// `formal_parameters`
-    params: FormalParameters,
-    /// `function_body`
-    body: FunctionBody,
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
+    /// `formal_parameters`
+    params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
     return_type: Option<TsTypeAnnotation>,
+    /// `function_body`
+    body: FunctionBody,
+    generator: bool,
+    r#async: bool,
 }
 
 /// The body of a function.
@@ -1706,14 +1706,14 @@ pub struct ArrowFunctionExpression {
     /// `() => { ... }`.
     expression: bool,
     r#async: bool,
-    /// `formal_parameters`
-    params: FormalParameters,
-    /// `function_body` when `expression` is false. any expression otherwise.
-    body: ArrowFunctionBody,
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
+    /// `formal_parameters`
+    params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
     return_type: Option<TsTypeAnnotation>,
+    /// `function_body` when `expression` is false. any expression otherwise.
+    body: ArrowFunctionBody,
 }
 
 /// A comma-separated sequence of expressions.
@@ -1768,12 +1768,12 @@ pub struct MemberExpression {
 pub struct CallExpression {
     /// any expression
     callee: Expr,
+    /// `ts_type_parameter_instantiation`. `None` when absent.
+    type_arguments: Option<TsTypeParameterInstantiation>,
     /// any expression or `spread_element`.
     arguments: Vec<Argument>,
     /// true for `foo?.()`.
     optional: bool,
-    /// `ts_type_parameter_instantiation`. `None` when absent.
-    type_arguments: Option<TsTypeParameterInstantiation>,
 }
 
 /// Wraps an optional chain so that short-circuiting applies to the whole
@@ -1807,10 +1807,10 @@ pub struct ChainExpression {
 pub struct TaggedTemplateExpression {
     /// any expression
     tag: Expr,
-    /// `template_literal`
-    quasi: TemplateLiteral,
     /// `ts_type_parameter_instantiation`. `None` when absent.
     type_arguments: Option<TsTypeParameterInstantiation>,
+    /// `template_literal`
+    quasi: TemplateLiteral,
 }
 
 /// A `new` expression.
@@ -1828,10 +1828,10 @@ pub struct TaggedTemplateExpression {
 pub struct NewExpression {
     /// any expression
     callee: Expr,
-    /// any expression or `spread_element`.
-    arguments: Vec<Argument>,
     /// `ts_type_parameter_instantiation`. `None` when absent.
     type_arguments: Option<TsTypeParameterInstantiation>,
+    /// any expression or `spread_element`.
+    arguments: Vec<Argument>,
 }
 
 /// An `await` expression.

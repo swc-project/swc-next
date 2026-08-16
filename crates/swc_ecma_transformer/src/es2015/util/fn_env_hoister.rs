@@ -308,9 +308,9 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
             let call_copy = self.ast.expr_call_expression(
                 call.span(self.ast),
                 callee,
+                call.type_arguments(self.ast),
                 call.arguments(self.ast),
                 call.optional(self.ast),
-                call.type_arguments(self.ast),
             );
             let left = self
                 .ast

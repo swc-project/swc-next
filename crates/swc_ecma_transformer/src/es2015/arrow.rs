@@ -85,12 +85,12 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
             span,
             FunctionType::FunctionExpression,
             None,
+            None,
+            params,
+            None,
+            body,
             false,
             is_async,
-            params,
-            body,
-            None,
-            None,
         )
     }
 }

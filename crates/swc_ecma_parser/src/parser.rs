@@ -1929,7 +1929,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let decorators = TypedSubRange::empty();
         Some(
             self.ast
-                .binding_pattern_assignment_pattern(span, left, right, decorators, None, false),
+                .binding_pattern_assignment_pattern(span, decorators, left, None, right, false),
         )
     }
 
@@ -2081,24 +2081,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 opts.is_async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             );
             Some(ParsedFunction::Function(function))
         } else {
             let function = self.ast.ts_function(
                 span,
                 id,
+                type_parameters,
+                params,
+                return_type,
                 generator,
                 opts.is_async,
                 opts.is_declare,
-                params,
-                type_parameters,
-                return_type,
             );
             Some(ParsedFunction::TsFunction(function))
         }
@@ -2197,11 +2197,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             class_type,
             decorators,
             id,
-            super_class,
-            body,
             type_parameters,
+            super_class,
             super_type_arguments,
             implements,
+            body,
             opts.is_abstract,
             opts.is_declare,
         ))
@@ -2693,12 +2693,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 function_span,
                 FunctionType::FunctionExpression,
                 None,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 modifiers.is_generator,
                 modifiers.is_async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             );
             let method = self.ast.method_definition(
                 method_span,
@@ -2718,12 +2718,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let function = self.ast.ts_function(
                 function_span,
                 None,
+                type_parameters,
+                params,
+                return_type,
                 modifiers.is_generator,
                 modifiers.is_async,
                 false,
-                params,
-                type_parameters,
-                return_type,
             );
             let method = self.ast.ts_method_definition(
                 method_span,
@@ -2803,11 +2803,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Span::new(start, end),
                 decorators,
                 key,
+                type_annotation,
                 value,
                 modifiers.computed,
                 modifiers.is_static,
                 modifiers.is_accessor,
-                type_annotation,
                 modifiers.declare,
                 modifiers.r#override,
                 optional,
@@ -3097,8 +3097,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         });
         Some(self.ast.binding_rest_element(
             Span::new(start, end),
-            argument,
             decorators,
+            argument,
             type_annotation,
             false,
         ))
@@ -7627,8 +7627,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.expr_tagged_template_expression(
             Span::new(start, quasi.span(&self.ast).end),
             tag,
-            quasi,
             type_arguments,
+            quasi,
         ))
     }
 
@@ -7941,8 +7941,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let temporary = self.ast.binding_rest_element(
                             spread.span(&self.ast),
-                            argument,
                             TypedSubRange::empty(),
+                            argument,
                             None,
                             false,
                         );
@@ -8259,10 +8259,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Span::new(start, end),
             is_expression,
             async_function,
-            parameters,
-            body,
             type_parameters,
+            parameters,
             return_type,
+            body,
         ))
     }
 
@@ -8417,10 +8417,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let decorators = TypedSubRange::empty();
                 let pattern = self.ast.assignment_pattern(
                     assignment.span(&self.ast),
-                    left,
-                    right,
                     decorators,
+                    left,
                     None,
+                    right,
                     false,
                 );
                 // SAFETY: `pattern` is the unattached last node, and
@@ -8600,8 +8600,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let temporary = self.ast.binding_rest_element(
                             spread.span(&self.ast),
-                            argument,
                             TypedSubRange::empty(),
+                            argument,
                             None,
                             false,
                         );
@@ -8622,7 +8622,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ));
             let temporary =
                 self.ast
-                    .array_pattern(span, elements, rest, TypedSubRange::empty(), None, false);
+                    .array_pattern(span, TypedSubRange::empty(), elements, rest, None, false);
             let pattern = if let Some(array) = mutate_node {
                 // SAFETY: `temporary` is the unattached last node, and `array`
                 // is retired in favor of the returned handle.
@@ -8759,8 +8759,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let temporary = self.ast.binding_rest_element(
                             spread.span(&self.ast),
-                            argument,
                             TypedSubRange::empty(),
+                            argument,
                             None,
                             false,
                         );
@@ -8774,9 +8774,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let properties = self.add_extra_from_scratch_cover(checkpoint);
             let temporary = self.ast.object_pattern(
                 span,
+                TypedSubRange::empty(),
                 properties,
                 rest,
-                TypedSubRange::empty(),
                 None,
                 false,
             );
@@ -9418,12 +9418,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Span::new(function_start, body.span(&self.ast).end),
             FunctionType::FunctionExpression,
             None,
+            type_parameters,
+            params,
+            return_type,
+            body,
             generator,
             async_function,
-            params,
-            body,
-            type_parameters,
-            return_type,
         );
         let value = Expr::Function(function);
         Some(ObjectPropertyKind::ObjectProperty(
@@ -9674,9 +9674,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.expr_call_expression(
             Span::new(start, end),
             callee,
+            type_arguments,
             arguments,
             optional,
-            type_arguments,
         ))
     }
 
@@ -9703,9 +9703,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.expr_call_expression(
             Span::new(callee.span(&self.ast).start, cover.end),
             callee,
+            None,
             cover.elements,
             false,
-            None,
         ))
     }
 
@@ -9929,7 +9929,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .max(callee.span(&self.ast).end);
         Some(
             self.ast
-                .expr_new_expression(Span::new(start, end), callee, arguments, type_arguments),
+                .expr_new_expression(Span::new(start, end), callee, type_arguments, arguments),
         )
     }
 
@@ -10126,9 +10126,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.jsx_opening_element(
             Span::new(start, end),
             name,
+            type_arguments,
             attributes,
             self_closing,
-            type_arguments,
         ))
     }
 

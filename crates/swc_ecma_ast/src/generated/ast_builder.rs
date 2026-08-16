@@ -164,24 +164,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Stmt {
         Stmt::Declaration(Decl::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -193,11 +193,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> Stmt {
@@ -207,11 +207,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -223,23 +223,23 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
         generator: bool,
         r#async: bool,
         declare: bool,
-        params: FormalParameters,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Stmt {
         Stmt::Declaration(Decl::TsFunction(
             self.ts_function(
                 span,
                 id,
+                type_parameters,
+                params,
+                return_type,
                 generator,
                 r#async,
                 declare,
-                params,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -412,24 +412,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Decl {
         Decl::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         )
@@ -441,11 +441,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> Decl {
@@ -455,11 +455,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -471,23 +471,23 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
         generator: bool,
         r#async: bool,
         declare: bool,
-        params: FormalParameters,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Decl {
         Decl::TsFunction(
             self.ts_function(
                 span,
                 id,
+                type_parameters,
+                params,
+                return_type,
                 generator,
                 r#async,
                 declare,
-                params,
-                type_parameters,
-                return_type,
             )
             .into(),
         )
@@ -726,12 +726,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> Expr {
         Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         )
     }
@@ -744,11 +744,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> Expr {
         Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         )
     }
@@ -757,11 +757,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> Expr {
         Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         )
     }
@@ -771,20 +771,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> Expr {
         Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         )
@@ -815,24 +815,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Expr {
         Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         )
@@ -844,11 +844,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> Expr {
@@ -858,11 +858,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -1062,14 +1062,14 @@ impl<'a> Ast<'a> {
     pub fn binding_pattern_assignment_pattern(
         &mut self,
         span: Span,
-        left: BindingPattern,
-        right: Expr,
         decorators: TypedSubRange<Decorator>,
+        left: BindingPattern,
         type_annotation: Option<TsTypeAnnotation>,
+        right: Expr,
         optional: bool,
     ) -> BindingPattern {
         BindingPattern::AssignmentPattern(
-            self.assignment_pattern(span, left, right, decorators, type_annotation, optional)
+            self.assignment_pattern(span, decorators, left, type_annotation, right, optional)
                 .into(),
         )
     }
@@ -1077,13 +1077,13 @@ impl<'a> Ast<'a> {
     pub fn binding_pattern_binding_rest_element(
         &mut self,
         span: Span,
-        argument: BindingPattern,
         decorators: TypedSubRange<Decorator>,
+        argument: BindingPattern,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> BindingPattern {
         BindingPattern::BindingRestElement(
-            self.binding_rest_element(span, argument, decorators, type_annotation, optional)
+            self.binding_rest_element(span, decorators, argument, type_annotation, optional)
                 .into(),
         )
     }
@@ -1091,14 +1091,14 @@ impl<'a> Ast<'a> {
     pub fn binding_pattern_array_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         elements: TypedSubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> BindingPattern {
         BindingPattern::ArrayPattern(
-            self.array_pattern(span, elements, rest, decorators, type_annotation, optional)
+            self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -1106,18 +1106,18 @@ impl<'a> Ast<'a> {
     pub fn binding_pattern_object_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         properties: TypedSubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> BindingPattern {
         BindingPattern::ObjectPattern(
             self.object_pattern(
                 span,
+                decorators,
                 properties,
                 rest,
-                decorators,
                 type_annotation,
                 optional,
             )
@@ -1198,14 +1198,14 @@ impl<'a> Ast<'a> {
     pub fn assignment_target_array_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         elements: TypedSubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> AssignmentTarget {
         AssignmentTarget::ArrayAssignmentTarget(
-            self.array_pattern(span, elements, rest, decorators, type_annotation, optional)
+            self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
                 .into(),
         )
     }
@@ -1213,18 +1213,18 @@ impl<'a> Ast<'a> {
     pub fn assignment_target_object_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         properties: TypedSubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> AssignmentTarget {
         AssignmentTarget::ObjectAssignmentTarget(
             self.object_pattern(
                 span,
+                decorators,
                 properties,
                 rest,
-                decorators,
                 type_annotation,
                 optional,
             )
@@ -1519,12 +1519,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -1543,11 +1543,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -1556,11 +1556,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -1570,20 +1570,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -1624,24 +1624,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -1653,11 +1653,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> PropertyKey {
@@ -1667,11 +1667,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -2008,12 +2008,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> Argument {
         Argument::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -2028,11 +2028,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> Argument {
         Argument::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -2041,11 +2041,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> Argument {
         Argument::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -2055,20 +2055,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> Argument {
         Argument::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -2109,24 +2109,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Argument {
         Argument::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -2138,11 +2138,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> Argument {
@@ -2152,11 +2152,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -2521,12 +2521,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -2545,11 +2545,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -2558,11 +2558,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -2572,20 +2572,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -2626,24 +2626,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -2655,11 +2655,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> ForStatementInit {
@@ -2669,11 +2669,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -2906,14 +2906,14 @@ impl<'a> Ast<'a> {
     pub fn for_statement_left_assignment_target_array_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         elements: TypedSubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::ArrayAssignmentTarget(
-            self.array_pattern(span, elements, rest, decorators, type_annotation, optional)
+            self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
                 .into(),
         ))
     }
@@ -2921,18 +2921,18 @@ impl<'a> Ast<'a> {
     pub fn for_statement_left_assignment_target_object_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         properties: TypedSubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::ObjectAssignmentTarget(
             self.object_pattern(
                 span,
+                decorators,
                 properties,
                 rest,
-                decorators,
                 type_annotation,
                 optional,
             )
@@ -3146,12 +3146,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -3170,11 +3170,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -3183,11 +3183,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -3197,20 +3197,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -3251,24 +3251,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -3280,11 +3280,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> ArrowFunctionBody {
@@ -3294,11 +3294,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -3562,14 +3562,14 @@ impl<'a> Ast<'a> {
     pub fn formal_parameter_pattern_binding_pattern_assignment_pattern(
         &mut self,
         span: Span,
-        left: BindingPattern,
-        right: Expr,
         decorators: TypedSubRange<Decorator>,
+        left: BindingPattern,
         type_annotation: Option<TsTypeAnnotation>,
+        right: Expr,
         optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::AssignmentPattern(
-            self.assignment_pattern(span, left, right, decorators, type_annotation, optional)
+            self.assignment_pattern(span, decorators, left, type_annotation, right, optional)
                 .into(),
         ))
     }
@@ -3577,13 +3577,13 @@ impl<'a> Ast<'a> {
     pub fn formal_parameter_pattern_binding_pattern_binding_rest_element(
         &mut self,
         span: Span,
-        argument: BindingPattern,
         decorators: TypedSubRange<Decorator>,
+        argument: BindingPattern,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::BindingRestElement(
-            self.binding_rest_element(span, argument, decorators, type_annotation, optional)
+            self.binding_rest_element(span, decorators, argument, type_annotation, optional)
                 .into(),
         ))
     }
@@ -3591,14 +3591,14 @@ impl<'a> Ast<'a> {
     pub fn formal_parameter_pattern_binding_pattern_array_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         elements: TypedSubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::ArrayPattern(
-            self.array_pattern(span, elements, rest, decorators, type_annotation, optional)
+            self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
                 .into(),
         ))
     }
@@ -3606,18 +3606,18 @@ impl<'a> Ast<'a> {
     pub fn formal_parameter_pattern_binding_pattern_object_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         properties: TypedSubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::ObjectPattern(
             self.object_pattern(
                 span,
+                decorators,
                 properties,
                 rest,
-                decorators,
                 type_annotation,
                 optional,
             )
@@ -3672,11 +3672,11 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: TypedSubRange<Decorator>,
         key: PropertyKey,
+        type_annotation: Option<TsTypeAnnotation>,
         value: Option<Expr>,
         computed: bool,
         r#static: bool,
         accessor: bool,
-        type_annotation: Option<TsTypeAnnotation>,
         declare: bool,
         r#override: bool,
         optional: bool,
@@ -3690,11 +3690,11 @@ impl<'a> Ast<'a> {
                 span,
                 decorators,
                 key,
+                type_annotation,
                 value,
                 computed,
                 r#static,
                 accessor,
-                type_annotation,
                 declare,
                 r#override,
                 optional,
@@ -4002,12 +4002,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -4026,11 +4026,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -4039,11 +4039,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -4053,20 +4053,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -4107,24 +4107,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -4136,11 +4136,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> ExportDefaultDeclarationKind {
@@ -4150,11 +4150,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -4294,24 +4294,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         )
@@ -4323,11 +4323,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> ExportDefaultDeclarationKind {
@@ -4337,11 +4337,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -4353,23 +4353,23 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
         generator: bool,
         r#async: bool,
         declare: bool,
-        params: FormalParameters,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::TsFunction(
             self.ts_function(
                 span,
                 id,
+                type_parameters,
+                params,
+                return_type,
                 generator,
                 r#async,
                 declare,
-                params,
-                type_parameters,
-                return_type,
             )
             .into(),
         )
@@ -4562,16 +4562,13 @@ impl<'a> Ast<'a> {
     pub fn assignment_pattern(
         &mut self,
         span: Span,
-        left: BindingPattern,
-        right: Expr,
         decorators: TypedSubRange<Decorator>,
+        left: BindingPattern,
         type_annotation: Option<TsTypeAnnotation>,
+        right: Expr,
         optional: bool,
     ) -> AssignmentPattern {
-        let _extra_data = [
-            decorators.to_extra_data(self),
-            type_annotation.to_extra_data(self),
-        ];
+        let _extra_data = [decorators.to_extra_data(self), right.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         AssignmentPattern(self.add_node(
             span,
@@ -4579,7 +4576,9 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((left.node_id().index() as u32 as u128) << 8usize)
-                    | ((right.node_id().index() as u32 as u128) << 40usize)
+                    | ((type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                        as u128)
+                        << 40usize)
                     | ((optional as u32 as u128) << 0usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
@@ -4589,8 +4588,8 @@ impl<'a> Ast<'a> {
     pub fn binding_rest_element(
         &mut self,
         span: Span,
-        argument: BindingPattern,
         decorators: TypedSubRange<Decorator>,
+        argument: BindingPattern,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> BindingRestElement {
@@ -4613,13 +4612,13 @@ impl<'a> Ast<'a> {
     pub fn array_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         elements: TypedSubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ArrayPattern {
-        let _extra_data = [elements.to_extra_data(self), decorators.to_extra_data(self)];
+        let _extra_data = [decorators.to_extra_data(self), elements.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ArrayPattern(self.add_node(
             span,
@@ -4640,15 +4639,15 @@ impl<'a> Ast<'a> {
     pub fn object_pattern(
         &mut self,
         span: Span,
+        decorators: TypedSubRange<Decorator>,
         properties: TypedSubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
-        decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ObjectPattern {
         let _extra_data = [
-            properties.to_extra_data(self),
             decorators.to_extra_data(self),
+            properties.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ObjectPattern(self.add_node(
@@ -5113,20 +5112,20 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> Class {
         let _extra_data = [
             decorators.to_extra_data(self),
-            body.to_extra_data(self),
-            type_parameters.to_extra_data(self),
+            super_class.to_extra_data(self),
             super_type_arguments.to_extra_data(self),
             implements.to_extra_data(self),
+            body.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Class(self.add_node(
@@ -5137,7 +5136,7 @@ impl<'a> Ast<'a> {
                     | ((class_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 24usize)
-                    | ((super_class.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
                         << 56usize)
                     | ((r#abstract as u32 as u128) << 8usize)
@@ -5194,11 +5193,11 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: TypedSubRange<Decorator>,
         key: PropertyKey,
+        type_annotation: Option<TsTypeAnnotation>,
         value: Option<Expr>,
         computed: bool,
         r#static: bool,
         accessor: bool,
-        type_annotation: Option<TsTypeAnnotation>,
         declare: bool,
         r#override: bool,
         optional: bool,
@@ -5210,8 +5209,8 @@ impl<'a> Ast<'a> {
         let _extra_data = [
             decorators.to_extra_data(self),
             key.to_extra_data(self),
-            value.to_extra_data(self),
             type_annotation.to_extra_data(self),
+            value.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         PropertyDefinition(self.add_node(
@@ -5247,17 +5246,17 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> Function {
         let _extra_data = [
-            body.to_extra_data(self),
-            type_parameters.to_extra_data(self),
+            params.to_extra_data(self),
             return_type.to_extra_data(self),
+            body.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Function(self.add_node(
@@ -5268,9 +5267,11 @@ impl<'a> Ast<'a> {
                     | ((function_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 24usize)
+                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                        as u128)
+                        << 56usize)
                     | ((generator as u32 as u128) << 8usize)
                     | ((r#async as u32 as u128) << 16usize)
-                    | ((params.node_id().index() as u32 as u128) << 56usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -5447,15 +5448,12 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> ArrowFunctionExpression {
-        let _extra_data = [
-            type_parameters.to_extra_data(self),
-            return_type.to_extra_data(self),
-        ];
+        let _extra_data = [return_type.to_extra_data(self), body.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ArrowFunctionExpression(self.add_node(
             span,
@@ -5464,8 +5462,10 @@ impl<'a> Ast<'a> {
                 0u128
                     | ((expression as u32 as u128) << 0usize)
                     | ((r#async as u32 as u128) << 8usize)
-                    | ((params.node_id().index() as u32 as u128) << 16usize)
-                    | ((body.node_id().index() as u32 as u128) << 48usize)
+                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                        as u128)
+                        << 16usize)
+                    | ((params.node_id().index() as u32 as u128) << 48usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -5510,9 +5510,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> CallExpression {
         let _f0 = self.add_extra(arguments.to_extra_data(self));
         CallExpression(self.add_node(
@@ -5521,10 +5521,10 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((callee.node_id().index() as u32 as u128) << 8usize)
-                    | ((optional as u32 as u128) << 0usize)
                     | ((type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
                         << 40usize)
+                    | ((optional as u32 as u128) << 0usize)
                     | ((_f0.index() as u128) << 96usize),
             ),
         ))
@@ -5542,8 +5542,8 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> TaggedTemplateExpression {
         TaggedTemplateExpression(self.add_node(
             span,
@@ -5551,10 +5551,10 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((tag.node_id().index() as u32 as u128) << 0usize)
-                    | ((quasi.node_id().index() as u32 as u128) << 32usize)
                     | ((type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 64usize),
+                        << 32usize)
+                    | ((quasi.node_id().index() as u32 as u128) << 64usize),
             ),
         ))
     }
@@ -5563,8 +5563,8 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> NewExpression {
         NewExpression(self.add_node(
             span,
@@ -5572,10 +5572,10 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((callee.node_id().index() as u32 as u128) << 64usize)
-                    | ((unsafe { arguments.to_extra_data(self).other } as u128) << 0usize)
                     | ((type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 96usize),
+                        << 96usize)
+                    | ((unsafe { arguments.to_extra_data(self).other } as u128) << 0usize),
             ),
         ))
     }
@@ -6937,12 +6937,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -6961,11 +6961,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -6974,11 +6974,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -6988,20 +6988,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -7042,24 +7042,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -7071,11 +7071,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> TsEnumMemberName {
@@ -7085,11 +7085,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -7314,17 +7314,14 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
         generator: bool,
         r#async: bool,
         declare: bool,
-        params: FormalParameters,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> TsFunction {
-        let _extra_data = [
-            type_parameters.to_extra_data(self),
-            return_type.to_extra_data(self),
-        ];
+        let _extra_data = [params.to_extra_data(self), return_type.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         TsFunction(self.add_node(
             span,
@@ -7333,10 +7330,12 @@ impl<'a> Ast<'a> {
                 0u128
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 24usize)
+                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                        as u128)
+                        << 56usize)
                     | ((generator as u32 as u128) << 0usize)
                     | ((r#async as u32 as u128) << 8usize)
                     | ((declare as u32 as u128) << 16usize)
-                    | ((params.node_id().index() as u32 as u128) << 56usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -8707,12 +8706,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
         optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
+            self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
         ))
     }
@@ -8731,11 +8730,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         callee: Expr,
-        arguments: TypedSubRange<Argument>,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::NewExpression(
-            self.new_expression(span, callee, arguments, type_arguments)
+            self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
         ))
     }
@@ -8744,11 +8743,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         tag: Expr,
-        quasi: TemplateLiteral,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, quasi, type_arguments)
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
         ))
     }
@@ -8758,20 +8757,20 @@ impl<'a> Ast<'a> {
         span: Span,
         expression: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: ArrowFunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
         return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
                 r#async,
-                params,
-                body,
                 type_parameters,
+                params,
                 return_type,
+                body,
             )
             .into(),
         ))
@@ -8812,24 +8811,24 @@ impl<'a> Ast<'a> {
         span: Span,
         function_type: FunctionType,
         id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
         generator: bool,
         r#async: bool,
-        params: FormalParameters,
-        body: FunctionBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::Function(
             self.function(
                 span,
                 function_type,
                 id,
+                type_parameters,
+                params,
+                return_type,
+                body,
                 generator,
                 r#async,
-                params,
-                body,
-                type_parameters,
-                return_type,
             )
             .into(),
         ))
@@ -8841,11 +8840,11 @@ impl<'a> Ast<'a> {
         class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
         super_type_arguments: Option<TsTypeParameterInstantiation>,
         implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
         r#abstract: bool,
         declare: bool,
     ) -> JsxExpression {
@@ -8855,11 +8854,11 @@ impl<'a> Ast<'a> {
                 class_type,
                 decorators,
                 id,
-                super_class,
-                body,
                 type_parameters,
+                super_class,
                 super_type_arguments,
                 implements,
+                body,
                 r#abstract,
                 declare,
             )
@@ -9065,9 +9064,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: JsxElementName,
+        type_arguments: Option<TsTypeParameterInstantiation>,
         attributes: TypedSubRange<JsxAttributeItem>,
         self_closing: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> JsxOpeningElement {
         let _f0 = self.add_extra(attributes.to_extra_data(self));
         JsxOpeningElement(self.add_node(
@@ -9076,10 +9075,10 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((name.node_id().index() as u32 as u128) << 8usize)
-                    | ((self_closing as u32 as u128) << 0usize)
                     | ((type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
                         << 40usize)
+                    | ((self_closing as u32 as u128) << 0usize)
                     | ((_f0.index() as u128) << 96usize),
             ),
         ))

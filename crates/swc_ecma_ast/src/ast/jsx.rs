@@ -86,11 +86,11 @@ pub struct JsxElement {
 pub struct JsxOpeningElement {
     /// `jsx_identifier`, `jsx_namespaced_name`, or `jsx_member_expression`
     name: JsxElementName,
+    /// `ts_type_parameter_instantiation`. `None` when absent.
+    type_arguments: Option<TsTypeParameterInstantiation>,
     /// `jsx_attribute` or `jsx_spread_attribute`.
     attributes: Vec<JsxAttributeItem>,
     self_closing: bool,
-    /// `ts_type_parameter_instantiation`. `None` when absent.
-    type_arguments: Option<TsTypeParameterInstantiation>,
 }
 
 /// The closing `</Foo>` of a JSX element.

@@ -218,17 +218,17 @@ pub struct TsFunction {
     /// `binding_identifier`. `None` for anonymous default exports and method
     /// definitions.
     id: Option<BindingIdentifier>,
+    /// `ts_type_parameter_declaration`. `None` when absent.
+    type_parameters: Option<TsTypeParameterDeclaration>,
+    /// `formal_parameters`
+    params: FormalParameters,
+    /// `ts_type_annotation`. `None` when absent.
+    return_type: Option<TsTypeAnnotation>,
     generator: bool,
     r#async: bool,
     /// true when preceded by the `declare` modifier. Distinguishes a real
     /// ambient declaration from a plain overload signature.
     declare: bool,
-    /// `formal_parameters`
-    params: FormalParameters,
-    /// `ts_type_parameter_declaration`. `None` when absent.
-    type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `ts_type_annotation`. `None` when absent.
-    return_type: Option<TsTypeAnnotation>,
 }
 
 /// A body-less TypeScript method, accessor, or constructor signature in a
