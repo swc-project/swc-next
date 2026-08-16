@@ -1,3 +1,5 @@
+use std::vec::Vec;
+
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, ScopeId,
@@ -13,7 +15,7 @@ use crate::{
 pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
     pub state: SemanticContext<'ast>,
     pub ast: &'traverse Ast<'ast>,
-    current_node: Option<NodeId>,
+    path: Vec<NodeId>,
 }
 
 impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
@@ -21,37 +23,34 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
         Self {
             state,
             ast,
-            current_node: None,
+            path: Vec::with_capacity(64),
         }
     }
 
     pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
-        let parent = self.current_node;
-        self.current_node = Some(node);
-        self.state.enter_node(node, parent)
+        self.path.push(node);
+        self.state.enter_node(node)
     }
 
     pub fn leave_node(&mut self, node: NodeId) {
-        debug_assert_eq!(self.current_node, Some(node));
-        self.current_node = self.state.node_parents[node.index()];
+        let current = self.path.pop();
+        debug_assert_eq!(current, Some(node));
     }
 
     pub fn parent(&self) -> Option<NodeId> {
-        self.current_node
-            .and_then(|node| self.state.node_parents[node.index()])
+        self.path.iter().rev().nth(1).copied()
     }
 
     pub fn current_node(&self) -> Option<NodeId> {
-        self.current_node
+        self.path.last().copied()
     }
 
     pub fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
-        std::iter::successors(self.current_node, |node| {
-            self.state.node_parents[node.index()]
-        })
+        self.path.iter().rev().copied()
     }
 
     pub fn finalize(self) -> Semantic<'ast> {
+        debug_assert!(self.path.is_empty());
         self.state.finalize(self.ast)
     }
 }
@@ -69,16 +68,13 @@ pub(crate) struct SemanticContext<'a> {
     reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, Option<NodeId>>,
 }
 
 impl<'a> SemanticContext<'a> {
     pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
-        let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         node_scopes.resize(tree.node_count(), ScopeId::ROOT);
-        node_parents.resize(tree.node_count(), None);
         Self {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
@@ -87,7 +83,6 @@ impl<'a> SemanticContext<'a> {
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
             node_scopes,
-            node_parents,
         }
     }
 
@@ -102,9 +97,8 @@ impl<'a> SemanticContext<'a> {
     }
 
     #[inline]
-    pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) -> ReferenceFlags {
+    pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
         self.node_scopes[node.index()] = self.scope.current;
-        self.node_parents[node.index()] = parent;
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
         flags
@@ -238,6 +232,11 @@ impl<'a> SemanticContext<'a> {
 
     pub fn enter_ts_conditional_type(&mut self, node: NodeId) {
         self.enter_block_scope(node);
+        // `check_type` is visited before this scope is entered, and
+        // `false_type` after it is exited. Keep the scope-creating node mapped
+        // to the conditional scope rather than the enclosing scope in which
+        // the node itself was entered.
+        self.node_scopes[node.index()] = self.scope.current;
     }
 
     pub fn enter_ts_module_block(&mut self, node: NodeId) {
@@ -278,7 +277,6 @@ impl<'a> SemanticContext<'a> {
             scopes,
             has_with_statement,
             self.node_scopes,
-            self.node_parents,
             self.module_record,
         )
     }

@@ -41,7 +41,7 @@ type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 /// tree's arena and valid for the lifetime of the tree.
 ///
 /// The query methods connect declaration nodes, reference nodes,
-/// containing scopes, parents, uses, and name lookup without rebuilding
+/// containing scopes, uses, and name lookup without rebuilding
 /// indexes outside the arena-backed model.
 #[derive(Debug)]
 pub struct Semantic<'a> {
@@ -59,7 +59,6 @@ pub struct Semantic<'a> {
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, Option<NodeId>>,
     node_declarations: ArenaVec<'a, Option<DeclarationId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
 }
@@ -125,19 +124,6 @@ impl<'a> Semantic<'a> {
     /// that scope's parent is the enclosing scope.
     pub fn scope_of(&self, node: NodeId) -> ScopeId {
         self.node_scopes[node.index()]
-    }
-
-    /// The structural parent of `node`, or `None` at the root.
-    pub fn parent_of(&self, node: NodeId) -> Option<NodeId> {
-        self.node_parents[node.index()]
-    }
-
-    /// Walks from `node` up to the root, yielding `node` first.
-    pub fn ancestors(&self, node: Option<NodeId>) -> SemanticAncestorIterator<'_> {
-        SemanticAncestorIterator {
-            node_parents: &self.node_parents,
-            current: node,
-        }
     }
 
     /// Every declaration of `id`, in source order. Usually a single element.
@@ -298,21 +284,6 @@ impl Iterator for ScopeIterator<'_> {
             id: ScopeId::from_usize(index),
             scope,
         })
-    }
-}
-
-pub struct SemanticAncestorIterator<'a> {
-    node_parents: &'a [Option<NodeId>],
-    current: Option<NodeId>,
-}
-
-impl Iterator for SemanticAncestorIterator<'_> {
-    type Item = NodeId;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let node = self.current?;
-        self.current = self.node_parents[node.index()];
-        Some(node)
     }
 }
 

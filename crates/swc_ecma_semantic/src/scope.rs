@@ -128,21 +128,6 @@ impl<'a> ScopeTree<'a> {
             current: start,
         }
     }
-
-    /// Marks `start` and every lexical ancestor as observable by direct eval.
-    pub(crate) fn mark_direct_eval(&mut self, start: ScopeId) {
-        let mut current = Some(start);
-        // Each scope is marked at most once. Later calls stop at the first
-        // marked ancestor, so all calls together are O(scopes + eval calls).
-        while let Some(id) = current {
-            let scope = &mut self.list[id.index()];
-            if scope.flags.direct_eval {
-                break;
-            }
-            scope.flags.direct_eval = true;
-            current = scope.parent;
-        }
-    }
 }
 
 /// Yields each scope id from a starting scope up to the root.
@@ -516,6 +501,22 @@ impl<'a> ScopeTracker<'a> {
         AncestorIterator {
             list: &self.scopes,
             current: start,
+        }
+    }
+
+    /// Marks the current scope and every lexical ancestor as observable by
+    /// direct eval.
+    pub fn mark_direct_eval(&mut self) {
+        let mut current = Some(self.current);
+        // Each scope is marked at most once. Later calls stop at the first
+        // marked ancestor, so all calls together are O(scopes + eval calls).
+        while let Some(id) = current {
+            let scope = &mut self.scopes[id.index()];
+            if scope.flags.direct_eval {
+                break;
+            }
+            scope.flags.direct_eval = true;
+            current = scope.parent;
         }
     }
 

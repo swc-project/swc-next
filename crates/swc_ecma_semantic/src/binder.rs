@@ -1400,10 +1400,9 @@ impl<'a> SymbolTracker<'a> {
     pub fn finalize(
         mut self,
         tree: &Ast,
-        mut scopes: ScopeTree<'a>,
+        scopes: ScopeTree<'a>,
         has_with_statement: bool,
         node_scopes: ArenaVec<'a, ScopeId>,
-        node_parents: ArenaVec<'a, Option<NodeId>>,
         module_record: ModuleRecordBuilder<'a>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
@@ -1470,12 +1469,6 @@ impl<'a> SymbolTracker<'a> {
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
             let name = tree.get_utf8(reference.name).as_bytes();
-            if name == b"eval"
-                && reference.flags.is_read()
-                && is_direct_eval_reference(tree, &node_parents, reference.node)
-            {
-                scopes.mark_direct_eval(reference.scope);
-            }
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
                 .hash_one(name);
@@ -1495,15 +1488,7 @@ impl<'a> SymbolTracker<'a> {
                     let symbol = self.symbols[id.index()];
                     // A binding outside the reference's space does not
                     // shadow; keep walking.
-                    if symbol.flags.visible_in(reference.flags.space)
-                        && type_parameter_visible(
-                            tree,
-                            symbol,
-                            reference.node,
-                            &scopes,
-                            &node_parents,
-                        )
-                    {
+                    if symbol.flags.visible_in(reference.flags.space) {
                         resolved = Some(id);
                         break;
                     }
@@ -1592,7 +1577,6 @@ impl<'a> SymbolTracker<'a> {
             scope_maps: self.scope_maps,
             hoisting_variables: self.hoisting_variables,
             node_scopes,
-            node_parents,
             node_declarations,
             node_references,
         }
@@ -1640,151 +1624,6 @@ fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
         excludes: Excludes::IMPORT_BINDING,
         scope,
     }
-}
-
-fn is_direct_eval_reference(
-    tree: &Ast<'_>,
-    node_parents: &[Option<NodeId>],
-    reference_node: NodeId,
-) -> bool {
-    if !matches!(
-        tree.kind_data(reference_node),
-        NodeKindData::IdentifierReference(_)
-    ) {
-        return false;
-    }
-
-    let mut expression = reference_node;
-    loop {
-        let Some(parent) = node_parents[expression.index()] else {
-            return false;
-        };
-        let inner = match tree.kind_data(parent) {
-            NodeKindData::ParenthesizedExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsAsExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsSatisfiesExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsTypeAssertion(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsNonNullExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsInstantiationExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::CallExpression(call) => {
-                return !call.optional(tree) && call.callee(tree).node_id() == expression;
-            }
-            _ => return false,
-        };
-        if inner != expression {
-            return false;
-        }
-        expression = parent;
-    }
-}
-
-// TypeScript restricts type parameters beyond lexical scoping: infer
-// variables exist only in their conditional's true branch, and class
-// type parameters are hidden in static members (TS2302) and computed
-// member keys (TS2467).
-fn type_parameter_visible(
-    tree: &Ast<'_>,
-    symbol: Symbol,
-    reference_node: NodeId,
-    scopes: &ScopeTree<'_>,
-    node_parents: &[Option<NodeId>],
-) -> bool {
-    if !symbol.flags.contains(SymbolFlags::TYPE_PARAMETER) {
-        return true;
-    }
-    let scope_node = scopes.get(symbol.scope).node;
-    match tree.kind_data(scope_node) {
-        NodeKindData::TsConditionalType(conditional) => in_subtree(
-            node_parents,
-            reference_node,
-            scope_node,
-            conditional.true_type(tree).node_id(),
-        ),
-        NodeKindData::Class(_) => {
-            !class_type_parameter_hidden(tree, node_parents, reference_node, scope_node)
-        }
-        _ => true,
-    }
-}
-
-// Whether walking up from `node` reaches `root` through `subtree`.
-fn in_subtree(
-    node_parents: &[Option<NodeId>],
-    node: NodeId,
-    root: NodeId,
-    subtree: NodeId,
-) -> bool {
-    let mut child = node;
-    let mut parent = node_parents[child.index()];
-    while let Some(current_parent) = parent {
-        if current_parent == root {
-            return child == subtree;
-        }
-        child = current_parent;
-        parent = node_parents[current_parent.index()];
-    }
-    false
-}
-
-fn class_type_parameter_hidden(
-    tree: &Ast<'_>,
-    node_parents: &[Option<NodeId>],
-    reference_node: NodeId,
-    class_node: NodeId,
-) -> bool {
-    let mut child = reference_node;
-    let mut parent = node_parents[child.index()];
-    while let Some(current_parent) = parent {
-        match tree.kind_data(current_parent) {
-            NodeKindData::MethodDefinition(method) => {
-                if method.computed(tree)
-                    && method.key(tree).node_id() == child
-                    && member_owner(node_parents, current_parent) == Some(class_node)
-                {
-                    return true;
-                }
-            }
-            NodeKindData::TsMethodDefinition(method) => {
-                if method.computed(tree)
-                    && method.key(tree).node_id() == child
-                    && member_owner(node_parents, current_parent) == Some(class_node)
-                {
-                    return true;
-                }
-            }
-            NodeKindData::PropertyDefinition(property) => {
-                if property.computed(tree)
-                    && property.key(tree).node_id() == child
-                    && member_owner(node_parents, current_parent) == Some(class_node)
-                {
-                    return true;
-                }
-            }
-            NodeKindData::ClassBody(_) => {
-                if node_parents[current_parent.index()] != Some(class_node) {
-                    child = current_parent;
-                    parent = node_parents[current_parent.index()];
-                    continue;
-                }
-                return match tree.kind_data(child) {
-                    NodeKindData::MethodDefinition(method) => method.r#static(tree),
-                    NodeKindData::TsMethodDefinition(method) => method.r#static(tree),
-                    NodeKindData::PropertyDefinition(property) => property.r#static(tree),
-                    NodeKindData::TsIndexSignature(signature) => signature.r#static(tree),
-                    NodeKindData::StaticBlock(_) => true,
-                    _ => false,
-                };
-            }
-            _ => {}
-        }
-        child = current_parent;
-        parent = node_parents[current_parent.index()];
-    }
-    false
-}
-
-fn member_owner(node_parents: &[Option<NodeId>], member: NodeId) -> Option<NodeId> {
-    node_parents[member.index()].and_then(|body| node_parents[body.index()])
 }
 
 fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeId {

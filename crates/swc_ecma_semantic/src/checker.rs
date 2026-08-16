@@ -6,14 +6,14 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
-    BlockStatement, CatchClause, Class, ClassBody, Decorator, Diagnostic, Directive,
-    ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, ExportSpecifier,
-    ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody,
-    FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier,
-    JsxClosingElement, JsxOpeningElement, Label, MemberExpression, NodeId, NodeKind, NodeKindData,
-    ObjectPattern, ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId, Severity,
-    Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, TsArrayType, TsAsExpression,
-    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    BlockStatement, CallExpression, CatchClause, Class, ClassBody, Decorator, Diagnostic,
+    Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
+    ExportSpecifier, ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function,
+    FunctionBody, FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind,
+    ImportSpecifier, JsxClosingElement, JsxOpeningElement, Label, MemberExpression, NodeId,
+    NodeKind, NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition,
+    PropertyKey, ScopeId, Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId,
+    TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
@@ -131,6 +131,72 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
         init.visit_with(self);
         self.leave_node(node.node_id());
     }
+
+    fn check_class_type_parameter_reference(
+        &mut self,
+        identifier: IdentifierReference,
+        flags: ReferenceFlags,
+    ) {
+        if flags.space != ReferenceSpace::Type {
+            return;
+        }
+
+        let mut violations = Vec::new();
+        class_type_parameter_violations(
+            self.context.ast,
+            self.context.ancestors(),
+            &mut violations,
+        );
+        if violations.is_empty() {
+            return;
+        }
+
+        let name = self
+            .context
+            .ast
+            .get_utf8(identifier.name(self.context.ast))
+            .as_bytes();
+        let Some(symbol) = self
+            .context
+            .state
+            .scope
+            .ancestors(Some(self.context.state.scope.current))
+            .find_map(|scope_id| {
+                let symbol_id = self.context.state.symbols.own_binding(scope_id, name)?;
+                let symbol = self.context.state.symbols.symbol(symbol_id);
+                symbol
+                    .flags
+                    .visible_in(ReferenceSpace::Type)
+                    .then_some(symbol)
+            })
+        else {
+            return;
+        };
+        if !symbol.flags.contains(SymbolFlags::TYPE_PARAMETER) {
+            return;
+        }
+
+        let owner = self.context.state.scope.get(symbol.scope).node;
+        let Some((_, violation)) = violations
+            .into_iter()
+            .find(|(class_node, _)| *class_node == owner)
+        else {
+            return;
+        };
+        let message = match violation {
+            ClassTypeParameterViolation::StaticMember => {
+                "Static members cannot reference class type parameters"
+            }
+            ClassTypeParameterViolation::ComputedKey => {
+                "A computed property name cannot reference a type parameter from its containing type"
+            }
+        };
+        self.checks.report(
+            self.context.ast.span(identifier.node_id()),
+            message,
+            ReportOptions::default(),
+        );
+    }
 }
 
 fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
@@ -141,6 +207,104 @@ fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace
         ReferenceSpace::Any
     } else {
         ReferenceSpace::Value
+    }
+}
+
+fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
+    if call.optional(tree) {
+        return false;
+    }
+
+    let mut callee = call.callee(tree).node_id();
+    loop {
+        callee = match tree.kind_data(callee) {
+            NodeKindData::IdentifierReference(identifier) => {
+                return tree.get_utf8(identifier.name(tree)).as_bytes() == b"eval";
+            }
+            NodeKindData::ParenthesizedExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsAsExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsSatisfiesExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsTypeAssertion(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsNonNullExpression(wrapper) => wrapper.expression(tree).node_id(),
+            NodeKindData::TsInstantiationExpression(wrapper) => wrapper.expression(tree).node_id(),
+            _ => return false,
+        };
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ClassTypeParameterViolation {
+    StaticMember,
+    ComputedKey,
+}
+
+fn class_type_parameter_violations(
+    tree: &Ast<'_>,
+    mut ancestors: impl Iterator<Item = NodeId>,
+    violations: &mut Vec<(NodeId, ClassTypeParameterViolation)>,
+) {
+    let Some(mut child) = ancestors.next() else {
+        return;
+    };
+    let mut in_computed_key = false;
+
+    while let Some(parent) = ancestors.next() {
+        match tree.kind_data(parent) {
+            NodeKindData::MethodDefinition(method) => {
+                in_computed_key |= method.computed(tree) && method.key(tree).node_id() == child;
+            }
+            NodeKindData::TsMethodDefinition(method) => {
+                in_computed_key |= method.computed(tree) && method.key(tree).node_id() == child;
+            }
+            NodeKindData::TsMethodSignature(method) => {
+                in_computed_key |= method.computed(tree) && method.key(tree).node_id() == child;
+            }
+            NodeKindData::PropertyDefinition(property) => {
+                in_computed_key |= property.computed(tree) && property.key(tree).node_id() == child;
+            }
+            NodeKindData::TsPropertySignature(property) => {
+                in_computed_key |= property.computed(tree) && property.key(tree).node_id() == child;
+            }
+            NodeKindData::ClassBody(_) => {
+                let Some(owner) = ancestors.next() else {
+                    return;
+                };
+                let violation = if in_computed_key {
+                    Some(ClassTypeParameterViolation::ComputedKey)
+                } else {
+                    let is_static = match tree.kind_data(child) {
+                        NodeKindData::MethodDefinition(method) => method.r#static(tree),
+                        NodeKindData::TsMethodDefinition(method) => method.r#static(tree),
+                        NodeKindData::PropertyDefinition(property) => property.r#static(tree),
+                        NodeKindData::TsIndexSignature(signature) => signature.r#static(tree),
+                        NodeKindData::StaticBlock(_) => true,
+                        _ => false,
+                    };
+                    is_static.then_some(ClassTypeParameterViolation::StaticMember)
+                };
+                if let Some(violation) = violation {
+                    violations.push((owner, violation));
+                }
+
+                // Continue through nested classes: a reference inside an inner
+                // class can still be enclosed by a static member of an outer
+                // class.
+                child = owner;
+                in_computed_key = false;
+                continue;
+            }
+            NodeKindData::TsInterfaceBody(_) if in_computed_key => {
+                let Some(owner) = ancestors.next() else {
+                    return;
+                };
+                violations.push((owner, ClassTypeParameterViolation::ComputedKey));
+                child = owner;
+                in_computed_key = false;
+                continue;
+            }
+            _ => {}
+        }
+        child = parent;
     }
 }
 
@@ -1513,6 +1677,17 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         }
         self.context.leave_node(node);
     }
+    fn visit_call_expression(&mut self, node: CallExpression) {
+        self.context.enter_node(node.node_id());
+        if !self.context.state.symbols.in_ambient_context()
+            && self.context.state.default_reference_flags().is_read()
+            && is_direct_eval_call(self.context.ast, node)
+        {
+            self.context.state.scope.mark_direct_eval();
+        }
+        node.visit_children_with(self);
+        self.leave_node(node.node_id());
+    }
     #[inline]
     fn visit_update_expression(&mut self, node: UpdateExpression) {
         self.context.enter_node(node.node_id());
@@ -1534,23 +1709,24 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     #[inline]
     fn visit_assignment_pattern(&mut self, node: AssignmentPattern) {
         let node_flags = self.context.enter_node(node.node_id());
-        self.visit_with_reference_flags(node.left(self.context.ast), node_flags);
-        node.right(self.context.ast).visit_with(self);
         node.decorators(self.context.ast).visit_with(self);
+        self.visit_with_reference_flags(node.left(self.context.ast), node_flags);
         node.type_annotation(self.context.ast).visit_with(self);
+        node.right(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
     #[inline]
     fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
         let node_flags = self.context.enter_node(node.node_id());
-        self.visit_with_reference_flags(node.argument(self.context.ast), node_flags);
         node.decorators(self.context.ast).visit_with(self);
+        self.visit_with_reference_flags(node.argument(self.context.ast), node_flags);
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
     #[inline]
     fn visit_array_pattern(&mut self, node: ArrayPattern) {
         let node_flags = self.context.enter_node(node.node_id());
+        node.decorators(self.context.ast).visit_with(self);
         for element in node.elements(self.context.ast).iter() {
             if let Some(element) = self.context.ast.get_node_in_sub_range(element) {
                 self.visit_with_reference_flags(element, node_flags);
@@ -1559,13 +1735,13 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         if let Some(rest) = node.rest(self.context.ast) {
             self.visit_with_reference_flags(rest, node_flags);
         }
-        node.decorators(self.context.ast).visit_with(self);
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
     #[inline]
     fn visit_object_pattern(&mut self, node: ObjectPattern) {
         let node_flags = self.context.enter_node(node.node_id());
+        node.decorators(self.context.ast).visit_with(self);
         for property in node.properties(self.context.ast).iter() {
             let property = self.context.ast.get_node_in_sub_range(property);
             self.visit_with_reference_flags(property, node_flags);
@@ -1573,7 +1749,6 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         if let Some(rest) = node.rest(self.context.ast) {
             self.visit_with_reference_flags(rest, node_flags);
         }
-        node.decorators(self.context.ast).visit_with(self);
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
@@ -1600,8 +1775,8 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         } else {
             key.visit_with(self);
         }
-        node.value(self.context.ast).visit_with(self);
         node.type_annotation(self.context.ast).visit_with(self);
+        node.value(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
     #[inline]
@@ -1680,6 +1855,9 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state
             .symbols
             .add_identifier_reference(context.ast, identifier, &state.scope, flags);
+        if self.check_syntax {
+            self.check_class_type_parameter_reference(node, flags);
+        }
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
@@ -2347,11 +2525,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
     }
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
-        self.context.state.enter_ts_conditional_type(node.node_id());
         self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
-        node.visit_children_with(self);
+        node.check_type(self.context.ast).visit_with(self);
+        self.context.state.enter_ts_conditional_type(node.node_id());
+        node.extends_type(self.context.ast).visit_with(self);
+        node.true_type(self.context.ast).visit_with(self);
         self.context.state.exit_scope(node.node_id());
+        node.false_type(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
