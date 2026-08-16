@@ -51,8 +51,6 @@ pub struct Symbol {
     /// this is the hoist target it lands in, not the block it is
     /// written in.
     pub scope: ScopeId,
-    // window into `Semantic.declarations`
-    pub declarations: Range,
 }
 
 /// One declaration contributing to a [`Symbol`].
@@ -508,8 +506,8 @@ pub(crate) struct SymbolTracker<'a> {
     symbols: ArenaVec<'a, Symbol>,
     references: ArenaVec<'a, Reference>,
     declarations: ArenaVec<'a, Declaration>,
-    // first declarator of each symbol, parallel to `symbols`
-    first_decls: Vec<NodeId>,
+    symbol_declarations: ArenaVec<'a, ArenaVec<'a, DeclarationId>>,
+    node_symbols: ArenaVec<'a, Option<SymbolId>>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
 
@@ -592,12 +590,15 @@ impl<'a> SymbolTracker<'a> {
     pub fn init(tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
         let nodes = tree.node_count();
+        let mut node_symbols = ArenaVec::with_capacity_in(nodes, allocator);
+        node_symbols.resize(nodes, None);
         Self {
             allocator,
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
             declarations: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
-            first_decls: Vec::with_capacity(16usize.max(nodes / 12)),
+            symbol_declarations: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            node_symbols,
             scope_maps: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             hoisting_variables: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             pending: PendingBinding::default(),
@@ -1209,8 +1210,8 @@ impl<'a> SymbolTracker<'a> {
         if member.computed(tree) {
             return;
         }
-        let member_id = member.id(tree).node_id();
-        let name = match tree.kind_data(member_id) {
+        let member_name = member.id(tree).node_id();
+        let name = match tree.kind_data(member_name) {
             NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
             NodeKindData::StringLiteral(literal) => literal.value(tree),
             _ => return,
@@ -1221,7 +1222,7 @@ impl<'a> SymbolTracker<'a> {
             excludes: Excludes::ENUM_MEMBER,
             scope: scope.current,
         };
-        self.declare(tree, name, member_id);
+        self.declare(tree, name, member.node_id());
         self.pending = saved;
     }
 
@@ -1299,19 +1300,23 @@ impl<'a> SymbolTracker<'a> {
                 name,
                 flags: declaration_flags,
                 scope: target,
-                declarations: Range::default(),
             });
-            self.first_decls.push(node);
+            debug_assert_eq!(self.symbol_declarations.len(), new_id.index());
+            self.symbol_declarations
+                .push(ArenaVec::new_in(self.allocator));
             let key = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
             self.scope_maps[target.index()].insert(key, new_id);
             new_id
         };
 
+        let declaration_id = DeclarationId::from_usize(self.declarations.len());
         self.declarations.push(Declaration {
-            symbol: id,
             node,
+            symbol: id,
             flags: declaration_flags,
         });
+        self.symbol_declarations[id.index()].push(declaration_id);
+        self.node_symbols[node.index()] = Some(id);
         id
     }
 
@@ -1353,7 +1358,8 @@ impl<'a> SymbolTracker<'a> {
     /// The `binding_identifier` node of the earliest declaration of `id`.
     /// Later declarations merged into the symbol do not change it.
     pub fn first_decl_of(&self, id: SymbolId) -> NodeId {
-        self.first_decls[id.index()]
+        let declaration_id = self.symbol_declarations[id.index()][0];
+        self.declarations[declaration_id.index()].node
     }
 
     /// The binding of `name` declared directly in `scope`, excluding
@@ -1410,56 +1416,12 @@ impl<'a> SymbolTracker<'a> {
         debug_assert_eq!(self.export_state, ExportState::None);
         self.sync_scope_maps(scopes.list.len());
 
-        // Declaration index: count, prefix-sum, assign destinations, then
-        // permute in place. For D declarations and S symbols, these phases are
-        // O(D + S). `Symbol.declarations.len` doubles as the destination cursor
-        // while preserving source order within each symbol.
         let symbol_count = self.symbols.len();
-        for symbol in &mut self.symbols {
-            symbol.declarations = Range::default();
-        }
-        for declaration in &self.declarations {
-            self.symbols[declaration.symbol.index()].declarations.len += 1;
-        }
-        let mut declaration_offset = 0u32;
-        for symbol in &mut self.symbols {
-            let count = symbol.declarations.len;
-            symbol.declarations.start = declaration_offset;
-            symbol.declarations.len = 0;
-            declaration_offset += count;
-        }
-        debug_assert_eq!(declaration_offset as usize, self.declarations.len());
+        let declarations = self.declarations;
+        let symbol_declarations = self.symbol_declarations;
+        let node_symbols = self.node_symbols;
 
         let node_count = tree.node_count();
-        let mut node_declarations = ArenaVec::with_capacity_in(node_count, self.allocator);
-        node_declarations.resize(node_count, None);
-        for declaration in &self.declarations {
-            let symbol = &mut self.symbols[declaration.symbol.index()];
-            let index = (symbol.declarations.start + symbol.declarations.len) as usize;
-            let declaration_id = DeclarationId::from_usize(index);
-            let node_declaration = &mut node_declarations[declaration.node.index()];
-            let previous = node_declaration.replace(declaration_id);
-            debug_assert!(previous.is_none());
-            symbol.declarations.len += 1;
-        }
-
-        // The node index already holds each declaration's unique final
-        // position. Every swap fixes one declaration, so all cycles perform
-        // fewer than D swaps in total.
-        for index in 0..self.declarations.len() {
-            loop {
-                let declaration = self.declarations[index];
-                let destination = node_declarations[declaration.node.index()]
-                    .expect("every declaration has a destination")
-                    .index();
-                if destination == index {
-                    break;
-                }
-                self.declarations.swap(index, destination);
-            }
-        }
-        let declarations = self.declarations;
-
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
         node_references.resize(node_count, None);
         for (index, reference) in self.references.iter().enumerate() {
@@ -1560,8 +1522,9 @@ impl<'a> SymbolTracker<'a> {
         }
 
         let module_record = module_record.finalize(
+            &node_symbols,
+            &symbol_declarations,
             &declarations,
-            &node_declarations,
             &self.references,
             &node_references,
         );
@@ -1571,13 +1534,14 @@ impl<'a> SymbolTracker<'a> {
             symbols: self.symbols,
             references: self.references,
             declarations,
+            symbol_declarations,
             module_record,
             use_ids,
             use_ranges,
             scope_maps: self.scope_maps,
             hoisting_variables: self.hoisting_variables,
             node_scopes,
-            node_declarations,
+            node_symbols,
             node_references,
         }
     }

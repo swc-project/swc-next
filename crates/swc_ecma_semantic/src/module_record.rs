@@ -246,8 +246,9 @@ impl<'a> ModuleRecordBuilder<'a> {
 
     pub fn finalize(
         self,
+        node_symbols: &[Option<SymbolId>],
+        symbol_declarations: &[ArenaVec<'_, DeclarationId>],
         declarations: &[Declaration],
-        node_declarations: &[Option<DeclarationId>],
         references: &[crate::Reference],
         node_references: &[Option<ReferenceId>],
     ) -> ModuleRecord<'a> {
@@ -255,8 +256,10 @@ impl<'a> ModuleRecordBuilder<'a> {
         for raw in self.exports {
             let target = match raw.target {
                 RawExportTarget::Direct { binding } => {
-                    let declaration = node_declarations[binding.index()]
-                        .expect("direct export binding has a declaration");
+                    let symbol_id =
+                        node_symbols[binding.index()].expect("direct export binding has a symbol");
+                    let declaration =
+                        declaration_id(symbol_declarations, declarations, symbol_id, binding);
                     ExportTarget::Local {
                         symbol: declarations[declaration.index()].symbol,
                         declaration: Some(declaration),
@@ -285,8 +288,10 @@ impl<'a> ModuleRecordBuilder<'a> {
                     expression,
                 } => {
                     if let Some(binding) = binding {
-                        let declaration = node_declarations[binding.index()]
-                            .expect("named default export has a declaration");
+                        let symbol_id = node_symbols[binding.index()]
+                            .expect("named default export has a symbol");
+                        let declaration =
+                            declaration_id(symbol_declarations, declarations, symbol_id, binding);
                         ExportTarget::Local {
                             symbol: declarations[declaration.index()].symbol,
                             declaration: Some(declaration),
@@ -316,6 +321,19 @@ impl<'a> ModuleRecordBuilder<'a> {
         }
         ModuleRecord { exports }
     }
+}
+
+fn declaration_id(
+    symbol_declarations: &[ArenaVec<'_, DeclarationId>],
+    declarations: &[Declaration],
+    symbol_id: SymbolId,
+    node: NodeId,
+) -> DeclarationId {
+    symbol_declarations[symbol_id.index()]
+        .iter()
+        .copied()
+        .find(|&declaration_id| declarations[declaration_id.index()].node == node)
+        .expect("export binding has a declaration")
 }
 
 #[derive(Clone, Copy)]

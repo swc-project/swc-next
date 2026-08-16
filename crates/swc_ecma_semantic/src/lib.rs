@@ -51,16 +51,22 @@ pub struct Semantic<'a> {
     symbols: ArenaVec<'a, Symbol>,
     /// Every reference, in source order, indexed by [`ReferenceId`].
     references: ArenaVec<'a, Reference>,
-    /// Every declaration, grouped by symbol and indexed by [`DeclarationId`].
+    /// Every declaration in source order, indexed by [`DeclarationId`].
     declarations: ArenaVec<'a, Declaration>,
-    module_record: ModuleRecord<'a>,
+    /// Declaration ids for each symbol, in source order.
+    symbol_declarations: ArenaVec<'a, ArenaVec<'a, DeclarationId>>,
+
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_declarations: ArenaVec<'a, Option<DeclarationId>>,
+
+    /// The symbol declared by each node, indexed by [`NodeId`].
+    node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
+
+    module_record: ModuleRecord<'a>,
 }
 
 impl<'a> Semantic<'a> {
@@ -90,27 +96,10 @@ impl<'a> Semantic<'a> {
         self.scopes.get(id)
     }
 
-    /// The symbol declared at `node`, or the lexical fallback symbol of the
-    /// reference at `node`. `None` when the node neither declares nor
-    /// references a binding. Inspect [`ReferenceFlags::is_dynamic`] before
-    /// treating a reference's fallback as its definite runtime binding.
-    ///
-    /// ## Example
-    /// ```ts
-    /// let a = 1; a;
-    /// //  ^ the declared symbol
-    /// //         ^ the same symbol, through the reference
-    /// ```
-    pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
-        self.node_declarations[node.index()]
-            .map(|id| self.declaration(id).symbol)
-            .or_else(|| self.node_references[node.index()].and_then(|id| self.reference(id).symbol))
-    }
-
-    /// The declaration recorded at `node`, or `None` when the node is not a
+    /// The symbol declared at `node`, or `None` when the node is not a
     /// declaration site.
-    pub fn declaration_of(&self, node: NodeId) -> Option<DeclarationId> {
-        self.node_declarations[node.index()]
+    pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
+        self.node_symbols[node.index()]
     }
 
     /// The reference recorded at `node`, or `None` when the node is
@@ -126,6 +115,11 @@ impl<'a> Semantic<'a> {
         self.node_scopes[node.index()]
     }
 
+    /// The ids of every declaration of `id`, in source order.
+    pub fn declaration_ids(&self, id: SymbolId) -> &[DeclarationId] {
+        &self.symbol_declarations[id.index()]
+    }
+
     /// Every declaration of `id`, in source order. Usually a single element.
     /// Symbols whose declarations merge (`var` redeclarations, TS overloads,
     /// `class` + `interface`) have one entry per declaration.
@@ -139,11 +133,13 @@ impl<'a> Semantic<'a> {
     ///
     /// A conflicting redeclaration is recorded here too, aliased onto
     /// the existing symbol so tooling on broken code still maps the node.
-    pub fn declarations(&self, id: SymbolId) -> &[Declaration] {
-        let range = self.symbol(id).declarations;
-        let start = range.start as usize;
-        let end = start + range.len as usize;
-        &self.declarations[start..end]
+    pub fn declarations(
+        &self,
+        id: SymbolId,
+    ) -> impl ExactSizeIterator<Item = Declaration> + DoubleEndedIterator + '_ {
+        self.declaration_ids(id)
+            .iter()
+            .map(|&declaration_id| self.declaration(declaration_id))
     }
 
     /// Every use site of `id`, in source order. Declaration sites are
@@ -234,8 +230,7 @@ impl<'a> Semantic<'a> {
         }
     }
 
-    /// Iterates every `(id, declaration)` pair, grouped by symbol and in
-    /// source order within each symbol.
+    /// Iterates every `(id, declaration)` pair in source order.
     pub fn iter_declarations(&self) -> DeclarationIterator<'_> {
         DeclarationIterator {
             declarations: &self.declarations,
@@ -456,9 +451,12 @@ mod tests {
         );
         let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
         let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
-        let a_declarations = semantic.declarations(a);
+        let a_declarations = semantic.declaration_ids(a);
         assert_eq!(a_declarations.len(), 2);
-        assert!(ast.span(a_declarations[0].node).start < ast.span(a_declarations[1].node).start);
+        assert!(
+            ast.span(semantic.declaration(a_declarations[0]).node).start
+                < ast.span(semantic.declaration(a_declarations[1]).node).start
+        );
 
         let mut declarations = semantic.iter_declarations();
         let first = declarations.next().unwrap();
@@ -471,20 +469,9 @@ mod tests {
                 second.declaration.symbol,
                 third.declaration.symbol,
             ],
-            [a, a, b]
+            [a, b, a]
         );
-        assert_eq!(
-            semantic.declaration_of(first.declaration.node),
-            Some(first.id)
-        );
-        assert_eq!(
-            semantic.declaration_of(second.declaration.node),
-            Some(second.id)
-        );
-        assert_eq!(
-            semantic.declaration_of(third.declaration.node),
-            Some(third.id)
-        );
+        assert_eq!(a_declarations, &[first.id, third.id]);
     }
 
     #[test]
@@ -697,23 +684,16 @@ mod tests {
             SourceType::Script,
         );
         let declaration = semantic.iter_declarations().next().unwrap();
-        assert_eq!(
-            semantic.declaration_of(declaration.declaration.node),
-            Some(declaration.id)
-        );
 
         let reference_id = semantic.reference_of(declaration.declaration.node).unwrap();
         let reference = semantic.reference(reference_id);
+        let symbol_id = declaration.declaration.symbol;
         assert!(reference.flags.is_write_only());
         assert!(reference.flags.is_dynamic());
-        assert_eq!(reference.symbol, Some(declaration.declaration.symbol));
+        assert_eq!(reference.symbol, Some(symbol_id));
+        assert_eq!(semantic.uses(symbol_id), &[reference_id]);
         assert_eq!(
-            semantic.uses(declaration.declaration.symbol),
-            &[reference_id]
-        );
-        assert_eq!(
-            ast.get_wtf8(semantic.symbol(declaration.declaration.symbol).name)
-                .as_bytes(),
+            ast.get_wtf8(semantic.symbol(symbol_id).name).as_bytes(),
             b"value"
         );
 
