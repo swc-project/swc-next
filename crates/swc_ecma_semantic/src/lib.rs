@@ -13,7 +13,11 @@ use swc_next_allocator::{
 };
 use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
-use crate::{binder::Range, checker::Checker, scope::ScopeTree};
+use crate::{
+    binder::{Range, SymbolDeclarations},
+    checker::Checker,
+    scope::ScopeTree,
+};
 
 mod binder;
 mod checker;
@@ -54,7 +58,7 @@ pub struct Semantic<'a> {
     /// Every declaration in source order, indexed by [`DeclarationId`].
     declarations: ArenaVec<'a, Declaration>,
     /// Declaration ids for each symbol, in source order.
-    symbol_declarations: ArenaVec<'a, ArenaVec<'a, DeclarationId>>,
+    symbol_declarations: ArenaVec<'a, SymbolDeclarations<'a>>,
 
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaVec<'a, Range>,
@@ -114,7 +118,7 @@ impl<'a> Semantic<'a> {
 
     /// The ids of every declaration of `id`, in source order.
     pub fn declaration_ids(&self, id: SymbolId) -> &[DeclarationId] {
-        &self.symbol_declarations[id.index()]
+        self.symbol_declarations[id.index()].as_slice()
     }
 
     /// Every declaration of `id`, in source order. Usually a single element.
@@ -442,33 +446,35 @@ mod tests {
         let allocator = Allocator::new();
         let (ast, semantic) = analyze_source(
             &allocator,
-            "interface A {} interface B {} interface A {}",
+            "interface A {} interface B {} interface A {} interface A {}",
             Lang::Ts,
             SourceType::Script,
         );
         let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
         let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
         let a_declarations = semantic.declaration_ids(a);
-        assert_eq!(a_declarations.len(), 2);
+        assert_eq!(a_declarations.len(), 3);
         assert!(
             ast.span(semantic.declaration(a_declarations[0]).node).start
-                < ast.span(semantic.declaration(a_declarations[1]).node).start
+                < ast.span(semantic.declaration(a_declarations[2]).node).start
         );
 
         let mut declarations = semantic.iter_declarations();
         let first = declarations.next().unwrap();
         let second = declarations.next().unwrap();
         let third = declarations.next().unwrap();
+        let fourth = declarations.next().unwrap();
         assert!(declarations.next().is_none());
         assert_eq!(
             [
                 first.declaration.symbol,
                 second.declaration.symbol,
                 third.declaration.symbol,
+                fourth.declaration.symbol,
             ],
-            [a, b, a]
+            [a, b, a, a]
         );
-        assert_eq!(a_declarations, &[first.id, third.id]);
+        assert_eq!(a_declarations, &[first.id, third.id, fourth.id]);
     }
 
     #[test]

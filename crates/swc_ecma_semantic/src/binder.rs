@@ -25,6 +25,35 @@ pub struct Range {
     pub len: u32,
 }
 
+/// Declaration ids for a symbol. Most symbols have exactly one declaration,
+/// so keep that id inline and allocate only when declarations merge.
+#[derive(Debug)]
+pub(crate) enum SymbolDeclarations<'a> {
+    Single(DeclarationId),
+    Multiple(ArenaVec<'a, DeclarationId>),
+}
+
+impl<'a> SymbolDeclarations<'a> {
+    fn push(&mut self, id: DeclarationId, allocator: &'a Allocator) {
+        match self {
+            Self::Single(first) => {
+                let mut declarations = ArenaVec::with_capacity_in(2, allocator);
+                declarations.push(*first);
+                declarations.push(id);
+                *self = Self::Multiple(declarations);
+            }
+            Self::Multiple(declarations) => declarations.push(id),
+        }
+    }
+
+    pub(crate) fn as_slice(&self) -> &[DeclarationId] {
+        match self {
+            Self::Single(id) => std::slice::from_ref(id),
+            Self::Multiple(declarations) => declarations,
+        }
+    }
+}
+
 /// A declared binding.
 ///
 /// ## Example
@@ -506,7 +535,7 @@ pub(crate) struct SymbolTracker<'a> {
     symbols: ArenaVec<'a, Symbol>,
     references: ArenaVec<'a, Reference>,
     declarations: ArenaVec<'a, Declaration>,
-    symbol_declarations: ArenaVec<'a, ArenaVec<'a, DeclarationId>>,
+    symbol_declarations: ArenaVec<'a, SymbolDeclarations<'a>>,
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
@@ -1278,6 +1307,7 @@ impl<'a> SymbolTracker<'a> {
         declaration_flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
 
         let name_text = tree.get_wtf8(name).as_bytes();
+        let declaration_id = DeclarationId::from_usize(self.declarations.len());
         let id = if let Some(existing) = self.binding(target, name_text) {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes)
@@ -1293,6 +1323,7 @@ impl<'a> SymbolTracker<'a> {
                 );
                 symbol.flags = merged;
             }
+            self.symbol_declarations[existing.index()].push(declaration_id, self.allocator);
             existing
         } else {
             let new_id = symbol_id(self.symbols.len());
@@ -1303,19 +1334,17 @@ impl<'a> SymbolTracker<'a> {
             });
             debug_assert_eq!(self.symbol_declarations.len(), new_id.index());
             self.symbol_declarations
-                .push(ArenaVec::new_in(self.allocator));
+                .push(SymbolDeclarations::Single(declaration_id));
             let key = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
             self.scope_maps[target.index()].insert(key, new_id);
             new_id
         };
 
-        let declaration_id = DeclarationId::from_usize(self.declarations.len());
         self.declarations.push(Declaration {
             node,
             symbol: id,
             flags: declaration_flags,
         });
-        self.symbol_declarations[id.index()].push(declaration_id);
         self.node_symbols[node.index()] = Some(id);
         id
     }
@@ -1358,7 +1387,7 @@ impl<'a> SymbolTracker<'a> {
     /// The `binding_identifier` node of the earliest declaration of `id`.
     /// Later declarations merged into the symbol do not change it.
     pub fn first_decl_of(&self, id: SymbolId) -> NodeId {
-        let declaration_id = self.symbol_declarations[id.index()][0];
+        let declaration_id = self.symbol_declarations[id.index()].as_slice()[0];
         self.declarations[declaration_id.index()].node
     }
 
