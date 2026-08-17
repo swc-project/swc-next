@@ -1,4 +1,4 @@
-use std::hash::BuildHasher;
+use std::{hash::BuildHasher, hint::cold_path};
 
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
@@ -1470,6 +1470,7 @@ impl<'a> SymbolTracker<'a> {
         }
 
         if has_with_statement {
+            cold_path();
             let with_ancestry = with_ancestry(tree, &scopes);
             for reference_index in 0..self.references.len() {
                 let reference = self.references[reference_index];
