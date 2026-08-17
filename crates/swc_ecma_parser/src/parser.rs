@@ -6464,15 +6464,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut is_const = false;
         let mut is_in = false;
         let mut is_out = false;
-        let mut modifier_step = 0u8;
         let mut start = self.current_token.span.start;
         let mut start_set = false;
         loop {
             let token = self.current_token;
-            let (step, flag) = match token.tag {
-                TokenTag::Const => (1, &mut is_const),
-                TokenTag::In => (2, &mut is_in),
-                TokenTag::Out => (3, &mut is_out),
+            let in_after_out = token.tag == TokenTag::In && is_out;
+            let flag = match token.tag {
+                TokenTag::Const => &mut is_const,
+                TokenTag::In => &mut is_in,
+                TokenTag::Out => &mut is_out,
                 _ => break,
             };
             let Some(next) = self.peek_ahead() else {
@@ -6488,15 +6488,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     Cow::Owned(format!("Duplicate '{text}' modifier on type parameter")),
                     ReportOptions::default(),
                 );
-            } else if step < modifier_step {
+            } else if in_after_out {
                 self.report(
                     token.span,
-                    "Type parameter modifiers must appear in the order 'const in out'",
+                    "'in' modifier must precede 'out' modifier.",
                     ReportOptions::default(),
                 );
             }
             *flag = true;
-            modifier_step = modifier_step.max(step);
             if !start_set {
                 start = token.span.start;
                 start_set = true;
