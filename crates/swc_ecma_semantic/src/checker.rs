@@ -131,72 +131,6 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
         init.visit_with(self);
         self.leave_node(node.node_id());
     }
-
-    fn check_class_type_parameter_reference(
-        &mut self,
-        identifier: IdentifierReference,
-        flags: ReferenceFlags,
-    ) {
-        if flags.space != ReferenceSpace::Type {
-            return;
-        }
-
-        let mut violations = Vec::new();
-        class_type_parameter_violations(
-            self.context.ast,
-            self.context.ancestors(),
-            &mut violations,
-        );
-        if violations.is_empty() {
-            return;
-        }
-
-        let name = self
-            .context
-            .ast
-            .get_utf8(identifier.name(self.context.ast))
-            .as_bytes();
-        let Some(symbol) = self
-            .context
-            .state
-            .scope
-            .ancestors(Some(self.context.state.scope.current))
-            .find_map(|scope_id| {
-                let symbol_id = self.context.state.symbols.own_binding(scope_id, name)?;
-                let symbol = self.context.state.symbols.symbol(symbol_id);
-                symbol
-                    .flags
-                    .visible_in(ReferenceSpace::Type)
-                    .then_some(symbol)
-            })
-        else {
-            return;
-        };
-        if !symbol.flags.contains(SymbolFlags::TYPE_PARAMETER) {
-            return;
-        }
-
-        let owner = self.context.state.scope.get(symbol.scope).node;
-        let Some((_, violation)) = violations
-            .into_iter()
-            .find(|(class_node, _)| *class_node == owner)
-        else {
-            return;
-        };
-        let message = match violation {
-            ClassTypeParameterViolation::StaticMember => {
-                "Static members cannot reference class type parameters"
-            }
-            ClassTypeParameterViolation::ComputedKey => {
-                "A computed property name cannot reference a type parameter from its containing type"
-            }
-        };
-        self.checks.report(
-            self.context.ast.span(identifier.node_id()),
-            message,
-            ReportOptions::default(),
-        );
-    }
 }
 
 fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
@@ -229,82 +163,6 @@ fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
             NodeKindData::TsInstantiationExpression(wrapper) => wrapper.expression(tree).node_id(),
             _ => return false,
         };
-    }
-}
-
-#[derive(Clone, Copy)]
-enum ClassTypeParameterViolation {
-    StaticMember,
-    ComputedKey,
-}
-
-fn class_type_parameter_violations(
-    tree: &Ast<'_>,
-    mut ancestors: impl Iterator<Item = NodeId>,
-    violations: &mut Vec<(NodeId, ClassTypeParameterViolation)>,
-) {
-    let Some(mut child) = ancestors.next() else {
-        return;
-    };
-    let mut in_computed_key = false;
-
-    while let Some(parent) = ancestors.next() {
-        match tree.kind_data(parent) {
-            NodeKindData::MethodDefinition(method) => {
-                in_computed_key |= method.computed(tree) && method.key(tree).node_id() == child;
-            }
-            NodeKindData::TsMethodDefinition(method) => {
-                in_computed_key |= method.computed(tree) && method.key(tree).node_id() == child;
-            }
-            NodeKindData::TsMethodSignature(method) => {
-                in_computed_key |= method.computed(tree) && method.key(tree).node_id() == child;
-            }
-            NodeKindData::PropertyDefinition(property) => {
-                in_computed_key |= property.computed(tree) && property.key(tree).node_id() == child;
-            }
-            NodeKindData::TsPropertySignature(property) => {
-                in_computed_key |= property.computed(tree) && property.key(tree).node_id() == child;
-            }
-            NodeKindData::ClassBody(_) => {
-                let Some(owner) = ancestors.next() else {
-                    return;
-                };
-                let violation = if in_computed_key {
-                    Some(ClassTypeParameterViolation::ComputedKey)
-                } else {
-                    let is_static = match tree.kind_data(child) {
-                        NodeKindData::MethodDefinition(method) => method.r#static(tree),
-                        NodeKindData::TsMethodDefinition(method) => method.r#static(tree),
-                        NodeKindData::PropertyDefinition(property) => property.r#static(tree),
-                        NodeKindData::TsIndexSignature(signature) => signature.r#static(tree),
-                        NodeKindData::StaticBlock(_) => true,
-                        _ => false,
-                    };
-                    is_static.then_some(ClassTypeParameterViolation::StaticMember)
-                };
-                if let Some(violation) = violation {
-                    violations.push((owner, violation));
-                }
-
-                // Continue through nested classes: a reference inside an inner
-                // class can still be enclosed by a static member of an outer
-                // class.
-                child = owner;
-                in_computed_key = false;
-                continue;
-            }
-            NodeKindData::TsInterfaceBody(_) if in_computed_key => {
-                let Some(owner) = ancestors.next() else {
-                    return;
-                };
-                violations.push((owner, ClassTypeParameterViolation::ComputedKey));
-                child = owner;
-                in_computed_key = false;
-                continue;
-            }
-            _ => {}
-        }
-        child = parent;
     }
 }
 
@@ -1855,9 +1713,6 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state
             .symbols
             .add_identifier_reference(context.ast, identifier, &state.scope, flags);
-        if self.check_syntax {
-            self.check_class_type_parameter_reference(node, flags);
-        }
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
