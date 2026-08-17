@@ -1,10 +1,9 @@
 codegen * babel
 ========================
-Positive Passed: 2233/2238 (99.78%)
+Positive Passed: 2234/2238 (99.82%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-module-block-top-level-using-binding/input.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 7..8
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-false-positive-5/input.ts - parser: Invalid assignment target at 3..13
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/const-type-parameters/input.ts - parser: Type parameter modifiers must appear in the order 'const in out' at 346..351

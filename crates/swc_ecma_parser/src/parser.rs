@@ -10705,7 +10705,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let checkpoint = self.checkpoint();
         let type_arguments = match self.parse_type_arguments() {
-            Some(type_arguments) if can_follow_type_arguments_in_expression(self.current_token) => {
+            Some(type_arguments)
+                if can_follow_type_arguments_in_expression(
+                    type_arguments.span(&self.ast).end,
+                    self.current_token,
+                ) =>
+            {
                 type_arguments
             }
             Some(_) | None => {
@@ -11718,10 +11723,17 @@ fn import_or_export_kind_for_declare(declare: bool) -> ImportOrExportKind {
     }
 }
 
-fn can_follow_type_arguments_in_expression(token: Token) -> bool {
+fn can_follow_type_arguments_in_expression(type_arguments_end: u32, token: Token) -> bool {
     match token.tag {
         TokenTag::LeftParen | TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => true,
-        TokenTag::LessThan | TokenTag::GreaterThan | TokenTag::Plus | TokenTag::Minus => false,
+        TokenTag::LessThan
+        | TokenTag::GreaterThan
+        | TokenTag::GreaterThanEqual
+        | TokenTag::RightShift
+        | TokenTag::Plus
+        | TokenTag::Minus => false,
+        TokenTag::Assign => type_arguments_end < token.span.start,
+        tag if tag.is_assignment_operator() => false,
         _ => {
             token.has_line_terminator_before()
                 || is_binary_operator_like(token.tag)

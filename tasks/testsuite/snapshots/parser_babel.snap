@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2229/2238 (99.60%)
+Positive Passed: 2230/2238 (99.64%)
 Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -127,7 +127,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-nam
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/module-identifier-invalid/input.ts - typescript/module-namespace/module-identifier-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/top-level-await/input.ts - typescript/module-namespace/top-level-await: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-alias/invalid-within-single-statement-context/input.ts - typescript/type-alias/invalid-within-single-statement-context: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-false-positive-5/input.ts - typescript/type-arguments/instantiation-expression-false-positive-5: parser: Invalid assignment target at 3..13
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-property-access/input.ts - typescript/type-arguments/instantiation-expression-property-access: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/export-invalid-type-in-type/input.ts - typescript/type-only-import-export-specifiers/export-invalid-type-in-type: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/expport-invalid-escaped-type-only/input.ts - typescript/type-only-import-export-specifiers/expport-invalid-escaped-type-only: expected a parse or early error, but pipeline succeeded
