@@ -15,7 +15,7 @@ use swc_next_ecma_ast::{
 use crate::{
     DeclarationId, ScopeMap, Semantic,
     module_record::ModuleRecordBuilder,
-    scope::{self, ScopeKind, ScopeTracker, ScopeTree},
+    scope::{self, ScopeFlags, ScopeKind, ScopeTracker, ScopeTree},
 };
 
 /// A `(start, len)` window into a backing slice.
@@ -704,7 +704,7 @@ impl<'a> SymbolTracker<'a> {
         let annex_b_block_function = !tree.is_ts()
             && is_declaration
             && target_kind == ScopeKind::Block
-            && !target_scope.flags.strict
+            && !target_scope.flags.contains(ScopeFlags::STRICT_MODE)
             && !function.generator(tree)
             && !function.r#async(tree);
         let allow_overload = (tree.is_ts() && !ts_catch_scope)

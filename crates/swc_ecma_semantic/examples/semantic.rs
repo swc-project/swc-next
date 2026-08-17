@@ -12,7 +12,7 @@ use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic::{
     AnalyzeOptions, Semantic, SymbolFlags, analyze,
-    scope::{Scope, ScopeKind},
+    scope::{Scope, ScopeFlags, ScopeKind},
 };
 
 #[derive(Parser)]
@@ -91,7 +91,7 @@ impl<'a> ScopesTextWriter<'a> {
 fn format_scope_flags(scope: Scope) -> String {
     let mut names = Vec::new();
 
-    if scope.flags.strict {
+    if scope.flags.contains(ScopeFlags::STRICT_MODE) {
         names.push("StrictMode");
     }
     match scope.kind {
@@ -105,7 +105,7 @@ fn format_scope_flags(scope: Scope) -> String {
         ScopeKind::StaticBlock => names.push("ClassStaticBlock"),
         ScopeKind::TsModule => names.push("TsModuleBlock"),
     }
-    if scope.flags.direct_eval {
+    if scope.flags.contains(ScopeFlags::DIRECT_EVAL) {
         names.push("DirectEval");
     }
 

@@ -144,6 +144,7 @@ fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace
     }
 }
 
+#[inline]
 fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
     if call.optional(tree) {
         return false;

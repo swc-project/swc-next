@@ -91,20 +91,15 @@ impl ScopeKind {
     }
 }
 
-/// Scope-level flags.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct ScopeFlags {
-    /// Whether this scope is in strict mode.
-    pub strict: bool,
-    /// Whether this scope or one of its descendants contains a call that can
-    /// invoke the intrinsic eval function directly.
-    pub direct_eval: bool,
-}
-
-impl ScopeFlags {
-    /// True when direct eval can observe bindings owned by this scope.
-    pub fn contains_direct_eval(self) -> bool {
-        self.direct_eval
+bitflags::bitflags! {
+    /// Scope-level flags.
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    pub struct ScopeFlags: u8 {
+        /// This scope is in strict mode.
+        const STRICT_MODE = 1 << 0;
+        /// This scope or one of its descendants contains a call that can
+        /// invoke the intrinsic eval function directly.
+        const DIRECT_EVAL = 1 << 1;
     }
 }
 
@@ -191,14 +186,7 @@ impl<'a> ScopeTracker<'a> {
 
         match source_type {
             SourceType::Module => {
-                self.push_scope(
-                    ScopeKind::Module,
-                    root_node,
-                    ScopeFlags {
-                        strict: true,
-                        ..ScopeFlags::default()
-                    },
-                );
+                self.push_scope(ScopeKind::Module, root_node, ScopeFlags::STRICT_MODE);
             }
             SourceType::CommonJs => {
                 self.push_scope(ScopeKind::Function, root_node, ScopeFlags::default());
@@ -239,16 +227,13 @@ impl<'a> ScopeTracker<'a> {
 
     pub fn enter_directive(&mut self, tree: &Ast, directive: Directive) {
         if tree.get_utf8(directive.value(tree)) == "use strict" {
-            self.current_mut().flags.strict = true;
+            self.current_mut().flags.insert(ScopeFlags::STRICT_MODE);
         }
     }
 
     pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
         let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
-            ScopeFlags {
-                strict: true,
-                ..ScopeFlags::default()
-            }
+            ScopeFlags::STRICT_MODE
         } else {
             self.inherit_strict_flag()
         };
@@ -257,7 +242,7 @@ impl<'a> ScopeTracker<'a> {
         // the enclosing scope, just as if the clause had an implicit block.
         // Use the function node as the scope creator so `exit_scope` removes
         // this scope together with the function scope below.
-        if annex_b_if_body && !flags.strict {
+        if annex_b_if_body && !flags.contains(ScopeFlags::STRICT_MODE) {
             self.push_scope(ScopeKind::Block, function.node_id(), flags);
         }
         if is_named_function_expression(tree, function) {
@@ -275,10 +260,7 @@ impl<'a> ScopeTracker<'a> {
         let body = arrow.body(tree).node_id();
         let flags = match tree.kind_data(body) {
             NodeKindData::FunctionBody(body) if self.has_retroactive_use_strict(tree, body) => {
-                ScopeFlags {
-                    strict: true,
-                    ..ScopeFlags::default()
-                }
+                ScopeFlags::STRICT_MODE
             }
             _ => self.inherit_strict_flag(),
         };
@@ -370,10 +352,7 @@ impl<'a> ScopeTracker<'a> {
 
     pub fn enter_class(&mut self, tree: &Ast, class: Class) {
         // Classes are always strict mode (section 15.7.14).
-        let flags = ScopeFlags {
-            strict: true,
-            ..ScopeFlags::default()
-        };
+        let flags = ScopeFlags::STRICT_MODE;
         if is_named_class_expression(tree, class) {
             self.push_scope(ScopeKind::ExpressionName, class.node_id(), flags);
         }
@@ -425,10 +404,7 @@ impl<'a> ScopeTracker<'a> {
 
     #[inline]
     fn inherit_strict_flag(&self) -> ScopeFlags {
-        ScopeFlags {
-            strict: self.current_scope().flags.strict,
-            ..ScopeFlags::default()
-        }
+        self.current_scope().flags & ScopeFlags::STRICT_MODE
     }
 
     // A node pops exactly the scopes recording it as creator. Two for a
@@ -475,7 +451,7 @@ impl<'a> ScopeTracker<'a> {
     /// Whether the current scope is in strict mode.
     #[inline]
     pub fn is_strict(&self) -> bool {
-        self.current_scope().flags.strict
+        self.current_scope().flags.contains(ScopeFlags::STRICT_MODE)
     }
 
     /// Whether resolving a `var` initializer from the current scope crosses
@@ -512,10 +488,10 @@ impl<'a> ScopeTracker<'a> {
         // marked ancestor, so all calls together are O(scopes + eval calls).
         while let Some(id) = current {
             let scope = &mut self.scopes[id.index()];
-            if scope.flags.direct_eval {
+            if scope.flags.contains(ScopeFlags::DIRECT_EVAL) {
                 break;
             }
-            scope.flags.direct_eval = true;
+            scope.flags.insert(ScopeFlags::DIRECT_EVAL);
             current = scope.parent;
         }
     }

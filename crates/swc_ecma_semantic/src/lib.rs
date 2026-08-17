@@ -393,7 +393,7 @@ mod tests {
 
     use super::{
         AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, Semantic, SymbolFlags, analyze,
-        scope::ScopeKind,
+        scope::{ScopeFlags, ScopeKind},
     };
 
     fn analyze_source<'a>(
@@ -697,8 +697,13 @@ mod tests {
             .iter_scopes()
             .find(|entry| entry.scope.kind == ScopeKind::Function)
             .unwrap();
-        assert!(function.scope.flags.contains_direct_eval());
-        assert!(semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
+        assert!(function.scope.flags.contains(ScopeFlags::DIRECT_EVAL));
+        assert!(
+            semantic
+                .scope(ScopeId::ROOT)
+                .flags
+                .contains(ScopeFlags::DIRECT_EVAL)
+        );
 
         let (_, semantic) = analyze_source(
             &allocator,
@@ -710,7 +715,12 @@ mod tests {
             .iter_scopes()
             .find(|entry| entry.scope.kind == ScopeKind::Function)
             .unwrap();
-        assert!(!function.scope.flags.contains_direct_eval());
-        assert!(!semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
+        assert!(!function.scope.flags.contains(ScopeFlags::DIRECT_EVAL));
+        assert!(
+            !semantic
+                .scope(ScopeId::ROOT)
+                .flags
+                .contains(ScopeFlags::DIRECT_EVAL)
+        );
     }
 }
