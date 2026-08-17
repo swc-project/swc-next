@@ -9958,7 +9958,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let (phase, sync) = match property.tag {
             TokenTag::Source => (Some(ImportPhase::Source), false),
             TokenTag::Defer => (Some(ImportPhase::Defer), false),
-            TokenTag::Sync => (None, true),
+            TokenTag::Identifier if property.text(self.source) == "sync" => (None, true),
             TokenTag::Identifier if property.text(self.source) == "meta" => {
                 let property = self.parse_identifier_name()?;
                 self.has_module_syntax = true;
