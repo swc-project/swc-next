@@ -15,7 +15,7 @@ impl<C: Case> Runner<C> for CodegenRunner {
     const NAME: &'static str = "codegen";
 
     fn should_run(case: &C) -> bool {
-        !case.expects_error()
+        !case.expects_error() && case.supports_codegen()
     }
 
     fn run(case: &C) -> TestResult {

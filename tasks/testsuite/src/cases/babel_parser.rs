@@ -41,6 +41,9 @@ const UNSUPPORTED_PARSER_PATHS: &[&str] = &[
     "/core/sourcetype-commonjs/invalid-allowReturnOutsideFunction-true/",
 ];
 
+const UNSUPPORTED_CODEGEN_PATHS: &[&str] =
+    &["/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/"];
+
 pub struct BabelParserCase {
     path: PathBuf,
     name: String,
@@ -136,6 +139,18 @@ impl BabelParserCase {
                 .is_some_and(|options| options.disallow_ambiguous_jsx_like)
     }
 
+    fn is_codegen_supported(&self) -> bool {
+        const UNSUPPORTED_PLUGINS: &[&str] = &["moduleBlocks"];
+
+        is_supported_codegen_path(&self.path)
+            && !self
+                .options
+                .plugins
+                .unsupported
+                .iter()
+                .any(|plugin| UNSUPPORTED_PLUGINS.contains(&plugin.as_str()))
+    }
+
     fn configured_source_type(&self) -> SourceType {
         source_type(&self.path, &self.options)
     }
@@ -144,6 +159,13 @@ impl BabelParserCase {
 fn is_supported_parser_path(path: &Path) -> bool {
     let normalized_path = path.to_string_lossy().replace('\\', "/");
     !UNSUPPORTED_PARSER_PATHS
+        .iter()
+        .any(|path| normalized_path.contains(path))
+}
+
+fn is_supported_codegen_path(path: &Path) -> bool {
+    let normalized_path = path.to_string_lossy().replace('\\', "/");
+    !UNSUPPORTED_CODEGEN_PATHS
         .iter()
         .any(|path| normalized_path.contains(path))
 }
@@ -218,5 +240,9 @@ impl Case for BabelParserCase {
 
     fn expects_error(&self) -> bool {
         self.expects_error
+    }
+
+    fn supports_codegen(&self) -> bool {
+        self.is_codegen_supported()
     }
 }

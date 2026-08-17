@@ -22,6 +22,9 @@ pub trait Case: Sized + Sync {
     }
     fn lang(&self) -> Lang;
     fn expects_error(&self) -> bool;
+    fn supports_codegen(&self) -> bool {
+        true
+    }
     /// Whether a case expected to succeed also asserts that semantic analysis
     /// produces no early-error diagnostics.
     fn asserts_semantic_success(&self) -> bool {
