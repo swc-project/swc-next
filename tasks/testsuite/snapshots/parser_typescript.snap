@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13015/13156 (98.93%)
+Positive Passed: 13017/13156 (98.94%)
 Negative Passed: 1587/2981 (53.24%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -290,7 +290,6 @@ Failed: fixtures/typescript/tests/cases/compiler/externalModuleImmutableBindings
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleRefernceResolutionOrderInImportDeclaration.ts - externalModuleRefernceResolutionOrderInImportDeclaration_file3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors4.ts - fatarrowfunctionsOptionalArgsErrors4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/fieldAndGetterWithSameName.ts - fieldAndGetterWithSameName.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts - fileWithNextLine2.ts: parser: Invalid character at start of identifier at 110..110
 Failed: fixtures/typescript/tests/cases/compiler/forIn.ts - forIn.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/forInStatement4.ts - forInStatement4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/forInStatement7.ts - forInStatement7.ts: expected a parse or early error, but pipeline succeeded
@@ -601,7 +600,6 @@ Failed: fixtures/typescript/tests/cases/compiler/semicolonsInModuleDeclarations.
 Failed: fixtures/typescript/tests/cases/compiler/setterWithReturn.ts - setterWithReturn.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/shorthandPropertyUndefined.ts - shorthandPropertyUndefined.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/sideEffectImports1.ts - sideEffectImports1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - sourceMap-LineBreaks.ts: parser: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationDecorators.ts - sourceMapValidationDecorators.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationEnums.ts - sourceMapValidationEnums.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationLabeled.ts - sourceMapValidationLabeled.ts: expected a parse or early error, but pipeline succeeded

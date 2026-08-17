@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11268/11509 (97.91%)
+Positive Passed: 11271/11509 (97.93%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -32,8 +32,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithExportModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/expressionWithJSDocTypeArguments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fileWithNextLine3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/genericTupleWithSimplifiableElements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/illegalModifiersOnClassElements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/importAssertionNonstring.ts
@@ -74,7 +72,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/restParameter
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring_ES6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/sourceMapValidationDecorators.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/tslibReExportHelpers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/yieldStringLiteral.ts
