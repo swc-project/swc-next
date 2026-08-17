@@ -4324,7 +4324,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let result = match current.tag {
-            TokenTag::Type | TokenTag::Interface | TokenTag::Enum | TokenTag::Namespace => {
+            TokenTag::Enum => {
+                let name = peek.next()?;
+                name.tag.is_identifier_like() && !name.tag.is_unconditionally_reserved()
+            }
+            TokenTag::Type | TokenTag::Interface | TokenTag::Namespace => {
                 is_declaration_name(peek.next()?)
             }
             TokenTag::Module => {

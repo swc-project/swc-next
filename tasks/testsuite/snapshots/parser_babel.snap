@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2228/2238 (99.55%)
+Positive Passed: 2229/2238 (99.60%)
 Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -97,7 +97,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/disallow-j
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/disallow-jsx-ambiguity/type-parameter/input.ts - typescript/disallow-jsx-ambiguity/type-parameter: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/invalid-class-implementation/input.ts - typescript/dts/invalid-class-implementation: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/invalid-class-initializer/input.ts - typescript/dts/invalid-class-initializer: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/declare-new-line/input.ts - typescript/enum/declare-new-line: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'enum' at 8..12
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/equals-in-script/input.ts - typescript/export/equals-in-script: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/invalid-as-namespace-duplicate-identifier/input.ts - typescript/export/invalid-as-namespace-duplicate-identifier: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/function/pattern-optional-parameters-arrow/input.ts - typescript/function/pattern-optional-parameters-arrow: expected a parse or early error, but pipeline succeeded
