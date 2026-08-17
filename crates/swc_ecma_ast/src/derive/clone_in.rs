@@ -1,7 +1,7 @@
 use crate::{
     Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, ClassType,
     FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
-    MethodDefinitionKind, NumericLiteralKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
+    MethodDefinitionKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
     TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
     UnaryOperator, UpdateOperator, VariableKind, node_id::ExtraDataCompact,
 };
@@ -41,7 +41,6 @@ impl_clone_in_trivial!(VariableKind);
 impl_clone_in_trivial!(FunctionType);
 impl_clone_in_trivial!(FormalParameterKind);
 impl_clone_in_trivial!(PropertyKind);
-impl_clone_in_trivial!(NumericLiteralKind);
 impl_clone_in_trivial!(ImportOrExportKind);
 impl_clone_in_trivial!(TsTypeOperatorKind);
 impl_clone_in_trivial!(TsMethodSignatureKind);

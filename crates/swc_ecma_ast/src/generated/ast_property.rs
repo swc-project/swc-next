@@ -1753,28 +1753,33 @@ impl StringLiteral {
 }
 impl NumericLiteral {
     #[inline]
-    pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> NumericLiteralKind {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 255u32;
-        unsafe { std::mem::transmute::<u8, NumericLiteralKind>(raw as u8) }
-    }
-    #[inline]
-    pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn value<'a>(self, ast: &crate::Ast<'a>) -> f64 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
     #[inline]
-    pub fn set_kind<'a>(self, ast: &mut crate::Ast<'a>, kind: NumericLiteralKind) {
-        let field_val: u32 = kind as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458759454868635832549375u128)
-            | (((field_val as u128) & 255u128) << 64usize);
+    pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Option<AstUtf8> {
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
+        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
     #[inline]
-    pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: AstUtf8) {
-        let field_val: u64 = unsafe { raw.to_extra_data(ast).other };
+    pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: f64) {
+        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
+        if raw == field_val {
+            return;
+        }
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        self.set_raw(ast, None);
+    }
+    #[inline]
+    pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: Option<AstUtf8>) {
+        let field_val: u64 = unsafe { raw.to_extra_data(ast).other };
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 18446744073709551615u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
     }
 }
 impl BigIntLiteral {

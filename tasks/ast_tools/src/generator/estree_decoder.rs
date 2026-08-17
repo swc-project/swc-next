@@ -139,7 +139,7 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
 
     let mut extra_offset = 0usize;
     for (field_index, field) in ast.fields.iter().enumerate() {
-        let skip = field._attrs.ast_attrs.contains("skip");
+        let skip = field.attrs.estree_skip;
         let field_ty = &schema.types[field.type_id];
         let (location, aligned_u32) = if let Some((_, byte_offset, _)) =
             layout.as_ref().and_then(|layout| {
@@ -206,6 +206,11 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
                 let end = read_u32(&format!("{location} + 4"), aligned_u32);
                 format!("{{ start: pos({start}), end: pos({end}) }}")
             }
+            AstType::Primitive(primitive) if primitive.name == "AstUtf8" => {
+                let start = read_u32(location, aligned_u32);
+                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                format!("{start} === NULL && {end} === 0 ? null : str({start}, {end})")
+            }
             inner => panic!("unsupported optional decoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
@@ -245,7 +250,6 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
                         | "FunctionType"
                         | "FormalParameterKind"
                         | "PropertyKind"
-                        | "NumericLiteralKind"
                         | "ImportOrExportKind"
                         | "TsTypeOperatorKind"
                         | "TsMethodSignatureKind"
@@ -448,12 +452,8 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
             "        result = { type: \"Literal\", start, end, value: f_value, raw: f_raw };\n",
         ),
         "NumericLiteral" => output.push_str(
-            r#"        const raw = f_raw;
-        const normalized = raw.includes("_") ? raw.replaceAll("_", "") : raw;
-        const value =
-          f_kind === "octal" && normalized[1]?.toLowerCase() !== "o"
-            ? parseInt(normalized.slice(1), 8)
-            : +normalized;
+            r#"        const value = f_value;
+        const raw = f_raw ?? String(value);
         result = { type: "Literal", start, end, value, raw };
 "#,
         ),
@@ -800,7 +800,6 @@ const ENUMS = Object.freeze({
   FunctionType: ["FunctionDeclaration", "FunctionExpression"],
   FormalParameterKind: ["formal", "unique", "arrow", "signature"],
   PropertyKind: ["init", "get", "set"],
-  NumericLiteralKind: ["decimal", "hex", "octal", "binary"],
   ImportOrExportKind: ["value", "type"],
   ImportPhase: ["source", "defer"],
   TsTypeOperatorKind: ["keyof", "unique", "readonly"],

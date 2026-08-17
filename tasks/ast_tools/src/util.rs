@@ -40,6 +40,7 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 // Option<Enum> uses u32::MAX as its absent sentinel.
                 AstType::Enum(_) => Some(4),
                 AstType::Primitive(primitive) if primitive.name == "Span" => Some(8),
+                AstType::Primitive(primitive) if primitive.name == "AstUtf8" => Some(8),
                 AstType::Primitive(primitive)
                     if matches!(primitive.name, "ScopeId" | "SymbolId") =>
                 {

@@ -6,7 +6,7 @@ use super::ast_node::concrete_node_kinds;
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstType, Schema},
+    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema},
     util::{
         EXTRA_DATA_ID_BIT_OFFSET, InlineLayout, InlineStorageMode, calculate_inline_layout,
         generate_field_to_u32, generate_field_to_u64, generate_u32_to_field, generate_u64_to_field,
@@ -101,8 +101,15 @@ fn generate_inline_property_accessors(
         });
 
         let setter_name = format_ident!("set_{}", field_name);
-        let write_expr =
-            generate_inline_write(field_ty, &field_name, byte_offset, byte_size, schema);
+        let invalidations = generate_invalidations(field);
+        let write_expr = generate_inline_write(
+            field_ty,
+            &field_name,
+            byte_offset,
+            byte_size,
+            schema,
+            invalidations,
+        );
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
@@ -161,20 +168,34 @@ fn generate_inline_write(
     byte_offset: usize,
     byte_size: usize,
     schema: &Schema,
+    invalidations: TokenStream,
 ) -> TokenStream {
     let insert_expr = generate_insert_bits(byte_offset, byte_size);
+    let change_guard = (!invalidations.is_empty()).then(|| {
+        let extract_expr = generate_extract_bits(byte_offset, byte_size);
+        quote! {
+            #extract_expr
+            if raw == field_val {
+                return;
+            }
+        }
+    });
 
     if byte_size == std::mem::size_of::<u64>() {
         let to_u64 = generate_field_to_u64(field_ty, field_name, quote!(ast), schema);
         quote! {
             let field_val: u64 = #to_u64;
+            #change_guard
             #insert_expr
+            #invalidations
         }
     } else {
         let to_u32 = generate_field_to_u32(field_ty, field_name, quote!(ast), schema);
         quote! {
             let field_val: u32 = #to_u32;
+            #change_guard
             #insert_expr
+            #invalidations
         }
     }
 }
@@ -229,23 +250,12 @@ fn generate_extra_data_property_accessors(
             }
         });
 
-        let setter_name = format_ident!("set_{}", field_name);
-        field_setters.extend(quote! {
-            #[inline]
-            pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-                let offset = unsafe {
-                    ExtraDataId::from_usize_unchecked(
-                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
-                            .wrapping_add(#offset)
-                    )
-                };
-
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
-                };
-            }
-        });
+        field_setters.extend(generate_extra_data_setter(
+            field,
+            &field_name,
+            field_ty,
+            offset,
+        ));
     }
 }
 
@@ -292,8 +302,27 @@ fn generate_extra_data_property_accessors_partial(
             }
         });
 
-        let setter_name = format_ident!("set_{}", field_name);
-        field_setters.extend(quote! {
+        field_setters.extend(generate_extra_data_setter(
+            field,
+            &field_name,
+            field_ty,
+            offset,
+        ));
+
+        extra_offset += 1;
+    }
+}
+
+fn generate_extra_data_setter(
+    field: &AstStructField,
+    field_name: &syn::Ident,
+    field_ty: &TokenStream,
+    offset: usize,
+) -> TokenStream {
+    let setter_name = format_ident!("set_{}", field_name);
+    let invalidations = generate_invalidations(field);
+    if invalidations.is_empty() {
+        return quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
                 let offset = unsafe {
@@ -308,10 +337,43 @@ fn generate_extra_data_property_accessors_partial(
                     *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
                 };
             }
-        });
-
-        extra_offset += 1;
+        };
     }
+
+    quote! {
+        #[inline]
+        pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
+            let field_value = #field_name.to_extra_data(ast);
+            let offset = unsafe {
+                ExtraDataId::from_usize_unchecked(
+                    ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
+                        .wrapping_add(#offset)
+                )
+            };
+
+            debug_assert!(offset.index() < ast.extra_data.len());
+            let previous = unsafe {
+                *ast.extra_data.as_slice().get_unchecked(offset.index())
+            };
+            if unsafe { previous.other } == unsafe { field_value.other } {
+                return;
+            }
+            unsafe {
+                *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = field_value;
+            };
+            #invalidations
+        }
+    }
+}
+
+fn generate_invalidations(field: &AstStructField) -> TokenStream {
+    let invalidations = field.attrs.invalidates.iter().map(|target| {
+        let setter_name = format_ident!("set_{target}");
+        quote! {
+            self.#setter_name(ast, None);
+        }
+    });
+    quote!(#(#invalidations)*)
 }
 
 fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {

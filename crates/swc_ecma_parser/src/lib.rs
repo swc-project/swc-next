@@ -6,6 +6,7 @@
 
 mod config;
 mod lexer;
+mod number;
 mod parser;
 mod token;
 mod unicode_id;

@@ -2,7 +2,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Severity};
-use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use swc_next_ecma_transformer::{Transformer, TransformerOptions};
@@ -83,7 +83,7 @@ fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
 
     let options: TransformerOptions = case.options.clone().into();
     Transformer::transform(&mut ast, &semantic_ret.semantic, options);
-    Ok(print(&allocator, &ast, CodegenOptions::default())
+    Ok(print(&allocator, &ast, case.options.codegen_options())
         .code
         .to_owned())
 }
@@ -92,7 +92,7 @@ fn normalize_expected_output(case: &BabelTransformCase) -> Result<String, String
     let source = case.output.as_str();
     let allocator = Allocator::new();
     let ast = parse_program(source, &allocator, case)?;
-    Ok(print(&allocator, &ast, CodegenOptions::default())
+    Ok(print(&allocator, &ast, case.options.codegen_options())
         .code
         .to_owned())
 }

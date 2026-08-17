@@ -9,8 +9,10 @@ repository.workspace  = true
 version               = "0.1.2"
 
 [dependencies]
+arrayvec           = { workspace = true }
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
+zmij_ecma          = { workspace = true }
 
 [dev-dependencies]
 clap                 = { workspace = true }

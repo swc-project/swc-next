@@ -61,6 +61,17 @@ pub fn expect_printed_script(source: &str, expected: &str) {
 }
 
 #[track_caller]
+pub fn expect_printed_with_options(source: &str, expected: &str, print_options: PrintOptions) {
+    expect_printed_common_with_options(
+        source,
+        expected,
+        Lang::Js,
+        SourceType::Module,
+        print_options,
+    );
+}
+
+#[track_caller]
 pub fn expect_stable(source: &str, expected: &str) {
     expect_printed(source, expected);
     expect_printed(expected, expected);
@@ -74,6 +85,22 @@ fn expect_printed_common(
     source_type: SourceType,
     minify: bool,
     ascii_only: bool,
+) {
+    let print_options = PrintOptions {
+        minify,
+        ascii_only,
+        ..PrintOptions::default()
+    };
+    expect_printed_common_with_options(source, expected, lang, source_type, print_options);
+}
+
+#[track_caller]
+fn expect_printed_common_with_options(
+    source: &str,
+    expected: &str,
+    lang: Lang,
+    source_type: SourceType,
+    print_options: PrintOptions,
 ) {
     let allocator = Allocator::new();
     let parse_options = ParseOptions {
@@ -91,11 +118,6 @@ fn expect_printed_common(
     if has_errors {
         return;
     }
-    let print_options = PrintOptions {
-        minify,
-        ascii_only,
-        ..PrintOptions::default()
-    };
     let result = print(&allocator, &result.ast, print_options);
 
     assert_eq!(

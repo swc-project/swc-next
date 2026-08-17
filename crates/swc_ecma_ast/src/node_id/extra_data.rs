@@ -39,6 +39,37 @@ impl<'a> ExtraDataCompact<'a> for AstUtf8 {
     }
 }
 
+impl<'a> ExtraDataCompact<'a> for Option<AstUtf8> {
+    #[inline]
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData {
+            // `AstUtf8` ranges always satisfy `start <= end`, so `(u32::MAX, 0)`
+            // is available as an unambiguous `None` sentinel.
+            other: self.map_or(u64::from(u32::MAX), AstUtf8::raw),
+        }
+    }
+
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        let raw = unsafe { data.other };
+        (raw != u64::from(u32::MAX)).then(|| AstUtf8::from_raw(raw))
+    }
+}
+
+impl<'a> ExtraDataCompact<'a> for f64 {
+    #[inline]
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData {
+            other: self.to_bits(),
+        }
+    }
+
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        Self::from_bits(unsafe { data.other })
+    }
+}
+
 impl<'a> ExtraDataCompact<'a> for AstWtf8 {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {

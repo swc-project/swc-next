@@ -42,6 +42,31 @@ All output is written under
 The generator formats Rust output with `rustfmt` and avoids rewriting a file
 when its bytes have not changed.
 
+## Field invalidation
+
+Use `#[ast(invalidates(...))]` when changing an authoritative field makes one
+or more optional metadata fields stale:
+
+```rust
+#[ast]
+pub struct NumericLiteral {
+    #[ast(invalidates(raw))]
+    value: f64,
+    raw: Option<AstUtf8>,
+}
+```
+
+The generated setter compares the old and new compact field representations.
+If they differ, it writes the new value and clears every listed field to
+`None`. Comparing compact bits preserves source metadata for an unchanged
+value while still distinguishing values such as `0.0` and `-0.0`.
+
+Invalidation targets must be `Option<T>` fields on the same struct. Unknown
+fields, duplicate targets, self-invalidation, non-optional targets, and
+dependency cycles are rejected while building the schema. Builders and clone
+implementations initialize all fields together and do not trigger field
+invalidation.
+
 ## Development workflow
 
 1. Edit the AST declaration in `crates/swc_ecma_ast/src/ast/{js,ts,jsx}.rs`.

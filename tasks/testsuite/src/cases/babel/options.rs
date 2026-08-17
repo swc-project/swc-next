@@ -2,6 +2,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};
+use swc_next_ecma_codegen::{NumberFormat, Options as CodegenOptions};
 use swc_next_ecma_transformer::{
     TransformerOptions, assumptions::Assumptions, es2015::ES2015Options,
 };
@@ -36,6 +37,12 @@ pub struct BabelOptions {
     // Misc options
     /// Parser source type mode (`"module"`, `"script"`, `"unambiguous"`, ...).
     pub source_type: Option<String>,
+
+    /// Emit compact output using Babel's minified generator mode.
+    pub minified: Option<bool>,
+
+    /// Literal escaping options forwarded to Babel's generator.
+    pub jsesc_option: Option<JsescOptions>,
 
     /// Compiler assumptions passed through Babel configuration.
     #[serde(default)]
@@ -73,6 +80,23 @@ pub struct BabelOptions {
     /// Whether helpers are provided by external runtime instead of inlined behavior.
     #[serde(default = "default_as_true")]
     pub external_helpers: bool,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsescOptions {
+    pub numbers: Option<JsescNumberFormat>,
+    #[serde(default)]
+    pub lowercase_hex: bool,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum JsescNumberFormat {
+    Binary,
+    Octal,
+    Decimal,
+    Hexadecimal,
 }
 
 impl From<BabelOptions> for TransformerOptions {
@@ -126,6 +150,31 @@ fn default_as_true() -> bool {
 }
 
 impl BabelOptions {
+    pub fn codegen_options(&self) -> CodegenOptions {
+        let number_format = match self
+            .jsesc_option
+            .as_ref()
+            .and_then(|options| options.numbers)
+        {
+            None => NumberFormat::Preserve,
+            Some(JsescNumberFormat::Binary) => NumberFormat::Binary,
+            Some(JsescNumberFormat::Octal) => NumberFormat::Octal,
+            Some(JsescNumberFormat::Decimal) => NumberFormat::Decimal,
+            Some(JsescNumberFormat::Hexadecimal) => NumberFormat::Hexadecimal {
+                lowercase: self
+                    .jsesc_option
+                    .as_ref()
+                    .is_some_and(|options| options.lowercase_hex),
+            },
+        };
+
+        CodegenOptions {
+            minify: self.minified.unwrap_or(false),
+            number_format,
+            ..CodegenOptions::default()
+        }
+    }
+
     /// Read options.json and merge them with options.json from ancestors directories.
     ///
     /// Babel's fixture hierarchy: task → suite → category.
@@ -176,6 +225,12 @@ impl BabelOptions {
                     && let Some(throws) = new_options.throws
                 {
                     existing_options.throws = Some(throws);
+                }
+                if existing_options.minified.is_none() {
+                    existing_options.minified = new_options.minified;
+                }
+                if existing_options.jsesc_option.is_none() {
+                    existing_options.jsesc_option = new_options.jsesc_option;
                 }
             } else {
                 babel_options = Some(new_options);

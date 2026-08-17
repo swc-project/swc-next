@@ -12,8 +12,8 @@ use syn::{
 };
 
 use crate::schema::{
-    AstAttrs, AstEnum, AstEnumVariant, AstOption, AstPrimitive, AstStruct, AstStructField, AstType,
-    AstVec, Schema, TypeId,
+    AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
+    AstStructField, AstType, AstVec, Schema, TypeId,
 };
 
 struct Parser {
@@ -119,7 +119,9 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     }
 
     types.extend(parser.extra_types);
-    Schema { types, repr_sizes }
+    let schema = Schema { types, repr_sizes };
+    validate_invalidations(&schema);
+    schema
 }
 
 impl Parser {
@@ -296,7 +298,7 @@ impl Parser {
         AstStructField {
             type_id,
             name,
-            _attrs: attrs,
+            attrs,
         }
     }
 
@@ -413,29 +415,119 @@ impl Parser {
     }
 }
 
-fn parse_field_attrs(attrs: &[Attribute]) -> AstAttrs {
-    let mut ast_attrs = HashSet::new();
+fn parse_field_attrs(attrs: &[Attribute]) -> AstFieldAttrs {
+    let mut field_attrs = AstFieldAttrs::default();
 
     for attr in attrs {
-        if let Meta::List(meta_list) = &attr.meta
-            && meta_list.path.is_ident("estree")
-        {
+        let Meta::List(meta_list) = &attr.meta else {
+            continue;
+        };
+        if meta_list.path.is_ident("estree") {
             let args = meta_list
                 .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                 .expect("Unable to parse `#[estree]`");
-            ast_attrs.extend(args.into_iter().filter_map(|arg| {
-                let path = match arg {
-                    Meta::Path(path) => path,
-                    Meta::List(list) => list.path,
-                    Meta::NameValue(name_value) => name_value.path,
+            field_attrs.estree_skip = args.into_iter().any(|arg| match arg {
+                Meta::Path(path) => path.is_ident("skip"),
+                Meta::List(list) => list.path.is_ident("skip"),
+                Meta::NameValue(name_value) => name_value.path.is_ident("skip"),
+            });
+            continue;
+        }
+        if meta_list.path.is_ident("ast") {
+            let args = meta_list
+                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                .expect("Unable to parse AST field attributes");
+            for arg in args {
+                let Meta::List(list) = arg else {
+                    panic!("AST field attributes must use list syntax");
                 };
-                path.get_ident().map(ToString::to_string)
-            }));
+                if !list.path.is_ident("invalidates") {
+                    panic!(
+                        "Unknown AST field attribute `{}`",
+                        list.path.to_token_stream()
+                    );
+                }
+                let targets = list
+                    .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+                    .expect("Unable to parse `invalidates(...)`");
+                field_attrs
+                    .invalidates
+                    .extend(targets.into_iter().map(|target| target.to_string()));
+            }
         }
     }
 
-    AstAttrs {
-        ast_attrs,
-        generate_derives: HashSet::new(),
+    field_attrs
+}
+
+fn validate_invalidations(schema: &Schema) {
+    for ty in &schema.types {
+        let AstType::Struct(ast) = ty else {
+            continue;
+        };
+        let fields = ast
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| (field.name.as_str(), index))
+            .collect::<HashMap<_, _>>();
+
+        for field in &ast.fields {
+            let mut targets = HashSet::new();
+            for target_name in &field.attrs.invalidates {
+                assert!(
+                    targets.insert(target_name),
+                    "`{}.{}` invalidates `{target_name}` more than once",
+                    ast.name,
+                    field.name
+                );
+                let Some(&target_index) = fields.get(target_name.as_str()) else {
+                    panic!(
+                        "`{}.{}` invalidates unknown field `{target_name}`",
+                        ast.name, field.name
+                    );
+                };
+                assert_ne!(
+                    field.name, *target_name,
+                    "`{}.{}` cannot invalidate itself",
+                    ast.name, field.name
+                );
+                let target = &ast.fields[target_index];
+                assert!(
+                    matches!(schema.types[target.type_id], AstType::Option(_)),
+                    "`{}.{}` invalidates `{target_name}`, which must be an Option field",
+                    ast.name,
+                    field.name
+                );
+            }
+        }
+
+        let mut states = vec![0_u8; ast.fields.len()];
+        for field_index in 0..ast.fields.len() {
+            validate_invalidation_cycles(ast, &fields, field_index, &mut states);
+        }
     }
+}
+
+fn validate_invalidation_cycles(
+    ast: &AstStruct,
+    fields: &HashMap<&str, usize>,
+    field_index: usize,
+    states: &mut [u8],
+) {
+    match states[field_index] {
+        1 => panic!(
+            "invalidation dependency cycle involving `{}.{}`",
+            ast.name, ast.fields[field_index].name
+        ),
+        2 => return,
+        _ => {}
+    }
+
+    states[field_index] = 1;
+    for target_name in &ast.fields[field_index].attrs.invalidates {
+        let target_index = fields[target_name.as_str()];
+        validate_invalidation_cycles(ast, fields, target_index, states);
+    }
+    states[field_index] = 2;
 }

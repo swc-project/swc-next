@@ -260,15 +260,6 @@ pub enum PropertyKind {
     Set,
 }
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum NumericLiteralKind {
-    Decimal,
-    Hex,
-    Octal,
-    Binary,
-}
-
 /// `value` versus `type` on a TypeScript import or export specifier.
 ///
 /// ## Example
@@ -313,7 +304,6 @@ impl_extra_data_compact!(
     FunctionType,
     FormalParameterKind,
     PropertyKind,
-    NumericLiteralKind,
     ImportOrExportKind,
     ImportPhase,
 );
@@ -598,13 +588,17 @@ pub struct StringLiteral {
 /// 0xFF        // hex
 /// 0o17        // octal
 /// 0b1010      // binary
-/// 1_000_000   // separators are stripped when computing `value()`
+/// 1_000_000   // separators are stripped when computing `value`
 /// ```
 #[ast]
 pub struct NumericLiteral {
-    kind: NumericLiteralKind,
-    /// the raw lexeme, including prefix (`0x`, `0b`, `0o`) and separators
-    raw: AstUtf8,
+    /// The authoritative ECMAScript Number value.
+    #[ast(invalidates(raw))]
+    value: f64,
+    /// The source lexeme, including prefix (`0x`, `0b`, `0o`) and separators.
+    ///
+    /// `None` when no source spelling should be preserved.
+    raw: Option<AstUtf8>,
 }
 
 /// A BigInt literal (a numeric literal with a trailing `n`).

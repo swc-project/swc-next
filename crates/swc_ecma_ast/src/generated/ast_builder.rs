@@ -598,13 +598,8 @@ impl<'a> Ast<'a> {
         Expr::StringLiteral(self.string_literal(span, value, raw).into())
     }
     #[inline]
-    pub fn expr_numeric_literal(
-        &mut self,
-        span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
-    ) -> Expr {
-        Expr::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+    pub fn expr_numeric_literal(&mut self, span: Span, value: f64, raw: Option<AstUtf8>) -> Expr {
+        Expr::NumericLiteral(self.numeric_literal(span, value, raw).into())
     }
     #[inline]
     pub fn expr_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> Expr {
@@ -1324,10 +1319,10 @@ impl<'a> Ast<'a> {
     pub fn property_key_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> PropertyKey {
-        PropertyKey::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+        PropertyKey::NumericLiteral(self.numeric_literal(span, value, raw).into())
     }
     #[inline]
     pub fn property_key_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> PropertyKey {
@@ -1377,11 +1372,11 @@ impl<'a> Ast<'a> {
     pub fn property_key_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]
@@ -1868,11 +1863,11 @@ impl<'a> Ast<'a> {
     pub fn argument_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> Argument {
         Argument::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]
@@ -2375,11 +2370,11 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]
@@ -3002,11 +2997,11 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]
@@ -3855,11 +3850,11 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]
@@ -4427,16 +4422,16 @@ impl<'a> Ast<'a> {
     pub fn numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> NumericLiteral {
         NumericLiteral(self.add_node(
             span,
             NodeKind::NumericLiteral,
             NodePayload(
                 0u128
-                    | ((kind as u32 as u128) << 64usize)
-                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 0usize),
+                    | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 64usize),
             ),
         ))
     }
@@ -6245,10 +6240,10 @@ impl<'a> Ast<'a> {
     pub fn ts_literal_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> TsLiteral {
-        TsLiteral::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+        TsLiteral::NumericLiteral(self.numeric_literal(span, value, raw).into())
     }
     #[inline]
     pub fn ts_literal_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> TsLiteral {
@@ -6799,11 +6794,11 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]
@@ -8570,11 +8565,11 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_numeric_literal(
         &mut self,
         span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
+        value: f64,
+        raw: Option<AstUtf8>,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::NumericLiteral(
-            self.numeric_literal(span, kind, raw).into(),
+            self.numeric_literal(span, value, raw).into(),
         ))
     }
     #[inline]

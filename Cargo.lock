@@ -2804,10 +2804,12 @@ dependencies = [
 name = "swc_next_ecma_codegen"
 version = "0.1.2"
 dependencies = [
+ "arrayvec",
  "clap",
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
+ "zmij_ecma",
 ]
 
 [[package]]
@@ -3658,3 +3660,9 @@ dependencies = [
  "quote",
  "syn 2.0.118",
 ]
+
+[[package]]
+name = "zmij_ecma"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "458b3e7a977f14499066b6bdb63d69da30ce337d6c160f077e6c575c82a44db9"

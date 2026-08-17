@@ -77,7 +77,7 @@ pub struct AstStruct {
 pub struct AstStructField {
     pub type_id: TypeId,
     pub name: String,
-    pub _attrs: AstAttrs,
+    pub attrs: AstFieldAttrs,
 }
 
 #[derive(Debug)]
@@ -126,4 +126,10 @@ pub struct AstPrimitive {
 pub struct AstAttrs {
     pub ast_attrs: HashSet<String>,
     pub generate_derives: HashSet<String>,
+}
+
+#[derive(Debug, Default)]
+pub struct AstFieldAttrs {
+    pub estree_skip: bool,
+    pub invalidates: Vec<String>,
 }

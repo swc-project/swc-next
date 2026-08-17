@@ -18,7 +18,6 @@ const ENUMS = Object.freeze({
   FunctionType: ["FunctionDeclaration", "FunctionExpression"],
   FormalParameterKind: ["formal", "unique", "arrow", "signature"],
   PropertyKind: ["init", "get", "set"],
-  NumericLiteralKind: ["decimal", "hex", "octal", "binary"],
   ImportOrExportKind: ["value", "type"],
   ImportPhase: ["source", "defer"],
   TsTypeOperatorKind: ["keyof", "unique", "readonly"],
@@ -200,14 +199,10 @@ export function decode(buffer, source) {
         break;
       }
       case 4: {
-        const f_kind = enumValue("NumericLiteralKind", _dv.getUint8(payload + 8));
-        const f_raw = str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]);
-        const raw = f_raw;
-        const normalized = raw.includes("_") ? raw.replaceAll("_", "") : raw;
-        const value =
-          f_kind === "octal" && normalized[1]?.toLowerCase() !== "o"
-            ? parseInt(normalized.slice(1), 8)
-            : +normalized;
+        const f_value = _dv.getFloat64(payload + 0, true);
+        const f_raw = _u32[(payload + 8) >> 2] === NULL && _u32[(payload + 8 + 4) >> 2] === 0 ? null : str(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2]);
+        const value = f_value;
+        const raw = f_raw ?? String(value);
         result = { type: "Literal", start, end, value, raw };
         break;
       }

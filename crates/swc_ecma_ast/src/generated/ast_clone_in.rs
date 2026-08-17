@@ -384,9 +384,9 @@ impl<'a> CloneIn<'a> for NumericLiteral {
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
-        let kind = self.kind(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
         let raw = self.raw(ast).clone_in(ast);
-        ast.numeric_literal(span, kind, raw)
+        ast.numeric_literal(span, value, raw)
     }
 }
 impl<'a> CloneIn<'a> for BigIntLiteral {

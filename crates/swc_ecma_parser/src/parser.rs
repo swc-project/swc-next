@@ -18,6 +18,7 @@ use crate::{
         HandleTokenMode, Lexer, LexerMode, LexerState, LexicalError, lexical_error_help,
         lexical_error_message,
     },
+    number::{parse_binary_literal, parse_decimal_literal, parse_hex_literal, parse_octal_literal},
     token::{Token, TokenTag, flag_mask},
     util::{decode_identifier_escapes, decode_string_escapes},
 };
@@ -7610,21 +7611,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_numeric_literal(&mut self) -> Option<Expr> {
         debug_assert!(self.current_token.tag.is_numeric_literal());
         let token = self.current_token;
-        let kind = match token.tag {
-            TokenTag::NumericLiteral => NumericLiteralKind::Decimal,
-            TokenTag::HexLiteral => NumericLiteralKind::Hex,
-            TokenTag::OctalLiteral => NumericLiteralKind::Octal,
-            TokenTag::BinaryLiteral => NumericLiteralKind::Binary,
-            TokenTag::BigIntLiteral => {
-                self.advance()?;
-                let raw = self.ast.source_slice(token.span.start, token.span.end - 1);
-                return Some(self.ast.expr_big_int_literal(token.span, raw));
-            }
-            _ => unreachable!(),
-        };
+        if token.tag == TokenTag::BigIntLiteral {
+            self.advance()?;
+            let raw = self.ast.source_slice(token.span.start, token.span.end - 1);
+            return Some(self.ast.expr_big_int_literal(token.span, raw));
+        }
         self.advance()?;
         let raw = self.ast.source_slice(token.span.start, token.span.end);
-        Some(self.ast.expr_numeric_literal(token.span, kind, raw))
+        let raw_text = self.ast.get_utf8(raw);
+        let value = match token.tag {
+            TokenTag::NumericLiteral => parse_decimal_literal(raw_text),
+            TokenTag::HexLiteral => parse_hex_literal(raw_text),
+            TokenTag::OctalLiteral => parse_octal_literal(raw_text),
+            TokenTag::BinaryLiteral => parse_binary_literal(raw_text),
+            _ => unreachable!(),
+        };
+        Some(self.ast.expr_numeric_literal(token.span, value, Some(raw)))
     }
 
     fn parse_string_literal(&mut self) -> Option<StringLiteral> {

@@ -12,11 +12,11 @@ fn test_number() {
     expect_printed("x = 1e-100", "x = 1e-100;\n");
     expect_printed("x = 1e-4", "x = 1e-4;\n");
     expect_printed("x = 1e-3", "x = 1e-3;\n");
-    expect_printed("x = 1e-2", "x = 0.01;\n");
-    expect_printed("x = 1e-1", "x = 0.1;\n");
-    expect_printed("x = 1e0", "x = 1;\n");
-    expect_printed("x = 1e1", "x = 10;\n");
-    expect_printed("x = 1e2", "x = 100;\n");
+    expect_printed("x = 1e-2", "x = 1e-2;\n");
+    expect_printed("x = 1e-1", "x = 1e-1;\n");
+    expect_printed("x = 1e0", "x = 1e0;\n");
+    expect_printed("x = 1e1", "x = 1e1;\n");
+    expect_printed("x = 1e2", "x = 1e2;\n");
     expect_printed("x = 1e3", "x = 1e3;\n");
     expect_printed("x = 1e4", "x = 1e4;\n");
     expect_printed("x = 1e100", "x = 1e100;\n");
@@ -35,12 +35,12 @@ fn test_number() {
     expect_printed("x = 12e-100", "x = 12e-100;\n");
     expect_printed("x = 12e-5", "x = 12e-5;\n");
     expect_printed("x = 12e-4", "x = 12e-4;\n");
-    expect_printed("x = 12e-3", "x = 0.012;\n");
-    expect_printed("x = 12e-2", "x = 0.12;\n");
-    expect_printed("x = 12e-1", "x = 1.2;\n");
-    expect_printed("x = 12e0", "x = 12;\n");
-    expect_printed("x = 12e1", "x = 120;\n");
-    expect_printed("x = 12e2", "x = 1200;\n");
+    expect_printed("x = 12e-3", "x = 12e-3;\n");
+    expect_printed("x = 12e-2", "x = 12e-2;\n");
+    expect_printed("x = 12e-1", "x = 12e-1;\n");
+    expect_printed("x = 12e0", "x = 12e0;\n");
+    expect_printed("x = 12e1", "x = 12e1;\n");
+    expect_printed("x = 12e2", "x = 12e2;\n");
     expect_printed("x = 12e3", "x = 12e3;\n");
     expect_printed("x = 12e4", "x = 12e4;\n");
     expect_printed("x = 12e100", "x = 12e100;\n");
@@ -65,48 +65,66 @@ fn test_number() {
     expect_printed("x = 10000123456789", "x = 10000123456789;\n");
     expect_printed("x = 100000123456789", "x = 100000123456789;\n");
     expect_printed("x = 1000000123456789", "x = 1000000123456789;\n");
-    expect_printed("x = 10000000123456789", "x = 10000000123456788;\n");
-    expect_printed("x = 100000000123456789", "x = 100000000123456780;\n");
-    expect_printed("x = 1000000000123456789", "x = 1000000000123456800;\n");
-    expect_printed("x = 10000000000123456789", "x = 10000000000123458e3;\n");
-    expect_printed("x = 100000000000123456789", "x = 10000000000012345e4;\n");
-    expect_printed("x = 0x7fff_ffff", "x = 2147483647;\n");
-    expect_printed("x = 0x8000_0000", "x = 2147483648;\n");
-    expect_printed("x = 0x8000_0001", "x = 2147483649;\n");
-    expect_printed("x = -0x7fff_ffff", "x = -2147483647;\n");
-    expect_printed("x = -0x8000_0000", "x = -2147483648;\n");
-    expect_printed("x = -0x8000_0001", "x = -2147483649;\n");
-    expect_printed("x = 0xffff_ffff", "x = 4294967295;\n");
-    expect_printed("x = 0x1_0000_0000", "x = 4294967296;\n");
-    expect_printed("x = 0x1_0000_0001", "x = 4294967297;\n");
-    expect_printed("x = -0xffff_ffff", "x = -4294967295;\n");
-    expect_printed("x = -0x1_0000_0000", "x = -4294967296;\n");
-    expect_printed("x = -0x1_0000_0001", "x = -4294967297;\n");
-    expect_printed("x = 0x7fff_ffff_ffff_fdff", "x = 9223372036854775e3;\n");
-    expect_printed("x = 0x8000_0000_0000_0000", "x = 9223372036854776e3;\n");
-    expect_printed("x = 0x8000_0000_0000_3000", "x = 9223372036854788e3;\n");
-    expect_printed("x = -0x7fff_ffff_ffff_fdff", "x = -9223372036854775e3;\n");
-    expect_printed("x = -0x8000_0000_0000_0000", "x = -9223372036854776e3;\n");
-    expect_printed("x = -0x8000_0000_0000_3000", "x = -9223372036854788e3;\n");
-    expect_printed("x = 0xffff_ffff_ffff_fbff", "x = 1844674407370955e4;\n");
-    expect_printed("x = 0x1_0000_0000_0000_0000", "x = 18446744073709552e3;\n");
-    expect_printed("x = 0x1_0000_0000_0000_1000", "x = 18446744073709556e3;\n");
-    expect_printed("x = -0xffff_ffff_ffff_fbff", "x = -1844674407370955e4;\n");
+    expect_printed("x = 10000000123456789", "x = 10000000123456789;\n");
+    expect_printed("x = 100000000123456789", "x = 100000000123456789;\n");
+    expect_printed("x = 1000000000123456789", "x = 1000000000123456789;\n");
+    expect_printed("x = 10000000000123456789", "x = 10000000000123456789;\n");
+    expect_printed("x = 100000000000123456789", "x = 100000000000123456789;\n");
+    expect_printed("x = 0x7fff_ffff", "x = 0x7fff_ffff;\n");
+    expect_printed("x = 0x8000_0000", "x = 0x8000_0000;\n");
+    expect_printed("x = 0x8000_0001", "x = 0x8000_0001;\n");
+    expect_printed("x = -0x7fff_ffff", "x = -0x7fff_ffff;\n");
+    expect_printed("x = -0x8000_0000", "x = -0x8000_0000;\n");
+    expect_printed("x = -0x8000_0001", "x = -0x8000_0001;\n");
+    expect_printed("x = 0xffff_ffff", "x = 0xffff_ffff;\n");
+    expect_printed("x = 0x1_0000_0000", "x = 0x1_0000_0000;\n");
+    expect_printed("x = 0x1_0000_0001", "x = 0x1_0000_0001;\n");
+    expect_printed("x = -0xffff_ffff", "x = -0xffff_ffff;\n");
+    expect_printed("x = -0x1_0000_0000", "x = -0x1_0000_0000;\n");
+    expect_printed("x = -0x1_0000_0001", "x = -0x1_0000_0001;\n");
+    expect_printed("x = 0x7fff_ffff_ffff_fdff", "x = 0x7fff_ffff_ffff_fdff;\n");
+    expect_printed("x = 0x8000_0000_0000_0000", "x = 0x8000_0000_0000_0000;\n");
+    expect_printed("x = 0x8000_0000_0000_3000", "x = 0x8000_0000_0000_3000;\n");
+    expect_printed(
+        "x = -0x7fff_ffff_ffff_fdff",
+        "x = -0x7fff_ffff_ffff_fdff;\n",
+    );
+    expect_printed(
+        "x = -0x8000_0000_0000_0000",
+        "x = -0x8000_0000_0000_0000;\n",
+    );
+    expect_printed(
+        "x = -0x8000_0000_0000_3000",
+        "x = -0x8000_0000_0000_3000;\n",
+    );
+    expect_printed("x = 0xffff_ffff_ffff_fbff", "x = 0xffff_ffff_ffff_fbff;\n");
+    expect_printed(
+        "x = 0x1_0000_0000_0000_0000",
+        "x = 0x1_0000_0000_0000_0000;\n",
+    );
+    expect_printed(
+        "x = 0x1_0000_0000_0000_1000",
+        "x = 0x1_0000_0000_0000_1000;\n",
+    );
+    expect_printed(
+        "x = -0xffff_ffff_ffff_fbff",
+        "x = -0xffff_ffff_ffff_fbff;\n",
+    );
     expect_printed(
         "x = -0x1_0000_0000_0000_0000",
-        "x = -18446744073709552e3;\n",
+        "x = -0x1_0000_0000_0000_0000;\n",
     );
     expect_printed(
         "x = -0x1_0000_0000_0000_1000",
-        "x = -18446744073709556e3;\n",
+        "x = -0x1_0000_0000_0000_1000;\n",
     );
     expect_printed("x = 999999999999", "x = 999999999999;\n");
     expect_printed("x = 1000000000001", "x = 1000000000001;\n");
-    expect_printed("x = 0x0FFF_FFFF_FFFF_FF80", "x = 1152921504606846800;\n");
-    expect_printed("x = 0x1000_0000_0000_0000", "x = 1152921504606847e3;\n");
-    expect_printed("x = 0xFFFF_FFFF_FFFF_F000", "x = 18446744073709548e3;\n");
-    expect_printed("x = 0xFFFF_FFFF_FFFF_F800", "x = 1844674407370955e4;\n");
-    expect_printed("x = 0xFFFF_FFFF_FFFF_FFFF", "x = 18446744073709552e3;\n");
+    expect_printed("x = 0x0FFF_FFFF_FFFF_FF80", "x = 0x0FFF_FFFF_FFFF_FF80;\n");
+    expect_printed("x = 0x1000_0000_0000_0000", "x = 0x1000_0000_0000_0000;\n");
+    expect_printed("x = 0xFFFF_FFFF_FFFF_F000", "x = 0xFFFF_FFFF_FFFF_F000;\n");
+    expect_printed("x = 0xFFFF_FFFF_FFFF_F800", "x = 0xFFFF_FFFF_FFFF_F800;\n");
+    expect_printed("x = 0xFFFF_FFFF_FFFF_FFFF", "x = 0xFFFF_FFFF_FFFF_FFFF;\n");
     expect_printed_minify("x = 999999999999", "x=999999999999;");
     expect_printed_minify("x = 1000000000001", "x=0xe8d4a51001;");
     expect_printed_minify("x = 0x0FFF_FFFF_FFFF_FF80", "x=0xfffffffffffff80;");
@@ -1183,7 +1201,7 @@ fn test_infinity() {
     );
     expect_printed("x = -1e999", "x = -1e999;\n");
     expect_printed("x = (1e999).toString", "x = 1e999.toString;\n");
-    expect_printed_minify("x = (1e999).toString", "x=2e308.toString;");
+    expect_printed_minify("x = (1e999).toString", "x=1e999.toString;");
     let overflowing_integer = "9".repeat(309);
     expect_printed(
         &format!("({overflowing_integer}).toString"),
@@ -1191,11 +1209,11 @@ fn test_infinity() {
     );
     expect_printed_minify(
         &format!("({overflowing_integer}).toString"),
-        "2e308.toString;",
+        "1e999.toString;",
     );
     expect_printed_minify("x = 1e999 * y", "x=1/0*y;");
-    expect_printed_minify("x = y * 1e999", "x=y*2e308;");
-    expect_printed_minify("class C extends 1e999 {}", "class C extends 2e308{}");
+    expect_printed_minify("x = y * 1e999", "x=y*1e999;");
+    expect_printed_minify("class C extends 1e999 {}", "class C extends 1e999{}");
     expect_printed_minify("x = { 1e999: 0, [1e999]: 1 }", "x={1e999:0,[1/0]:1};");
     expect_printed("x = Infinity", "x = Infinity;\n");
     expect_printed("x = -Infinity", "x = -Infinity;\n");

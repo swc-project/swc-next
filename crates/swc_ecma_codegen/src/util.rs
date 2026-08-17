@@ -18,31 +18,6 @@ pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32
     out.push(b'}');
 }
 
-pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {
-    raw.iter().copied().filter(|&b| b != b'_').collect()
-}
-
-#[inline(always)]
-pub(crate) fn parse_numeric_literal(raw: &[u8]) -> Option<f64> {
-    let clean;
-    let raw = if raw.contains(&b'_') {
-        clean = remove_underscores(raw);
-        clean.as_slice()
-    } else {
-        raw
-    };
-    let text = std::str::from_utf8(raw).ok()?;
-    let radix = match raw {
-        [b'0', b'x' | b'X', ..] => 16,
-        [b'0', b'o' | b'O', ..] => 8,
-        [b'0', b'b' | b'B', ..] => 2,
-        _ => return text.parse().ok(),
-    };
-    u128::from_str_radix(&text[2..], radix)
-        .ok()
-        .map(|value| value as f64)
-}
-
 pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, ascii_only: bool) {
     let value = value.as_bytes();
     out.push(quote);

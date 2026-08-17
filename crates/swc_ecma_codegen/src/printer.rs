@@ -1,22 +1,34 @@
 use std::path::PathBuf;
 
+use arrayvec::ArrayVec;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
-use crate::util::{
-    next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-};
+use crate::util::{next_code_point, push_code_point_escape, push_u16_escape, quote_into};
 
 use crate::{
     SourceMap,
     sourcemap::{ChunkBuilder, generate_line_offset_tables, make_chunk_builder},
 };
 
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
+pub enum NumberFormat {
+    #[default]
+    Preserve,
+    Decimal,
+    Binary,
+    Octal,
+    Hexadecimal {
+        lowercase: bool,
+    },
+}
+
 #[derive(Clone)]
 pub struct Options {
     pub ascii_only: bool,
     pub minify: bool,
+    pub number_format: NumberFormat,
     pub source_map_path: Option<PathBuf>,
     pub comments: bool,
 }
@@ -26,6 +38,7 @@ impl Default for Options {
         Self {
             ascii_only: false,
             minify: false,
+            number_format: NumberFormat::Preserve,
             source_map_path: None,
             comments: true,
         }
@@ -36,6 +49,48 @@ pub struct PrintResult<'a> {
     pub code: &'a str,
     pub legal_comments: Vec<Comment>,
     pub map: Option<SourceMap<'a>>,
+}
+
+const INFINITY_LITERAL: &str = "1e999";
+
+fn radix_integer_parts(value: f64, bits_per_digit: u32) -> Option<(u64, usize)> {
+    debug_assert!(value.is_finite());
+    debug_assert!(!value.is_sign_negative());
+    debug_assert!(matches!(bits_per_digit, 1 | 3 | 4));
+
+    if value == 0.0 {
+        return Some((0, 0));
+    }
+
+    const FRACTION_BITS: u32 = 52;
+    const EXPONENT_BIAS: i32 = 1023;
+    const FRACTION_MASK: u64 = (1_u64 << FRACTION_BITS) - 1;
+
+    let bits = value.to_bits();
+    let biased_exponent = ((bits >> FRACTION_BITS) & 0x7ff) as i32;
+    if biased_exponent == 0 {
+        // Every non-zero subnormal is smaller than one and therefore non-integral.
+        return None;
+    }
+
+    let significand = (1_u64 << FRACTION_BITS) | (bits & FRACTION_MASK);
+    let binary_shift = biased_exponent - EXPONENT_BIAS - FRACTION_BITS as i32;
+    if binary_shift < 0 {
+        let right_shift = (-binary_shift) as u32;
+        if right_shift >= u64::BITS {
+            return None;
+        }
+        let discarded_mask = (1_u64 << right_shift) - 1;
+        if significand & discarded_mask != 0 {
+            return None;
+        }
+        return Some((significand >> right_shift, 0));
+    }
+
+    let binary_shift = binary_shift as u32;
+    let trailing_zero_digits = (binary_shift / bits_per_digit) as usize;
+    let remaining_shift = binary_shift % bits_per_digit;
+    Some((significand << remaining_shift, trailing_zero_digits))
 }
 
 fn parse_small_int(bytes: &[u8]) -> i32 {
@@ -49,17 +104,6 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
         n = n * 10 + i32::from(byte - b'0');
     }
     if was_negative { -n } else { n }
-}
-
-#[inline(always)]
-fn can_print_decimal_verbatim(raw: &[u8]) -> bool {
-    matches!(
-        raw,
-        [b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9'] | [b'1'..=b'9', b'0'..=b'9', b'0'..=b'9']
-    ) || ((4..=12).contains(&raw.len())
-        && matches!(raw.first(), Some(b'1'..=b'9'))
-        && matches!(raw.last(), Some(b'1'..=b'9'))
-        && raw[1..raw.len() - 1].iter().all(u8::is_ascii_digit))
 }
 
 struct Printer<'a> {
@@ -1764,7 +1808,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::NumericLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print_number_expr(self.ast.get_utf8(e.raw(self.ast)), level)
+                self.print_number_expr(e, level)
             }
             ExprData::BigIntLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
@@ -2604,7 +2648,7 @@ impl<'a> Printer<'a> {
                 self.print_quoted(self.ast.get_wtf8(e.value(self.ast)), true)
             }
             PropertyKeyData::NumericLiteral(e) => {
-                self.print_number_expr(self.ast.get_utf8(e.raw(self.ast)), Precedence::Lowest);
+                self.print_number_expr(e, Precedence::Lowest);
             }
             PropertyKeyData::BigIntLiteral(e) => {
                 for byte in self.ast.get_utf8(e.raw(self.ast)).bytes() {
@@ -2629,10 +2673,23 @@ impl<'a> Printer<'a> {
                     self.print_quoted(Wtf8::from_str(name), true);
                 }
             }
-            PropertyKeyData::NumericLiteral(value) => self
-                .print_number_literal(self.ast.get_utf8(value.raw(self.ast)), Precedence::Lowest),
+            PropertyKeyData::NumericLiteral(value) => self.print_number_property_key(value),
             _ => self.print_property_key_expr(key),
         }
+    }
+
+    fn print_number_property_key(&mut self, literal: NumericLiteral) {
+        let value = literal.value(self.ast);
+        let has_source_spelling = literal.raw(self.ast).is_some();
+        let requires_string = value.is_sign_negative() || !value.is_finite();
+        if !has_source_spelling && requires_string {
+            let mut buffer = zmij_ecma::Buffer::new();
+            let property_name = buffer.format(value);
+            self.print_quoted(Wtf8::from_str(property_name), true);
+            return;
+        }
+
+        self.print_number_literal(literal, Precedence::Lowest);
     }
 
     fn print_template(&mut self, e: TemplateLiteral, is_tagged: bool) {
@@ -3041,69 +3098,158 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_number_literal(&mut self, raw: &str, level: Precedence) {
-        if can_print_decimal_verbatim(raw.as_bytes()) {
-            self.print_space_before_identifier();
-            self.print_bytes(raw);
-            self.need_space_before_dot = self.js.len();
+    fn print_number_literal(&mut self, literal: NumericLiteral, level: Precedence) {
+        let value = literal.value(self.ast);
+        assert!(
+            !value.is_nan(),
+            "NaN cannot be represented as a numeric literal"
+        );
+        if self.try_print_number_raw(literal) {
             return;
         }
-        let Some(value) = parse_numeric_literal(raw.as_bytes()) else {
-            self.print_bytes(raw);
-            return;
-        };
-        self.print_number_value(raw, value, level);
+        if value.is_infinite() {
+            // Literal-only positions cannot use the `1 / 0` expression. Emit a canonical
+            // overflowing numeric token derived from the authoritative value instead.
+            if value.is_sign_negative() {
+                self.print("-");
+            } else {
+                self.print_space_before_identifier();
+            }
+            self.print(INFINITY_LITERAL);
+        } else {
+            self.print_number_value(value, level);
+        }
     }
 
-    fn print_number_expr(&mut self, raw: &str, level: Precedence) {
-        if can_print_decimal_verbatim(raw.as_bytes()) {
-            self.print_space_before_identifier();
-            self.print_bytes(raw);
-            self.need_space_before_dot = self.js.len();
+    fn print_number_expr(&mut self, literal: NumericLiteral, level: Precedence) {
+        if self.try_print_number_raw(literal) {
             return;
         }
-        let Some(value) = parse_numeric_literal(raw.as_bytes()) else {
-            self.print_bytes(raw);
+        let value = literal.value(self.ast);
+        self.print_number_value(value, level);
+    }
+
+    #[inline(always)]
+    fn try_print_number_raw(&mut self, literal: NumericLiteral) -> bool {
+        if self.options.minify || self.options.number_format != NumberFormat::Preserve {
+            return false;
+        }
+        let Some(raw) = literal.raw(self.ast) else {
+            return false;
+        };
+        let raw = self.ast.get_utf8(raw);
+
+        self.print_space_before_identifier();
+        self.print_bytes(raw);
+        self.mark_raw_number_before_dot(raw);
+        true
+    }
+
+    fn mark_raw_number_before_dot(&mut self, raw: &str) {
+        let mut bytes = raw.bytes().filter(|&byte| byte != b'_');
+        let Some(first) = bytes.next() else {
             return;
         };
-        if value.is_finite() || !self.options.minify {
-            self.print_number_value(raw, value, level);
-        } else {
-            self.print_non_finite_number_expr(value, level);
+        if first.is_ascii_digit() && bytes.all(|byte| byte.is_ascii_digit()) {
+            self.need_space_before_dot = self.js.len();
         }
     }
 
     #[inline(always)]
-    fn print_number_value(&mut self, raw: &str, value: f64, level: Precedence) {
+    fn print_number_value(&mut self, value: f64, level: Precedence) {
         let abs_value = value.abs();
         if !value.is_finite() {
+            self.print_non_finite_number_expr(value, level);
+            return;
+        }
+        if self.try_print_number_with_format(value, level) {
+            return;
+        }
+        self.print_signed_finite_number(value, level, |printer| {
+            printer.print_non_negative_float(abs_value);
+        });
+    }
+
+    fn try_print_number_with_format(&mut self, value: f64, level: Precedence) -> bool {
+        let (prefix, bits_per_digit, alphabet) = match self.options.number_format {
+            NumberFormat::Preserve => return false,
+            NumberFormat::Decimal => {
+                let abs_value = value.abs();
+                self.print_signed_finite_number(value, level, |printer| {
+                    printer.print_non_negative_number_as_decimal(abs_value);
+                });
+                return true;
+            }
+            NumberFormat::Binary => ("0b", 1, b"01".as_slice()),
+            NumberFormat::Octal => ("0o", 3, b"01234567".as_slice()),
+            NumberFormat::Hexadecimal { lowercase: true } => {
+                ("0x", 4, b"0123456789abcdef".as_slice())
+            }
+            NumberFormat::Hexadecimal { lowercase: false } => {
+                ("0x", 4, b"0123456789ABCDEF".as_slice())
+            }
+        };
+
+        let abs_value = value.abs();
+        let Some((mut integer, trailing_zero_digits)) =
+            radix_integer_parts(abs_value, bits_per_digit)
+        else {
+            return false;
+        };
+
+        let digit_mask = (1_u64 << bits_per_digit) - 1;
+        let mut digits = [0u8; 64];
+        let mut start = digits.len();
+        loop {
+            start -= 1;
+            digits[start] = alphabet[(integer & digit_mask) as usize];
+            integer >>= bits_per_digit;
+            if integer == 0 {
+                break;
+            }
+        }
+        self.print_signed_finite_number(value, level, |printer| {
+            printer.print(prefix);
+            printer.print_bytes(&digits[start..]);
+            for _ in 0..trailing_zero_digits {
+                printer.print("0");
+            }
+        });
+        true
+    }
+
+    fn print_signed_finite_number(
+        &mut self,
+        value: f64,
+        level: Precedence,
+        print_absolute_value: impl FnOnce(&mut Self),
+    ) {
+        debug_assert!(value.is_finite());
+        if !value.is_sign_negative() {
             self.print_space_before_identifier();
-            self.print_bytes(raw);
-            self.mark_raw_number_before_dot(raw);
-        } else if !value.is_sign_negative() {
-            self.print_space_before_identifier();
-            self.print_non_negative_float(abs_value);
-        } else if level >= Precedence::Prefix {
-            // Expressions such as "(-1).toString" must wrap negative numbers.
-            // Testing the sign bit instead of `value < 0` also handles -0.
+            print_absolute_value(self);
+            return;
+        }
+
+        let wrap = level >= Precedence::Prefix;
+        if wrap {
             self.print("(-");
-            self.print_non_negative_float(abs_value);
-            self.print(")");
         } else {
             self.print("-");
-            self.print_non_negative_float(abs_value);
+        }
+        print_absolute_value(self);
+        if wrap {
+            self.print(")");
         }
     }
 
-    fn mark_raw_number_before_dot(&mut self, raw: &str) {
-        let mut bytes = raw.bytes().filter(|&byte| byte != b'_').peekable();
-        let Some(first) = bytes.next() else {
-            return;
-        };
-        if first.is_ascii_digit()
-            && !(first == b'0' && bytes.peek().is_some())
-            && bytes.all(|byte| byte.is_ascii_digit())
-        {
+    fn print_non_negative_number_as_decimal(&mut self, value: f64) {
+        debug_assert!(!value.is_sign_negative());
+
+        let mut buffer = zmij_ecma::Buffer::new();
+        let formatted = buffer.format_finite(value);
+        self.print_bytes(formatted);
+        if formatted.bytes().all(|byte| byte.is_ascii_digit()) {
             self.need_space_before_dot = self.js.len();
         }
     }
@@ -3112,7 +3258,7 @@ impl<'a> Printer<'a> {
         let requires_parentheses = level > Precedence::Multiply;
         if requires_parentheses && value == f64::INFINITY {
             self.print_space_before_identifier();
-            self.print("2e308");
+            self.print(INFINITY_LITERAL);
         } else {
             if requires_parentheses {
                 self.print("(");
@@ -3166,43 +3312,23 @@ impl<'a> Printer<'a> {
     }
 
     fn print_non_negative_float(&mut self, abs_value: f64) {
-        // Avoid the slower general formatter for integers below 1000.
-        // Exponential notation is always longer here; at 1000, "1e3" wins.
-        if abs_value < 1000.0 {
-            let as_int = abs_value as i64;
-            if abs_value == as_int as f64 {
-                let start = self.small_int_to_bytes(as_int as i32);
-                self.js
-                    .extend_from_slice_copy(&self.int_to_bytes_buffer[start..]);
+        // Format according to ECMAScript Number::toString, then copy into a
+        // stack-backed mutable buffer so subsequent source-level shortening can
+        // happen in place without allocating for every numeric literal. The
+        // longest finite f64 representation produced by `zmij_ecma` is 24 bytes,
+        // and every rewrite below preserves or reduces that length.
+        let mut buffer = zmij_ecma::Buffer::new();
+        let formatted = buffer.format_finite(abs_value).as_bytes();
+        let mut result = ArrayVec::<u8, 24>::new();
+        result
+            .try_extend_from_slice(formatted)
+            .expect("an ECMAScript f64 representation fits in 24 bytes");
 
-                // A following "." needs a separator or it becomes a decimal
-                // point.
-                self.need_space_before_dot = self.js.len();
-                return;
-            }
-        }
-
-        // Format into a mutable byte buffer so subsequent shortening can
-        // happen in place.
-        let mut result = abs_value.to_string().into_bytes();
-
-        // Simplify exponents: "e+05" becomes "e5" and "e-05" becomes "e-5".
-        if let Some(e) = result.iter().rposition(|&byte| byte == b'e') {
-            let mut from = e + 1;
-            let mut to = from;
-            match result[from] {
-                b'+' => from += 1,
-                b'-' => {
-                    to += 1;
-                    from += 1;
-                }
-                _ => {}
-            }
-            while from < result.len() && result[from] == b'0' {
-                from += 1;
-            }
-            result.copy_within(from.., to);
-            result.truncate(to + result.len() - from);
+        // The plus sign is optional in a positive JavaScript exponent.
+        if let Some(e) = result.iter().rposition(|&byte| byte == b'e')
+            && result.get(e + 1) == Some(&b'+')
+        {
+            result.remove(e + 1);
         }
 
         let dot = result.iter().position(|&byte| byte == b'.');
@@ -3230,7 +3356,9 @@ impl<'a> Printer<'a> {
                     result.copy_within(i.., 0);
                     result.truncate(remaining_len);
                     result.push(b'e');
-                    result.extend_from_slice(exponent);
+                    result
+                        .try_extend_from_slice(exponent)
+                        .expect("the shorter exponent representation fits");
                 }
             }
         } else if let Some(dot) = dot {
@@ -3247,7 +3375,9 @@ impl<'a> Printer<'a> {
                     if result.len() >= new_len {
                         result.copy_within(dot + 1..e, dot);
                         result.truncate(integer_len + fraction_len);
-                        result.resize(new_len, b'0');
+                        while result.len() < new_len {
+                            result.push(b'0');
+                        }
                     }
                 } else {
                     // "1.2e4" => "12e3"
@@ -3257,7 +3387,9 @@ impl<'a> Printer<'a> {
                         result.copy_within(dot + 1..e, dot);
                         result.truncate(integer_len + fraction_len);
                         result.push(b'e');
-                        result.extend_from_slice(exponent_bytes);
+                        result
+                            .try_extend_from_slice(exponent_bytes)
+                            .expect("the shorter exponent representation fits");
                     }
                 }
             }
@@ -3274,7 +3406,9 @@ impl<'a> Printer<'a> {
             if result.len() > i + 1 + exponent.len() {
                 result.truncate(i);
                 result.push(b'e');
-                result.extend_from_slice(exponent);
+                result
+                    .try_extend_from_slice(exponent)
+                    .expect("the shorter exponent representation fits");
             }
         }
 
@@ -3299,8 +3433,12 @@ impl<'a> Printer<'a> {
                 }
                 if 2 + hex_buffer.len() - start < result.len() {
                     result.clear();
-                    result.extend_from_slice(b"0x");
-                    result.extend_from_slice(&hex_buffer[start..]);
+                    result
+                        .try_extend_from_slice(b"0x")
+                        .expect("the shorter hexadecimal representation fits");
+                    result
+                        .try_extend_from_slice(&hex_buffer[start..])
+                        .expect("the shorter hexadecimal representation fits");
                 }
             }
         }
@@ -4029,7 +4167,7 @@ impl<'a> Printer<'a> {
                 self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
             }
             TsLiteralData::NumericLiteral(n) => {
-                self.print_number_literal(self.ast.get_utf8(n.raw(self.ast)), Precedence::Lowest);
+                self.print_number_literal(n, Precedence::Lowest);
             }
             TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.get_utf8(n.raw(self.ast))),
             TsLiteralData::BooleanLiteral(b) => {
@@ -4061,7 +4199,7 @@ impl<'a> Printer<'a> {
         self.prev_op_end = self.js.len();
 
         self.add_source_mapping(argument.span(self.ast).start);
-        self.print_number_literal(self.ast.get_utf8(number.raw(self.ast)), Precedence::Prefix);
+        self.print_number_literal(number, Precedence::Prefix);
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
         match self.ast.ts_tuple_element_data(e) {
