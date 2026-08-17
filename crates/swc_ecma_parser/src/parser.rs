@@ -2969,7 +2969,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
                 if self.current_token.tag == TokenTag::Spread {
                     rest = Some(self.parse_binding_rest_element(decorators)?);
-                    if self.eat(TokenTag::Comma)? {
+                    if self.eat(TokenTag::Comma)?
+                        && (!self.ts_context.ambient
+                            || self.current_token.tag != TokenTag::RightParen)
+                    {
                         return {
                             let span = self.current_token.span;
                             self.report(
@@ -4393,7 +4396,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        match self.current_token.tag {
+        let ambient = self.ts_context.ambient;
+        self.ts_context.ambient |= modifiers.declare;
+        let result = (|| match self.current_token.tag {
             TokenTag::Type => self.parse_type_alias_declaration(start, modifiers.declare),
             TokenTag::Interface => self.parse_interface_declaration(start, modifiers.declare),
             TokenTag::Enum => {
@@ -4454,7 +4459,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ),
             TokenTag::Global => self.parse_global_declaration(start, modifiers.declare),
             _ => None,
-        }
+        })();
+        self.ts_context.ambient = ambient;
+        result
     }
 
     fn parse_declare_import_equals(&mut self, start: u32) -> Option<Stmt> {
