@@ -170,76 +170,77 @@ pub enum TokenTag {
     Assert = 108 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
     Source = 109 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
     Defer = 110 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Sync = 111 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
 
-    Try = 111 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Catch = 112 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Finally = 113 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Throw = 114 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    Try = 112 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    Catch = 113 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    Finally = 114 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    Throw = 115 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
 
-    New = 115 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    This = 116 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Typeof = 117
+    New = 116 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    This = 117 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    Typeof = 118
         | flags!(IS_UNARY_OP | IS_KEYWORD)
         | flags!(IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Instanceof = 118
+    Instanceof = 119
         | ((Precedence::Compare as u32) << PREC_SHIFT)
         | flags!(IS_BINARY_OP | IS_KEYWORD)
         | flags!(IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    In = 119
+    In = 120
         | ((Precedence::Compare as u32) << PREC_SHIFT)
         | flags!(IS_BINARY_OP | IS_KEYWORD)
         | flags!(IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Of = 120 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Delete = 121
+    Of = 121 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Delete = 122
         | flags!(IS_UNARY_OP | IS_KEYWORD)
         | flags!(IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Void = 122
+    Void = 123
         | flags!(IS_UNARY_OP | IS_KEYWORD)
         | flags!(IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    With = 123 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
-    Debugger = 124 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    With = 124 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
+    Debugger = 125 | flags!(IS_KEYWORD | IS_UNCONDITIONALLY_RESERVED | IS_IDENTIFIER_LIKE),
 
-    Identifier = 125 | flags!(IS_IDENTIFIER_LIKE | CAN_HAVE_TRAILING_COMMENT),
-    PrivateIdentifier = 126,
+    Identifier = 126 | flags!(IS_IDENTIFIER_LIKE | CAN_HAVE_TRAILING_COMMENT),
+    PrivateIdentifier = 127,
 
-    Get = 127 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Set = 128 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Accessor = 129 | flags!(IS_IDENTIFIER_LIKE),
-    Constructor = 130 | flags!(IS_IDENTIFIER_LIKE),
+    Get = 128 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Set = 129 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Accessor = 130 | flags!(IS_IDENTIFIER_LIKE),
+    Constructor = 131 | flags!(IS_IDENTIFIER_LIKE),
 
-    Declare = 131 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Type = 132 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Abstract = 133 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Override = 134 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Readonly = 135 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Keyof = 136 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Unique = 137 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Infer = 138 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Out = 139 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Asserts = 140 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Satisfies = 141
+    Declare = 132 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Type = 133 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Abstract = 134 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Override = 135 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Readonly = 136 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Keyof = 137 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Unique = 138 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Infer = 139 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Out = 140 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Asserts = 141 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Satisfies = 142
         | ((Precedence::Compare as u32) << PREC_SHIFT)
         | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Intrinsic = 142 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Is = 143 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Global = 144 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Module = 145 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Require = 146 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Intrinsic = 143 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Is = 144 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Global = 145 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Module = 146 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Require = 147 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
 
-    Any = 147 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Bigint = 148 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Boolean = 149 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Never = 150 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Number = 151 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Object = 152 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    String = 153 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Symbol = 154 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Undefined = 155 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
-    Unknown = 156 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Any = 148 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Bigint = 149 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Boolean = 150 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Never = 151 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Number = 152 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Object = 153 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    String = 154 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Symbol = 155 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Undefined = 156 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
+    Unknown = 157 | flags!(IS_KEYWORD | IS_IDENTIFIER_LIKE),
 
-    JsxIdentifier = 157 | flags!(CAN_HAVE_TRAILING_COMMENT),
-    JsxText = 158 | flags!(CAN_HAVE_TRAILING_COMMENT),
-    Eof = 159,
+    JsxIdentifier = 158 | flags!(CAN_HAVE_TRAILING_COMMENT),
+    JsxText = 159 | flags!(CAN_HAVE_TRAILING_COMMENT),
+    Eof = 160,
 }
 
 impl TokenTag {
@@ -423,6 +424,7 @@ impl TokenTag {
             Self::Assert => "assert",
             Self::Source => "source",
             Self::Defer => "defer",
+            Self::Sync => "sync",
             Self::Try => "try",
             Self::Catch => "catch",
             Self::Finally => "finally",

@@ -1709,6 +1709,7 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
         b"static" => TokenTag::Static,
         b"string" => TokenTag::String,
         b"switch" => TokenTag::Switch,
+        b"sync" => TokenTag::Sync,
         b"symbol" => TokenTag::Symbol,
         b"typeof" => TokenTag::Typeof,
         b"unique" => TokenTag::Unique,
