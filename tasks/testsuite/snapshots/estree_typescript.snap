@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11267/11509 (97.90%)
+Positive Passed: 11268/11509 (97.91%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -65,7 +65,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectBinding
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectLiteralMemberWithQuestionMark1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parseInvalidNonNullableTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parseInvalidNullableTypes.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parsingDeepParenthensizedExpression.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/privacyImportParseErrors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionScanning.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionWithNonBMPFlags.ts
