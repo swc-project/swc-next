@@ -2625,7 +2625,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         key: PropertyKey,
         kind: StaticMemberKind,
     ) {
-        if let Some(span) = self.prop_name_eq(key, "prototype") {
+        if !self.ts_context.ambient
+            && let Some(span) = self.prop_name_eq(key, "prototype")
+        {
             self.report(
                 span,
                 "Classes may not have a static property named 'prototype'",

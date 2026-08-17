@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13017/13156 (98.94%)
+Positive Passed: 13018/13156 (98.95%)
 Negative Passed: 1587/2981 (53.24%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -769,7 +769,6 @@ Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclar
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/memberFunctionDeclarations/memberFunctionsWithPublicPrivateOverloads.ts - memberFunctionsWithPublicPrivateOverloads.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/propertyAndAccessorWithSameName.ts - propertyAndAccessorWithSameName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/propertyAndFunctionWithSameName.ts - propertyAndFunctionWithSameName.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticPropertyNameConflictsInAmbientContext.ts - decl.d.ts: parser: Classes may not have a static property named 'prototype' at 438..447
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/twoAccessorsWithSameName.ts - twoAccessorsWithSameName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/twoAccessorsWithSameName2.ts - twoAccessorsWithSameName2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/constEnums/constEnum2.ts - constEnum2.ts: expected a parse or early error, but pipeline succeeded
