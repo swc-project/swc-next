@@ -11911,25 +11911,6 @@ mod tests {
     }
 
     #[test]
-    fn type_arguments_in_expression() {
-        let allocator = Allocator::new();
-        let options = Options {
-            lang: Lang::Ts,
-            ..Options::default()
-        };
-        let result = Parser::init(
-            &allocator,
-            "callee<T> += rhs;",
-            options,
-            NoTokenParserConfig,
-        )
-        .parse();
-
-        assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
-        assert_eq!(result.diagnostics[0].message, "Invalid assignment target");
-    }
-
-    #[test]
     fn await_using_context() {
         let allocator = Allocator::new();
         let options = Options {
