@@ -596,7 +596,6 @@ mod tests {
             local_export.target,
             ExportTarget::Local {
                 symbol: local_symbol,
-                declaration: None,
                 reference: Some(local_reference),
             }
         );

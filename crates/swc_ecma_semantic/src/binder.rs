@@ -1521,13 +1521,8 @@ impl<'a> SymbolTracker<'a> {
             range.len += 1;
         }
 
-        let module_record = module_record.finalize(
-            &node_symbols,
-            &symbol_declarations,
-            &declarations,
-            &self.references,
-            &node_references,
-        );
+        let module_record =
+            module_record.finalize(&node_symbols, &self.references, &node_references);
 
         Semantic {
             scopes,

@@ -2,11 +2,10 @@ use std::vec::Vec as RawVec;
 
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstWtf8, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
-    ExportSpecifier, ImportOrExportKind, NodeId, NodeKindData, ReferenceId, SymbolId,
+    Ast, AstWtf8, ExportAllDeclaration, ExportDefaultDeclaration, ExportDefaultDeclarationKindData,
+    ExportNamedDeclaration, ExportSpecifier, ImportOrExportKind, NodeId, NodeKindData, ReferenceId,
+    SymbolId,
 };
-
-use crate::{Declaration, DeclarationId};
 
 /// The ECMAScript export occurrences of a source text module, in source
 /// order. TypeScript's CommonJS-style `export =` and UMD
@@ -66,7 +65,6 @@ pub enum ExternalExportName {
 pub enum ExportTarget {
     Local {
         symbol: SymbolId,
-        declaration: Option<DeclarationId>,
         reference: Option<ReferenceId>,
     },
     External {
@@ -96,8 +94,10 @@ pub struct ExportEntry {
     pub origin: ExportOrigin,
     pub target: ExportTarget,
     /// Whether a specifier or re-export explicitly restricts its target to
-    /// type meanings. Direct declarations derive their meanings from their
-    /// declaration metadata instead.
+    /// type meanings. Direct declarations do not set this flag: their syntax
+    /// determines the meanings they contribute. Consumers that need
+    /// declaration-specific metadata can match [`ExportEntry::node`] against
+    /// the target symbol's declarations.
     pub type_only: bool,
 }
 
@@ -213,16 +213,16 @@ impl<'a> ModuleRecordBuilder<'a> {
         }
         let value = declaration.declaration(tree);
         let expression = value.is_expr(tree);
-        let binding = if let Some(function) = value.as_function(tree) {
-            function.id(tree).map(|id| id.node_id())
-        } else if let Some(class) = value.as_class(tree) {
-            class.id(tree).map(|id| id.node_id())
-        } else if let Some(function) = value.as_ts_function(tree) {
-            function.id(tree).map(|id| id.node_id())
-        } else {
-            value
-                .as_ts_interface_declaration(tree)
-                .map(|interface| interface.id(tree).node_id())
+        let binding = match tree.export_default_declaration_kind_data(value) {
+            ExportDefaultDeclarationKindData::Function(function) => {
+                function.id(tree).map(|id| id.node_id())
+            }
+            ExportDefaultDeclarationKindData::Class(class) => class.id(tree).map(|id| id.node_id()),
+            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(ts_interface_declaration) => {
+                Some(ts_interface_declaration.id(tree).node_id())
+            }
+            ExportDefaultDeclarationKindData::TsFunction(_)
+            | ExportDefaultDeclarationKindData::Expr(_) => None,
         };
         self.exports.push(RawExportEntry {
             node: declaration.node_id(),
@@ -247,8 +247,6 @@ impl<'a> ModuleRecordBuilder<'a> {
     pub fn finalize(
         self,
         node_symbols: &[Option<SymbolId>],
-        symbol_declarations: &[ArenaVec<'_, DeclarationId>],
-        declarations: &[Declaration],
         references: &[crate::Reference],
         node_references: &[Option<ReferenceId>],
     ) -> ModuleRecord<'a> {
@@ -256,13 +254,10 @@ impl<'a> ModuleRecordBuilder<'a> {
         for raw in self.exports {
             let target = match raw.target {
                 RawExportTarget::Direct { binding } => {
-                    let symbol_id =
+                    let symbol =
                         node_symbols[binding.index()].expect("direct export binding has a symbol");
-                    let declaration =
-                        declaration_id(symbol_declarations, declarations, symbol_id, binding);
                     ExportTarget::Local {
-                        symbol: declarations[declaration.index()].symbol,
-                        declaration: Some(declaration),
+                        symbol,
                         reference: None,
                     }
                 }
@@ -270,11 +265,7 @@ impl<'a> ModuleRecordBuilder<'a> {
                     let reference = node_references[name.node.index()];
                     let symbol = reference.and_then(|id| references[id.index()].symbol);
                     if let Some(symbol) = symbol {
-                        ExportTarget::Local {
-                            symbol,
-                            declaration: None,
-                            reference,
-                        }
+                        ExportTarget::Local { symbol, reference }
                     } else {
                         ExportTarget::UnresolvedLocal { name, reference }
                     }
@@ -288,13 +279,10 @@ impl<'a> ModuleRecordBuilder<'a> {
                     expression,
                 } => {
                     if let Some(binding) = binding {
-                        let symbol_id = node_symbols[binding.index()]
+                        let symbol = node_symbols[binding.index()]
                             .expect("named default export has a symbol");
-                        let declaration =
-                            declaration_id(symbol_declarations, declarations, symbol_id, binding);
                         ExportTarget::Local {
-                            symbol: declarations[declaration.index()].symbol,
-                            declaration: Some(declaration),
+                            symbol,
                             reference: None,
                         }
                     } else if expression {
@@ -321,19 +309,6 @@ impl<'a> ModuleRecordBuilder<'a> {
         }
         ModuleRecord { exports }
     }
-}
-
-fn declaration_id(
-    symbol_declarations: &[ArenaVec<'_, DeclarationId>],
-    declarations: &[Declaration],
-    symbol_id: SymbolId,
-    node: NodeId,
-) -> DeclarationId {
-    symbol_declarations[symbol_id.index()]
-        .iter()
-        .copied()
-        .find(|&declaration_id| declarations[declaration_id.index()].node == node)
-        .expect("export binding has a declaration")
 }
 
 #[derive(Clone, Copy)]
