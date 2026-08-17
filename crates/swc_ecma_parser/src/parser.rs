@@ -2125,8 +2125,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         start_from_param: Option<u32>,
         decorators: TypedSubRange<Decorator>,
     ) -> Option<Class> {
-        debug_assert!(start_from_param.is_some() || self.current_token.tag == TokenTag::Class);
+        debug_assert!(
+            start_from_param.is_some()
+                || matches!(self.current_token.tag, TokenTag::Class | TokenTag::Abstract)
+        );
         let start = start_from_param.unwrap_or(self.current_token.span.start);
+
+        let mut is_abstract = opts.is_abstract;
+        if self.current_token.tag == TokenTag::Abstract
+            && !is_abstract
+            && !opts.is_expression
+            && self.lang.is_typescript()
+            && self.is_abstract_class_next()?
+        {
+            is_abstract = true;
+            self.advance()?;
+        }
+
         if !self.expect(TokenTag::Class, "Expected 'class' keyword", None) {
             return None;
         }
@@ -2208,7 +2223,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             super_type_arguments,
             implements,
             body,
-            opts.is_abstract,
+            is_abstract,
             opts.is_declare,
         ))
     }

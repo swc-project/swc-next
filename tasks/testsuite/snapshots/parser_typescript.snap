@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13012/13156 (98.91%)
+Positive Passed: 13015/13156 (98.93%)
 Negative Passed: 1587/2981 (53.24%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -948,12 +948,9 @@ Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/e
 Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/exponentiationOperatorWithUndefinedValueAndValidOperands.ts - exponentiationOperatorWithUndefinedValueAndValidOperands.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/accessors/esDecorators-classDeclaration-accessors-nonStaticAbstract.ts - esDecorators-classDeclaration-accessors-nonStaticAbstract.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file1.ts: semantic: Cannot use 'export' declaration outside a module at 11..30
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file10.ts: parser: Expected 'class' keyword, but found 'abstract' at 26..34
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file11.ts: parser: Expected 'class' keyword, but found 'abstract' at 18..26
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file12.ts: parser: Expected 'class' keyword, but found 'abstract' at 26..34
+Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file10.ts: semantic: Cannot use 'export default' declaration outside a module at 11..47
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file2.ts: semantic: Cannot use 'export default' declaration outside a module at 11..37
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file8.ts: parser: Expected 'class' keyword, but found 'abstract' at 11..19
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file9.ts: parser: Expected 'class' keyword, but found 'abstract' at 18..26
+Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file9.ts: semantic: Cannot use 'export' declaration outside a module at 11..38
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-parameterDecorators.ts - esDecorators-classDeclaration-parameterDecorators.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-setFunctionName.ts - b.ts: semantic: Cannot use 'export' declaration outside a module at 28..45
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-setFunctionName.ts - c.ts: semantic: Cannot use 'export default' declaration outside a module at 28..51
