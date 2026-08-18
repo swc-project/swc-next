@@ -1415,12 +1415,10 @@ impl<'a> SymbolTracker<'a> {
         let node_count = tree.node_count();
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
         node_references.resize(node_count, None);
-        for (index, reference) in self.references.iter().enumerate() {
-            node_references[reference.node.index()] = Some(reference_id(index));
-        }
-
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
+            node_references[reference.node.index()] = Some(reference_id(reference_index));
+
             let name = tree.get_utf8(reference.name).as_bytes();
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
