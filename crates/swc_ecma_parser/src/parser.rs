@@ -4964,7 +4964,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn is_asserts_predicate_start(&mut self) -> Option<bool> {
-        if self.current_token.tag != TokenTag::Asserts || self.current_token.is_escaped() {
+        if self.current_token.tag != TokenTag::Asserts {
             return Some(false);
         }
         let next = self.peek_ahead()?;
@@ -5185,39 +5185,40 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return self.parse_literal_type();
         }
-        if !token.is_escaped() {
-            if is_type_keyword(token.tag)
-                && (token.tag == TokenTag::Void || !self.is_qualified_type_continuation()?)
-            {
-                return self.parse_type_keyword();
+        if is_type_keyword(token.tag)
+            && (token.tag == TokenTag::Void || !self.is_qualified_type_continuation()?)
+        {
+            return self.parse_type_keyword();
+        }
+        if token.tag == TokenTag::This {
+            return self.parse_this_type_or_predicate();
+        }
+        if token.tag == TokenTag::Asserts && self.is_asserts_predicate_start()? {
+            return self.parse_asserts_type_predicate();
+        }
+        match token.tag {
+            TokenTag::LeftParen => return self.parse_parenthesized_type(),
+            TokenTag::LeftBracket => return self.parse_tuple_type(),
+            TokenTag::LeftBrace => {
+                return if self.is_start_of_mapped_type()? {
+                    self.parse_mapped_type()
+                } else {
+                    self.parse_type_literal()
+                };
             }
-            if token.tag == TokenTag::This {
-                return self.parse_this_type_or_predicate();
+            TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly => {
+                return self.parse_type_operator();
             }
-            if token.tag == TokenTag::Asserts && self.is_asserts_predicate_start()? {
-                return self.parse_asserts_type_predicate();
-            }
-            match token.tag {
-                TokenTag::LeftParen => return self.parse_parenthesized_type(),
-                TokenTag::LeftBracket => return self.parse_tuple_type(),
-                TokenTag::LeftBrace => {
-                    return if self.is_start_of_mapped_type()? {
-                        self.parse_mapped_type()
-                    } else {
-                        self.parse_type_literal()
-                    };
-                }
-                TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly => {
-                    return self.parse_type_operator();
-                }
-                TokenTag::Infer => return self.parse_infer_type(),
-                TokenTag::TemplateHead => return self.parse_template_literal_type(),
-                TokenTag::Typeof => return self.parse_type_query(),
-                TokenTag::Import => return self.parse_import_type(),
-                TokenTag::Question => return self.parse_jsdoc_nullable_or_unknown_type(),
-                TokenTag::LogicalNot => return self.parse_jsdoc_non_nullable_type(),
-                _ => {}
-            }
+            TokenTag::Infer => return self.parse_infer_type(),
+            TokenTag::TemplateHead => return self.parse_template_literal_type(),
+            TokenTag::Typeof => return self.parse_type_query(),
+            TokenTag::Import => return self.parse_import_type(),
+            TokenTag::Question => return self.parse_jsdoc_nullable_or_unknown_type(),
+            TokenTag::LogicalNot => return self.parse_jsdoc_non_nullable_type(),
+            _ => {}
+        }
+        if token.tag == TokenTag::Function {
+            return self.parse_bare_type_reference();
         }
         if token.tag.is_identifier_like() {
             return self.parse_type_reference();
@@ -6342,6 +6343,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(
             self.ast
                 .ts_type_ts_type_reference(Span::new(start, end), type_name, type_arguments),
+        )
+    }
+
+    fn parse_bare_type_reference(&mut self) -> Option<TsType> {
+        let token = self.current_token;
+        let name = self.identifier_name(token);
+        let type_name = self.ast.ts_type_name_identifier_reference(token.span, name);
+        self.advance()?;
+        Some(
+            self.ast
+                .ts_type_ts_type_reference(token.span, type_name, None),
         )
     }
 
@@ -12028,6 +12040,55 @@ mod tests {
         )
         .parse();
         assert!(module.diagnostics.is_empty(), "{:#?}", module.diagnostics);
+    }
+
+    #[test]
+    fn typescript_type_recovery() {
+        fn diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            };
+            Parser::init(&allocator, source, options, NoTokenParserConfig)
+                .parse()
+                .diagnostics
+        }
+
+        let escaped_void = diagnostics("type T = v\\u006fid;");
+        assert_eq!(escaped_void.len(), 1, "{escaped_void:#?}");
+        assert_eq!(
+            escaped_void[0].message,
+            "Keywords cannot contain escape characters"
+        );
+
+        let escaped_typeof = diagnostics("type T = typ\\u0065of value;");
+        assert_eq!(escaped_typeof.len(), 1, "{escaped_typeof:#?}");
+        assert_eq!(
+            escaped_typeof[0].message,
+            "Keywords cannot contain escape characters"
+        );
+
+        let escaped_recovery_name = diagnostics("type T = bre\\u0061k;");
+        assert!(
+            escaped_recovery_name.is_empty(),
+            "{escaped_recovery_name:#?}"
+        );
+
+        let escaped_qualified_keyword = diagnostics("type T = str\\u0069ng.Value;");
+        assert!(
+            escaped_qualified_keyword.is_empty(),
+            "{escaped_qualified_keyword:#?}"
+        );
+
+        let bare_function = diagnostics("type T = function;");
+        assert!(bare_function.is_empty(), "{bare_function:#?}");
+
+        let qualified_function = diagnostics("type T = function.x;");
+        assert!(!qualified_function.is_empty());
+
+        let generic_function = diagnostics("type T = function<X>;");
+        assert!(!generic_function.is_empty());
     }
 
     #[test]
