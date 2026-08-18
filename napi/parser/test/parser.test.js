@@ -19,10 +19,7 @@ test("parseSync exposes the program lazily", () => {
 });
 
 test("parseSync exposes flat comments lazily", () => {
-  const source = `#!/usr/bin/env node
-const emoji = "😀";
-// one 😀
-/* two */`;
+  const source = '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
   const result = parseSync(source, { comments: CommentMode.Flat });
   const descriptor = Object.getOwnPropertyDescriptor(result, "comments");
 

@@ -10,7 +10,7 @@ export interface Comment {
 }
 
 export interface ParseResult {
-  program: any;
+  readonly program: any;
   readonly comments: Comment[];
 }
 
