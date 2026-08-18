@@ -29,8 +29,7 @@
   },
   "scripts": {
     "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js",
-    "conformance": "pnpm build --release && node ./test/estree-conformance.ts",
-    "test": "node --test test/*.test.js"
+    "conformance": "pnpm build --release && node ./test/estree-conformance.ts"
   },
   "keywords": [],
   "author": "",
