@@ -3066,8 +3066,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let annotation = self.parse_type_annotation()?;
             self.apply_type_annotation_to_pattern(pattern, annotation);
         }
+        let has_initializer = self.current_token.tag == TokenTag::Assign;
         pattern = self.parse_assignment_pattern(pattern)?;
         let span = pattern.span(&self.ast);
+        if has_initializer && self.ts_context.ambient {
+            self.report(
+                span,
+                "A parameter initializer is only allowed in a function or constructor implementation",
+                ReportOptions::default(),
+            );
+        }
         if parameter_property.present {
             let parameter_property = self.ast.ts_parameter_property(
                 Span::new(start, span.end),

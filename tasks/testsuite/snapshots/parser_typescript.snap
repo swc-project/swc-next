@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13019/13156 (98.96%)
-Negative Passed: 1587/2981 (53.24%)
+Negative Passed: 1591/2981 (53.37%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -674,7 +674,6 @@ Failed: fixtures/typescript/tests/cases/compiler/unknownSymbols1.ts - unknownSym
 Failed: fixtures/typescript/tests/cases/compiler/unreachableDeclarations.ts - unreachableDeclarations.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDeclaration_classDecorators.2.ts - useBeforeDeclaration_classDecorators.2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/varAndFunctionShareName.ts - varAndFunctionShareName.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/varBlock.ts - varBlock.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/varNameConflictsWithImportInDifferentPartOfModule.ts - varNameConflictsWithImportInDifferentPartOfModule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/variableDeclaratorResolvedDuringContextualTyping.ts - variableDeclaratorResolvedDuringContextualTyping.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/varianceReferences.ts - varianceReferences.ts: expected a parse or early error, but pipeline succeeded
@@ -1364,7 +1363,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDec
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDeclarations/parserModuleDeclaration3.ts - parserModuleDeclaration3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDeclarations/parserModuleDeclaration4.d.ts - parserModuleDeclaration4.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDeclarations/parserModuleDeclaration5.ts - parserModuleDeclaration5.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList14.ts - parserParameterList14.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList15.ts - parserParameterList15.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList16.ts - parserParameterList16.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList17.ts - parserParameterList17.ts: expected a parse or early error, but pipeline succeeded
@@ -1482,8 +1480,6 @@ Failed: fixtures/typescript/tests/cases/conformance/types/members/objectTypeWith
 Failed: fixtures/typescript/tests/cases/conformance/types/nonPrimitive/nonPrimitiveAccessProperty.ts - nonPrimitiveAccessProperty.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/nonPrimitive/nonPrimitiveNarrow.ts - nonPrimitiveNarrow.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/nonPrimitive/nonPrimitiveStrictNull.ts - nonPrimitiveStrictNull.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/callSignatureWithOptionalParameterAndInitializer.ts - callSignatureWithOptionalParameterAndInitializer.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/callSignaturesWithParameterInitializers.ts - callSignaturesWithParameterInitializers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/specializedSignatureIsNotSubtypeOfNonSpecializedSignature.ts - specializedSignatureIsNotSubtypeOfNonSpecializedSignature.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/stringLiteralTypesInImplementationSignatures2.ts - stringLiteralTypesInImplementationSignatures2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/constructSignatures/constructSignaturesWithOverloads2.ts - constructSignaturesWithOverloads2.ts: expected a parse or early error, but pipeline succeeded
