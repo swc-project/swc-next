@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13020/13156 (98.97%)
+Positive Passed: 13021/13156 (98.97%)
 Negative Passed: 1591/2981 (53.37%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -1324,7 +1324,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/EnumDecla
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic1.ts - parserAccessibilityAfterStatic1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic10.ts - parserAccessibilityAfterStatic10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic7.ts - parserAccessibilityAfterStatic7.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parserErrorRecovery_ParameterList6.ts: parser: Expected a type, but found 'break' at 34..39
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/parserCommaInTypeMemberList2.ts - parserCommaInTypeMemberList2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/parserModifierOnStatementInBlock2.ts - parserModifierOnStatementInBlock2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment5.ts - parserExportAssignment5.ts: expected a parse or early error, but pipeline succeeded

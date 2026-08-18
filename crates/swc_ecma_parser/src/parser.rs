@@ -5186,7 +5186,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_literal_type();
         }
         if !token.is_escaped() {
-            if is_type_keyword(token.tag) && !self.is_qualified_type_continuation()? {
+            if is_type_keyword(token.tag)
+                && (token.tag == TokenTag::Void || !self.is_qualified_type_continuation()?)
+            {
                 return self.parse_type_keyword();
             }
             if token.tag == TokenTag::This {
@@ -5217,9 +5219,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 _ => {}
             }
         }
-        if (token.tag.is_identifier_like() && !token.tag.is_unconditionally_reserved())
-            || token.tag == TokenTag::Const
-        {
+        if token.tag.is_identifier_like() {
             return self.parse_type_reference();
         }
         None
