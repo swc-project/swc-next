@@ -12,23 +12,26 @@
 //! - `node_count` raw 16-byte `NodePayload` values;
 //! - `extra_count` raw 8-byte `ExtraData` values;
 //! - the raw extra string pool, padded to four bytes;
-//! - `comment_count` 20-byte flat comment records in source order.
-//!   Each record is five little-endian `u32`s: kind (`0` line, `1` block),
-//!   value start, value end, full start, and full end.
+//! - `comment_count` raw 16-byte [`Comment`] records in source order.
+//!   Each record contains the full start, full end, attachment offset,
+//!   kind (`0` line, `1` block), and attachment position.
 //!
 //! Attached comments and diagnostics are intentionally omitted for now. Their
 //! counts in the header are always zero.
 
-use std::{mem::size_of, slice};
+use std::{
+    mem::{offset_of, size_of},
+    slice,
+};
 
-use crate::{Ast, CommentKind, ExtraData, NodeKind, NodePayload, Span};
+use crate::{Ast, Comment, CommentKind, CommentPosition, ExtraData, NodeKind, NodePayload, Span};
 
 const HEADER_SIZE: usize = 36;
 const SPAN_SIZE: usize = 8;
 const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
 const EXTRA_DATA_SIZE: usize = 8;
-const COMMENT_SIZE: usize = 20;
+const COMMENT_SIZE: usize = 16;
 const FLAG_TS: u32 = 1 << 0;
 const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
 
@@ -38,6 +41,13 @@ const _: () = {
     assert!(size_of::<NodeKind>() == NODE_KIND_SIZE);
     assert!(size_of::<NodePayload>() == NODE_PAYLOAD_SIZE);
     assert!(size_of::<ExtraData>() == EXTRA_DATA_SIZE);
+    assert!(size_of::<CommentKind>() == 2);
+    assert!(size_of::<CommentPosition>() == 2);
+    assert!(size_of::<Comment>() == COMMENT_SIZE);
+    assert!(offset_of!(Comment, span) == 0);
+    assert!(offset_of!(Comment, attached_to) == 8);
+    assert!(offset_of!(Comment, kind) == 12);
+    assert!(offset_of!(Comment, position) == 14);
 };
 
 /// Return the exact number of bytes required to serialize `tree`.
@@ -134,23 +144,14 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
     pad_to_four(buf, &mut pos);
 
     // =================== Comments ====================
-    let source = tree.source().as_bytes();
-    for comment in tree.comments() {
-        let value = comment.value(source);
-        let kind = match comment.kind {
-            CommentKind::Line => 0,
-            CommentKind::Block => 1,
-        };
-        for value in [
-            kind,
-            value.start,
-            value.end,
-            comment.span.start,
-            comment.span.end,
-        ] {
-            write_u32(buf, &mut pos, value);
-        }
-    }
+    let comments = unsafe {
+        slice::from_raw_parts(
+            tree.comments().as_ptr().cast::<u8>(),
+            tree.comments().len() * COMMENT_SIZE,
+        )
+    };
+    buf[pos..pos + comments.len()].copy_from_slice(comments);
+    pos += comments.len();
 
     debug_assert_eq!(pos, required);
     required

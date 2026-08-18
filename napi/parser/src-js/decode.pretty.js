@@ -145,14 +145,18 @@ export function decode(buffer, source) {
   const _decodeComments = () => {
     const result = new Array(commentCount);
     for (let index = 0; index < commentCount; index++) {
-      const offset = comments + index * 20;
-      const valueStart = _u32[(offset >> 2) + 1];
-      const valueEnd = _u32[(offset >> 2) + 2];
+      const offset = comments + index * 16;
+      const start = _u32[offset >> 2];
+      const end = _u32[(offset >> 2) + 1];
+      const kind = _dv.getUint16(offset + 12, true);
+      const first = source.charCodeAt(pos(start));
+      const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
+      const valueEnd = end - (kind === 1 ? 2 : 0);
       result[index] = {
-        type: _u32[offset >> 2] === 1 ? "Block" : "Line",
+        type: kind === 1 ? "Block" : "Line",
         value: str(valueStart, valueEnd),
-        start: pos(_u32[(offset >> 2) + 3]),
-        end: pos(_u32[(offset >> 2) + 4]),
+        start: pos(start),
+        end: pos(end),
       };
     }
     return result;

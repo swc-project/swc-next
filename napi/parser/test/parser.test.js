@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CommentMode, parseSync } from "../src-js/index.js";
+import { CommentMode, parseSync, SourceType } from "../src-js/index.js";
 
 test("parseSync exposes the program lazily", () => {
   const result = parseSync("const answer = 42;");
@@ -45,6 +45,19 @@ test("parseSync exposes flat comments lazily", () => {
     },
   ]);
   assert.equal(result.comments, result.comments);
+});
+
+test("parseSync exposes HTML comments without delimiters", () => {
+  const source = "<!-- open\n--> close\n";
+  const result = parseSync(source, {
+    comments: CommentMode.Flat,
+    sourceType: SourceType.Script,
+  });
+
+  assert.deepEqual(result.comments, [
+    { type: "Line", value: " open", start: 0, end: 9 },
+    { type: "Line", value: " close", start: 10, end: 19 },
+  ]);
 });
 
 test("parseSync defaults to flat comments and returns an empty array", () => {
