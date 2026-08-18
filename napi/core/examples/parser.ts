@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 import {
+  CommentMode,
   langFromPath,
   parseSync,
   sourceTypeFromPath,
@@ -10,7 +11,7 @@ const filePath = process.argv[2];
 
 const source = fs.readFileSync(filePath, "utf8");
 const result = parseSync(source, {
-  comments: "flat",
+  comments: CommentMode.Flat,
   lang: langFromPath(filePath),
   preserveParens: true,
   sourceType: sourceTypeFromPath(filePath),

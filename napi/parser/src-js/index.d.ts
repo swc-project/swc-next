@@ -1,10 +1,6 @@
-import type { ParserOptions as BindingParserOptions } from "./binding.js";
+import type { ParserOptions } from "./binding.js";
 
 export * from "./binding.js";
-
-export type ParserOptions = Omit<BindingParserOptions, "comments"> & {
-  comments?: "flat";
-};
 
 export interface Comment {
   type: "Line" | "Block";

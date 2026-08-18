@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseSync } from "../src-js/index.js";
+import { CommentMode, parseSync } from "../src-js/index.js";
 
 test("parseSync parses JavaScript", () => {
   const { program } = parseSync("const answer = 42;");
@@ -15,7 +15,7 @@ test("parseSync exposes flat comments lazily", () => {
 const emoji = "😀";
 // one 😀
 /* two */`;
-  const result = parseSync(source, { comments: "flat" });
+  const result = parseSync(source, { comments: CommentMode.Flat });
   const descriptor = Object.getOwnPropertyDescriptor(result, "comments");
 
   assert.equal(typeof descriptor.get, "function");
