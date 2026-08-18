@@ -11277,6 +11277,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
         if token.tag == TokenTag::Await
+            && !self.ts_context.ambient
             && (self.context.r#await || self.source_type == SourceType::Module)
         {
             self.report(

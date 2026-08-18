@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13018/13156 (98.95%)
+Positive Passed: 13019/13156 (98.96%)
 Negative Passed: 1587/2981 (53.24%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -1035,8 +1035,7 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/importsImpli
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/initializersInDeclarations.ts - file1.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/moduleResolutionWithoutExtension6.ts - /src/bar.cts: semantic: Cannot use import statement outside a module at 175..203
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/rewriteRelativeImportExtensions/emit.ts - main.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.2.ts - topLevelAwait.2.ts: parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 30..35
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.3.ts - index.d.ts: parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 86..91
+Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.2.ts - topLevelAwait.2.ts: parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 107..112
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelModuleDeclarationAndFile.ts - foo_2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeAndNamespaceExportMerge.ts - drink.ts: semantic: Duplicate export of 'Drink' at 27..64
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/chained2.ts - /d.ts: expected a parse or early error, but pipeline succeeded
