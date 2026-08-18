@@ -18,13 +18,6 @@ use crate::{
     scope::{self, ScopeFlags, ScopeKind, ScopeTracker, ScopeTree},
 };
 
-/// A `(start, len)` window into a backing slice.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Range {
-    pub start: u32,
-    pub len: u32,
-}
-
 /// A declared binding.
 ///
 /// ## Example
@@ -1415,7 +1408,6 @@ impl<'a> SymbolTracker<'a> {
         debug_assert_eq!(self.export_state, ExportState::None);
         self.sync_scope_maps(scopes.list.len());
 
-        let symbol_count = self.symbols.len();
         let declarations = self.declarations;
         let symbol_declarations = self.symbol_declarations;
         let node_symbols = self.node_symbols;
@@ -1495,30 +1487,15 @@ impl<'a> SymbolTracker<'a> {
             }
         }
 
-        // Use index: count, prefix-sum, fill. `len` doubles as the write
-        // cursor during the fill.
-        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
-        use_ranges.resize(symbol_count, Range::default());
-        for reference in &self.references {
-            if let Some(symbol) = reference.symbol {
-                use_ranges[symbol.index()].len += 1;
-            }
+        let mut symbol_references = ArenaVec::with_capacity_in(self.symbols.len(), self.allocator);
+        for _ in 0..self.symbols.len() {
+            symbol_references.push(ArenaVec::new_in(self.allocator));
         }
-        let mut use_offset = 0u32;
-        for range in &mut use_ranges {
-            range.start = use_offset;
-            use_offset += range.len;
-            range.len = 0;
-        }
-        let mut use_ids = ArenaVec::with_capacity_in(use_offset as usize, self.allocator);
-        use_ids.resize(use_offset as usize, reference_id(0));
         for (index, reference) in self.references.iter().enumerate() {
             let Some(symbol) = reference.symbol else {
                 continue;
             };
-            let range = &mut use_ranges[symbol.index()];
-            use_ids[(range.start + range.len) as usize] = reference_id(index);
-            range.len += 1;
+            symbol_references[symbol.index()].push(reference_id(index));
         }
 
         let module_record =
@@ -1530,9 +1507,8 @@ impl<'a> SymbolTracker<'a> {
             references: self.references,
             declarations,
             symbol_declarations,
+            symbol_references,
             module_record,
-            use_ids,
-            use_ranges,
             scope_maps: self.scope_maps,
             hoisting_variables: self.hoisting_variables,
             node_symbols,

@@ -13,7 +13,7 @@ use swc_next_allocator::{
 };
 use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
-use crate::{binder::Range, checker::Checker, scope::ScopeTree};
+use crate::{checker::Checker, scope::ScopeTree};
 
 mod binder;
 mod checker;
@@ -55,9 +55,9 @@ pub struct Semantic<'a> {
     declarations: ArenaVec<'a, Declaration>,
     /// Declaration ids for each symbol, in source order.
     symbol_declarations: ArenaVec<'a, ArenaVec<'a, DeclarationId>>,
+    /// Reference ids for each symbol, in source order.
+    symbol_references: ArenaVec<'a, ArenaVec<'a, ReferenceId>>,
 
-    use_ids: ArenaVec<'a, ReferenceId>,
-    use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
 
@@ -143,9 +143,7 @@ impl<'a> Semantic<'a> {
     /// not uses; those are returned by [`Semantic::declarations`]. A dynamic
     /// `with` reference is included under its potential lexical fallback.
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
-        let range = self.use_ranges[id.index()];
-        let start = range.start as usize;
-        &self.use_ids[start..start + range.len as usize]
+        &self.symbol_references[id.index()]
     }
 
     /// The binding of `name` at `scope` alone, including a hoisting
