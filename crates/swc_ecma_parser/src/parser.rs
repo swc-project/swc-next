@@ -5186,7 +5186,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_literal_type();
         }
         if is_type_keyword(token.tag)
-            && (token.tag == TokenTag::Void || !self.is_qualified_type_continuation()?)
+            && (token.tag == TokenTag::Void
+                || !self.is_qualified_type_continuation(token.is_escaped())?)
         {
             return self.parse_type_keyword();
         }
@@ -5768,9 +5769,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn is_qualified_type_continuation(&mut self) -> Option<bool> {
+    fn is_qualified_type_continuation(&mut self, allow_line_terminator: bool) -> Option<bool> {
         let next = self.peek_ahead()?;
-        Some(next.tag == TokenTag::Dot && !next.has_line_terminator_before())
+        Some(
+            next.tag == TokenTag::Dot
+                && (allow_line_terminator || !next.has_line_terminator_before()),
+        )
     }
 
     fn parse_literal_type(&mut self) -> Option<TsType> {
@@ -6350,7 +6354,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let token = self.current_token;
         let name = self.identifier_name(token);
         let type_name = self.ast.ts_type_name_identifier_reference(token.span, name);
-        self.advance()?;
+        self.advance_without_escape_check()?;
         Some(
             self.ast
                 .ts_type_ts_type_reference(token.span, type_name, None),
@@ -12081,8 +12085,20 @@ mod tests {
             "{escaped_qualified_keyword:#?}"
         );
 
+        let escaped_newline_qualified_keyword = diagnostics("type T = str\\u0069ng\n.Value;");
+        assert!(
+            escaped_newline_qualified_keyword.is_empty(),
+            "{escaped_newline_qualified_keyword:#?}"
+        );
+
         let bare_function = diagnostics("type T = function;");
         assert!(bare_function.is_empty(), "{bare_function:#?}");
+
+        let escaped_bare_function = diagnostics("type T = fun\\u0063tion;");
+        assert!(
+            escaped_bare_function.is_empty(),
+            "{escaped_bare_function:#?}"
+        );
 
         let qualified_function = diagnostics("type T = function.x;");
         assert!(!qualified_function.is_empty());
