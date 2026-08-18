@@ -123,7 +123,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
   };
 
   // Load native bindings and validate all configurations before timing them.
-  parseSync(source, currentOptions);
+  parseSync(source, currentOptions).program;
   yukuParse(source, yukuOptions).program;
   babelParse(source, babelOptions);
   swcParse(source, swcOptions);
@@ -142,7 +142,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
 
   bench
     .add("@swc-next/core", () => {
-      parseSync(source, currentOptions);
+      parseSync(source, currentOptions).program;
     })
     .add("yuku-parser", () => {
       yukuParse(source, yukuOptions).program;

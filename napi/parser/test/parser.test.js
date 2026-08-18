@@ -3,11 +3,19 @@ import test from "node:test";
 
 import { CommentMode, parseSync } from "../src-js/index.js";
 
-test("parseSync parses JavaScript", () => {
-  const { program } = parseSync("const answer = 42;");
+test("parseSync exposes the program lazily", () => {
+  const result = parseSync("const answer = 42;");
+  const descriptor = Object.getOwnPropertyDescriptor(result, "program");
 
+  assert.equal(typeof descriptor.get, "function");
+  assert.equal(descriptor.set, undefined);
+  assert.equal(descriptor.enumerable, true);
+  assert.equal(descriptor.configurable, true);
+
+  const program = result.program;
   assert.equal(program.type, "Program");
   assert.equal(program.body[0].type, "VariableDeclaration");
+  assert.equal(result.program, program);
 });
 
 test("parseSync exposes flat comments lazily", () => {

@@ -924,7 +924,7 @@ export function decode(buffer, source) {
     return result;
   };
 
-  const decodeComments = () => {
+  const _decodeComments = () => {
     const result = new Array(commentCount);
     for (let index = 0; index < commentCount; index++) {
       const offset = comments + index * 20;
@@ -955,6 +955,18 @@ const POSTAMBLE: &str = r#"      default:
     return result;
   }
 
-  return { program: node(programIndex), decodeComments };
+  let _program, _comments;
+  return {
+    get program() {
+      return _program !== undefined
+        ? _program
+        : (_program = node(programIndex));
+    },
+    get comments() {
+      return _comments !== undefined
+        ? _comments
+        : (_comments = _decodeComments());
+    },
+  };
 }
 "#;
