@@ -42,7 +42,16 @@ test("parseSync defaults to flat comments and returns an empty array", () => {
   assert.equal(result.comments, result.comments);
 });
 
-test("parseSync rejects unsupported comment modes", () => {
-  assert.throws(() => parseSync("", { comments: "none" }));
-  assert.throws(() => parseSync("", { comments: "attached" }));
+test("parseSync can disable comment collection", () => {
+  const result = parseSync("// omitted", { comments: CommentMode.None });
+
+  assert.deepEqual(result.comments, []);
+});
+
+test("parseSync accepts attached comment mode", () => {
+  const result = parseSync("// retained", {
+    comments: CommentMode.Attached,
+  });
+
+  assert.equal(result.comments[0].value, " retained");
 });

@@ -6,6 +6,8 @@ export declare function parseSync(source: string, options?: ParserOptions | unde
 
 export declare function sourceTypeFromPath(path: string): SourceType
 export declare const enum CommentMode {
+  None = 'none',
+  Attached = 'attached',
   Flat = 'flat'
 }
 
@@ -40,7 +42,10 @@ export interface ParserOptions {
   /**
    * Determines how comments are exposed.
    *
-   * Currently only the flat, source-ordered comment list is supported.
+   * `"none"` disables comment collection. `"flat"` exposes a
+   * source-ordered comment list. `"attached"` is reserved for attaching
+   * comments to JavaScript AST nodes and currently returns only the flat
+   * list.
    *
    * @default "flat"
    */

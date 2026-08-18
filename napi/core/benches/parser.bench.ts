@@ -97,7 +97,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
   }
 
   const currentOptions = {
-    comments: CommentMode.Flat,
+    comments: CommentMode.None,
     lang,
     preserveParens: true,
     sourceType,

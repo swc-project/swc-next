@@ -70,12 +70,18 @@ impl From<AstLang> for Lang {
 #[napi(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommentMode {
+    None,
+    Attached,
     Flat,
 }
 
 impl From<CommentMode> for AstCommentMode {
     fn from(value: CommentMode) -> Self {
         match value {
+            CommentMode::None => Self::None,
+            // TODO: Transfer attachment metadata and expose `comments` on
+            // JavaScript AST nodes. Until then this only returns the flat list.
+            CommentMode::Attached => Self::Attached,
             // The native AST keeps attachment metadata while the JavaScript
             // API currently exposes only the flat, source-ordered list.
             CommentMode::Flat => Self::Attached,
@@ -101,7 +107,10 @@ pub struct ParserOptions {
     pub preserve_parens: Option<bool>,
     /// Determines how comments are exposed.
     ///
-    /// Currently only the flat, source-ordered comment list is supported.
+    /// `"none"` disables comment collection. `"flat"` exposes a
+    /// source-ordered comment list. `"attached"` is reserved for attaching
+    /// comments to JavaScript AST nodes and currently returns only the flat
+    /// list.
     ///
     /// @default "flat"
     pub comments: Option<CommentMode>,
