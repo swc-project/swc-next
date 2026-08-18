@@ -1,12 +1,11 @@
 codegen * typescript
 ========================
-Positive Passed: 13149/13156 (99.95%)
+Positive Passed: 13150/13156 (99.95%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - parser: Unexpected token '<' at 128..129
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.2.ts - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 107..112
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - parser: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
 Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlFileWithinDeclarationFile.ts - parser: 'const' declarations must be initialized at 384..392
 Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlImport.ts - parser: 'const' declarations must be initialized at 384..392
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parser: Expected a type, but found 'break' at 34..39

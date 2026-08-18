@@ -10270,9 +10270,43 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn jsx_names_match(&self, a: JsxElementName, b: JsxElementName) -> bool {
-        let a = a.span(&self.ast);
-        let b = b.span(&self.ast);
-        a.end - a.start == b.end - b.start && self.span_text(a) == self.span_text(b)
+        fn qualified_member_name(ast: &Ast<'_>, member: JsxMemberExpression) -> String {
+            let object = match ast.jsx_member_expression_object_data(member.object(ast)) {
+                JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
+                    ast.get_utf8(identifier.name(ast)).to_owned()
+                }
+                JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
+                    qualified_member_name(ast, member)
+                }
+            };
+            format!("{object}.{}", ast.get_utf8(member.property(ast).name(ast)))
+        }
+
+        fn qualified_name(ast: &Ast<'_>, name: JsxElementName) -> String {
+            match ast.jsx_element_name_data(name) {
+                JsxElementNameData::JsxIdentifier(identifier) => {
+                    ast.get_utf8(identifier.name(ast)).to_owned()
+                }
+                JsxElementNameData::JsxNamespacedName(name) => format!(
+                    "{}:{}",
+                    ast.get_utf8(name.namespace(ast).name(ast)),
+                    ast.get_utf8(name.name(ast).name(ast))
+                ),
+                JsxElementNameData::JsxMemberExpression(member) => {
+                    qualified_member_name(ast, member)
+                }
+            }
+        }
+
+        let a_span = a.span(&self.ast);
+        let b_span = b.span(&self.ast);
+        if a_span.end - a_span.start == b_span.end - b_span.start
+            && self.span_text(a_span) == self.span_text(b_span)
+        {
+            return true;
+        }
+
+        qualified_name(&self.ast, a) == qualified_name(&self.ast, b)
     }
 
     fn parse_jsx_fragment(&mut self, start: u32, context: JsxElementContext) -> Option<Expr> {

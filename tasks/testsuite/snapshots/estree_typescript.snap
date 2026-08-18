@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11271/11509 (97.93%)
+Positive Passed: 11272/11509 (97.94%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -158,7 +158,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefe
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferNamespace.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importMetaPropertyInvalidInCall.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/jsxReactTestSuite.tsx
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxReactEmitEntities.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxReactEmitNesting.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/override/override5.ts

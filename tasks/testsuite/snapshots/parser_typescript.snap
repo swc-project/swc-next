@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13019/13156 (98.96%)
+Positive Passed: 13020/13156 (98.97%)
 Negative Passed: 1591/2981 (53.37%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -1171,7 +1171,6 @@ Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxDynamicTagName3.tsx -
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution1.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution6.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution7.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - file.tsx: parser: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponents2.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerImportESM.ts - /not-actually-cjs.cts: semantic: Cannot use import statement outside a module at 0..32
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerNodeModules1.ts - /main.cts: semantic: Cannot use import statement outside a module at 0..32
