@@ -10270,43 +10270,48 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn jsx_names_match(&self, a: JsxElementName, b: JsxElementName) -> bool {
-        fn qualified_member_name(ast: &Ast<'_>, member: JsxMemberExpression) -> String {
-            let object = match ast.jsx_member_expression_object_data(member.object(ast)) {
-                JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
-                    ast.get_utf8(identifier.name(ast)).to_owned()
-                }
-                JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
-                    qualified_member_name(ast, member)
-                }
-            };
-            format!("{object}.{}", ast.get_utf8(member.property(ast).name(ast)))
-        }
+        use JsxElementNameData as Name;
+        use JsxMemberExpressionObjectData as Object;
 
-        fn qualified_name(ast: &Ast<'_>, name: JsxElementName) -> String {
-            match ast.jsx_element_name_data(name) {
-                JsxElementNameData::JsxIdentifier(identifier) => {
-                    ast.get_utf8(identifier.name(ast)).to_owned()
-                }
-                JsxElementNameData::JsxNamespacedName(name) => format!(
-                    "{}:{}",
-                    ast.get_utf8(name.namespace(ast).name(ast)),
-                    ast.get_utf8(name.name(ast).name(ast))
-                ),
-                JsxElementNameData::JsxMemberExpression(member) => {
-                    qualified_member_name(ast, member)
-                }
-            }
-        }
+        let ast = &self.ast;
+        let same_name = |a: JsxIdentifier, b: JsxIdentifier| {
+            ast.get_utf8(a.name(ast)) == ast.get_utf8(b.name(ast))
+        };
 
-        let a_span = a.span(&self.ast);
-        let b_span = b.span(&self.ast);
+        let a_span = a.span(ast);
+        let b_span = b.span(ast);
         if a_span.end - a_span.start == b_span.end - b_span.start
             && self.span_text(a_span) == self.span_text(b_span)
         {
             return true;
         }
 
-        qualified_name(&self.ast, a) == qualified_name(&self.ast, b)
+        let (mut a, mut b) = match (ast.jsx_element_name_data(a), ast.jsx_element_name_data(b)) {
+            (Name::JsxIdentifier(a), Name::JsxIdentifier(b)) => return same_name(a, b),
+            (Name::JsxNamespacedName(a), Name::JsxNamespacedName(b)) => {
+                return same_name(a.namespace(ast), b.namespace(ast))
+                    && same_name(a.name(ast), b.name(ast));
+            }
+            (Name::JsxMemberExpression(a), Name::JsxMemberExpression(b)) => (a, b),
+            _ => return false,
+        };
+
+        loop {
+            if !same_name(a.property(ast), b.property(ast)) {
+                return false;
+            }
+            match (
+                ast.jsx_member_expression_object_data(a.object(ast)),
+                ast.jsx_member_expression_object_data(b.object(ast)),
+            ) {
+                (Object::JsxIdentifier(a), Object::JsxIdentifier(b)) => return same_name(a, b),
+                (Object::JsxMemberExpression(next_a), Object::JsxMemberExpression(next_b)) => {
+                    a = next_a;
+                    b = next_b;
+                }
+                _ => return false,
+            }
+        }
     }
 
     fn parse_jsx_fragment(&mut self, start: u32, context: JsxElementContext) -> Option<Expr> {
