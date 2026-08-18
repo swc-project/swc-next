@@ -5,7 +5,18 @@ export * from "./binding.js";
 
 export function parseSync(source, options) {
   const buffer = __parseSync(source, options);
+  const { program, decodeComments } = decode(buffer, source);
+  let materializeComments = decodeComments;
+  let comments;
   return {
-    program: decode(buffer, source),
+    program,
+    get comments() {
+      // Materialize once, cache the array, then release the transfer closure.
+      if (comments === undefined) {
+        comments = materializeComments();
+        materializeComments = undefined;
+      }
+      return comments;
+    },
   };
 }

@@ -6,25 +6,29 @@
 //! `extra_data` using the same generated AST schema.
 //!
 //! Layout, in order:
-//! - 36-byte AST-only header;
+//! - 36-byte header;
 //! - `node_count` raw UTF-8 byte spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to four bytes;
 //! - `node_count` raw 16-byte `NodePayload` values;
 //! - `extra_count` raw 8-byte `ExtraData` values;
-//! - the raw extra string pool, padded to four bytes.
+//! - the raw extra string pool, padded to four bytes;
+//! - `comment_count` 20-byte flat comment records in source order.
+//!   Each record is five little-endian `u32`s: kind (`0` line, `1` block),
+//!   value start, value end, full start, and full end.
 //!
-//! Comments and diagnostics are intentionally omitted for now. Their counts
-//! and flags in the header are always zero.
+//! Attached comments and diagnostics are intentionally omitted for now. Their
+//! counts in the header are always zero.
 
 use std::{mem::size_of, slice};
 
-use crate::{Ast, ExtraData, NodeKind, NodePayload, Span};
+use crate::{Ast, CommentKind, ExtraData, NodeKind, NodePayload, Span};
 
 const HEADER_SIZE: usize = 36;
 const SPAN_SIZE: usize = 8;
 const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
 const EXTRA_DATA_SIZE: usize = 8;
+const COMMENT_SIZE: usize = 20;
 const FLAG_TS: u32 = 1 << 0;
 const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
 
@@ -44,6 +48,7 @@ pub fn buffer_size(tree: &Ast<'_>) -> usize {
         + tree.node_count() * NODE_PAYLOAD_SIZE
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra.len())
+        + tree.comments().len() * COMMENT_SIZE
 }
 
 /// Serialize an AST into `buf` and return the required number of bytes.
@@ -63,6 +68,7 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
     let string_pool_len =
         u32::try_from(tree.strings.extra.len()).expect("AST string pool exceeds u32");
     let source_len = u32::try_from(tree.source().len()).expect("AST source length exceeds u32");
+    let comment_count = u32::try_from(tree.comments().len()).expect("comment count exceeds u32");
 
     let mut pos = 0;
     for value in [
@@ -70,7 +76,7 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
         extra_count,
         string_pool_len,
         source_len,
-        0, // comment_count
+        comment_count,
         0, // attached_comment_count
         0, // diag_count
         tree.root_program().node_id().index() as u32,
@@ -126,6 +132,25 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
     buf[pos..pos + string_pool.len()].copy_from_slice(string_pool);
     pos += string_pool.len();
     pad_to_four(buf, &mut pos);
+
+    // =================== Comments ====================
+    let source = tree.source().as_bytes();
+    for comment in tree.comments() {
+        let value = comment.value(source);
+        let kind = match comment.kind {
+            CommentKind::Line => 0,
+            CommentKind::Block => 1,
+        };
+        for value in [
+            kind,
+            value.start,
+            value.end,
+            comment.span.start,
+            comment.span.end,
+        ] {
+            write_u32(buf, &mut pos, value);
+        }
+    }
 
     debug_assert_eq!(pos, required);
     required

@@ -421,9 +421,16 @@ fn parse_field_attrs(attrs: &[Attribute]) -> AstAttrs {
             && meta_list.path.is_ident("estree")
         {
             let args = meta_list
-                .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                 .expect("Unable to parse `#[estree]`");
-            ast_attrs.extend(args.into_iter().map(|arg| arg.to_string()));
+            ast_attrs.extend(args.into_iter().filter_map(|arg| {
+                let path = match arg {
+                    Meta::Path(path) => path,
+                    Meta::List(list) => list.path,
+                    Meta::NameValue(name_value) => name_value.path,
+                };
+                path.get_ident().map(ToString::to_string)
+            }));
         }
     }
 
