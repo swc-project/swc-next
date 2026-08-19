@@ -12,21 +12,21 @@ use swc_next_ecma_ast::{
     FunctionBody, FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind,
     ImportSpecifier, JsxClosingElement, JsxOpeningElement, Label, MemberExpression, NodeId,
     NodeKind, NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition,
-    PropertyKey, ScopeId, Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId,
-    TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
-    TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
-    TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
-    TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
-    TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType,
-    TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType, TsLiteralType, TsMappedType,
-    TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsNamedTupleMember,
-    TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType, TsParenthesizedType,
-    TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression, TsTemplateLiteralType,
-    TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
-    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
-    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator,
-    UpdateExpression, VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
-    WithStatement,
+    PropertyKey, ScopeId, Severity, SourceType, Span, StaticBlock, SwitchCase, SwitchStatement,
+    SymbolId, TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements,
+    TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody,
+    TsEnumDeclaration, TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType,
+    TsGlobalDeclaration, TsImportEqualsDeclaration, TsImportType, TsIndexSignature,
+    TsIndexedAccessType, TsInferType, TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage,
+    TsIntersectionType, TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType,
+    TsLiteralType, TsMappedType, TsMethodDefinition, TsMethodSignature, TsModuleBlock,
+    TsModuleDeclaration, TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression,
+    TsOptionalType, TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType,
+    TsSatisfiesExpression, TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration,
+    TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
+    TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
+    TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
+    VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith, WithStatement,
 };
 
 use crate::{
@@ -187,7 +187,7 @@ impl<'a> CheckerState<'a> {
         tree: &Ast<'a>,
         symbols: &crate::binder::SymbolTracker<'a>,
     ) {
-        if !tree.is_module() {
+        if !allows_module_declarations(tree) {
             return;
         }
         for index in 0..self.export_specifiers.len() {
@@ -532,6 +532,10 @@ fn is_new_target_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     }
     // CommonJS top level is a function body.
     context.ast.source_type() == swc_next_ecma_ast::SourceType::CommonJs
+}
+
+fn allows_module_declarations(ast: &Ast<'_>) -> bool {
+    ast.is_module() || ast.source_type() == SourceType::CommonJs
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -2603,7 +2607,7 @@ impl<'a> CheckerState<'a> {
             let merging_with_ambient = flags.contains(SymbolFlags::AMBIENT)
                 || existing.flags.contains(SymbolFlags::AMBIENT);
             let import_value_conflict = !context.ast.is_ts()
-                && context.ast.is_module()
+                && allows_module_declarations(context.ast)
                 && target == ScopeId::MODULE
                 && ((flags.contains(SymbolFlags::IMPORT) && existing.flags.in_value_space())
                     || (flags.in_value_space() && existing.flags.contains(SymbolFlags::IMPORT)));
@@ -2889,10 +2893,9 @@ impl<'a> CheckerState<'a> {
             return;
         };
         let message = match context.ast.node_kind(parent) {
-            NodeKind::Program if !context.ast.is_module() => Some(self.fmt(format_args!(
-                "Cannot use {} outside a module",
-                out_of_module_label
-            ))),
+            NodeKind::Program if !allows_module_declarations(context.ast) => Some(self.fmt(
+                format_args!("Cannot use {} outside a module", out_of_module_label),
+            )),
             NodeKind::Program | NodeKind::TsModuleBlock => None,
             _ => Some(self.fmt(format_args!(
                 "{} may only appear at the top level",
@@ -2978,7 +2981,7 @@ impl<'a> CheckerState<'a> {
         context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         // Exports inside a TS namespace are namespace-scoped, not module-scoped.
-        if !context.ast.is_module() || context.state.in_ts_namespace() {
+        if !allows_module_declarations(context.ast) || context.state.in_ts_namespace() {
             return;
         }
         if let Some(&first) = self.exported_names.get(name) {

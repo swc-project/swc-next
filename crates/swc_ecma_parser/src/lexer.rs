@@ -170,6 +170,22 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         lexer
     }
 
+    #[cold]
+    pub(crate) fn reset(&mut self, allow_html_like_comments: bool) {
+        self.comments.clear();
+        self.processed_comments = 0;
+        self.tokens.clear();
+        self.cursor = 0;
+        self.allow_html_like_comments = allow_html_like_comments;
+        self.hashbang = None;
+        self.state = LexerState::default();
+        self.mode = LexerMode::Normal;
+        self.skip_hashbang();
+        if self.hashbang.is_some() {
+            self.state.prev_token_end = self.cursor;
+        }
+    }
+
     fn skip_hashbang(&mut self) {
         debug_assert_eq!(self.cursor, 0);
         if self.source.len() >= 2 && self.source[0] == b'#' && self.source[1] == b'!' {

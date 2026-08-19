@@ -153,7 +153,7 @@ impl TypeScriptCase {
                     asserts_semantic_success(lang, &unit.content, check_js);
                 Some(Self {
                     path: path.clone(),
-                    source_type: source_type(&unit.name, &unit.content),
+                    source_type: SourceType::from_path(&unit.name),
                     lang,
                     name: unit.name,
                     code: unit.content,
@@ -708,24 +708,6 @@ fn is_declaration_file_name(path: &str) -> bool {
         || name.ends_with(".d.mts")
         || name.ends_with(".d.cts")
         || (name.ends_with(".ts") && name.contains(".d."))
-}
-
-fn source_type(path: &str, code: &str) -> SourceType {
-    if path.ends_with(".mts") || path.ends_with(".mjs") {
-        SourceType::Module
-    } else if path.ends_with(".cts") || path.ends_with(".cjs") {
-        SourceType::CommonJs
-    } else if code.lines().any(|line| {
-        let line = line.trim_start();
-        line.starts_with("import ")
-            || line.starts_with("import{")
-            || line.starts_with("export ")
-            || line.starts_with("export{")
-    }) {
-        SourceType::Module
-    } else {
-        SourceType::Script
-    }
 }
 
 const IGNORED_TESTS: &[&str] = &[
