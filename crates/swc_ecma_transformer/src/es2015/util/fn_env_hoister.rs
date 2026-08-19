@@ -222,7 +222,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
         };
-        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
+        let statement = Stmt::from(Decl::VariableDeclaration(declaration));
         let body = prepend_statement(program.body(ast), statement, ast);
         program.set_body(ast, body);
     }
@@ -244,7 +244,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         else {
             return;
         };
-        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
+        let statement = Stmt::from(Decl::VariableDeclaration(declaration));
         let statements = prepend_statement(body.body(ast), statement, ast);
         body.set_body(ast, statements);
     }
@@ -258,7 +258,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
         };
-        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
+        let statement = Stmt::from(Decl::VariableDeclaration(declaration));
         let statements = prepend_statement(block.body(ast), statement, ast);
         block.set_body(ast, statements);
     }
@@ -314,10 +314,7 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
             );
             let left = self
                 .ast
-                .assignment_target_simple_assignment_target_identifier_reference(
-                    DUMMY_SP,
-                    self.this_name,
-                );
+                .assignment_target_identifier_reference(DUMMY_SP, self.this_name);
             let this = self.ast.expr_this_expression(DUMMY_SP);
             let assignment = self.ast.expr_assignment_expression(
                 DUMMY_SP,

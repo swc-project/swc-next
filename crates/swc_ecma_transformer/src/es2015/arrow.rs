@@ -102,7 +102,7 @@ impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast> {
 
     fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
         if let Some(arrow) = node.as_arrow_function_expression(self.ast) {
-            Some(Expr::Function(self.convert_arrow(arrow)))
+            Some(Expr::FunctionExpression(self.convert_arrow(arrow)))
         } else if let Some(this) = node.as_this_expression(self.ast) {
             Some(self.hoister.transform_this_expression(this, self.ast))
         } else if let Some(meta) = node.as_meta_property(self.ast) {

@@ -848,7 +848,9 @@ impl<'a> Printer<'a> {
                         ForStatementInitData::VariableDeclaration(v) => {
                             self.print_variable_decl(v, false)
                         }
-                        ForStatementInitData::Expr(e) => self.print_expr(e, Precedence::Lowest),
+                        match_expr!(ForStatementInitData) => {
+                            self.print_expr(init.to_expr(self.ast), Precedence::Lowest)
+                        }
                     }
                     self.forbid_in = old_forbid_in;
                 }
@@ -930,14 +932,15 @@ impl<'a> Printer<'a> {
                 self.print(")");
                 self.print_body(s.body(self.ast));
             }
-            StmtData::Declaration(d) => {
-                if !matches!(self.ast.decl_data(d), DeclData::Class(_)) {
+            match_decl!(StmtData) => {
+                let d = stmt.to_decl(self.ast);
+                if !matches!(self.ast.decl_data(d), DeclData::ClassDeclaration(_)) {
                     self.print_indent();
                 }
                 let ends_with_block = matches!(
                     self.ast.decl_data(d),
-                    DeclData::Function(_)
-                        | DeclData::Class(_)
+                    DeclData::FunctionDeclaration(_)
+                        | DeclData::ClassDeclaration(_)
                         | DeclData::TsInterfaceDeclaration(_)
                         | DeclData::TsEnumDeclaration(_)
                         | DeclData::TsModuleDeclaration(_)
@@ -1236,7 +1239,9 @@ impl<'a> Printer<'a> {
     fn print_for_left(&mut self, left: ForStatementLeft) {
         match self.ast.for_statement_left_data(left) {
             ForStatementLeftData::VariableDeclaration(v) => self.print_variable_decl(v, false),
-            ForStatementLeftData::AssignmentTarget(t) => self.print_assignment_target(t),
+            match_assignment_target!(ForStatementLeftData) => {
+                self.print_assignment_target(left.to_assignment_target(self.ast))
+            }
         }
     }
 
@@ -1266,9 +1271,9 @@ impl<'a> Printer<'a> {
     fn print_decl(&mut self, decl: Decl) {
         match self.ast.decl_data(decl) {
             DeclData::VariableDeclaration(v) => self.print_variable_decl(v, true),
-            DeclData::Function(f) => self.print_function(f),
+            DeclData::FunctionDeclaration(f) => self.print_function(f),
             DeclData::TsFunction(f) => self.print_ts_function(f, true),
-            DeclData::Class(c) => self.print_class(c, true),
+            DeclData::ClassDeclaration(c) => self.print_class(c, true),
             DeclData::TsTypeAliasDeclaration(d) => self.print_ts_type_alias(d),
             DeclData::TsInterfaceDeclaration(d) => self.print_ts_interface(d),
             DeclData::TsEnumDeclaration(d) => self.print_ts_enum(d),
@@ -1408,7 +1413,9 @@ impl<'a> Printer<'a> {
 
     fn print_formal_pattern(&mut self, pattern: FormalParameterPattern) {
         match self.ast.formal_parameter_pattern_data(pattern) {
-            FormalParameterPatternData::BindingPattern(p) => self.print_binding(p),
+            match_binding_pattern!(FormalParameterPatternData) => {
+                self.print_binding(pattern.to_binding_pattern(self.ast))
+            }
             FormalParameterPatternData::TsThisParameter(p) => {
                 self.print("this");
                 if let Some(a) = p.type_annotation(self.ast) {
@@ -1436,7 +1443,9 @@ impl<'a> Printer<'a> {
     fn print_binding(&mut self, binding: BindingPattern) {
         match self.ast.binding_pattern_data(binding) {
             BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id, true),
-            BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
+            match_simple_assignment_target!(BindingPatternData) => {
+                self.print_simple_assignment_target(binding.to_simple_assignment_target(self.ast))
+            }
             BindingPatternData::AssignmentPattern(p) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
@@ -1565,8 +1574,8 @@ impl<'a> Printer<'a> {
 
     fn print_assignment_target(&mut self, target: AssignmentTarget) {
         match self.ast.assignment_target_data(target) {
-            AssignmentTargetData::SimpleAssignmentTarget(t) => {
-                self.print_simple_assignment_target(t)
+            match_simple_assignment_target!(AssignmentTargetData) => {
+                self.print_simple_assignment_target(target.to_simple_assignment_target(self.ast))
             }
             AssignmentTargetData::ArrayAssignmentTarget(a) => self.print_array_pattern(a),
             AssignmentTargetData::ObjectAssignmentTarget(o) => self.print_object_pattern(o),
@@ -1631,9 +1640,10 @@ impl<'a> Printer<'a> {
 
     fn assignment_target_first_token_offset(&self, target: AssignmentTarget) -> u32 {
         match self.ast.assignment_target_data(target) {
-            AssignmentTargetData::SimpleAssignmentTarget(target) => {
-                self.simple_assignment_target_first_token_offset(target)
-            }
+            match_simple_assignment_target!(AssignmentTargetData) => self
+                .simple_assignment_target_first_token_offset(
+                    target.to_simple_assignment_target(self.ast),
+                ),
             AssignmentTargetData::ArrayAssignmentTarget(_)
             | AssignmentTargetData::ObjectAssignmentTarget(_) => target.span(self.ast).start,
         }
@@ -1820,7 +1830,7 @@ impl<'a> Printer<'a> {
                     && match self.ast.assignment_target_data(e.left(self.ast)) {
                         AssignmentTargetData::ObjectAssignmentTarget(_) => true,
                         AssignmentTargetData::ArrayAssignmentTarget(_) => at_arrow_start,
-                        AssignmentTargetData::SimpleAssignmentTarget(_) => false,
+                        match_simple_assignment_target!(AssignmentTargetData) => false,
                     };
                 let wrap = level > Precedence::Assignment || destructuring_at_start;
                 if wrap {
@@ -1912,8 +1922,8 @@ impl<'a> Printer<'a> {
                 self.print_expr(e.expression(self.ast), Precedence::Lowest);
                 self.print(")");
             }
-            ExprData::Function(e) => self.print_function(e),
-            ExprData::Class(e) => self.print_class(e, false),
+            ExprData::FunctionExpression(e) => self.print_function(e),
+            ExprData::ClassExpression(e) => self.print_class(e, false),
             ExprData::ImportExpression(e) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
@@ -2315,8 +2325,8 @@ impl<'a> Printer<'a> {
         match self.ast.expr_data(callee) {
             ExprData::CallExpression(_)
             | ExprData::ImportExpression(_)
-            | ExprData::Function(_)
-            | ExprData::Class(_) => {
+            | ExprData::FunctionExpression(_)
+            | ExprData::ClassExpression(_) => {
                 self.print("(");
                 self.print_expr(callee, Precedence::Lowest);
                 self.print(")");
@@ -2411,7 +2421,9 @@ impl<'a> Printer<'a> {
                 self.print_indent();
             }
             match self.ast.argument_data(argument) {
-                ArgumentData::Expr(e) => self.print_expr(e, Precedence::Assignment),
+                match_expr!(ArgumentData) => {
+                    self.print_expr(argument.to_expr(self.ast), Precedence::Assignment)
+                }
                 ArgumentData::SpreadElement(s) => {
                     self.print("...");
                     self.print_expr(s.argument(self.ast), Precedence::Assignment);
@@ -2443,7 +2455,9 @@ impl<'a> Printer<'a> {
             }
             if let Some(arg) = self.ast.get_node_in_sub_range(id) {
                 match self.ast.argument_data(arg) {
-                    ArgumentData::Expr(e) => self.print_expr(e, Precedence::Assignment),
+                    match_expr!(ArgumentData) => {
+                        self.print_expr(arg.to_expr(self.ast), Precedence::Assignment)
+                    }
                     ArgumentData::SpreadElement(s) => {
                         self.print("...");
                         self.print_expr(s.argument(self.ast), Precedence::Assignment);
@@ -2536,7 +2550,7 @@ impl<'a> Printer<'a> {
             PropertyKind::Init => {}
         }
         if (p.method(self.ast) || kind != PropertyKind::Init)
-            && let ExprData::Function(f) = self.ast.expr_data(p.value(self.ast))
+            && let ExprData::FunctionExpression(f) = self.ast.expr_data(p.value(self.ast))
         {
             if f.r#async(self.ast) {
                 self.print("async ");
@@ -2596,25 +2610,9 @@ impl<'a> Printer<'a> {
             PropertyKeyData::IdentifierName(e) => {
                 self.print_identifier(self.ast.get_utf8(e.name(self.ast)))
             }
-            PropertyKeyData::PrivateIdentifier(e) => {
-                self.print("#");
-                self.print_identifier(self.ast.get_utf8(e.name(self.ast)));
+            match_expr!(PropertyKeyData) => {
+                self.print_expr(key.to_expr(self.ast), Precedence::Assignment)
             }
-            PropertyKeyData::StringLiteral(e) => {
-                self.print_quoted(self.ast.get_wtf8(e.value(self.ast)), true)
-            }
-            PropertyKeyData::NumericLiteral(e) => {
-                self.print_number_expr(self.ast.get_utf8(e.raw(self.ast)), Precedence::Lowest);
-            }
-            PropertyKeyData::BigIntLiteral(e) => {
-                for byte in self.ast.get_utf8(e.raw(self.ast)).bytes() {
-                    if byte != b'_' {
-                        self.js.push(byte);
-                    }
-                }
-                self.print("n");
-            }
-            PropertyKeyData::Expr(e) => self.print_expr(e, Precedence::Assignment),
         }
     }
 
@@ -2708,9 +2706,11 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print("=>");
         self.print_space();
-        match self.ast.arrow_function_body_data(e.body(self.ast)) {
+        let body = e.body(self.ast);
+        match self.ast.arrow_function_body_data(body) {
             ArrowFunctionBodyData::FunctionBody(body) => self.print_function_body(body),
-            ArrowFunctionBodyData::Expr(value) => {
+            match_expr!(ArrowFunctionBodyData) => {
+                let value = body.to_expr(self.ast);
                 if old_forbid_in && !wrap {
                     self.forbid_in = true;
                 }
@@ -3466,7 +3466,7 @@ impl<'a> Printer<'a> {
         if let Some(decl) = declaration {
             let decorated_class = matches!(
                 self.ast.decl_data(decl),
-                DeclData::Class(class) if !class.decorators(self.ast).is_empty()
+                DeclData::ClassDeclaration(class) if !class.decorators(self.ast).is_empty()
             );
             if decorated_class {
                 self.print_space();
@@ -3481,13 +3481,13 @@ impl<'a> Printer<'a> {
         if let Some(decl) = declaration {
             let block = matches!(
                 self.ast.decl_data(decl),
-                DeclData::Function(_)
-                    | DeclData::Class(_)
+                DeclData::FunctionDeclaration(_)
+                    | DeclData::ClassDeclaration(_)
                     | DeclData::TsInterfaceDeclaration(_)
                     | DeclData::TsEnumDeclaration(_)
                     | DeclData::TsModuleDeclaration(_)
             );
-            if let DeclData::Class(class) = self.ast.decl_data(decl) {
+            if let DeclData::ClassDeclaration(class) = self.ast.decl_data(decl) {
                 self.print_class(class, false);
             } else {
                 self.print_decl(decl);
@@ -3549,10 +3549,10 @@ impl<'a> Printer<'a> {
         self.print_indent();
         self.add_source_mapping(d.span(self.ast).start);
         self.print("export default");
+        let declaration = d.declaration(self.ast);
         let decorated_class = matches!(
-            self.ast
-                .export_default_declaration_kind_data(d.declaration(self.ast)),
-            ExportDefaultDeclarationKindData::Class(class)
+            self.ast.export_default_declaration_kind_data(declaration),
+            ExportDefaultDeclarationKindData::ClassDeclaration(class)
                 if !class.decorators(self.ast).is_empty()
         );
         if decorated_class {
@@ -3561,11 +3561,8 @@ impl<'a> Printer<'a> {
             self.print(" ");
         }
         self.export_default_start = self.js.len();
-        match self
-            .ast
-            .export_default_declaration_kind_data(d.declaration(self.ast))
-        {
-            ExportDefaultDeclarationKindData::Function(f) => {
+        match self.ast.export_default_declaration_kind_data(declaration) {
+            ExportDefaultDeclarationKindData::FunctionDeclaration(f) => {
                 self.print_function(f);
                 self.print_newline();
             }
@@ -3573,7 +3570,7 @@ impl<'a> Printer<'a> {
                 self.print_ts_function(f, false);
                 self.print_semicolon_after_statement();
             }
-            ExportDefaultDeclarationKindData::Class(c) => {
+            ExportDefaultDeclarationKindData::ClassDeclaration(c) => {
                 self.print_class(c, false);
                 self.print_newline();
             }
@@ -3581,9 +3578,9 @@ impl<'a> Printer<'a> {
                 self.print_ts_interface(i);
                 self.print_newline();
             }
-            ExportDefaultDeclarationKindData::Expr(e) => {
+            match_expr!(ExportDefaultDeclarationKindData) => {
                 self.export_default_start = self.js.len();
-                self.print_expr(e, Precedence::Comma);
+                self.print_expr(declaration.to_expr(self.ast), Precedence::Comma);
                 self.print_semicolon_after_statement();
             }
         }
@@ -4013,7 +4010,9 @@ impl<'a> Printer<'a> {
     }
     fn print_ts_query_name(&mut self, n: TsTypeQueryExprName) {
         match self.ast.ts_type_query_expr_name_data(n) {
-            TsTypeQueryExprNameData::TsTypeName(n) => self.print_ts_type_name(n),
+            match_ts_type_name!(TsTypeQueryExprNameData) => {
+                self.print_ts_type_name(n.to_ts_type_name(self.ast))
+            }
             TsTypeQueryExprNameData::ThisExpression(_) => self.print("this"),
             TsTypeQueryExprNameData::TsImportType(t) => {
                 self.print("import(");
@@ -4065,7 +4064,9 @@ impl<'a> Printer<'a> {
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
         match self.ast.ts_tuple_element_data(e) {
-            TsTupleElementData::TsType(t) => self.print_ts_type(t, TsTypePrecedence::Lowest),
+            match_ts_type!(TsTupleElementData) => {
+                self.print_ts_type(e.to_ts_type(self.ast), TsTypePrecedence::Lowest)
+            }
             TsTupleElementData::TsNamedTupleMember(n) => {
                 let mut element_type = n.element_type(self.ast);
                 if let TsTypeData::TsRestType(rest) = self.ast.ts_type_data(element_type) {
@@ -4299,12 +4300,9 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
-            TsEnumMemberNameData::StringLiteral(s) => {
-                self.add_source_mapping(s.span(self.ast).start);
-                self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
+            match_expr!(TsEnumMemberNameData) => {
+                self.print_expr(n.to_expr(self.ast), Precedence::Lowest)
             }
-            TsEnumMemberNameData::TemplateLiteral(t) => self.print_template(t, false),
-            TsEnumMemberNameData::Expr(e) => self.print_expr(e, Precedence::Lowest),
         }
         if computed {
             self.print("]");
@@ -4427,7 +4425,9 @@ impl<'a> Printer<'a> {
             .ast
             .ts_module_reference_data(d.module_reference(self.ast))
         {
-            TsModuleReferenceData::TsTypeName(n) => self.print_ts_type_name(n),
+            match_ts_type_name!(TsModuleReferenceData) => {
+                self.print_ts_type_name(d.module_reference(self.ast).to_ts_type_name(self.ast))
+            }
             TsModuleReferenceData::TsExternalModuleReference(r) => {
                 self.print("require(");
                 self.add_source_mapping(r.expression(self.ast).span(self.ast).start);
@@ -4554,9 +4554,10 @@ impl<'a> Printer<'a> {
     }
     fn print_jsx_container(&mut self, c: JsxExpressionContainer) {
         self.print("{");
-        match self.ast.jsx_expression_data(c.expression(self.ast)) {
-            JsxExpressionData::Expr(e) => {
-                self.print_expr(e, Precedence::Assignment);
+        let expression = c.expression(self.ast);
+        match self.ast.jsx_expression_data(expression) {
+            match_expr!(JsxExpressionData) => {
+                self.print_expr(expression.to_expr(self.ast), Precedence::Assignment);
             }
             JsxExpressionData::JsxEmptyExpression(_) => {
                 let close_offset = c.span(self.ast).end.saturating_sub(1);
@@ -4598,7 +4599,8 @@ impl Printer<'_> {
             BindingPatternData::BindingIdentifier(identifier) => {
                 Some(self.ast.get_utf8(identifier.name(self.ast)))
             }
-            BindingPatternData::SimpleAssignmentTarget(target) => {
+            match_simple_assignment_target!(BindingPatternData) => {
+                let target = binding.to_simple_assignment_target(self.ast);
                 match self.ast.simple_assignment_target_data(target) {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
                         Some(self.ast.get_utf8(identifier.name(self.ast)))
@@ -4620,11 +4622,13 @@ impl Printer<'_> {
         else {
             return false;
         };
-        let FormalParameterPatternData::BindingPattern(pattern) =
-            ast.formal_parameter_pattern_data(param.pattern(ast))
+        let pattern = param.pattern(ast);
+        let match_binding_pattern!(FormalParameterPatternData) =
+            ast.formal_parameter_pattern_data(pattern)
         else {
             return false;
         };
+        let pattern = pattern.to_binding_pattern(ast);
         let BindingPatternData::BindingIdentifier(identifier) = ast.binding_pattern_data(pattern)
         else {
             return false;
