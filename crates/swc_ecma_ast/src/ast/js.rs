@@ -358,7 +358,7 @@ pub struct Program {
     hashbang: Option<Hashbang>,
 }
 
-#[ast(repr)]
+#[ast(repr, group(Decl))]
 pub enum Stmt {
     BlockStatement(BlockStatement),
     BreakStatement(BreakStatement),
@@ -378,20 +378,31 @@ pub enum Stmt {
     TryStatement(TryStatement),
     WhileStatement(WhileStatement),
     WithStatement(WithStatement),
-    Declaration(Decl),
     ImportDeclaration(ImportDeclaration),
     ExportNamedDeclaration(ExportNamedDeclaration),
     ExportDefaultDeclaration(ExportDefaultDeclaration),
     ExportAllDeclaration(ExportAllDeclaration),
     TsExportAssignment(TsExportAssignment),
     TsNamespaceExportDeclaration(TsNamespaceExportDeclaration),
+
+    // =========== Decl ===========
+    VariableDeclaration(VariableDeclaration),
+    FunctionDeclaration(Function),
+    ClassDeclaration(Class),
+    TsFunction(TsFunction),
+    TsTypeAliasDeclaration(TsTypeAliasDeclaration),
+    TsInterfaceDeclaration(TsInterfaceDeclaration),
+    TsEnumDeclaration(TsEnumDeclaration),
+    TsModuleDeclaration(TsModuleDeclaration),
+    TsGlobalDeclaration(TsGlobalDeclaration),
+    TsImportEqualsDeclaration(TsImportEqualsDeclaration),
 }
 
 #[ast(repr)]
 pub enum Decl {
     VariableDeclaration(VariableDeclaration),
-    Function(Function),
-    Class(Class),
+    FunctionDeclaration(Function),
+    ClassDeclaration(Class),
     TsFunction(TsFunction),
     TsTypeAliasDeclaration(TsTypeAliasDeclaration),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
@@ -430,8 +441,96 @@ pub enum Expr {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    Function(Function),
-    Class(Class),
+    FunctionExpression(Function),
+    ClassExpression(Class),
+    ImportExpression(ImportExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
+}
+
+#[ast(repr, group(SimpleAssignmentTarget))]
+pub enum BindingPattern {
+    BindingIdentifier(BindingIdentifier),
+    AssignmentPattern(AssignmentPattern),
+    BindingRestElement(BindingRestElement),
+    ArrayPattern(ArrayPattern),
+    ObjectPattern(ObjectPattern),
+
+    // =========== SimpleAssignmentTarget ===========
+    IdentifierReference(IdentifierReference),
+    MemberExpression(MemberExpression),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+}
+
+#[ast(repr, group(SimpleAssignmentTarget))]
+pub enum AssignmentTarget {
+    ArrayAssignmentTarget(ArrayPattern),
+    ObjectAssignmentTarget(ObjectPattern),
+
+    // =========== SimpleAssignmentTarget ===========
+    IdentifierReference(IdentifierReference),
+    MemberExpression(MemberExpression),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+}
+
+#[ast(repr)]
+pub enum SimpleAssignmentTarget {
+    IdentifierReference(IdentifierReference),
+    MemberExpression(MemberExpression),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+}
+
+#[ast(repr, group(Expr))]
+pub enum PropertyKey {
+    IdentifierName(IdentifierName),
+
+    // =========== Expr ===========
+    IdentifierReference(IdentifierReference),
+    ThisExpression(ThisExpression),
+    Super(Super),
+    MetaProperty(MetaProperty),
+    StringLiteral(StringLiteral),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    TemplateLiteral(TemplateLiteral),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    ConditionalExpression(ConditionalExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    NewExpression(NewExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    ParenthesizedExpression(ParenthesizedExpression),
+    FunctionExpression(Function),
+    ClassExpression(Class),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -446,52 +545,56 @@ pub enum Expr {
 }
 
 #[ast(repr)]
-pub enum BindingPattern {
-    BindingIdentifier(BindingIdentifier),
-    SimpleAssignmentTarget(SimpleAssignmentTarget),
-    AssignmentPattern(AssignmentPattern),
-    BindingRestElement(BindingRestElement),
-    ArrayPattern(ArrayPattern),
-    ObjectPattern(ObjectPattern),
-}
-
-#[ast(repr)]
-pub enum AssignmentTarget {
-    SimpleAssignmentTarget(SimpleAssignmentTarget),
-    ArrayAssignmentTarget(ArrayPattern),
-    ObjectAssignmentTarget(ObjectPattern),
-}
-
-#[ast(repr)]
-pub enum SimpleAssignmentTarget {
-    IdentifierReference(IdentifierReference),
-    MemberExpression(MemberExpression),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-}
-
-#[ast(repr)]
-pub enum PropertyKey {
-    IdentifierName(IdentifierName),
-    PrivateIdentifier(PrivateIdentifier),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    Expr(Expr),
-}
-
-#[ast(repr)]
 pub enum ModuleExportName {
     IdentifierName(IdentifierName),
     StringLiteral(StringLiteral),
 }
 
-#[ast(repr)]
+#[ast(repr, group(Expr))]
 pub enum Argument {
-    Expr(Expr),
     SpreadElement(SpreadElement),
+
+    // =========== Expr ===========
+    IdentifierReference(IdentifierReference),
+    ThisExpression(ThisExpression),
+    Super(Super),
+    MetaProperty(MetaProperty),
+    StringLiteral(StringLiteral),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    TemplateLiteral(TemplateLiteral),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    ConditionalExpression(ConditionalExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    NewExpression(NewExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    ParenthesizedExpression(ParenthesizedExpression),
+    FunctionExpression(Function),
+    ClassExpression(Class),
+    ImportExpression(ImportExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
 }
 
 #[ast(repr)]
@@ -500,22 +603,115 @@ pub enum ObjectPropertyKind {
     SpreadElement(SpreadElement),
 }
 
-#[ast(repr)]
+#[ast(repr, group(Expr))]
 pub enum ForStatementInit {
     VariableDeclaration(VariableDeclaration),
-    Expr(Expr),
+
+    // =========== Expr ===========
+    IdentifierReference(IdentifierReference),
+    ThisExpression(ThisExpression),
+    Super(Super),
+    MetaProperty(MetaProperty),
+    StringLiteral(StringLiteral),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    TemplateLiteral(TemplateLiteral),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    ConditionalExpression(ConditionalExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    NewExpression(NewExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    ParenthesizedExpression(ParenthesizedExpression),
+    FunctionExpression(Function),
+    ClassExpression(Class),
+    ImportExpression(ImportExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
 }
 
-#[ast(repr)]
+#[ast(repr, group(AssignmentTarget))]
 pub enum ForStatementLeft {
     VariableDeclaration(VariableDeclaration),
-    AssignmentTarget(AssignmentTarget),
+
+    // =========== AssignmentTarget ===========
+    ArrayAssignmentTarget(ArrayPattern),
+    ObjectAssignmentTarget(ObjectPattern),
+
+    // =========== SimpleAssignmentTarget ===========
+    IdentifierReference(IdentifierReference),
+    MemberExpression(MemberExpression),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
 }
 
-#[ast(repr)]
+#[ast(repr, group(Expr))]
 pub enum ArrowFunctionBody {
     FunctionBody(FunctionBody),
-    Expr(Expr),
+
+    // =========== Expr ===========
+    IdentifierReference(IdentifierReference),
+    ThisExpression(ThisExpression),
+    Super(Super),
+    MetaProperty(MetaProperty),
+    StringLiteral(StringLiteral),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    TemplateLiteral(TemplateLiteral),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    ConditionalExpression(ConditionalExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    NewExpression(NewExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    ParenthesizedExpression(ParenthesizedExpression),
+    FunctionExpression(Function),
+    ClassExpression(Class),
+    ImportExpression(ImportExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
 }
 
 #[ast(repr)]
@@ -524,10 +720,24 @@ pub enum FormalParameterItem {
     TsParameterProperty(TsParameterProperty),
 }
 
-#[ast(repr)]
+#[ast(repr, group(BindingPattern))]
 pub enum FormalParameterPattern {
-    BindingPattern(BindingPattern),
     TsThisParameter(TsThisParameter),
+
+    // =========== BindingPattern ===========
+    BindingIdentifier(BindingIdentifier),
+    AssignmentPattern(AssignmentPattern),
+    BindingRestElement(BindingRestElement),
+    ArrayPattern(ArrayPattern),
+    ObjectPattern(ObjectPattern),
+
+    // =========== SimpleAssignmentTarget ===========
+    IdentifierReference(IdentifierReference),
+    MemberExpression(MemberExpression),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
 }
 
 #[ast(repr)]
@@ -546,13 +756,55 @@ pub enum ImportDeclarationSpecifier {
     ImportNamespaceSpecifier(ImportNamespaceSpecifier),
 }
 
-#[ast(repr)]
+#[ast(repr, group(Expr))]
 pub enum ExportDefaultDeclarationKind {
-    Expr(Expr),
-    Function(Function),
-    Class(Class),
+    // =========== Declaration ===========
+    FunctionDeclaration(Function),
+    ClassDeclaration(Class),
     TsFunction(TsFunction),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
+
+    // =========== Expr ===========
+    IdentifierReference(IdentifierReference),
+    ThisExpression(ThisExpression),
+    Super(Super),
+    MetaProperty(MetaProperty),
+    StringLiteral(StringLiteral),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    TemplateLiteral(TemplateLiteral),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    ConditionalExpression(ConditionalExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    NewExpression(NewExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    ParenthesizedExpression(ParenthesizedExpression),
+    FunctionExpression(Function),
+    ClassExpression(Class),
+    ImportExpression(ImportExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
 }
 
 /// The `super` keyword used as an expression head.

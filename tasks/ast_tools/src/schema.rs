@@ -84,6 +84,8 @@ pub struct AstStructField {
 pub struct AstEnum {
     pub type_id: TypeId,
     pub name: String,
+    /// Enums whose complete variant groups are manually expanded into this enum.
+    pub groups: Vec<String>,
     pub variants: Vec<AstEnumVariant>,
     pub _attrs: AstAttrs,
 }

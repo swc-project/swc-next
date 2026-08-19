@@ -143,22 +143,6 @@ impl Stmt {
         ast.node_kind(self.0) == NodeKind::WithStatement
     }
     #[inline]
-    pub fn is_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::VariableDeclaration
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::TsFunction
-                | NodeKind::TsTypeAliasDeclaration
-                | NodeKind::TsInterfaceDeclaration
-                | NodeKind::TsEnumDeclaration
-                | NodeKind::TsModuleDeclaration
-                | NodeKind::TsGlobalDeclaration
-                | NodeKind::TsImportEqualsDeclaration
-        )
-    }
-    #[inline]
     pub fn is_import_declaration(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::ImportDeclaration
     }
@@ -181,6 +165,46 @@ impl Stmt {
     #[inline]
     pub fn is_ts_namespace_export_declaration(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::TsNamespaceExportDeclaration
+    }
+    #[inline]
+    pub fn is_variable_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::VariableDeclaration
+    }
+    #[inline]
+    pub fn is_function_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_ts_function(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsFunction
+    }
+    #[inline]
+    pub fn is_ts_type_alias_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAliasDeclaration
+    }
+    #[inline]
+    pub fn is_ts_interface_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInterfaceDeclaration
+    }
+    #[inline]
+    pub fn is_ts_enum_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsEnumDeclaration
+    }
+    #[inline]
+    pub fn is_ts_module_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsModuleDeclaration
+    }
+    #[inline]
+    pub fn is_ts_global_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsGlobalDeclaration
+    }
+    #[inline]
+    pub fn is_ts_import_equals_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsImportEqualsDeclaration
     }
     #[inline]
     pub fn as_block_statement(self, ast: &Ast<'_>) -> Option<BlockStatement> {
@@ -309,13 +333,6 @@ impl Stmt {
         }
     }
     #[inline]
-    pub fn as_declaration(self, ast: &Ast<'_>) -> Option<Decl> {
-        match ast.stmt_data(self) {
-            StmtData::Declaration(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
     pub fn as_import_declaration(self, ast: &Ast<'_>) -> Option<ImportDeclaration> {
         match ast.stmt_data(self) {
             StmtData::ImportDeclaration(it) => Some(it),
@@ -360,6 +377,79 @@ impl Stmt {
             _ => None,
         }
     }
+    #[inline]
+    pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::VariableDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.stmt_data(self) {
+            StmtData::FunctionDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.stmt_data(self) {
+            StmtData::ClassDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_function(self, ast: &Ast<'_>) -> Option<TsFunction> {
+        match ast.stmt_data(self) {
+            StmtData::TsFunction(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_alias_declaration(self, ast: &Ast<'_>) -> Option<TsTypeAliasDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::TsTypeAliasDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_interface_declaration(self, ast: &Ast<'_>) -> Option<TsInterfaceDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::TsInterfaceDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_enum_declaration(self, ast: &Ast<'_>) -> Option<TsEnumDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::TsEnumDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_module_declaration(self, ast: &Ast<'_>) -> Option<TsModuleDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::TsModuleDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_global_declaration(self, ast: &Ast<'_>) -> Option<TsGlobalDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::TsGlobalDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_import_equals_declaration(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsImportEqualsDeclaration> {
+        match ast.stmt_data(self) {
+            StmtData::TsImportEqualsDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
 }
 impl Decl {
     #[inline]
@@ -367,11 +457,11 @@ impl Decl {
         ast.node_kind(self.0) == NodeKind::VariableDeclaration
     }
     #[inline]
-    pub fn is_function(self, ast: &Ast<'_>) -> bool {
+    pub fn is_function_declaration(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::Function
     }
     #[inline]
-    pub fn is_class(self, ast: &Ast<'_>) -> bool {
+    pub fn is_class_declaration(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::Class
     }
     #[inline]
@@ -410,16 +500,16 @@ impl Decl {
         }
     }
     #[inline]
-    pub fn as_function(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<Function> {
         match ast.decl_data(self) {
-            DeclData::Function(it) => Some(it),
+            DeclData::FunctionDeclaration(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<Class> {
         match ast.decl_data(self) {
-            DeclData::Class(it) => Some(it),
+            DeclData::ClassDeclaration(it) => Some(it),
             _ => None,
         }
     }
@@ -586,11 +676,11 @@ impl Expr {
         ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
     }
     #[inline]
-    pub fn is_function(self, ast: &Ast<'_>) -> bool {
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::Function
     }
     #[inline]
-    pub fn is_class(self, ast: &Ast<'_>) -> bool {
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::Class
     }
     #[inline]
@@ -827,16 +917,16 @@ impl Expr {
         }
     }
     #[inline]
-    pub fn as_function(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
         match ast.expr_data(self) {
-            ExprData::Function(it) => Some(it),
+            ExprData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
         match ast.expr_data(self) {
-            ExprData::Class(it) => Some(it),
+            ExprData::ClassExpression(it) => Some(it),
             _ => None,
         }
     }
@@ -927,18 +1017,6 @@ impl BindingPattern {
         ast.node_kind(self.0) == NodeKind::BindingIdentifier
     }
     #[inline]
-    pub fn is_simple_assignment_target(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::MemberExpression
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-        )
-    }
-    #[inline]
     pub fn is_assignment_pattern(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::AssignmentPattern
     }
@@ -955,16 +1033,33 @@ impl BindingPattern {
         ast.node_kind(self.0) == NodeKind::ObjectPattern
     }
     #[inline]
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
         match ast.binding_pattern_data(self) {
             BindingPatternData::BindingIdentifier(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_simple_assignment_target(self, ast: &Ast<'_>) -> Option<SimpleAssignmentTarget> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::SimpleAssignmentTarget(it) => Some(it),
             _ => None,
         }
     }
@@ -996,20 +1091,50 @@ impl BindingPattern {
             _ => None,
         }
     }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
 }
 impl AssignmentTarget {
-    #[inline]
-    pub fn is_simple_assignment_target(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::MemberExpression
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-        )
-    }
     #[inline]
     pub fn is_array_assignment_target(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::ArrayPattern
@@ -1019,11 +1144,28 @@ impl AssignmentTarget {
         ast.node_kind(self.0) == NodeKind::ObjectPattern
     }
     #[inline]
-    pub fn as_simple_assignment_target(self, ast: &Ast<'_>) -> Option<SimpleAssignmentTarget> {
-        match ast.assignment_target_data(self) {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
     }
     #[inline]
     pub fn as_array_assignment_target(self, ast: &Ast<'_>) -> Option<ArrayPattern> {
@@ -1036,6 +1178,48 @@ impl AssignmentTarget {
     pub fn as_object_assignment_target(self, ast: &Ast<'_>) -> Option<ObjectPattern> {
         match ast.assignment_target_data(self) {
             AssignmentTargetData::ObjectAssignmentTarget(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.assignment_target_data(self) {
+            AssignmentTargetData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.assignment_target_data(self) {
+            AssignmentTargetData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.assignment_target_data(self) {
+            AssignmentTargetData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.assignment_target_data(self) {
+            AssignmentTargetData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.assignment_target_data(self) {
+            AssignmentTargetData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.assignment_target_data(self) {
+            AssignmentTargetData::TsNonNullExpression(it) => Some(it),
             _ => None,
         }
     }
@@ -1114,8 +1298,20 @@ impl PropertyKey {
         ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
-    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ThisExpression
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Super
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MetaProperty
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
@@ -1130,50 +1326,136 @@ impl PropertyKey {
         ast.node_kind(self.0) == NodeKind::BigIntLiteral
     }
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NullLiteral
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
+    }
+    #[inline]
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::CallExpression
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ChainExpression
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NewExpression
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportExpression
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::YieldExpression
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxElement
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
@@ -1183,9 +1465,30 @@ impl PropertyKey {
         }
     }
     #[inline]
-    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
         match ast.property_key_data(self) {
-            PropertyKeyData::PrivateIdentifier(it) => Some(it),
+            PropertyKeyData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::MetaProperty(it) => Some(it),
             _ => None,
         }
     }
@@ -1211,9 +1514,236 @@ impl PropertyKey {
         }
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
         match ast.property_key_data(self) {
-            PropertyKeyData::Expr(it) => Some(it),
+            PropertyKeyData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TemplateLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.property_key_data(self) {
+            PropertyKeyData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }
@@ -1244,66 +1774,456 @@ impl ModuleExportName {
 }
 impl Argument {
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
-    }
-    #[inline]
     pub fn is_spread_element(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::SpreadElement
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.argument_data(self) {
-            ArgumentData::Expr(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ThisExpression
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Super
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MetaProperty
+    }
+    #[inline]
+    pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::StringLiteral
+    }
+    #[inline]
+    pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
+    }
+    #[inline]
+    pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
+    }
+    #[inline]
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NullLiteral
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
+    }
+    #[inline]
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::CallExpression
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ChainExpression
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NewExpression
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportExpression
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::YieldExpression
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxElement
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_spread_element(self, ast: &Ast<'_>) -> Option<SpreadElement> {
         match ast.argument_data(self) {
             ArgumentData::SpreadElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.argument_data(self) {
+            ArgumentData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.argument_data(self) {
+            ArgumentData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.argument_data(self) {
+            ArgumentData::MetaProperty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::StringLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::NumericLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::BigIntLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        match ast.argument_data(self) {
+            ArgumentData::TemplateLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.argument_data(self) {
+            ArgumentData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.argument_data(self) {
+            ArgumentData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.argument_data(self) {
+            ArgumentData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.argument_data(self) {
+            ArgumentData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.argument_data(self) {
+            ArgumentData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.argument_data(self) {
+            ArgumentData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.argument_data(self) {
+            ArgumentData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }
@@ -1338,50 +2258,164 @@ impl ForStatementInit {
         ast.node_kind(self.0) == NodeKind::VariableDeclaration
     }
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ThisExpression
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Super
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MetaProperty
+    }
+    #[inline]
+    pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::StringLiteral
+    }
+    #[inline]
+    pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
+    }
+    #[inline]
+    pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
+    }
+    #[inline]
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NullLiteral
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
+    }
+    #[inline]
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::CallExpression
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ChainExpression
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NewExpression
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportExpression
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::YieldExpression
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxElement
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
@@ -1391,9 +2425,285 @@ impl ForStatementInit {
         }
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
         match ast.for_statement_init_data(self) {
-            ForStatementInitData::Expr(it) => Some(it),
+            ForStatementInitData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::MetaProperty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::StringLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::NumericLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::BigIntLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TemplateLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.for_statement_init_data(self) {
+            ForStatementInitData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }
@@ -1404,18 +2714,36 @@ impl ForStatementLeft {
         ast.node_kind(self.0) == NodeKind::VariableDeclaration
     }
     #[inline]
-    pub fn is_assignment_target(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::MemberExpression
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::ArrayPattern
-                | NodeKind::ObjectPattern
-        )
+    pub fn is_array_assignment_target(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayPattern
+    }
+    #[inline]
+    pub fn is_object_assignment_target(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectPattern
+    }
+    #[inline]
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
     }
     #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
@@ -1425,9 +2753,58 @@ impl ForStatementLeft {
         }
     }
     #[inline]
-    pub fn as_assignment_target(self, ast: &Ast<'_>) -> Option<AssignmentTarget> {
+    pub fn as_array_assignment_target(self, ast: &Ast<'_>) -> Option<ArrayPattern> {
         match ast.for_statement_left_data(self) {
-            ForStatementLeftData::AssignmentTarget(it) => Some(it),
+            ForStatementLeftData::ArrayAssignmentTarget(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_assignment_target(self, ast: &Ast<'_>) -> Option<ObjectPattern> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::ObjectAssignmentTarget(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.for_statement_left_data(self) {
+            ForStatementLeftData::TsNonNullExpression(it) => Some(it),
             _ => None,
         }
     }
@@ -1438,50 +2815,164 @@ impl ArrowFunctionBody {
         ast.node_kind(self.0) == NodeKind::FunctionBody
     }
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ThisExpression
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Super
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MetaProperty
+    }
+    #[inline]
+    pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::StringLiteral
+    }
+    #[inline]
+    pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
+    }
+    #[inline]
+    pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
+    }
+    #[inline]
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NullLiteral
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
+    }
+    #[inline]
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::CallExpression
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ChainExpression
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NewExpression
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportExpression
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::YieldExpression
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxElement
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_function_body(self, ast: &Ast<'_>) -> Option<FunctionBody> {
@@ -1491,9 +2982,285 @@ impl ArrowFunctionBody {
         }
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
         match ast.arrow_function_body_data(self) {
-            ArrowFunctionBodyData::Expr(it) => Some(it),
+            ArrowFunctionBodyData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::MetaProperty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::StringLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::NumericLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::BigIntLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TemplateLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.arrow_function_body_data(self) {
+            ArrowFunctionBodyData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }
@@ -1524,37 +3291,134 @@ impl FormalParameterItem {
 }
 impl FormalParameterPattern {
     #[inline]
-    pub fn is_binding_pattern(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::BindingIdentifier
-                | NodeKind::IdentifierReference
-                | NodeKind::MemberExpression
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::AssignmentPattern
-                | NodeKind::BindingRestElement
-                | NodeKind::ArrayPattern
-                | NodeKind::ObjectPattern
-        )
-    }
-    #[inline]
     pub fn is_ts_this_parameter(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::TsThisParameter
     }
     #[inline]
-    pub fn as_binding_pattern(self, ast: &Ast<'_>) -> Option<BindingPattern> {
-        match ast.formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::BindingPattern(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_binding_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BindingIdentifier
+    }
+    #[inline]
+    pub fn is_assignment_pattern(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentPattern
+    }
+    #[inline]
+    pub fn is_binding_rest_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BindingRestElement
+    }
+    #[inline]
+    pub fn is_array_pattern(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayPattern
+    }
+    #[inline]
+    pub fn is_object_pattern(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectPattern
+    }
+    #[inline]
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
     }
     #[inline]
     pub fn as_ts_this_parameter(self, ast: &Ast<'_>) -> Option<TsThisParameter> {
         match ast.formal_parameter_pattern_data(self) {
             FormalParameterPatternData::TsThisParameter(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::BindingIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_pattern(self, ast: &Ast<'_>) -> Option<AssignmentPattern> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::AssignmentPattern(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binding_rest_element(self, ast: &Ast<'_>) -> Option<BindingRestElement> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::BindingRestElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_pattern(self, ast: &Ast<'_>) -> Option<ArrayPattern> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::ArrayPattern(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_pattern(self, ast: &Ast<'_>) -> Option<ObjectPattern> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::ObjectPattern(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::TsNonNullExpression(it) => Some(it),
             _ => None,
         }
     }
@@ -1653,24 +3517,17 @@ impl ImportDeclarationSpecifier {
 }
 impl ExportDefaultDeclarationKind {
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
+    pub fn is_function_declaration(self, ast: &Ast<'_>) -> bool {
         matches!(
             ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Expr(_)
+            ExportDefaultDeclarationKindData::FunctionDeclaration(_)
         )
     }
     #[inline]
-    pub fn is_function(self, ast: &Ast<'_>) -> bool {
+    pub fn is_class_declaration(self, ast: &Ast<'_>) -> bool {
         matches!(
             ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Function(_)
-        )
-    }
-    #[inline]
-    pub fn is_class(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Class(_)
+            ExportDefaultDeclarationKindData::ClassDeclaration(_)
         )
     }
     #[inline]
@@ -1688,23 +3545,296 @@ impl ExportDefaultDeclarationKind {
         )
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::IdentifierReference(_)
+        )
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ThisExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::Super(_)
+        )
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::MetaProperty(_)
+        )
+    }
+    #[inline]
+    pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::StringLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::NumericLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::BigIntLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::BooleanLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::NullLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::RegExpLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TemplateLiteral(_)
+        )
+    }
+    #[inline]
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::BinaryExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::LogicalExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::UnaryExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::UpdateExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::AssignmentExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ConditionalExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::SequenceExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::MemberExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::CallExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ChainExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::NewExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TaggedTemplateExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ArrowFunctionExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ArrayExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ObjectExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ParenthesizedExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::FunctionExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ClassExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::ImportExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::AwaitExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::YieldExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::PrivateIdentifier(_)
+        )
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsAsExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsSatisfiesExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsTypeAssertion(_)
+        )
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsNonNullExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsInstantiationExpression(_)
+        )
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::JsxElement(_)
+        )
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::JsxFragment(_)
+        )
+    }
+    #[inline]
+    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<Function> {
         match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Expr(it) => Some(it),
+            ExportDefaultDeclarationKindData::FunctionDeclaration(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_function(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<Class> {
         match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Function(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_class(self, ast: &Ast<'_>) -> Option<Class> {
-        match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Class(it) => Some(it),
+            ExportDefaultDeclarationKindData::ClassDeclaration(it) => Some(it),
             _ => None,
         }
     }
@@ -1719,6 +3849,289 @@ impl ExportDefaultDeclarationKind {
     pub fn as_ts_interface_declaration(self, ast: &Ast<'_>) -> Option<TsInterfaceDeclaration> {
         match ast.export_default_declaration_kind_data(self) {
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::MetaProperty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::StringLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::NumericLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::BigIntLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TemplateLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }
@@ -6014,13 +8427,6 @@ impl TsImportTypeQualifier {
 }
 impl TsTypeQueryExprName {
     #[inline]
-    pub fn is_ts_type_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
-        )
-    }
-    #[inline]
     pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::ThisExpression
     }
@@ -6029,11 +8435,12 @@ impl TsTypeQueryExprName {
         ast.node_kind(self.0) == NodeKind::TsImportType
     }
     #[inline]
-    pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
-        match ast.ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsTypeName(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_ts_qualified_name(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsQualifiedName
     }
     #[inline]
     pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
@@ -6046,6 +8453,20 @@ impl TsTypeQueryExprName {
     pub fn as_ts_import_type(self, ast: &Ast<'_>) -> Option<TsImportType> {
         match ast.ts_type_query_expr_name_data(self) {
             TsTypeQueryExprNameData::TsImportType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.ts_type_query_expr_name_data(self) {
+            TsTypeQueryExprNameData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_qualified_name(self, ast: &Ast<'_>) -> Option<TsQualifiedName> {
+        match ast.ts_type_query_expr_name_data(self) {
+            TsTypeQueryExprNameData::TsQualifiedName(it) => Some(it),
             _ => None,
         }
     }
@@ -6120,64 +8541,431 @@ impl TsLiteral {
 }
 impl TsTupleElement {
     #[inline]
-    pub fn is_ts_type(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::TsAnyKeyword
-                | NodeKind::TsUnknownKeyword
-                | NodeKind::TsNeverKeyword
-                | NodeKind::TsVoidKeyword
-                | NodeKind::TsNullKeyword
-                | NodeKind::TsUndefinedKeyword
-                | NodeKind::TsStringKeyword
-                | NodeKind::TsNumberKeyword
-                | NodeKind::TsBigIntKeyword
-                | NodeKind::TsBooleanKeyword
-                | NodeKind::TsSymbolKeyword
-                | NodeKind::TsObjectKeyword
-                | NodeKind::TsIntrinsicKeyword
-                | NodeKind::TsThisType
-                | NodeKind::TsTypeReference
-                | NodeKind::TsTypeQuery
-                | NodeKind::TsImportType
-                | NodeKind::TsLiteralType
-                | NodeKind::TsTemplateLiteralType
-                | NodeKind::TsArrayType
-                | NodeKind::TsIndexedAccessType
-                | NodeKind::TsTupleType
-                | NodeKind::TsOptionalType
-                | NodeKind::TsRestType
-                | NodeKind::TsJsDocNullableType
-                | NodeKind::TsJsDocNonNullableType
-                | NodeKind::TsJsDocUnknownType
-                | NodeKind::TsUnionType
-                | NodeKind::TsIntersectionType
-                | NodeKind::TsConditionalType
-                | NodeKind::TsInferType
-                | NodeKind::TsTypeOperator
-                | NodeKind::TsParenthesizedType
-                | NodeKind::TsFunctionType
-                | NodeKind::TsConstructorType
-                | NodeKind::TsTypePredicate
-                | NodeKind::TsTypeLiteral
-                | NodeKind::TsMappedType
-        )
-    }
-    #[inline]
     pub fn is_ts_named_tuple_member(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::TsNamedTupleMember
     }
     #[inline]
-    pub fn as_ts_type(self, ast: &Ast<'_>) -> Option<TsType> {
-        match ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsType(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_ts_any_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAnyKeyword
+    }
+    #[inline]
+    pub fn is_ts_unknown_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsUnknownKeyword
+    }
+    #[inline]
+    pub fn is_ts_never_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNeverKeyword
+    }
+    #[inline]
+    pub fn is_ts_void_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsVoidKeyword
+    }
+    #[inline]
+    pub fn is_ts_null_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNullKeyword
+    }
+    #[inline]
+    pub fn is_ts_undefined_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsUndefinedKeyword
+    }
+    #[inline]
+    pub fn is_ts_string_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsStringKeyword
+    }
+    #[inline]
+    pub fn is_ts_number_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNumberKeyword
+    }
+    #[inline]
+    pub fn is_ts_big_int_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsBigIntKeyword
+    }
+    #[inline]
+    pub fn is_ts_boolean_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsBooleanKeyword
+    }
+    #[inline]
+    pub fn is_ts_symbol_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSymbolKeyword
+    }
+    #[inline]
+    pub fn is_ts_object_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsObjectKeyword
+    }
+    #[inline]
+    pub fn is_ts_intrinsic_keyword(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsIntrinsicKeyword
+    }
+    #[inline]
+    pub fn is_ts_this_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsThisType
+    }
+    #[inline]
+    pub fn is_ts_type_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeReference
+    }
+    #[inline]
+    pub fn is_ts_type_query(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeQuery
+    }
+    #[inline]
+    pub fn is_ts_import_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsImportType
+    }
+    #[inline]
+    pub fn is_ts_literal_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsLiteralType
+    }
+    #[inline]
+    pub fn is_ts_template_literal_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTemplateLiteralType
+    }
+    #[inline]
+    pub fn is_ts_array_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsArrayType
+    }
+    #[inline]
+    pub fn is_ts_indexed_access_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsIndexedAccessType
+    }
+    #[inline]
+    pub fn is_ts_tuple_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTupleType
+    }
+    #[inline]
+    pub fn is_ts_optional_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsOptionalType
+    }
+    #[inline]
+    pub fn is_ts_rest_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsRestType
+    }
+    #[inline]
+    pub fn is_ts_js_doc_nullable_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsJsDocNullableType
+    }
+    #[inline]
+    pub fn is_ts_js_doc_non_nullable_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsJsDocNonNullableType
+    }
+    #[inline]
+    pub fn is_ts_js_doc_unknown_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsJsDocUnknownType
+    }
+    #[inline]
+    pub fn is_ts_union_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsUnionType
+    }
+    #[inline]
+    pub fn is_ts_intersection_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsIntersectionType
+    }
+    #[inline]
+    pub fn is_ts_conditional_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsConditionalType
+    }
+    #[inline]
+    pub fn is_ts_infer_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInferType
+    }
+    #[inline]
+    pub fn is_ts_type_operator(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeOperator
+    }
+    #[inline]
+    pub fn is_ts_parenthesized_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsParenthesizedType
+    }
+    #[inline]
+    pub fn is_ts_function_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsFunctionType
+    }
+    #[inline]
+    pub fn is_ts_constructor_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsConstructorType
+    }
+    #[inline]
+    pub fn is_ts_type_predicate(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypePredicate
+    }
+    #[inline]
+    pub fn is_ts_type_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeLiteral
+    }
+    #[inline]
+    pub fn is_ts_mapped_type(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsMappedType
     }
     #[inline]
     pub fn as_ts_named_tuple_member(self, ast: &Ast<'_>) -> Option<TsNamedTupleMember> {
         match ast.ts_tuple_element_data(self) {
             TsTupleElementData::TsNamedTupleMember(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_any_keyword(self, ast: &Ast<'_>) -> Option<TsAnyKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsAnyKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_unknown_keyword(self, ast: &Ast<'_>) -> Option<TsUnknownKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsUnknownKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_never_keyword(self, ast: &Ast<'_>) -> Option<TsNeverKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsNeverKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_void_keyword(self, ast: &Ast<'_>) -> Option<TsVoidKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsVoidKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_null_keyword(self, ast: &Ast<'_>) -> Option<TsNullKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsNullKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_undefined_keyword(self, ast: &Ast<'_>) -> Option<TsUndefinedKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsUndefinedKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_string_keyword(self, ast: &Ast<'_>) -> Option<TsStringKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsStringKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_number_keyword(self, ast: &Ast<'_>) -> Option<TsNumberKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsNumberKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_big_int_keyword(self, ast: &Ast<'_>) -> Option<TsBigIntKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsBigIntKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_boolean_keyword(self, ast: &Ast<'_>) -> Option<TsBooleanKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsBooleanKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_symbol_keyword(self, ast: &Ast<'_>) -> Option<TsSymbolKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsSymbolKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_object_keyword(self, ast: &Ast<'_>) -> Option<TsObjectKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsObjectKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_intrinsic_keyword(self, ast: &Ast<'_>) -> Option<TsIntrinsicKeyword> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsIntrinsicKeyword(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_this_type(self, ast: &Ast<'_>) -> Option<TsThisType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsThisType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_reference(self, ast: &Ast<'_>) -> Option<TsTypeReference> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTypeReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_query(self, ast: &Ast<'_>) -> Option<TsTypeQuery> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTypeQuery(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_import_type(self, ast: &Ast<'_>) -> Option<TsImportType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsImportType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_literal_type(self, ast: &Ast<'_>) -> Option<TsLiteralType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsLiteralType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_template_literal_type(self, ast: &Ast<'_>) -> Option<TsTemplateLiteralType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTemplateLiteralType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_array_type(self, ast: &Ast<'_>) -> Option<TsArrayType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsArrayType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_indexed_access_type(self, ast: &Ast<'_>) -> Option<TsIndexedAccessType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsIndexedAccessType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_tuple_type(self, ast: &Ast<'_>) -> Option<TsTupleType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTupleType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_optional_type(self, ast: &Ast<'_>) -> Option<TsOptionalType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsOptionalType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_rest_type(self, ast: &Ast<'_>) -> Option<TsRestType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsRestType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_js_doc_nullable_type(self, ast: &Ast<'_>) -> Option<TsJsDocNullableType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsJsDocNullableType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_js_doc_non_nullable_type(self, ast: &Ast<'_>) -> Option<TsJsDocNonNullableType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsJsDocNonNullableType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_js_doc_unknown_type(self, ast: &Ast<'_>) -> Option<TsJsDocUnknownType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsJsDocUnknownType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_union_type(self, ast: &Ast<'_>) -> Option<TsUnionType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsUnionType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_intersection_type(self, ast: &Ast<'_>) -> Option<TsIntersectionType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsIntersectionType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_conditional_type(self, ast: &Ast<'_>) -> Option<TsConditionalType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsConditionalType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_infer_type(self, ast: &Ast<'_>) -> Option<TsInferType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsInferType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_operator(self, ast: &Ast<'_>) -> Option<TsTypeOperator> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTypeOperator(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_parenthesized_type(self, ast: &Ast<'_>) -> Option<TsParenthesizedType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsParenthesizedType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_function_type(self, ast: &Ast<'_>) -> Option<TsFunctionType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsFunctionType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_constructor_type(self, ast: &Ast<'_>) -> Option<TsConstructorType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsConstructorType(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_predicate(self, ast: &Ast<'_>) -> Option<TsTypePredicate> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTypePredicate(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_literal(self, ast: &Ast<'_>) -> Option<TsTypeLiteral> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsTypeLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_mapped_type(self, ast: &Ast<'_>) -> Option<TsMappedType> {
+        match ast.ts_tuple_element_data(self) {
+            TsTupleElementData::TsMappedType(it) => Some(it),
             _ => None,
         }
     }
@@ -6275,63 +9063,197 @@ impl TsEnumMemberName {
         ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ThisExpression
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Super
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MetaProperty
+    }
+    #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::StringLiteral
+    }
+    #[inline]
+    pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
+    }
+    #[inline]
+    pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
+    }
+    #[inline]
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NullLiteral
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
     }
     #[inline]
     pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::TemplateLiteral
     }
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::CallExpression
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ChainExpression
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NewExpression
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportExpression
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::YieldExpression
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxElement
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
         match ast.ts_enum_member_name_data(self) {
             TsEnumMemberNameData::IdentifierName(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::MetaProperty(it) => Some(it),
             _ => None,
         }
     }
@@ -6343,6 +9265,41 @@ impl TsEnumMemberName {
         }
     }
     #[inline]
+    pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::NumericLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::BigIntLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
     pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
         match ast.ts_enum_member_name_data(self) {
             TsEnumMemberNameData::TemplateLiteral(it) => Some(it),
@@ -6350,9 +9307,208 @@ impl TsEnumMemberName {
         }
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
         match ast.ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::Expr(it) => Some(it),
+            TsEnumMemberNameData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }
@@ -6418,22 +9574,16 @@ impl TsModuleBody {
 }
 impl TsModuleReference {
     #[inline]
-    pub fn is_ts_type_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
-        )
-    }
-    #[inline]
     pub fn is_ts_external_module_reference(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::TsExternalModuleReference
     }
     #[inline]
-    pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
-        match ast.ts_module_reference_data(self) {
-            TsModuleReferenceData::TsTypeName(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_ts_qualified_name(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsQualifiedName
     }
     #[inline]
     pub fn as_ts_external_module_reference(
@@ -6442,6 +9592,20 @@ impl TsModuleReference {
     ) -> Option<TsExternalModuleReference> {
         match ast.ts_module_reference_data(self) {
             TsModuleReferenceData::TsExternalModuleReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.ts_module_reference_data(self) {
+            TsModuleReferenceData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_qualified_name(self, ast: &Ast<'_>) -> Option<TsQualifiedName> {
+        match ast.ts_module_reference_data(self) {
+            TsModuleReferenceData::TsQualifiedName(it) => Some(it),
             _ => None,
         }
     }
@@ -8974,66 +12138,456 @@ impl JsxAttributeValue {
 }
 impl JsxExpression {
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
-    }
-    #[inline]
     pub fn is_jsx_empty_expression(self, ast: &Ast<'_>) -> bool {
         ast.node_kind(self.0) == NodeKind::JsxEmptyExpression
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.jsx_expression_data(self) {
-            JsxExpressionData::Expr(it) => Some(it),
-            _ => None,
-        }
+    pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
+    }
+    #[inline]
+    pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ThisExpression
+    }
+    #[inline]
+    pub fn is_super(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Super
+    }
+    #[inline]
+    pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MetaProperty
+    }
+    #[inline]
+    pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::StringLiteral
+    }
+    #[inline]
+    pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
+    }
+    #[inline]
+    pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
+    }
+    #[inline]
+    pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
+    }
+    #[inline]
+    pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NullLiteral
+    }
+    #[inline]
+    pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
+    }
+    #[inline]
+    pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
+    }
+    #[inline]
+    pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
+    }
+    #[inline]
+    pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
+    }
+    #[inline]
+    pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
+    }
+    #[inline]
+    pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
+    }
+    #[inline]
+    pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
+    }
+    #[inline]
+    pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
+    }
+    #[inline]
+    pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::MemberExpression
+    }
+    #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::CallExpression
+    }
+    #[inline]
+    pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ChainExpression
+    }
+    #[inline]
+    pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::NewExpression
+    }
+    #[inline]
+    pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
+    }
+    #[inline]
+    pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
+    }
+    #[inline]
+    pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
+    }
+    #[inline]
+    pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
+    }
+    #[inline]
+    pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
+    }
+    #[inline]
+    pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Function
+    }
+    #[inline]
+    pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::Class
+    }
+    #[inline]
+    pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportExpression
+    }
+    #[inline]
+    pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
+    }
+    #[inline]
+    pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::YieldExpression
+    }
+    #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
+    }
+    #[inline]
+    pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
+    }
+    #[inline]
+    pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
+    }
+    #[inline]
+    pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
+    }
+    #[inline]
+    pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
+    }
+    #[inline]
+    pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxElement
+    }
+    #[inline]
+    pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_jsx_empty_expression(self, ast: &Ast<'_>) -> Option<JsxEmptyExpression> {
         match ast.jsx_expression_data(self) {
             JsxExpressionData::JsxEmptyExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::IdentifierReference(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ThisExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::MetaProperty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::StringLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::NumericLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::BigIntLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::BooleanLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::NullLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::RegExpLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TemplateLiteral(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::BinaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::LogicalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::UnaryExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::UpdateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::AssignmentExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ConditionalExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::SequenceExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::CallExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ChainExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::NewExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TaggedTemplateExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ArrowFunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ArrayExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ObjectExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ParenthesizedExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::FunctionExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ClassExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::ImportExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::AwaitExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::YieldExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TsAsExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TsSatisfiesExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TsNonNullExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation_expression(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsInstantiationExpression> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::TsInstantiationExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::JsxElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
+        match ast.jsx_expression_data(self) {
+            JsxExpressionData::JsxFragment(it) => Some(it),
             _ => None,
         }
     }

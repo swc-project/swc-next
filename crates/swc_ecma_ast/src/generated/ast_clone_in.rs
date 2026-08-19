@@ -36,7 +36,6 @@ impl<'a> CloneIn<'a> for Stmt {
             StmtData::TryStatement(it) => Self::TryStatement(it.clone_in(ast)),
             StmtData::WhileStatement(it) => Self::WhileStatement(it.clone_in(ast)),
             StmtData::WithStatement(it) => Self::WithStatement(it.clone_in(ast)),
-            StmtData::Declaration(it) => Self::Declaration(it.clone_in(ast)),
             StmtData::ImportDeclaration(it) => Self::ImportDeclaration(it.clone_in(ast)),
             StmtData::ExportNamedDeclaration(it) => Self::ExportNamedDeclaration(it.clone_in(ast)),
             StmtData::ExportDefaultDeclaration(it) => {
@@ -46,6 +45,18 @@ impl<'a> CloneIn<'a> for Stmt {
             StmtData::TsExportAssignment(it) => Self::TsExportAssignment(it.clone_in(ast)),
             StmtData::TsNamespaceExportDeclaration(it) => {
                 Self::TsNamespaceExportDeclaration(it.clone_in(ast))
+            }
+            StmtData::VariableDeclaration(it) => Self::VariableDeclaration(it.clone_in(ast)),
+            StmtData::FunctionDeclaration(it) => Self::FunctionDeclaration(it.clone_in(ast)),
+            StmtData::ClassDeclaration(it) => Self::ClassDeclaration(it.clone_in(ast)),
+            StmtData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
+            StmtData::TsTypeAliasDeclaration(it) => Self::TsTypeAliasDeclaration(it.clone_in(ast)),
+            StmtData::TsInterfaceDeclaration(it) => Self::TsInterfaceDeclaration(it.clone_in(ast)),
+            StmtData::TsEnumDeclaration(it) => Self::TsEnumDeclaration(it.clone_in(ast)),
+            StmtData::TsModuleDeclaration(it) => Self::TsModuleDeclaration(it.clone_in(ast)),
+            StmtData::TsGlobalDeclaration(it) => Self::TsGlobalDeclaration(it.clone_in(ast)),
+            StmtData::TsImportEqualsDeclaration(it) => {
+                Self::TsImportEqualsDeclaration(it.clone_in(ast))
             }
         }
     }
@@ -57,8 +68,8 @@ impl<'a> CloneIn<'a> for Decl {
         let data = ast.decl_data(*self);
         match data {
             DeclData::VariableDeclaration(it) => Self::VariableDeclaration(it.clone_in(ast)),
-            DeclData::Function(it) => Self::Function(it.clone_in(ast)),
-            DeclData::Class(it) => Self::Class(it.clone_in(ast)),
+            DeclData::FunctionDeclaration(it) => Self::FunctionDeclaration(it.clone_in(ast)),
+            DeclData::ClassDeclaration(it) => Self::ClassDeclaration(it.clone_in(ast)),
             DeclData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
             DeclData::TsTypeAliasDeclaration(it) => Self::TsTypeAliasDeclaration(it.clone_in(ast)),
             DeclData::TsInterfaceDeclaration(it) => Self::TsInterfaceDeclaration(it.clone_in(ast)),
@@ -110,8 +121,8 @@ impl<'a> CloneIn<'a> for Expr {
             ExprData::ParenthesizedExpression(it) => {
                 Self::ParenthesizedExpression(it.clone_in(ast))
             }
-            ExprData::Function(it) => Self::Function(it.clone_in(ast)),
-            ExprData::Class(it) => Self::Class(it.clone_in(ast)),
+            ExprData::FunctionExpression(it) => Self::FunctionExpression(it.clone_in(ast)),
+            ExprData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
             ExprData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
             ExprData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
             ExprData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
@@ -135,15 +146,24 @@ impl<'a> CloneIn<'a> for BindingPattern {
         let data = ast.binding_pattern_data(*self);
         match data {
             BindingPatternData::BindingIdentifier(it) => Self::BindingIdentifier(it.clone_in(ast)),
-            BindingPatternData::SimpleAssignmentTarget(it) => {
-                Self::SimpleAssignmentTarget(it.clone_in(ast))
-            }
             BindingPatternData::AssignmentPattern(it) => Self::AssignmentPattern(it.clone_in(ast)),
             BindingPatternData::BindingRestElement(it) => {
                 Self::BindingRestElement(it.clone_in(ast))
             }
             BindingPatternData::ArrayPattern(it) => Self::ArrayPattern(it.clone_in(ast)),
             BindingPatternData::ObjectPattern(it) => Self::ObjectPattern(it.clone_in(ast)),
+            BindingPatternData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            BindingPatternData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            BindingPatternData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            BindingPatternData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            BindingPatternData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            BindingPatternData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
         }
     }
 }
@@ -153,14 +173,23 @@ impl<'a> CloneIn<'a> for AssignmentTarget {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.assignment_target_data(*self);
         match data {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
-                Self::SimpleAssignmentTarget(it.clone_in(ast))
-            }
             AssignmentTargetData::ArrayAssignmentTarget(it) => {
                 Self::ArrayAssignmentTarget(it.clone_in(ast))
             }
             AssignmentTargetData::ObjectAssignmentTarget(it) => {
                 Self::ObjectAssignmentTarget(it.clone_in(ast))
+            }
+            AssignmentTargetData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            AssignmentTargetData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            AssignmentTargetData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            AssignmentTargetData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            AssignmentTargetData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            AssignmentTargetData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
             }
         }
     }
@@ -199,11 +228,60 @@ impl<'a> CloneIn<'a> for PropertyKey {
         let data = ast.property_key_data(*self);
         match data {
             PropertyKeyData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            PropertyKeyData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
+            PropertyKeyData::IdentifierReference(it) => Self::IdentifierReference(it.clone_in(ast)),
+            PropertyKeyData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
+            PropertyKeyData::Super(it) => Self::Super(it.clone_in(ast)),
+            PropertyKeyData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
             PropertyKeyData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
             PropertyKeyData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
             PropertyKeyData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
-            PropertyKeyData::Expr(it) => Self::Expr(it.clone_in(ast)),
+            PropertyKeyData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
+            PropertyKeyData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            PropertyKeyData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
+            PropertyKeyData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
+            PropertyKeyData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
+            PropertyKeyData::LogicalExpression(it) => Self::LogicalExpression(it.clone_in(ast)),
+            PropertyKeyData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+            PropertyKeyData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
+            PropertyKeyData::AssignmentExpression(it) => {
+                Self::AssignmentExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::SequenceExpression(it) => Self::SequenceExpression(it.clone_in(ast)),
+            PropertyKeyData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            PropertyKeyData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
+            PropertyKeyData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
+            PropertyKeyData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
+            PropertyKeyData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
+            PropertyKeyData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
+            PropertyKeyData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::FunctionExpression(it) => Self::FunctionExpression(it.clone_in(ast)),
+            PropertyKeyData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
+            PropertyKeyData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
+            PropertyKeyData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
+            PropertyKeyData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            PropertyKeyData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
+            PropertyKeyData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            PropertyKeyData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            PropertyKeyData::TsNonNullExpression(it) => Self::TsNonNullExpression(it.clone_in(ast)),
+            PropertyKeyData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            PropertyKeyData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            PropertyKeyData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
         }
     }
 }
@@ -224,8 +302,59 @@ impl<'a> CloneIn<'a> for Argument {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.argument_data(*self);
         match data {
-            ArgumentData::Expr(it) => Self::Expr(it.clone_in(ast)),
             ArgumentData::SpreadElement(it) => Self::SpreadElement(it.clone_in(ast)),
+            ArgumentData::IdentifierReference(it) => Self::IdentifierReference(it.clone_in(ast)),
+            ArgumentData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
+            ArgumentData::Super(it) => Self::Super(it.clone_in(ast)),
+            ArgumentData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
+            ArgumentData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
+            ArgumentData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
+            ArgumentData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
+            ArgumentData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
+            ArgumentData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            ArgumentData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
+            ArgumentData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
+            ArgumentData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
+            ArgumentData::LogicalExpression(it) => Self::LogicalExpression(it.clone_in(ast)),
+            ArgumentData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+            ArgumentData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
+            ArgumentData::AssignmentExpression(it) => Self::AssignmentExpression(it.clone_in(ast)),
+            ArgumentData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            ArgumentData::SequenceExpression(it) => Self::SequenceExpression(it.clone_in(ast)),
+            ArgumentData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            ArgumentData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
+            ArgumentData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
+            ArgumentData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
+            ArgumentData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            ArgumentData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            ArgumentData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
+            ArgumentData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
+            ArgumentData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            ArgumentData::FunctionExpression(it) => Self::FunctionExpression(it.clone_in(ast)),
+            ArgumentData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
+            ArgumentData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
+            ArgumentData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
+            ArgumentData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            ArgumentData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
+            ArgumentData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            ArgumentData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            ArgumentData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            ArgumentData::TsNonNullExpression(it) => Self::TsNonNullExpression(it.clone_in(ast)),
+            ArgumentData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            ArgumentData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            ArgumentData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
         }
     }
 }
@@ -249,7 +378,72 @@ impl<'a> CloneIn<'a> for ForStatementInit {
             ForStatementInitData::VariableDeclaration(it) => {
                 Self::VariableDeclaration(it.clone_in(ast))
             }
-            ForStatementInitData::Expr(it) => Self::Expr(it.clone_in(ast)),
+            ForStatementInitData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            ForStatementInitData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
+            ForStatementInitData::Super(it) => Self::Super(it.clone_in(ast)),
+            ForStatementInitData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
+            ForStatementInitData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
+            ForStatementInitData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
+            ForStatementInitData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
+            ForStatementInitData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
+            ForStatementInitData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            ForStatementInitData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
+            ForStatementInitData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
+            ForStatementInitData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
+            ForStatementInitData::LogicalExpression(it) => {
+                Self::LogicalExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+            ForStatementInitData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
+            ForStatementInitData::AssignmentExpression(it) => {
+                Self::AssignmentExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::SequenceExpression(it) => {
+                Self::SequenceExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            ForStatementInitData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
+            ForStatementInitData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
+            ForStatementInitData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
+            ForStatementInitData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
+            ForStatementInitData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
+            ForStatementInitData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::FunctionExpression(it) => {
+                Self::FunctionExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
+            ForStatementInitData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
+            ForStatementInitData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
+            ForStatementInitData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            ForStatementInitData::PrivateIdentifier(it) => {
+                Self::PrivateIdentifier(it.clone_in(ast))
+            }
+            ForStatementInitData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            ForStatementInitData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            ForStatementInitData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            ForStatementInitData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            ForStatementInitData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
         }
     }
 }
@@ -262,7 +456,24 @@ impl<'a> CloneIn<'a> for ForStatementLeft {
             ForStatementLeftData::VariableDeclaration(it) => {
                 Self::VariableDeclaration(it.clone_in(ast))
             }
-            ForStatementLeftData::AssignmentTarget(it) => Self::AssignmentTarget(it.clone_in(ast)),
+            ForStatementLeftData::ArrayAssignmentTarget(it) => {
+                Self::ArrayAssignmentTarget(it.clone_in(ast))
+            }
+            ForStatementLeftData::ObjectAssignmentTarget(it) => {
+                Self::ObjectAssignmentTarget(it.clone_in(ast))
+            }
+            ForStatementLeftData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            ForStatementLeftData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            ForStatementLeftData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            ForStatementLeftData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            ForStatementLeftData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            ForStatementLeftData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
         }
     }
 }
@@ -273,7 +484,72 @@ impl<'a> CloneIn<'a> for ArrowFunctionBody {
         let data = ast.arrow_function_body_data(*self);
         match data {
             ArrowFunctionBodyData::FunctionBody(it) => Self::FunctionBody(it.clone_in(ast)),
-            ArrowFunctionBodyData::Expr(it) => Self::Expr(it.clone_in(ast)),
+            ArrowFunctionBodyData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::Super(it) => Self::Super(it.clone_in(ast)),
+            ArrowFunctionBodyData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
+            ArrowFunctionBodyData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
+            ArrowFunctionBodyData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::LogicalExpression(it) => {
+                Self::LogicalExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::AssignmentExpression(it) => {
+                Self::AssignmentExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::SequenceExpression(it) => {
+                Self::SequenceExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::FunctionExpression(it) => {
+                Self::FunctionExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::PrivateIdentifier(it) => {
+                Self::PrivateIdentifier(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            ArrowFunctionBodyData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            ArrowFunctionBodyData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            ArrowFunctionBodyData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            ArrowFunctionBodyData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
         }
     }
 }
@@ -296,11 +572,37 @@ impl<'a> CloneIn<'a> for FormalParameterPattern {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.formal_parameter_pattern_data(*self);
         match data {
-            FormalParameterPatternData::BindingPattern(it) => {
-                Self::BindingPattern(it.clone_in(ast))
-            }
             FormalParameterPatternData::TsThisParameter(it) => {
                 Self::TsThisParameter(it.clone_in(ast))
+            }
+            FormalParameterPatternData::BindingIdentifier(it) => {
+                Self::BindingIdentifier(it.clone_in(ast))
+            }
+            FormalParameterPatternData::AssignmentPattern(it) => {
+                Self::AssignmentPattern(it.clone_in(ast))
+            }
+            FormalParameterPatternData::BindingRestElement(it) => {
+                Self::BindingRestElement(it.clone_in(ast))
+            }
+            FormalParameterPatternData::ArrayPattern(it) => Self::ArrayPattern(it.clone_in(ast)),
+            FormalParameterPatternData::ObjectPattern(it) => Self::ObjectPattern(it.clone_in(ast)),
+            FormalParameterPatternData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            FormalParameterPatternData::MemberExpression(it) => {
+                Self::MemberExpression(it.clone_in(ast))
+            }
+            FormalParameterPatternData::TsAsExpression(it) => {
+                Self::TsAsExpression(it.clone_in(ast))
+            }
+            FormalParameterPatternData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            FormalParameterPatternData::TsTypeAssertion(it) => {
+                Self::TsTypeAssertion(it.clone_in(ast))
+            }
+            FormalParameterPatternData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
             }
         }
     }
@@ -343,12 +645,131 @@ impl<'a> CloneIn<'a> for ExportDefaultDeclarationKind {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.export_default_declaration_kind_data(*self);
         match data {
-            ExportDefaultDeclarationKindData::Expr(it) => Self::Expr(it.clone_in(ast)),
-            ExportDefaultDeclarationKindData::Function(it) => Self::Function(it.clone_in(ast)),
-            ExportDefaultDeclarationKindData::Class(it) => Self::Class(it.clone_in(ast)),
+            ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
+                Self::FunctionDeclaration(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
+                Self::ClassDeclaration(it.clone_in(ast))
+            }
             ExportDefaultDeclarationKindData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
                 Self::TsInterfaceDeclaration(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ThisExpression(it) => {
+                Self::ThisExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::Super(it) => Self::Super(it.clone_in(ast)),
+            ExportDefaultDeclarationKindData::MetaProperty(it) => {
+                Self::MetaProperty(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::StringLiteral(it) => {
+                Self::StringLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::NumericLiteral(it) => {
+                Self::NumericLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::BigIntLiteral(it) => {
+                Self::BigIntLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::BooleanLiteral(it) => {
+                Self::BooleanLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::NullLiteral(it) => {
+                Self::NullLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::RegExpLiteral(it) => {
+                Self::RegExpLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TemplateLiteral(it) => {
+                Self::TemplateLiteral(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::BinaryExpression(it) => {
+                Self::BinaryExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::LogicalExpression(it) => {
+                Self::LogicalExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::UnaryExpression(it) => {
+                Self::UnaryExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::UpdateExpression(it) => {
+                Self::UpdateExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::AssignmentExpression(it) => {
+                Self::AssignmentExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::SequenceExpression(it) => {
+                Self::SequenceExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::MemberExpression(it) => {
+                Self::MemberExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::CallExpression(it) => {
+                Self::CallExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ChainExpression(it) => {
+                Self::ChainExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::NewExpression(it) => {
+                Self::NewExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ArrayExpression(it) => {
+                Self::ArrayExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ObjectExpression(it) => {
+                Self::ObjectExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::FunctionExpression(it) => {
+                Self::FunctionExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ClassExpression(it) => {
+                Self::ClassExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::ImportExpression(it) => {
+                Self::ImportExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::AwaitExpression(it) => {
+                Self::AwaitExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::YieldExpression(it) => {
+                Self::YieldExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::PrivateIdentifier(it) => {
+                Self::PrivateIdentifier(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TsAsExpression(it) => {
+                Self::TsAsExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TsTypeAssertion(it) => {
+                Self::TsTypeAssertion(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            ExportDefaultDeclarationKindData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            ExportDefaultDeclarationKindData::JsxFragment(it) => {
+                Self::JsxFragment(it.clone_in(ast))
             }
         }
     }
@@ -1427,9 +1848,12 @@ impl<'a> CloneIn<'a> for TsTypeQueryExprName {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.ts_type_query_expr_name_data(*self);
         match data {
-            TsTypeQueryExprNameData::TsTypeName(it) => Self::TsTypeName(it.clone_in(ast)),
             TsTypeQueryExprNameData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
             TsTypeQueryExprNameData::TsImportType(it) => Self::TsImportType(it.clone_in(ast)),
+            TsTypeQueryExprNameData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            TsTypeQueryExprNameData::TsQualifiedName(it) => Self::TsQualifiedName(it.clone_in(ast)),
         }
     }
 }
@@ -1454,10 +1878,65 @@ impl<'a> CloneIn<'a> for TsTupleElement {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.ts_tuple_element_data(*self);
         match data {
-            TsTupleElementData::TsType(it) => Self::TsType(it.clone_in(ast)),
             TsTupleElementData::TsNamedTupleMember(it) => {
                 Self::TsNamedTupleMember(it.clone_in(ast))
             }
+            TsTupleElementData::TsAnyKeyword(it) => Self::TsAnyKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsUnknownKeyword(it) => Self::TsUnknownKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsNeverKeyword(it) => Self::TsNeverKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsVoidKeyword(it) => Self::TsVoidKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsNullKeyword(it) => Self::TsNullKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsUndefinedKeyword(it) => {
+                Self::TsUndefinedKeyword(it.clone_in(ast))
+            }
+            TsTupleElementData::TsStringKeyword(it) => Self::TsStringKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsNumberKeyword(it) => Self::TsNumberKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsBigIntKeyword(it) => Self::TsBigIntKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsBooleanKeyword(it) => Self::TsBooleanKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsSymbolKeyword(it) => Self::TsSymbolKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsObjectKeyword(it) => Self::TsObjectKeyword(it.clone_in(ast)),
+            TsTupleElementData::TsIntrinsicKeyword(it) => {
+                Self::TsIntrinsicKeyword(it.clone_in(ast))
+            }
+            TsTupleElementData::TsThisType(it) => Self::TsThisType(it.clone_in(ast)),
+            TsTupleElementData::TsTypeReference(it) => Self::TsTypeReference(it.clone_in(ast)),
+            TsTupleElementData::TsTypeQuery(it) => Self::TsTypeQuery(it.clone_in(ast)),
+            TsTupleElementData::TsImportType(it) => Self::TsImportType(it.clone_in(ast)),
+            TsTupleElementData::TsLiteralType(it) => Self::TsLiteralType(it.clone_in(ast)),
+            TsTupleElementData::TsTemplateLiteralType(it) => {
+                Self::TsTemplateLiteralType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsArrayType(it) => Self::TsArrayType(it.clone_in(ast)),
+            TsTupleElementData::TsIndexedAccessType(it) => {
+                Self::TsIndexedAccessType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsTupleType(it) => Self::TsTupleType(it.clone_in(ast)),
+            TsTupleElementData::TsOptionalType(it) => Self::TsOptionalType(it.clone_in(ast)),
+            TsTupleElementData::TsRestType(it) => Self::TsRestType(it.clone_in(ast)),
+            TsTupleElementData::TsJsDocNullableType(it) => {
+                Self::TsJsDocNullableType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsJsDocNonNullableType(it) => {
+                Self::TsJsDocNonNullableType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsJsDocUnknownType(it) => {
+                Self::TsJsDocUnknownType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsUnionType(it) => Self::TsUnionType(it.clone_in(ast)),
+            TsTupleElementData::TsIntersectionType(it) => {
+                Self::TsIntersectionType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsConditionalType(it) => Self::TsConditionalType(it.clone_in(ast)),
+            TsTupleElementData::TsInferType(it) => Self::TsInferType(it.clone_in(ast)),
+            TsTupleElementData::TsTypeOperator(it) => Self::TsTypeOperator(it.clone_in(ast)),
+            TsTupleElementData::TsParenthesizedType(it) => {
+                Self::TsParenthesizedType(it.clone_in(ast))
+            }
+            TsTupleElementData::TsFunctionType(it) => Self::TsFunctionType(it.clone_in(ast)),
+            TsTupleElementData::TsConstructorType(it) => Self::TsConstructorType(it.clone_in(ast)),
+            TsTupleElementData::TsTypePredicate(it) => Self::TsTypePredicate(it.clone_in(ast)),
+            TsTupleElementData::TsTypeLiteral(it) => Self::TsTypeLiteral(it.clone_in(ast)),
+            TsTupleElementData::TsMappedType(it) => Self::TsMappedType(it.clone_in(ast)),
         }
     }
 }
@@ -1499,9 +1978,72 @@ impl<'a> CloneIn<'a> for TsEnumMemberName {
         let data = ast.ts_enum_member_name_data(*self);
         match data {
             TsEnumMemberNameData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
+            TsEnumMemberNameData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::Super(it) => Self::Super(it.clone_in(ast)),
+            TsEnumMemberNameData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
             TsEnumMemberNameData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
+            TsEnumMemberNameData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
+            TsEnumMemberNameData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
+            TsEnumMemberNameData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
+            TsEnumMemberNameData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            TsEnumMemberNameData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
             TsEnumMemberNameData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
-            TsEnumMemberNameData::Expr(it) => Self::Expr(it.clone_in(ast)),
+            TsEnumMemberNameData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::LogicalExpression(it) => {
+                Self::LogicalExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::AssignmentExpression(it) => {
+                Self::AssignmentExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::SequenceExpression(it) => {
+                Self::SequenceExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::FunctionExpression(it) => {
+                Self::FunctionExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::PrivateIdentifier(it) => {
+                Self::PrivateIdentifier(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            TsEnumMemberNameData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            TsEnumMemberNameData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            TsEnumMemberNameData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            TsEnumMemberNameData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
         }
     }
 }
@@ -1536,10 +2078,13 @@ impl<'a> CloneIn<'a> for TsModuleReference {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.ts_module_reference_data(*self);
         match data {
-            TsModuleReferenceData::TsTypeName(it) => Self::TsTypeName(it.clone_in(ast)),
             TsModuleReferenceData::TsExternalModuleReference(it) => {
                 Self::TsExternalModuleReference(it.clone_in(ast))
             }
+            TsModuleReferenceData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            TsModuleReferenceData::TsQualifiedName(it) => Self::TsQualifiedName(it.clone_in(ast)),
         }
     }
 }
@@ -2401,8 +2946,65 @@ impl<'a> CloneIn<'a> for JsxExpression {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let data = ast.jsx_expression_data(*self);
         match data {
-            JsxExpressionData::Expr(it) => Self::Expr(it.clone_in(ast)),
             JsxExpressionData::JsxEmptyExpression(it) => Self::JsxEmptyExpression(it.clone_in(ast)),
+            JsxExpressionData::IdentifierReference(it) => {
+                Self::IdentifierReference(it.clone_in(ast))
+            }
+            JsxExpressionData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
+            JsxExpressionData::Super(it) => Self::Super(it.clone_in(ast)),
+            JsxExpressionData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
+            JsxExpressionData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
+            JsxExpressionData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
+            JsxExpressionData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
+            JsxExpressionData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
+            JsxExpressionData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
+            JsxExpressionData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
+            JsxExpressionData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
+            JsxExpressionData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
+            JsxExpressionData::LogicalExpression(it) => Self::LogicalExpression(it.clone_in(ast)),
+            JsxExpressionData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+            JsxExpressionData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
+            JsxExpressionData::AssignmentExpression(it) => {
+                Self::AssignmentExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::ConditionalExpression(it) => {
+                Self::ConditionalExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::SequenceExpression(it) => Self::SequenceExpression(it.clone_in(ast)),
+            JsxExpressionData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
+            JsxExpressionData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
+            JsxExpressionData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
+            JsxExpressionData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
+            JsxExpressionData::TaggedTemplateExpression(it) => {
+                Self::TaggedTemplateExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::ArrowFunctionExpression(it) => {
+                Self::ArrowFunctionExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
+            JsxExpressionData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
+            JsxExpressionData::ParenthesizedExpression(it) => {
+                Self::ParenthesizedExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::FunctionExpression(it) => Self::FunctionExpression(it.clone_in(ast)),
+            JsxExpressionData::ClassExpression(it) => Self::ClassExpression(it.clone_in(ast)),
+            JsxExpressionData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
+            JsxExpressionData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
+            JsxExpressionData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            JsxExpressionData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
+            JsxExpressionData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
+            JsxExpressionData::TsSatisfiesExpression(it) => {
+                Self::TsSatisfiesExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            JsxExpressionData::TsNonNullExpression(it) => {
+                Self::TsNonNullExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::TsInstantiationExpression(it) => {
+                Self::TsInstantiationExpression(it.clone_in(ast))
+            }
+            JsxExpressionData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
+            JsxExpressionData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
         }
     }
 }

@@ -125,25 +125,25 @@ fn generate_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {
                 variant.name.as_str(),
                 node_kind_name.as_str(),
             ) {
-                // `Expr` also contains function and class nodes. Recover their
-                // declaration/expression form from the concrete node payload.
-                ("ExportDefaultDeclarationKind", "Expr", "Function") => quote! {
+                // Function and class declarations share their concrete node types with function
+                // and class expressions. Recover the semantic variant from the concrete payload.
+                ("ExportDefaultDeclarationKind", "FunctionDeclaration", "Function") => quote! {
                     NodeKind::Function => {
                         let function = Function(node.0);
                         if function.function_type(self) == FunctionType::FunctionDeclaration {
-                            #data_ident::Function(function)
+                            #data_ident::FunctionDeclaration(function)
                         } else {
-                            #data_ident::Expr(#payload_ident(node.0))
+                            #data_ident::FunctionExpression(function)
                         }
                     },
                 },
-                ("ExportDefaultDeclarationKind", "Expr", "Class") => quote! {
+                ("ExportDefaultDeclarationKind", "ClassDeclaration", "Class") => quote! {
                     NodeKind::Class => {
                         let class = Class(node.0);
                         if class.class_type(self) == ClassType::ClassDeclaration {
-                            #data_ident::Class(class)
+                            #data_ident::ClassDeclaration(class)
                         } else {
-                            #data_ident::Expr(#payload_ident(node.0))
+                            #data_ident::ClassExpression(class)
                         }
                     },
                 },

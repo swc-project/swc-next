@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -298,8 +300,65 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 let mut visit_children_arms = TokenStream::new();
                 let mut visit_mut_children_arms = TokenStream::new();
                 let mut traverse_arms = TokenStream::new();
+                let mut grouped_variants = HashSet::new();
+
+                // Dispatch manually expanded variants through their group enum first. This keeps
+                // hooks such as `visit_expr` observable when an expression is stored in a wider
+                // enum such as `Argument` or `Stmt`.
+                for group_name in &ast.groups {
+                    let group = enum_by_name(group_name, schema);
+                    for variant in &group.variants {
+                        assert!(
+                            grouped_variants.insert(variant.name.as_str()),
+                            "variant `{}` belongs to multiple direct groups of `{}`",
+                            variant.name,
+                            ast.name,
+                        );
+                    }
+
+                    let group_ident = format_ident!("{}", group.name);
+                    let match_group = format_ident!("match_{}", group.name.to_case(Case::Snake));
+                    visit_children_arms.extend(quote! {
+                        #match_group!(#data_ident) => {
+                            <#group_ident as VisitWith<'a, V>>::visit_with(
+                                #group_ident(self.0),
+                                visitor,
+                            )
+                        },
+                    });
+                    visit_mut_children_arms.extend(quote! {
+                        #match_group!(#data_ident) => {
+                            <#group_ident as VisitMutWith<'a, V>>::visit_mut_with(
+                                #group_ident(self.0),
+                                visitor,
+                            ).map(<#ty_ident as From<#group_ident>>::from)
+                        },
+                    });
+                    traverse_arms.extend(quote! {
+                        #match_group!(#data_ident) => {
+                            match <#group_ident as TraverseWith<'a, State>>::traverse_with(
+                                #group_ident(self.0),
+                                traverser,
+                                ctx,
+                            ) {
+                                TraverseAction::Proceed => TraverseAction::Proceed,
+                                TraverseAction::Skip => TraverseAction::Skip,
+                                TraverseAction::Stop => TraverseAction::Stop,
+                                TraverseAction::Replace(replacement) => {
+                                    TraverseAction::Replace(
+                                        <#ty_ident as From<#group_ident>>::from(replacement)
+                                    )
+                                }
+                            }
+                        },
+                    });
+                }
 
                 for variant in ast.variants.iter() {
+                    if grouped_variants.contains(variant.name.as_str()) {
+                        continue;
+                    }
+
                     let Some(variant_type_id) = variant.type_id else {
                         continue;
                     };
@@ -683,6 +742,17 @@ fn should_visit_type(type_id: TypeId, schema: &Schema) -> bool {
         AstType::Option(ast) => should_visit_type(ast.inner_type_id, schema),
         AstType::Primitive(_) => false,
     }
+}
+
+fn enum_by_name<'a>(name: &str, schema: &'a Schema) -> &'a crate::schema::AstEnum {
+    schema
+        .types
+        .iter()
+        .find_map(|ty| match ty {
+            AstType::Enum(ast_enum) if ast_enum.name == name => Some(ast_enum),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("unknown AST enum `{name}` in `group(...)`"))
 }
 
 fn wrap_replacement(type_id: TypeId, replacement: TokenStream, schema: &Schema) -> TokenStream {

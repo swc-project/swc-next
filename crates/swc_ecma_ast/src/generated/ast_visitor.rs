@@ -1444,6 +1444,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().stmt_data(self) {
+            match_decl!(StmtData) => <Decl as VisitWith<'a, V>>::visit_with(Decl(self.0), visitor),
             StmtData::BlockStatement(it) => {
                 <BlockStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1496,7 +1497,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
             StmtData::WithStatement(it) => {
                 <WithStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::Declaration(it) => <Decl as VisitWith<'a, V>>::visit_with(it, visitor),
             StmtData::ImportDeclaration(it) => {
                 <ImportDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1529,8 +1529,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decl {
             DeclData::VariableDeclaration(it) => {
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            DeclData::FunctionDeclaration(it) => {
+                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            DeclData::ClassDeclaration(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
             DeclData::TsFunction(it) => <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor),
             DeclData::TsTypeAliasDeclaration(it) => {
                 <TsTypeAliasDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -1638,8 +1640,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
             ExprData::ParenthesizedExpression(it) => {
                 <ParenthesizedExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::FunctionExpression(it) => {
+                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ClassExpression(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
             ExprData::ImportExpression(it) => {
                 <ImportExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1680,11 +1684,14 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingPattern {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().binding_pattern_data(self) {
+            match_simple_assignment_target!(BindingPatternData) => {
+                <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(
+                    SimpleAssignmentTarget(self.0),
+                    visitor,
+                )
+            }
             BindingPatternData::BindingIdentifier(it) => {
                 <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            BindingPatternData::SimpleAssignmentTarget(it) => {
-                <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             BindingPatternData::AssignmentPattern(it) => {
                 <AssignmentPattern as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -1709,8 +1716,11 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentTarget {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().assignment_target_data(self) {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
-                <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
+            match_simple_assignment_target!(AssignmentTargetData) => {
+                <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(
+                    SimpleAssignmentTarget(self.0),
+                    visitor,
+                )
             }
             AssignmentTargetData::ArrayAssignmentTarget(it) => {
                 <ArrayPattern as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -1758,22 +1768,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyKey {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().property_key_data(self) {
+            match_expr!(PropertyKeyData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
+            }
             PropertyKeyData::IdentifierName(it) => {
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropertyKeyData::PrivateIdentifier(it) => {
-                <PrivateIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            PropertyKeyData::StringLiteral(it) => {
-                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            PropertyKeyData::NumericLiteral(it) => {
-                <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            PropertyKeyData::BigIntLiteral(it) => {
-                <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            PropertyKeyData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -1802,7 +1802,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Argument {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().argument_data(self) {
-            ArgumentData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            match_expr!(ArgumentData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
+            }
             ArgumentData::SpreadElement(it) => {
                 <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1834,10 +1836,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatementInit {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().for_statement_init_data(self) {
+            match_expr!(ForStatementInitData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
+            }
             ForStatementInitData::VariableDeclaration(it) => {
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ForStatementInitData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -1849,11 +1853,14 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatementLeft {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().for_statement_left_data(self) {
+            match_assignment_target!(ForStatementLeftData) => {
+                <AssignmentTarget as VisitWith<'a, V>>::visit_with(
+                    AssignmentTarget(self.0),
+                    visitor,
+                )
+            }
             ForStatementLeftData::VariableDeclaration(it) => {
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ForStatementLeftData::AssignmentTarget(it) => {
-                <AssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
     }
@@ -1866,10 +1873,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowFunctionBody {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().arrow_function_body_data(self) {
+            match_expr!(ArrowFunctionBodyData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
+            }
             ArrowFunctionBodyData::FunctionBody(it) => {
                 <FunctionBody as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ArrowFunctionBodyData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -1898,8 +1907,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameterPattern {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::BindingPattern(it) => {
-                <BindingPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            match_binding_pattern!(FormalParameterPatternData) => {
+                <BindingPattern as VisitWith<'a, V>>::visit_with(BindingPattern(self.0), visitor)
             }
             FormalParameterPatternData::TsThisParameter(it) => {
                 <TsThisParameter as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -1961,13 +1970,13 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclarationKin
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Expr(it) => {
-                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            match_expr!(ExportDefaultDeclarationKindData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
             }
-            ExportDefaultDeclarationKindData::Function(it) => {
+            ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
                 <Function as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExportDefaultDeclarationKindData::Class(it) => {
+            ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
                 <Class as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             ExportDefaultDeclarationKindData::TsFunction(it) => {
@@ -3241,8 +3250,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeQueryExprName {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsTypeName(it) => {
-                <TsTypeName as VisitWith<'a, V>>::visit_with(it, visitor)
+            match_ts_type_name!(TsTypeQueryExprNameData) => {
+                <TsTypeName as VisitWith<'a, V>>::visit_with(TsTypeName(self.0), visitor)
             }
             TsTypeQueryExprNameData::ThisExpression(it) => {
                 <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -3290,7 +3299,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTupleElement {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().ts_tuple_element_data(self) {
-            TsTupleElementData::TsType(it) => <TsType as VisitWith<'a, V>>::visit_with(it, visitor),
+            match_ts_type!(TsTupleElementData) => {
+                <TsType as VisitWith<'a, V>>::visit_with(TsType(self.0), visitor)
+            }
             TsTupleElementData::TsNamedTupleMember(it) => {
                 <TsNamedTupleMember as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -3348,16 +3359,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMemberName {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().ts_enum_member_name_data(self) {
+            match_expr!(TsEnumMemberNameData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
+            }
             TsEnumMemberNameData::IdentifierName(it) => {
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsEnumMemberNameData::StringLiteral(it) => {
-                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            TsEnumMemberNameData::TemplateLiteral(it) => {
-                <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            TsEnumMemberNameData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -3406,8 +3413,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleReference {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().ts_module_reference_data(self) {
-            TsModuleReferenceData::TsTypeName(it) => {
-                <TsTypeName as VisitWith<'a, V>>::visit_with(it, visitor)
+            match_ts_type_name!(TsModuleReferenceData) => {
+                <TsTypeName as VisitWith<'a, V>>::visit_with(TsTypeName(self.0), visitor)
             }
             TsModuleReferenceData::TsExternalModuleReference(it) => {
                 <TsExternalModuleReference as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -4425,7 +4432,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxExpression {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().jsx_expression_data(self) {
-            JsxExpressionData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            match_expr!(JsxExpressionData) => {
+                <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
+            }
             JsxExpressionData::JsxEmptyExpression(it) => {
                 <JsxEmptyExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -6772,6 +6781,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().stmt_data(self);
         match data {
+            match_decl!(StmtData) => {
+                <Decl as VisitMutWith<'a, V>>::visit_mut_with(Decl(self.0), visitor)
+                    .map(<Stmt as From<Decl>>::from)
+            }
             StmtData::BlockStatement(it) => {
                 <BlockStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::BlockStatement)
@@ -6844,9 +6857,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
                 <WithStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::WithStatement)
             }
-            StmtData::Declaration(it) => {
-                <Decl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Stmt::Declaration)
-            }
             StmtData::ImportDeclaration(it) => {
                 <ImportDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ImportDeclaration)
@@ -6887,11 +6897,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decl {
                 <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::VariableDeclaration)
             }
-            DeclData::Function(it) => {
-                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Decl::Function)
+            DeclData::FunctionDeclaration(it) => {
+                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                    .map(Decl::FunctionDeclaration)
             }
-            DeclData::Class(it) => {
-                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Decl::Class)
+            DeclData::ClassDeclaration(it) => {
+                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                    .map(Decl::ClassDeclaration)
             }
             DeclData::TsFunction(it) => {
                 <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7040,11 +7052,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
                 <ParenthesizedExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ParenthesizedExpression)
             }
-            ExprData::Function(it) => {
-                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Expr::Function)
+            ExprData::FunctionExpression(it) => {
+                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                    .map(Expr::FunctionExpression)
             }
-            ExprData::Class(it) => {
-                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Expr::Class)
+            ExprData::ClassExpression(it) => {
+                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                    .map(Expr::ClassExpression)
             }
             ExprData::ImportExpression(it) => {
                 <ImportExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7102,13 +7116,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingPattern {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().binding_pattern_data(self);
         match data {
+            match_simple_assignment_target!(BindingPatternData) => {
+                <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(
+                    SimpleAssignmentTarget(self.0),
+                    visitor,
+                )
+                .map(<BindingPattern as From<SimpleAssignmentTarget>>::from)
+            }
             BindingPatternData::BindingIdentifier(it) => {
                 <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::BindingIdentifier)
-            }
-            BindingPatternData::SimpleAssignmentTarget(it) => {
-                <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(BindingPattern::SimpleAssignmentTarget)
             }
             BindingPatternData::AssignmentPattern(it) => {
                 <AssignmentPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7138,9 +7155,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentTarget {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().assignment_target_data(self);
         match data {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
-                <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(AssignmentTarget::SimpleAssignmentTarget)
+            match_simple_assignment_target!(AssignmentTargetData) => {
+                <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(
+                    SimpleAssignmentTarget(self.0),
+                    visitor,
+                )
+                .map(<AssignmentTarget as From<SimpleAssignmentTarget>>::from)
             }
             AssignmentTargetData::ArrayAssignmentTarget(it) => {
                 <ArrayPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7198,28 +7218,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyKey {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().property_key_data(self);
         match data {
+            match_expr!(PropertyKeyData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<PropertyKey as From<Expr>>::from)
+            }
             PropertyKeyData::IdentifierName(it) => {
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::IdentifierName)
-            }
-            PropertyKeyData::PrivateIdentifier(it) => {
-                <PrivateIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::PrivateIdentifier)
-            }
-            PropertyKeyData::StringLiteral(it) => {
-                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::StringLiteral)
-            }
-            PropertyKeyData::NumericLiteral(it) => {
-                <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::NumericLiteral)
-            }
-            PropertyKeyData::BigIntLiteral(it) => {
-                <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::BigIntLiteral)
-            }
-            PropertyKeyData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(PropertyKey::Expr)
             }
         }
     }
@@ -7253,8 +7258,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Argument {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().argument_data(self);
         match data {
-            ArgumentData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Argument::Expr)
+            match_expr!(ArgumentData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<Argument as From<Expr>>::from)
             }
             ArgumentData::SpreadElement(it) => {
                 <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7292,13 +7298,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatementInit {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().for_statement_init_data(self);
         match data {
+            match_expr!(ForStatementInitData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<ForStatementInit as From<Expr>>::from)
+            }
             ForStatementInitData::VariableDeclaration(it) => {
                 <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ForStatementInit::VariableDeclaration)
-            }
-            ForStatementInitData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ForStatementInit::Expr)
             }
         }
     }
@@ -7312,13 +7318,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatementLeft {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().for_statement_left_data(self);
         match data {
+            match_assignment_target!(ForStatementLeftData) => {
+                <AssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(
+                    AssignmentTarget(self.0),
+                    visitor,
+                )
+                .map(<ForStatementLeft as From<AssignmentTarget>>::from)
+            }
             ForStatementLeftData::VariableDeclaration(it) => {
                 <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ForStatementLeft::VariableDeclaration)
-            }
-            ForStatementLeftData::AssignmentTarget(it) => {
-                <AssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ForStatementLeft::AssignmentTarget)
             }
         }
     }
@@ -7332,13 +7341,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrowFunctionBody {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().arrow_function_body_data(self);
         match data {
+            match_expr!(ArrowFunctionBodyData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<ArrowFunctionBody as From<Expr>>::from)
+            }
             ArrowFunctionBodyData::FunctionBody(it) => {
                 <FunctionBody as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ArrowFunctionBody::FunctionBody)
-            }
-            ArrowFunctionBodyData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ArrowFunctionBody::Expr)
             }
         }
     }
@@ -7372,9 +7381,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameterPatter
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().formal_parameter_pattern_data(self);
         match data {
-            FormalParameterPatternData::BindingPattern(it) => {
-                <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(FormalParameterPattern::BindingPattern)
+            match_binding_pattern!(FormalParameterPatternData) => {
+                <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(
+                    BindingPattern(self.0),
+                    visitor,
+                )
+                .map(<FormalParameterPattern as From<BindingPattern>>::from)
             }
             FormalParameterPatternData::TsThisParameter(it) => {
                 <TsThisParameter as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7448,17 +7460,17 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDeclarat
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().export_default_declaration_kind_data(self);
         match data {
-            ExportDefaultDeclarationKindData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ExportDefaultDeclarationKind::Expr)
+            match_expr!(ExportDefaultDeclarationKindData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<ExportDefaultDeclarationKind as From<Expr>>::from)
             }
-            ExportDefaultDeclarationKindData::Function(it) => {
+            ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
                 <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ExportDefaultDeclarationKind::Function)
+                    .map(ExportDefaultDeclarationKind::FunctionDeclaration)
             }
-            ExportDefaultDeclarationKindData::Class(it) => {
+            ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
                 <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ExportDefaultDeclarationKind::Class)
+                    .map(ExportDefaultDeclarationKind::ClassDeclaration)
             }
             ExportDefaultDeclarationKindData::TsFunction(it) => {
                 <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -9522,9 +9534,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeQueryExprName {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().ts_type_query_expr_name_data(self);
         match data {
-            TsTypeQueryExprNameData::TsTypeName(it) => {
-                <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsTypeQueryExprName::TsTypeName)
+            match_ts_type_name!(TsTypeQueryExprNameData) => {
+                <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(TsTypeName(self.0), visitor)
+                    .map(<TsTypeQueryExprName as From<TsTypeName>>::from)
             }
             TsTypeQueryExprNameData::ThisExpression(it) => {
                 <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -9582,9 +9594,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTupleElement {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().ts_tuple_element_data(self);
         match data {
-            TsTupleElementData::TsType(it) => {
-                <TsType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsTupleElement::TsType)
+            match_ts_type!(TsTupleElementData) => {
+                <TsType as VisitMutWith<'a, V>>::visit_mut_with(TsType(self.0), visitor)
+                    .map(<TsTupleElement as From<TsType>>::from)
             }
             TsTupleElementData::TsNamedTupleMember(it) => {
                 <TsNamedTupleMember as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -9656,21 +9668,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumMemberName {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().ts_enum_member_name_data(self);
         match data {
+            match_expr!(TsEnumMemberNameData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<TsEnumMemberName as From<Expr>>::from)
+            }
             TsEnumMemberNameData::IdentifierName(it) => {
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::IdentifierName)
-            }
-            TsEnumMemberNameData::StringLiteral(it) => {
-                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsEnumMemberName::StringLiteral)
-            }
-            TsEnumMemberNameData::TemplateLiteral(it) => {
-                <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsEnumMemberName::TemplateLiteral)
-            }
-            TsEnumMemberNameData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsEnumMemberName::Expr)
             }
         }
     }
@@ -9728,9 +9732,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleReference {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().ts_module_reference_data(self);
         match data {
-            TsModuleReferenceData::TsTypeName(it) => {
-                <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsModuleReference::TsTypeName)
+            match_ts_type_name!(TsModuleReferenceData) => {
+                <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(TsTypeName(self.0), visitor)
+                    .map(<TsModuleReference as From<TsTypeName>>::from)
             }
             TsModuleReferenceData::TsExternalModuleReference(it) => {
                 <TsExternalModuleReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -11331,8 +11335,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxExpression {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let data = visitor.ast().jsx_expression_data(self);
         match data {
-            JsxExpressionData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(JsxExpression::Expr)
+            match_expr!(JsxExpressionData) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(Expr(self.0), visitor)
+                    .map(<JsxExpression as From<Expr>>::from)
             }
             JsxExpressionData::JsxEmptyExpression(it) => {
                 <JsxEmptyExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -14662,6 +14667,17 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.stmt_data(self) {
+            match_decl!(StmtData) => {
+                match <Decl as TraverseWith<'a, State>>::traverse_with(Decl(self.0), traverser, ctx)
+                {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => {
+                        TraverseAction::Replace(<Stmt as From<Decl>>::from(replacement))
+                    }
+                }
+            }
             StmtData::BlockStatement(it) => {
                 match <BlockStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
@@ -14864,16 +14880,6 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::Declaration(it) => {
-                match <Decl as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Stmt::Declaration(replacement))
-                    }
-                }
-            }
             StmtData::ImportDeclaration(it) => {
                 match <ImportDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
@@ -14970,23 +14976,23 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::Function(it) => {
+            DeclData::FunctionDeclaration(it) => {
                 match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Decl::Function(replacement))
+                        TraverseAction::Replace(Decl::FunctionDeclaration(replacement))
                     }
                 }
             }
-            DeclData::Class(it) => {
+            DeclData::ClassDeclaration(it) => {
                 match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Decl::Class(replacement))
+                        TraverseAction::Replace(Decl::ClassDeclaration(replacement))
                     }
                 }
             }
@@ -15394,23 +15400,23 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::Function(it) => {
+            ExprData::FunctionExpression(it) => {
                 match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Expr::Function(replacement))
+                        TraverseAction::Replace(Expr::FunctionExpression(replacement))
                     }
                 }
             }
-            ExprData::Class(it) => {
+            ExprData::ClassExpression(it) => {
                 match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Expr::Class(replacement))
+                        TraverseAction::Replace(Expr::ClassExpression(replacement))
                     }
                 }
             }
@@ -15553,6 +15559,20 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.binding_pattern_data(self) {
+            match_simple_assignment_target!(BindingPatternData) => {
+                match <SimpleAssignmentTarget as TraverseWith<'a, State>>::traverse_with(
+                    SimpleAssignmentTarget(self.0),
+                    traverser,
+                    ctx,
+                ) {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <BindingPattern as From<SimpleAssignmentTarget>>::from(replacement),
+                    ),
+                }
+            }
             BindingPatternData::BindingIdentifier(it) => {
                 match <BindingIdentifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
@@ -15562,18 +15582,6 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(BindingPattern::BindingIdentifier(replacement))
-                    }
-                }
-            }
-            BindingPatternData::SimpleAssignmentTarget(it) => {
-                match <SimpleAssignmentTarget as TraverseWith<'a, State>>::traverse_with(
-                    it, traverser, ctx,
-                ) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(BindingPattern::SimpleAssignmentTarget(replacement))
                     }
                 }
             }
@@ -15634,16 +15642,20 @@ impl<'a, State> TraverseWith<'a, State> for AssignmentTarget {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.assignment_target_data(self) {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
+            match_simple_assignment_target!(AssignmentTargetData) => {
                 match <SimpleAssignmentTarget as TraverseWith<'a, State>>::traverse_with(
-                    it, traverser, ctx,
+                    SimpleAssignmentTarget(self.0),
+                    traverser,
+                    ctx,
                 ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
-                        AssignmentTarget::SimpleAssignmentTarget(replacement),
-                    ),
+                    TraverseAction::Replace(replacement) => {
+                        TraverseAction::Replace(<AssignmentTarget as From<
+                            SimpleAssignmentTarget,
+                        >>::from(replacement))
+                    }
                 }
             }
             AssignmentTargetData::ArrayAssignmentTarget(it) => {
@@ -15762,6 +15774,17 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.property_key_data(self) {
+            match_expr!(PropertyKeyData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => {
+                        TraverseAction::Replace(<PropertyKey as From<Expr>>::from(replacement))
+                    }
+                }
+            }
             PropertyKeyData::IdentifierName(it) => {
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
@@ -15770,61 +15793,6 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(PropertyKey::IdentifierName(replacement))
-                    }
-                }
-            }
-            PropertyKeyData::PrivateIdentifier(it) => {
-                match <PrivateIdentifier as TraverseWith<'a, State>>::traverse_with(
-                    it, traverser, ctx,
-                ) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(PropertyKey::PrivateIdentifier(replacement))
-                    }
-                }
-            }
-            PropertyKeyData::StringLiteral(it) => {
-                match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
-                {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(PropertyKey::StringLiteral(replacement))
-                    }
-                }
-            }
-            PropertyKeyData::NumericLiteral(it) => {
-                match <NumericLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
-                {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(PropertyKey::NumericLiteral(replacement))
-                    }
-                }
-            }
-            PropertyKeyData::BigIntLiteral(it) => {
-                match <BigIntLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
-                {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(PropertyKey::BigIntLiteral(replacement))
-                    }
-                }
-            }
-            PropertyKeyData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(PropertyKey::Expr(replacement))
                     }
                 }
             }
@@ -15874,13 +15842,14 @@ impl<'a, State> TraverseWith<'a, State> for Argument {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.argument_data(self) {
-            ArgumentData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+            match_expr!(ArgumentData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Argument::Expr(replacement))
+                        TraverseAction::Replace(<Argument as From<Expr>>::from(replacement))
                     }
                 }
             }
@@ -15941,6 +15910,17 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementInit {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.for_statement_init_data(self) {
+            match_expr!(ForStatementInitData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => {
+                        TraverseAction::Replace(<ForStatementInit as From<Expr>>::from(replacement))
+                    }
+                }
+            }
             ForStatementInitData::VariableDeclaration(it) => {
                 match <VariableDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
@@ -15950,16 +15930,6 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementInit {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(ForStatementInit::VariableDeclaration(replacement))
-                    }
-                }
-            }
-            ForStatementInitData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ForStatementInit::Expr(replacement))
                     }
                 }
             }
@@ -15975,6 +15945,20 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementLeft {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.for_statement_left_data(self) {
+            match_assignment_target!(ForStatementLeftData) => {
+                match <AssignmentTarget as TraverseWith<'a, State>>::traverse_with(
+                    AssignmentTarget(self.0),
+                    traverser,
+                    ctx,
+                ) {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <ForStatementLeft as From<AssignmentTarget>>::from(replacement),
+                    ),
+                }
+            }
             ForStatementLeftData::VariableDeclaration(it) => {
                 match <VariableDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
@@ -15984,18 +15968,6 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementLeft {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(ForStatementLeft::VariableDeclaration(replacement))
-                    }
-                }
-            }
-            ForStatementLeftData::AssignmentTarget(it) => {
-                match <AssignmentTarget as TraverseWith<'a, State>>::traverse_with(
-                    it, traverser, ctx,
-                ) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ForStatementLeft::AssignmentTarget(replacement))
                     }
                 }
             }
@@ -16011,6 +15983,17 @@ impl<'a, State> TraverseWith<'a, State> for ArrowFunctionBody {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.arrow_function_body_data(self) {
+            match_expr!(ArrowFunctionBodyData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <ArrowFunctionBody as From<Expr>>::from(replacement),
+                    ),
+                }
+            }
             ArrowFunctionBodyData::FunctionBody(it) => {
                 match <FunctionBody as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -16018,16 +16001,6 @@ impl<'a, State> TraverseWith<'a, State> for ArrowFunctionBody {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(ArrowFunctionBody::FunctionBody(replacement))
-                    }
-                }
-            }
-            ArrowFunctionBodyData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ArrowFunctionBody::Expr(replacement))
                     }
                 }
             }
@@ -16079,15 +16052,18 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterPattern {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::BindingPattern(it) => {
-                match <BindingPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
-                {
+            match_binding_pattern!(FormalParameterPatternData) => {
+                match <BindingPattern as TraverseWith<'a, State>>::traverse_with(
+                    BindingPattern(self.0),
+                    traverser,
+                    ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(FormalParameterPattern::BindingPattern(replacement))
-                    }
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <FormalParameterPattern as From<BindingPattern>>::from(replacement),
+                    ),
                 }
             }
             FormalParameterPatternData::TsThisParameter(it) => {
@@ -16232,34 +16208,35 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+            match_expr!(ExportDefaultDeclarationKindData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ExportDefaultDeclarationKind::Expr(replacement))
-                    }
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <ExportDefaultDeclarationKind as From<Expr>>::from(replacement),
+                    ),
                 }
             }
-            ExportDefaultDeclarationKindData::Function(it) => {
+            ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
                 match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ExportDefaultDeclarationKind::Function(replacement))
-                    }
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        ExportDefaultDeclarationKind::FunctionDeclaration(replacement),
+                    ),
                 }
             }
-            ExportDefaultDeclarationKindData::Class(it) => {
+            ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
                 match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ExportDefaultDeclarationKind::Class(replacement))
-                    }
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        ExportDefaultDeclarationKind::ClassDeclaration(replacement),
+                    ),
                 }
             }
             ExportDefaultDeclarationKindData::TsFunction(it) => {
@@ -17812,14 +17789,18 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeQueryExprName {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsTypeName(it) => {
-                match <TsTypeName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+            match_ts_type_name!(TsTypeQueryExprNameData) => {
+                match <TsTypeName as TraverseWith<'a, State>>::traverse_with(
+                    TsTypeName(self.0),
+                    traverser,
+                    ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsTypeQueryExprName::TsTypeName(replacement))
-                    }
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <TsTypeQueryExprName as From<TsTypeName>>::from(replacement),
+                    ),
                 }
             }
             TsTypeQueryExprNameData::ThisExpression(it) => {
@@ -17935,13 +17916,17 @@ impl<'a, State> TraverseWith<'a, State> for TsTupleElement {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsType(it) => {
-                match <TsType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+            match_ts_type!(TsTupleElementData) => {
+                match <TsType as TraverseWith<'a, State>>::traverse_with(
+                    TsType(self.0),
+                    traverser,
+                    ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsTupleElement::TsType(replacement))
+                        TraverseAction::Replace(<TsTupleElement as From<TsType>>::from(replacement))
                     }
                 }
             }
@@ -18074,6 +18059,17 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.ts_enum_member_name_data(self) {
+            match_expr!(TsEnumMemberNameData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
+                    TraverseAction::Proceed => TraverseAction::Proceed,
+                    TraverseAction::Skip => TraverseAction::Skip,
+                    TraverseAction::Stop => TraverseAction::Stop,
+                    TraverseAction::Replace(replacement) => {
+                        TraverseAction::Replace(<TsEnumMemberName as From<Expr>>::from(replacement))
+                    }
+                }
+            }
             TsEnumMemberNameData::IdentifierName(it) => {
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
@@ -18082,39 +18078,6 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(TsEnumMemberName::IdentifierName(replacement))
-                    }
-                }
-            }
-            TsEnumMemberNameData::StringLiteral(it) => {
-                match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
-                {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsEnumMemberName::StringLiteral(replacement))
-                    }
-                }
-            }
-            TsEnumMemberNameData::TemplateLiteral(it) => {
-                match <TemplateLiteral as TraverseWith<'a, State>>::traverse_with(
-                    it, traverser, ctx,
-                ) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsEnumMemberName::TemplateLiteral(replacement))
-                    }
-                }
-            }
-            TsEnumMemberNameData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsEnumMemberName::Expr(replacement))
                     }
                 }
             }
@@ -18212,14 +18175,18 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleReference {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.ts_module_reference_data(self) {
-            TsModuleReferenceData::TsTypeName(it) => {
-                match <TsTypeName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+            match_ts_type_name!(TsModuleReferenceData) => {
+                match <TsTypeName as TraverseWith<'a, State>>::traverse_with(
+                    TsTypeName(self.0),
+                    traverser,
+                    ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsModuleReference::TsTypeName(replacement))
-                    }
+                    TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                        <TsModuleReference as From<TsTypeName>>::from(replacement),
+                    ),
                 }
             }
             TsModuleReferenceData::TsExternalModuleReference(it) => {
@@ -19255,13 +19222,14 @@ impl<'a, State> TraverseWith<'a, State> for JsxExpression {
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
         match ctx.ast.jsx_expression_data(self) {
-            JsxExpressionData::Expr(it) => {
-                match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+            match_expr!(JsxExpressionData) => {
+                match <Expr as TraverseWith<'a, State>>::traverse_with(Expr(self.0), traverser, ctx)
+                {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(JsxExpression::Expr(replacement))
+                        TraverseAction::Replace(<JsxExpression as From<Expr>>::from(replacement))
                     }
                 }
             }
