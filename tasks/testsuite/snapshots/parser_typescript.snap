@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13021/13156 (98.97%)
+Positive Passed: 13025/13156 (99.00%)
 Negative Passed: 1591/2981 (53.37%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -407,7 +407,6 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxElementTypeLiteralWithGeneri
 Failed: fixtures/typescript/tests/cases/compiler/jsxFactoryQualifiedNameWithEs5.ts - index.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/jsxImportForSideEffectsNonExtantNoError.tsx - jsxImportForSideEffectsNonExtantNoError.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespacePrefixIntrinsics.tsx - jsxNamespacePrefixIntrinsics.tsx: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - c.js: parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/keyofIsLiteralContexualType.ts - keyofIsLiteralContexualType.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/knockout.ts - knockout.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/lambdaParamTypes.ts - lambdaParamTypes.ts: expected a parse or early error, but pipeline succeeded
@@ -574,7 +573,6 @@ Failed: fixtures/typescript/tests/cases/compiler/reExportGlobalDeclaration2.ts -
 Failed: fixtures/typescript/tests/cases/compiler/reExportGlobalDeclaration3.ts - file2.ts: semantic: Export 'NS1' is not defined at 8..11
 Failed: fixtures/typescript/tests/cases/compiler/reExportGlobalDeclaration4.ts - file2.ts: semantic: Export 'Cls1' is not defined at 8..12
 Failed: fixtures/typescript/tests/cases/compiler/reExportUndefined1.ts - a.ts: semantic: Export 'undefined' is not defined at 9..18
-Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - src/modules/navigation/NavigationView.js: parser: Unexpected token '<' at 128..129
 Failed: fixtures/typescript/tests/cases/compiler/reassignStaticProp.ts - reassignStaticProp.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/reboundIdentifierOnImportAlias.ts - reboundIdentifierOnImportAlias.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveBaseCheck3.ts - recursiveBaseCheck3.ts: expected a parse or early error, but pipeline succeeded
@@ -1270,8 +1268,6 @@ Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesTypesVersion
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesTypesVersionPackageExports.ts - node_modules/inner/index.d.cts: semantic: Cannot use 'export' declaration outside a module at 19..61
 Failed: fixtures/typescript/tests/cases/conformance/node/nodePackageSelfName.ts - index.cts: semantic: Cannot use import statement outside a module at 19..51
 Failed: fixtures/typescript/tests/cases/conformance/node/nodePackageSelfNameScoped.ts - index.cts: semantic: Cannot use import statement outside a module at 19..58
-Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlFileWithinDeclarationFile.ts - component.d.html.ts: parser: 'const' declarations must be initialized at 384..392
-Failed: fixtures/typescript/tests/cases/conformance/nonjsExtensions/declarationFileForHtmlImport.ts - component.d.html.ts: parser: 'const' declarations must be initialized at 384..392
 Failed: fixtures/typescript/tests/cases/conformance/override/override11.ts - override11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/override/overrideDynamicName1.ts - overrideDynamicName1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/override/overrideKeywordOrder.ts - overrideKeywordOrder.ts: expected a parse or early error, but pipeline succeeded

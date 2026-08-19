@@ -685,19 +685,32 @@ fn split_content_by_newlines(mut code: &str) -> Vec<&str> {
 }
 
 fn lang_from_path(path: &str) -> Option<Lang> {
-    if path.ends_with(".d.ts") || path.ends_with(".d.mts") || path.ends_with(".d.cts") {
+    if is_declaration_file_name(path) {
         Some(Lang::Dts)
     } else if path.ends_with(".tsx") {
         Some(Lang::Tsx)
     } else if path.ends_with(".ts") || path.ends_with(".mts") || path.ends_with(".cts") {
         Some(Lang::Ts)
-    } else if path.ends_with(".jsx") {
+    } else if path.ends_with(".js")
+        || path.ends_with(".jsx")
+        || path.ends_with(".mjs")
+        || path.ends_with(".cjs")
+    {
         Some(Lang::Jsx)
-    } else if path.ends_with(".js") || path.ends_with(".mjs") || path.ends_with(".cjs") {
-        Some(Lang::Js)
     } else {
         None
     }
+}
+
+fn is_declaration_file_name(path: &str) -> bool {
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(path);
+    name.ends_with(".d.ts")
+        || name.ends_with(".d.mts")
+        || name.ends_with(".d.cts")
+        || (name.ends_with(".ts") && name.contains(".d."))
 }
 
 fn source_type(path: &str, code: &str) -> SourceType {
