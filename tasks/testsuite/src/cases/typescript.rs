@@ -703,10 +703,7 @@ fn lang_from_path(path: &str) -> Option<Lang> {
 }
 
 fn is_declaration_file_name(path: &str) -> bool {
-    let name = Path::new(path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(path);
+    let name = path.rsplit(['/', '\\']).next().unwrap_or(path);
     name.ends_with(".d.ts")
         || name.ends_with(".d.mts")
         || name.ends_with(".d.cts")
