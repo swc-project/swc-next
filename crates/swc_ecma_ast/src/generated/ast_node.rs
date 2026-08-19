@@ -927,185 +927,199 @@ impl NodeKind {
         )
     }
 }
+#[repr(C)]
+struct AstEnumDataRepr {
+    kind: NodeKind,
+    node_id: NodeId,
+}
 /// The typed wrapper for the concrete node stored at a node ID.
+#[repr(C, u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NodeKindData {
-    Program(Program),
-    Super(Super),
-    ThisExpression(ThisExpression),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    TemplateElement(TemplateElement),
-    IdentifierReference(IdentifierReference),
-    PrivateIdentifier(PrivateIdentifier),
-    BindingIdentifier(BindingIdentifier),
-    IdentifierName(IdentifierName),
-    LabelIdentifier(LabelIdentifier),
-    AssignmentPattern(AssignmentPattern),
-    BindingRestElement(BindingRestElement),
-    ArrayPattern(ArrayPattern),
-    ObjectPattern(ObjectPattern),
-    BindingProperty(BindingProperty),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    ConditionalExpression(ConditionalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    VariableDeclaration(VariableDeclaration),
-    VariableDeclarator(VariableDeclarator),
-    IfStatement(IfStatement),
-    SwitchStatement(SwitchStatement),
-    SwitchCase(SwitchCase),
-    ForStatement(ForStatement),
-    ForInStatement(ForInStatement),
-    ForOfStatement(ForOfStatement),
-    TryStatement(TryStatement),
-    CatchClause(CatchClause),
-    BreakStatement(BreakStatement),
-    ContinueStatement(ContinueStatement),
-    LabeledStatement(LabeledStatement),
-    ExpressionStatement(ExpressionStatement),
-    ReturnStatement(ReturnStatement),
-    ThrowStatement(ThrowStatement),
-    DebuggerStatement(DebuggerStatement),
-    EmptyStatement(EmptyStatement),
-    Directive(Directive),
-    Decorator(Decorator),
-    ClassDeclaration(ClassDeclaration),
-    ClassExpression(ClassExpression),
-    ClassBody(ClassBody),
-    MethodDefinition(MethodDefinition),
-    PropertyDefinition(PropertyDefinition),
-    StaticBlock(StaticBlock),
-    FunctionDeclaration(FunctionDeclaration),
-    FunctionExpression(FunctionExpression),
-    FunctionBody(FunctionBody),
-    BlockStatement(BlockStatement),
-    WhileStatement(WhileStatement),
-    DoWhileStatement(DoWhileStatement),
-    WithStatement(WithStatement),
-    FormalParameters(FormalParameters),
-    FormalParameter(FormalParameter),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    SpreadElement(SpreadElement),
-    ObjectProperty(ObjectProperty),
-    ParenthesizedExpression(ParenthesizedExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    NewExpression(NewExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    MetaProperty(MetaProperty),
-    ImportExpression(ImportExpression),
-    ImportDeclaration(ImportDeclaration),
-    ImportSpecifier(ImportSpecifier),
-    ImportDefaultSpecifier(ImportDefaultSpecifier),
-    ImportNamespaceSpecifier(ImportNamespaceSpecifier),
-    ImportAttribute(ImportAttribute),
-    ExportNamedDeclaration(ExportNamedDeclaration),
-    ExportDefaultDeclaration(ExportDefaultDeclaration),
-    ExportAllDeclaration(ExportAllDeclaration),
-    ExportSpecifier(ExportSpecifier),
-    Hashbang(Hashbang),
-    TsFunction(TsFunction),
-    TsMethodDefinition(TsMethodDefinition),
-    TsTypeAnnotation(TsTypeAnnotation),
-    TsAnyKeyword(TsAnyKeyword),
-    TsUnknownKeyword(TsUnknownKeyword),
-    TsNeverKeyword(TsNeverKeyword),
-    TsVoidKeyword(TsVoidKeyword),
-    TsNullKeyword(TsNullKeyword),
-    TsUndefinedKeyword(TsUndefinedKeyword),
-    TsStringKeyword(TsStringKeyword),
-    TsNumberKeyword(TsNumberKeyword),
-    TsBigIntKeyword(TsBigIntKeyword),
-    TsBooleanKeyword(TsBooleanKeyword),
-    TsSymbolKeyword(TsSymbolKeyword),
-    TsObjectKeyword(TsObjectKeyword),
-    TsIntrinsicKeyword(TsIntrinsicKeyword),
-    TsThisType(TsThisType),
-    TsTypeReference(TsTypeReference),
-    TsQualifiedName(TsQualifiedName),
-    TsTypeQuery(TsTypeQuery),
-    TsImportType(TsImportType),
-    TsTypeParameter(TsTypeParameter),
-    TsTypeParameterDeclaration(TsTypeParameterDeclaration),
-    TsTypeParameterInstantiation(TsTypeParameterInstantiation),
-    TsLiteralType(TsLiteralType),
-    TsTemplateLiteralType(TsTemplateLiteralType),
-    TsArrayType(TsArrayType),
-    TsIndexedAccessType(TsIndexedAccessType),
-    TsTupleType(TsTupleType),
-    TsNamedTupleMember(TsNamedTupleMember),
-    TsOptionalType(TsOptionalType),
-    TsRestType(TsRestType),
-    TsJsDocNullableType(TsJsDocNullableType),
-    TsJsDocNonNullableType(TsJsDocNonNullableType),
-    TsJsDocUnknownType(TsJsDocUnknownType),
-    TsUnionType(TsUnionType),
-    TsIntersectionType(TsIntersectionType),
-    TsConditionalType(TsConditionalType),
-    TsInferType(TsInferType),
-    TsTypeOperator(TsTypeOperator),
-    TsParenthesizedType(TsParenthesizedType),
-    TsFunctionType(TsFunctionType),
-    TsConstructorType(TsConstructorType),
-    TsTypePredicate(TsTypePredicate),
-    TsTypeLiteral(TsTypeLiteral),
-    TsMappedType(TsMappedType),
-    TsPropertySignature(TsPropertySignature),
-    TsMethodSignature(TsMethodSignature),
-    TsCallSignatureDeclaration(TsCallSignatureDeclaration),
-    TsConstructSignatureDeclaration(TsConstructSignatureDeclaration),
-    TsIndexSignature(TsIndexSignature),
-    TsTypeAliasDeclaration(TsTypeAliasDeclaration),
-    TsInterfaceDeclaration(TsInterfaceDeclaration),
-    TsInterfaceBody(TsInterfaceBody),
-    TsInterfaceHeritage(TsInterfaceHeritage),
-    TsClassImplements(TsClassImplements),
-    TsEnumDeclaration(TsEnumDeclaration),
-    TsEnumBody(TsEnumBody),
-    TsEnumMember(TsEnumMember),
-    TsModuleDeclaration(TsModuleDeclaration),
-    TsModuleBlock(TsModuleBlock),
-    TsGlobalDeclaration(TsGlobalDeclaration),
-    TsParameterProperty(TsParameterProperty),
-    TsThisParameter(TsThisParameter),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    TsExportAssignment(TsExportAssignment),
-    TsNamespaceExportDeclaration(TsNamespaceExportDeclaration),
-    TsImportEqualsDeclaration(TsImportEqualsDeclaration),
-    TsExternalModuleReference(TsExternalModuleReference),
-    JsxElement(JsxElement),
-    JsxOpeningElement(JsxOpeningElement),
-    JsxClosingElement(JsxClosingElement),
-    JsxFragment(JsxFragment),
-    JsxOpeningFragment(JsxOpeningFragment),
-    JsxClosingFragment(JsxClosingFragment),
-    JsxIdentifier(JsxIdentifier),
-    JsxNamespacedName(JsxNamespacedName),
-    JsxMemberExpression(JsxMemberExpression),
-    JsxAttribute(JsxAttribute),
-    JsxSpreadAttribute(JsxSpreadAttribute),
-    JsxExpressionContainer(JsxExpressionContainer),
-    JsxEmptyExpression(JsxEmptyExpression),
-    JsxText(JsxText),
-    JsxSpreadChild(JsxSpreadChild),
+    Program(Program) = NodeKind::Program as u8,
+    Super(Super) = NodeKind::Super as u8,
+    ThisExpression(ThisExpression) = NodeKind::ThisExpression as u8,
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+    NumericLiteral(NumericLiteral) = NodeKind::NumericLiteral as u8,
+    BigIntLiteral(BigIntLiteral) = NodeKind::BigIntLiteral as u8,
+    BooleanLiteral(BooleanLiteral) = NodeKind::BooleanLiteral as u8,
+    NullLiteral(NullLiteral) = NodeKind::NullLiteral as u8,
+    RegExpLiteral(RegExpLiteral) = NodeKind::RegExpLiteral as u8,
+    TemplateLiteral(TemplateLiteral) = NodeKind::TemplateLiteral as u8,
+    TemplateElement(TemplateElement) = NodeKind::TemplateElement as u8,
+    IdentifierReference(IdentifierReference) = NodeKind::IdentifierReference as u8,
+    PrivateIdentifier(PrivateIdentifier) = NodeKind::PrivateIdentifier as u8,
+    BindingIdentifier(BindingIdentifier) = NodeKind::BindingIdentifier as u8,
+    IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
+    LabelIdentifier(LabelIdentifier) = NodeKind::LabelIdentifier as u8,
+    AssignmentPattern(AssignmentPattern) = NodeKind::AssignmentPattern as u8,
+    BindingRestElement(BindingRestElement) = NodeKind::BindingRestElement as u8,
+    ArrayPattern(ArrayPattern) = NodeKind::ArrayPattern as u8,
+    ObjectPattern(ObjectPattern) = NodeKind::ObjectPattern as u8,
+    BindingProperty(BindingProperty) = NodeKind::BindingProperty as u8,
+    BinaryExpression(BinaryExpression) = NodeKind::BinaryExpression as u8,
+    LogicalExpression(LogicalExpression) = NodeKind::LogicalExpression as u8,
+    ConditionalExpression(ConditionalExpression) = NodeKind::ConditionalExpression as u8,
+    UnaryExpression(UnaryExpression) = NodeKind::UnaryExpression as u8,
+    UpdateExpression(UpdateExpression) = NodeKind::UpdateExpression as u8,
+    AssignmentExpression(AssignmentExpression) = NodeKind::AssignmentExpression as u8,
+    VariableDeclaration(VariableDeclaration) = NodeKind::VariableDeclaration as u8,
+    VariableDeclarator(VariableDeclarator) = NodeKind::VariableDeclarator as u8,
+    IfStatement(IfStatement) = NodeKind::IfStatement as u8,
+    SwitchStatement(SwitchStatement) = NodeKind::SwitchStatement as u8,
+    SwitchCase(SwitchCase) = NodeKind::SwitchCase as u8,
+    ForStatement(ForStatement) = NodeKind::ForStatement as u8,
+    ForInStatement(ForInStatement) = NodeKind::ForInStatement as u8,
+    ForOfStatement(ForOfStatement) = NodeKind::ForOfStatement as u8,
+    TryStatement(TryStatement) = NodeKind::TryStatement as u8,
+    CatchClause(CatchClause) = NodeKind::CatchClause as u8,
+    BreakStatement(BreakStatement) = NodeKind::BreakStatement as u8,
+    ContinueStatement(ContinueStatement) = NodeKind::ContinueStatement as u8,
+    LabeledStatement(LabeledStatement) = NodeKind::LabeledStatement as u8,
+    ExpressionStatement(ExpressionStatement) = NodeKind::ExpressionStatement as u8,
+    ReturnStatement(ReturnStatement) = NodeKind::ReturnStatement as u8,
+    ThrowStatement(ThrowStatement) = NodeKind::ThrowStatement as u8,
+    DebuggerStatement(DebuggerStatement) = NodeKind::DebuggerStatement as u8,
+    EmptyStatement(EmptyStatement) = NodeKind::EmptyStatement as u8,
+    Directive(Directive) = NodeKind::Directive as u8,
+    Decorator(Decorator) = NodeKind::Decorator as u8,
+    ClassDeclaration(ClassDeclaration) = NodeKind::ClassDeclaration as u8,
+    ClassExpression(ClassExpression) = NodeKind::ClassExpression as u8,
+    ClassBody(ClassBody) = NodeKind::ClassBody as u8,
+    MethodDefinition(MethodDefinition) = NodeKind::MethodDefinition as u8,
+    PropertyDefinition(PropertyDefinition) = NodeKind::PropertyDefinition as u8,
+    StaticBlock(StaticBlock) = NodeKind::StaticBlock as u8,
+    FunctionDeclaration(FunctionDeclaration) = NodeKind::FunctionDeclaration as u8,
+    FunctionExpression(FunctionExpression) = NodeKind::FunctionExpression as u8,
+    FunctionBody(FunctionBody) = NodeKind::FunctionBody as u8,
+    BlockStatement(BlockStatement) = NodeKind::BlockStatement as u8,
+    WhileStatement(WhileStatement) = NodeKind::WhileStatement as u8,
+    DoWhileStatement(DoWhileStatement) = NodeKind::DoWhileStatement as u8,
+    WithStatement(WithStatement) = NodeKind::WithStatement as u8,
+    FormalParameters(FormalParameters) = NodeKind::FormalParameters as u8,
+    FormalParameter(FormalParameter) = NodeKind::FormalParameter as u8,
+    ArrayExpression(ArrayExpression) = NodeKind::ArrayExpression as u8,
+    ObjectExpression(ObjectExpression) = NodeKind::ObjectExpression as u8,
+    SpreadElement(SpreadElement) = NodeKind::SpreadElement as u8,
+    ObjectProperty(ObjectProperty) = NodeKind::ObjectProperty as u8,
+    ParenthesizedExpression(ParenthesizedExpression) = NodeKind::ParenthesizedExpression as u8,
+    ArrowFunctionExpression(ArrowFunctionExpression) = NodeKind::ArrowFunctionExpression as u8,
+    SequenceExpression(SequenceExpression) = NodeKind::SequenceExpression as u8,
+    MemberExpression(MemberExpression) = NodeKind::MemberExpression as u8,
+    CallExpression(CallExpression) = NodeKind::CallExpression as u8,
+    ChainExpression(ChainExpression) = NodeKind::ChainExpression as u8,
+    TaggedTemplateExpression(TaggedTemplateExpression) = NodeKind::TaggedTemplateExpression as u8,
+    NewExpression(NewExpression) = NodeKind::NewExpression as u8,
+    AwaitExpression(AwaitExpression) = NodeKind::AwaitExpression as u8,
+    YieldExpression(YieldExpression) = NodeKind::YieldExpression as u8,
+    MetaProperty(MetaProperty) = NodeKind::MetaProperty as u8,
+    ImportExpression(ImportExpression) = NodeKind::ImportExpression as u8,
+    ImportDeclaration(ImportDeclaration) = NodeKind::ImportDeclaration as u8,
+    ImportSpecifier(ImportSpecifier) = NodeKind::ImportSpecifier as u8,
+    ImportDefaultSpecifier(ImportDefaultSpecifier) = NodeKind::ImportDefaultSpecifier as u8,
+    ImportNamespaceSpecifier(ImportNamespaceSpecifier) = NodeKind::ImportNamespaceSpecifier as u8,
+    ImportAttribute(ImportAttribute) = NodeKind::ImportAttribute as u8,
+    ExportNamedDeclaration(ExportNamedDeclaration) = NodeKind::ExportNamedDeclaration as u8,
+    ExportDefaultDeclaration(ExportDefaultDeclaration) = NodeKind::ExportDefaultDeclaration as u8,
+    ExportAllDeclaration(ExportAllDeclaration) = NodeKind::ExportAllDeclaration as u8,
+    ExportSpecifier(ExportSpecifier) = NodeKind::ExportSpecifier as u8,
+    Hashbang(Hashbang) = NodeKind::Hashbang as u8,
+    TsFunction(TsFunction) = NodeKind::TsFunction as u8,
+    TsMethodDefinition(TsMethodDefinition) = NodeKind::TsMethodDefinition as u8,
+    TsTypeAnnotation(TsTypeAnnotation) = NodeKind::TsTypeAnnotation as u8,
+    TsAnyKeyword(TsAnyKeyword) = NodeKind::TsAnyKeyword as u8,
+    TsUnknownKeyword(TsUnknownKeyword) = NodeKind::TsUnknownKeyword as u8,
+    TsNeverKeyword(TsNeverKeyword) = NodeKind::TsNeverKeyword as u8,
+    TsVoidKeyword(TsVoidKeyword) = NodeKind::TsVoidKeyword as u8,
+    TsNullKeyword(TsNullKeyword) = NodeKind::TsNullKeyword as u8,
+    TsUndefinedKeyword(TsUndefinedKeyword) = NodeKind::TsUndefinedKeyword as u8,
+    TsStringKeyword(TsStringKeyword) = NodeKind::TsStringKeyword as u8,
+    TsNumberKeyword(TsNumberKeyword) = NodeKind::TsNumberKeyword as u8,
+    TsBigIntKeyword(TsBigIntKeyword) = NodeKind::TsBigIntKeyword as u8,
+    TsBooleanKeyword(TsBooleanKeyword) = NodeKind::TsBooleanKeyword as u8,
+    TsSymbolKeyword(TsSymbolKeyword) = NodeKind::TsSymbolKeyword as u8,
+    TsObjectKeyword(TsObjectKeyword) = NodeKind::TsObjectKeyword as u8,
+    TsIntrinsicKeyword(TsIntrinsicKeyword) = NodeKind::TsIntrinsicKeyword as u8,
+    TsThisType(TsThisType) = NodeKind::TsThisType as u8,
+    TsTypeReference(TsTypeReference) = NodeKind::TsTypeReference as u8,
+    TsQualifiedName(TsQualifiedName) = NodeKind::TsQualifiedName as u8,
+    TsTypeQuery(TsTypeQuery) = NodeKind::TsTypeQuery as u8,
+    TsImportType(TsImportType) = NodeKind::TsImportType as u8,
+    TsTypeParameter(TsTypeParameter) = NodeKind::TsTypeParameter as u8,
+    TsTypeParameterDeclaration(TsTypeParameterDeclaration) =
+        NodeKind::TsTypeParameterDeclaration as u8,
+    TsTypeParameterInstantiation(TsTypeParameterInstantiation) =
+        NodeKind::TsTypeParameterInstantiation as u8,
+    TsLiteralType(TsLiteralType) = NodeKind::TsLiteralType as u8,
+    TsTemplateLiteralType(TsTemplateLiteralType) = NodeKind::TsTemplateLiteralType as u8,
+    TsArrayType(TsArrayType) = NodeKind::TsArrayType as u8,
+    TsIndexedAccessType(TsIndexedAccessType) = NodeKind::TsIndexedAccessType as u8,
+    TsTupleType(TsTupleType) = NodeKind::TsTupleType as u8,
+    TsNamedTupleMember(TsNamedTupleMember) = NodeKind::TsNamedTupleMember as u8,
+    TsOptionalType(TsOptionalType) = NodeKind::TsOptionalType as u8,
+    TsRestType(TsRestType) = NodeKind::TsRestType as u8,
+    TsJsDocNullableType(TsJsDocNullableType) = NodeKind::TsJsDocNullableType as u8,
+    TsJsDocNonNullableType(TsJsDocNonNullableType) = NodeKind::TsJsDocNonNullableType as u8,
+    TsJsDocUnknownType(TsJsDocUnknownType) = NodeKind::TsJsDocUnknownType as u8,
+    TsUnionType(TsUnionType) = NodeKind::TsUnionType as u8,
+    TsIntersectionType(TsIntersectionType) = NodeKind::TsIntersectionType as u8,
+    TsConditionalType(TsConditionalType) = NodeKind::TsConditionalType as u8,
+    TsInferType(TsInferType) = NodeKind::TsInferType as u8,
+    TsTypeOperator(TsTypeOperator) = NodeKind::TsTypeOperator as u8,
+    TsParenthesizedType(TsParenthesizedType) = NodeKind::TsParenthesizedType as u8,
+    TsFunctionType(TsFunctionType) = NodeKind::TsFunctionType as u8,
+    TsConstructorType(TsConstructorType) = NodeKind::TsConstructorType as u8,
+    TsTypePredicate(TsTypePredicate) = NodeKind::TsTypePredicate as u8,
+    TsTypeLiteral(TsTypeLiteral) = NodeKind::TsTypeLiteral as u8,
+    TsMappedType(TsMappedType) = NodeKind::TsMappedType as u8,
+    TsPropertySignature(TsPropertySignature) = NodeKind::TsPropertySignature as u8,
+    TsMethodSignature(TsMethodSignature) = NodeKind::TsMethodSignature as u8,
+    TsCallSignatureDeclaration(TsCallSignatureDeclaration) =
+        NodeKind::TsCallSignatureDeclaration as u8,
+    TsConstructSignatureDeclaration(TsConstructSignatureDeclaration) =
+        NodeKind::TsConstructSignatureDeclaration as u8,
+    TsIndexSignature(TsIndexSignature) = NodeKind::TsIndexSignature as u8,
+    TsTypeAliasDeclaration(TsTypeAliasDeclaration) = NodeKind::TsTypeAliasDeclaration as u8,
+    TsInterfaceDeclaration(TsInterfaceDeclaration) = NodeKind::TsInterfaceDeclaration as u8,
+    TsInterfaceBody(TsInterfaceBody) = NodeKind::TsInterfaceBody as u8,
+    TsInterfaceHeritage(TsInterfaceHeritage) = NodeKind::TsInterfaceHeritage as u8,
+    TsClassImplements(TsClassImplements) = NodeKind::TsClassImplements as u8,
+    TsEnumDeclaration(TsEnumDeclaration) = NodeKind::TsEnumDeclaration as u8,
+    TsEnumBody(TsEnumBody) = NodeKind::TsEnumBody as u8,
+    TsEnumMember(TsEnumMember) = NodeKind::TsEnumMember as u8,
+    TsModuleDeclaration(TsModuleDeclaration) = NodeKind::TsModuleDeclaration as u8,
+    TsModuleBlock(TsModuleBlock) = NodeKind::TsModuleBlock as u8,
+    TsGlobalDeclaration(TsGlobalDeclaration) = NodeKind::TsGlobalDeclaration as u8,
+    TsParameterProperty(TsParameterProperty) = NodeKind::TsParameterProperty as u8,
+    TsThisParameter(TsThisParameter) = NodeKind::TsThisParameter as u8,
+    TsAsExpression(TsAsExpression) = NodeKind::TsAsExpression as u8,
+    TsSatisfiesExpression(TsSatisfiesExpression) = NodeKind::TsSatisfiesExpression as u8,
+    TsTypeAssertion(TsTypeAssertion) = NodeKind::TsTypeAssertion as u8,
+    TsNonNullExpression(TsNonNullExpression) = NodeKind::TsNonNullExpression as u8,
+    TsInstantiationExpression(TsInstantiationExpression) =
+        NodeKind::TsInstantiationExpression as u8,
+    TsExportAssignment(TsExportAssignment) = NodeKind::TsExportAssignment as u8,
+    TsNamespaceExportDeclaration(TsNamespaceExportDeclaration) =
+        NodeKind::TsNamespaceExportDeclaration as u8,
+    TsImportEqualsDeclaration(TsImportEqualsDeclaration) =
+        NodeKind::TsImportEqualsDeclaration as u8,
+    TsExternalModuleReference(TsExternalModuleReference) =
+        NodeKind::TsExternalModuleReference as u8,
+    JsxElement(JsxElement) = NodeKind::JsxElement as u8,
+    JsxOpeningElement(JsxOpeningElement) = NodeKind::JsxOpeningElement as u8,
+    JsxClosingElement(JsxClosingElement) = NodeKind::JsxClosingElement as u8,
+    JsxFragment(JsxFragment) = NodeKind::JsxFragment as u8,
+    JsxOpeningFragment(JsxOpeningFragment) = NodeKind::JsxOpeningFragment as u8,
+    JsxClosingFragment(JsxClosingFragment) = NodeKind::JsxClosingFragment as u8,
+    JsxIdentifier(JsxIdentifier) = NodeKind::JsxIdentifier as u8,
+    JsxNamespacedName(JsxNamespacedName) = NodeKind::JsxNamespacedName as u8,
+    JsxMemberExpression(JsxMemberExpression) = NodeKind::JsxMemberExpression as u8,
+    JsxAttribute(JsxAttribute) = NodeKind::JsxAttribute as u8,
+    JsxSpreadAttribute(JsxSpreadAttribute) = NodeKind::JsxSpreadAttribute as u8,
+    JsxExpressionContainer(JsxExpressionContainer) = NodeKind::JsxExpressionContainer as u8,
+    JsxEmptyExpression(JsxEmptyExpression) = NodeKind::JsxEmptyExpression as u8,
+    JsxText(JsxText) = NodeKind::JsxText as u8,
+    JsxSpreadChild(JsxSpreadChild) = NodeKind::JsxSpreadChild as u8,
 }
 impl Program {
     #[inline]
@@ -6675,550 +6689,62 @@ impl<'a> Ast<'a> {
     /// Returns the typed wrapper for the concrete node stored at `node_id`.
     #[inline]
     pub fn kind_data(&self, node_id: NodeId) -> NodeKindData {
-        match self.node_kind(node_id) {
-            NodeKind::Program => NodeKindData::Program(Program(node_id)),
-            NodeKind::Super => NodeKindData::Super(Super(node_id)),
-            NodeKind::ThisExpression => NodeKindData::ThisExpression(ThisExpression(node_id)),
-            NodeKind::StringLiteral => NodeKindData::StringLiteral(StringLiteral(node_id)),
-            NodeKind::NumericLiteral => NodeKindData::NumericLiteral(NumericLiteral(node_id)),
-            NodeKind::BigIntLiteral => NodeKindData::BigIntLiteral(BigIntLiteral(node_id)),
-            NodeKind::BooleanLiteral => NodeKindData::BooleanLiteral(BooleanLiteral(node_id)),
-            NodeKind::NullLiteral => NodeKindData::NullLiteral(NullLiteral(node_id)),
-            NodeKind::RegExpLiteral => NodeKindData::RegExpLiteral(RegExpLiteral(node_id)),
-            NodeKind::TemplateLiteral => NodeKindData::TemplateLiteral(TemplateLiteral(node_id)),
-            NodeKind::TemplateElement => NodeKindData::TemplateElement(TemplateElement(node_id)),
-            NodeKind::IdentifierReference => {
-                NodeKindData::IdentifierReference(IdentifierReference(node_id))
-            }
-            NodeKind::PrivateIdentifier => {
-                NodeKindData::PrivateIdentifier(PrivateIdentifier(node_id))
-            }
-            NodeKind::BindingIdentifier => {
-                NodeKindData::BindingIdentifier(BindingIdentifier(node_id))
-            }
-            NodeKind::IdentifierName => NodeKindData::IdentifierName(IdentifierName(node_id)),
-            NodeKind::LabelIdentifier => NodeKindData::LabelIdentifier(LabelIdentifier(node_id)),
-            NodeKind::AssignmentPattern => {
-                NodeKindData::AssignmentPattern(AssignmentPattern(node_id))
-            }
-            NodeKind::BindingRestElement => {
-                NodeKindData::BindingRestElement(BindingRestElement(node_id))
-            }
-            NodeKind::ArrayPattern => NodeKindData::ArrayPattern(ArrayPattern(node_id)),
-            NodeKind::ObjectPattern => NodeKindData::ObjectPattern(ObjectPattern(node_id)),
-            NodeKind::BindingProperty => NodeKindData::BindingProperty(BindingProperty(node_id)),
-            NodeKind::BinaryExpression => NodeKindData::BinaryExpression(BinaryExpression(node_id)),
-            NodeKind::LogicalExpression => {
-                NodeKindData::LogicalExpression(LogicalExpression(node_id))
-            }
-            NodeKind::ConditionalExpression => {
-                NodeKindData::ConditionalExpression(ConditionalExpression(node_id))
-            }
-            NodeKind::UnaryExpression => NodeKindData::UnaryExpression(UnaryExpression(node_id)),
-            NodeKind::UpdateExpression => NodeKindData::UpdateExpression(UpdateExpression(node_id)),
-            NodeKind::AssignmentExpression => {
-                NodeKindData::AssignmentExpression(AssignmentExpression(node_id))
-            }
-            NodeKind::VariableDeclaration => {
-                NodeKindData::VariableDeclaration(VariableDeclaration(node_id))
-            }
-            NodeKind::VariableDeclarator => {
-                NodeKindData::VariableDeclarator(VariableDeclarator(node_id))
-            }
-            NodeKind::IfStatement => NodeKindData::IfStatement(IfStatement(node_id)),
-            NodeKind::SwitchStatement => NodeKindData::SwitchStatement(SwitchStatement(node_id)),
-            NodeKind::SwitchCase => NodeKindData::SwitchCase(SwitchCase(node_id)),
-            NodeKind::ForStatement => NodeKindData::ForStatement(ForStatement(node_id)),
-            NodeKind::ForInStatement => NodeKindData::ForInStatement(ForInStatement(node_id)),
-            NodeKind::ForOfStatement => NodeKindData::ForOfStatement(ForOfStatement(node_id)),
-            NodeKind::TryStatement => NodeKindData::TryStatement(TryStatement(node_id)),
-            NodeKind::CatchClause => NodeKindData::CatchClause(CatchClause(node_id)),
-            NodeKind::BreakStatement => NodeKindData::BreakStatement(BreakStatement(node_id)),
-            NodeKind::ContinueStatement => {
-                NodeKindData::ContinueStatement(ContinueStatement(node_id))
-            }
-            NodeKind::LabeledStatement => NodeKindData::LabeledStatement(LabeledStatement(node_id)),
-            NodeKind::ExpressionStatement => {
-                NodeKindData::ExpressionStatement(ExpressionStatement(node_id))
-            }
-            NodeKind::ReturnStatement => NodeKindData::ReturnStatement(ReturnStatement(node_id)),
-            NodeKind::ThrowStatement => NodeKindData::ThrowStatement(ThrowStatement(node_id)),
-            NodeKind::DebuggerStatement => {
-                NodeKindData::DebuggerStatement(DebuggerStatement(node_id))
-            }
-            NodeKind::EmptyStatement => NodeKindData::EmptyStatement(EmptyStatement(node_id)),
-            NodeKind::Directive => NodeKindData::Directive(Directive(node_id)),
-            NodeKind::Decorator => NodeKindData::Decorator(Decorator(node_id)),
-            NodeKind::ClassDeclaration => NodeKindData::ClassDeclaration(ClassDeclaration(node_id)),
-            NodeKind::ClassExpression => NodeKindData::ClassExpression(ClassExpression(node_id)),
-            NodeKind::ClassBody => NodeKindData::ClassBody(ClassBody(node_id)),
-            NodeKind::MethodDefinition => NodeKindData::MethodDefinition(MethodDefinition(node_id)),
-            NodeKind::PropertyDefinition => {
-                NodeKindData::PropertyDefinition(PropertyDefinition(node_id))
-            }
-            NodeKind::StaticBlock => NodeKindData::StaticBlock(StaticBlock(node_id)),
-            NodeKind::FunctionDeclaration => {
-                NodeKindData::FunctionDeclaration(FunctionDeclaration(node_id))
-            }
-            NodeKind::FunctionExpression => {
-                NodeKindData::FunctionExpression(FunctionExpression(node_id))
-            }
-            NodeKind::FunctionBody => NodeKindData::FunctionBody(FunctionBody(node_id)),
-            NodeKind::BlockStatement => NodeKindData::BlockStatement(BlockStatement(node_id)),
-            NodeKind::WhileStatement => NodeKindData::WhileStatement(WhileStatement(node_id)),
-            NodeKind::DoWhileStatement => NodeKindData::DoWhileStatement(DoWhileStatement(node_id)),
-            NodeKind::WithStatement => NodeKindData::WithStatement(WithStatement(node_id)),
-            NodeKind::FormalParameters => NodeKindData::FormalParameters(FormalParameters(node_id)),
-            NodeKind::FormalParameter => NodeKindData::FormalParameter(FormalParameter(node_id)),
-            NodeKind::ArrayExpression => NodeKindData::ArrayExpression(ArrayExpression(node_id)),
-            NodeKind::ObjectExpression => NodeKindData::ObjectExpression(ObjectExpression(node_id)),
-            NodeKind::SpreadElement => NodeKindData::SpreadElement(SpreadElement(node_id)),
-            NodeKind::ObjectProperty => NodeKindData::ObjectProperty(ObjectProperty(node_id)),
-            NodeKind::ParenthesizedExpression => {
-                NodeKindData::ParenthesizedExpression(ParenthesizedExpression(node_id))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                NodeKindData::ArrowFunctionExpression(ArrowFunctionExpression(node_id))
-            }
-            NodeKind::SequenceExpression => {
-                NodeKindData::SequenceExpression(SequenceExpression(node_id))
-            }
-            NodeKind::MemberExpression => NodeKindData::MemberExpression(MemberExpression(node_id)),
-            NodeKind::CallExpression => NodeKindData::CallExpression(CallExpression(node_id)),
-            NodeKind::ChainExpression => NodeKindData::ChainExpression(ChainExpression(node_id)),
-            NodeKind::TaggedTemplateExpression => {
-                NodeKindData::TaggedTemplateExpression(TaggedTemplateExpression(node_id))
-            }
-            NodeKind::NewExpression => NodeKindData::NewExpression(NewExpression(node_id)),
-            NodeKind::AwaitExpression => NodeKindData::AwaitExpression(AwaitExpression(node_id)),
-            NodeKind::YieldExpression => NodeKindData::YieldExpression(YieldExpression(node_id)),
-            NodeKind::MetaProperty => NodeKindData::MetaProperty(MetaProperty(node_id)),
-            NodeKind::ImportExpression => NodeKindData::ImportExpression(ImportExpression(node_id)),
-            NodeKind::ImportDeclaration => {
-                NodeKindData::ImportDeclaration(ImportDeclaration(node_id))
-            }
-            NodeKind::ImportSpecifier => NodeKindData::ImportSpecifier(ImportSpecifier(node_id)),
-            NodeKind::ImportDefaultSpecifier => {
-                NodeKindData::ImportDefaultSpecifier(ImportDefaultSpecifier(node_id))
-            }
-            NodeKind::ImportNamespaceSpecifier => {
-                NodeKindData::ImportNamespaceSpecifier(ImportNamespaceSpecifier(node_id))
-            }
-            NodeKind::ImportAttribute => NodeKindData::ImportAttribute(ImportAttribute(node_id)),
-            NodeKind::ExportNamedDeclaration => {
-                NodeKindData::ExportNamedDeclaration(ExportNamedDeclaration(node_id))
-            }
-            NodeKind::ExportDefaultDeclaration => {
-                NodeKindData::ExportDefaultDeclaration(ExportDefaultDeclaration(node_id))
-            }
-            NodeKind::ExportAllDeclaration => {
-                NodeKindData::ExportAllDeclaration(ExportAllDeclaration(node_id))
-            }
-            NodeKind::ExportSpecifier => NodeKindData::ExportSpecifier(ExportSpecifier(node_id)),
-            NodeKind::Hashbang => NodeKindData::Hashbang(Hashbang(node_id)),
-            NodeKind::TsFunction => NodeKindData::TsFunction(TsFunction(node_id)),
-            NodeKind::TsMethodDefinition => {
-                NodeKindData::TsMethodDefinition(TsMethodDefinition(node_id))
-            }
-            NodeKind::TsTypeAnnotation => NodeKindData::TsTypeAnnotation(TsTypeAnnotation(node_id)),
-            NodeKind::TsAnyKeyword => NodeKindData::TsAnyKeyword(TsAnyKeyword(node_id)),
-            NodeKind::TsUnknownKeyword => NodeKindData::TsUnknownKeyword(TsUnknownKeyword(node_id)),
-            NodeKind::TsNeverKeyword => NodeKindData::TsNeverKeyword(TsNeverKeyword(node_id)),
-            NodeKind::TsVoidKeyword => NodeKindData::TsVoidKeyword(TsVoidKeyword(node_id)),
-            NodeKind::TsNullKeyword => NodeKindData::TsNullKeyword(TsNullKeyword(node_id)),
-            NodeKind::TsUndefinedKeyword => {
-                NodeKindData::TsUndefinedKeyword(TsUndefinedKeyword(node_id))
-            }
-            NodeKind::TsStringKeyword => NodeKindData::TsStringKeyword(TsStringKeyword(node_id)),
-            NodeKind::TsNumberKeyword => NodeKindData::TsNumberKeyword(TsNumberKeyword(node_id)),
-            NodeKind::TsBigIntKeyword => NodeKindData::TsBigIntKeyword(TsBigIntKeyword(node_id)),
-            NodeKind::TsBooleanKeyword => NodeKindData::TsBooleanKeyword(TsBooleanKeyword(node_id)),
-            NodeKind::TsSymbolKeyword => NodeKindData::TsSymbolKeyword(TsSymbolKeyword(node_id)),
-            NodeKind::TsObjectKeyword => NodeKindData::TsObjectKeyword(TsObjectKeyword(node_id)),
-            NodeKind::TsIntrinsicKeyword => {
-                NodeKindData::TsIntrinsicKeyword(TsIntrinsicKeyword(node_id))
-            }
-            NodeKind::TsThisType => NodeKindData::TsThisType(TsThisType(node_id)),
-            NodeKind::TsTypeReference => NodeKindData::TsTypeReference(TsTypeReference(node_id)),
-            NodeKind::TsQualifiedName => NodeKindData::TsQualifiedName(TsQualifiedName(node_id)),
-            NodeKind::TsTypeQuery => NodeKindData::TsTypeQuery(TsTypeQuery(node_id)),
-            NodeKind::TsImportType => NodeKindData::TsImportType(TsImportType(node_id)),
-            NodeKind::TsTypeParameter => NodeKindData::TsTypeParameter(TsTypeParameter(node_id)),
-            NodeKind::TsTypeParameterDeclaration => {
-                NodeKindData::TsTypeParameterDeclaration(TsTypeParameterDeclaration(node_id))
-            }
-            NodeKind::TsTypeParameterInstantiation => {
-                NodeKindData::TsTypeParameterInstantiation(TsTypeParameterInstantiation(node_id))
-            }
-            NodeKind::TsLiteralType => NodeKindData::TsLiteralType(TsLiteralType(node_id)),
-            NodeKind::TsTemplateLiteralType => {
-                NodeKindData::TsTemplateLiteralType(TsTemplateLiteralType(node_id))
-            }
-            NodeKind::TsArrayType => NodeKindData::TsArrayType(TsArrayType(node_id)),
-            NodeKind::TsIndexedAccessType => {
-                NodeKindData::TsIndexedAccessType(TsIndexedAccessType(node_id))
-            }
-            NodeKind::TsTupleType => NodeKindData::TsTupleType(TsTupleType(node_id)),
-            NodeKind::TsNamedTupleMember => {
-                NodeKindData::TsNamedTupleMember(TsNamedTupleMember(node_id))
-            }
-            NodeKind::TsOptionalType => NodeKindData::TsOptionalType(TsOptionalType(node_id)),
-            NodeKind::TsRestType => NodeKindData::TsRestType(TsRestType(node_id)),
-            NodeKind::TsJsDocNullableType => {
-                NodeKindData::TsJsDocNullableType(TsJsDocNullableType(node_id))
-            }
-            NodeKind::TsJsDocNonNullableType => {
-                NodeKindData::TsJsDocNonNullableType(TsJsDocNonNullableType(node_id))
-            }
-            NodeKind::TsJsDocUnknownType => {
-                NodeKindData::TsJsDocUnknownType(TsJsDocUnknownType(node_id))
-            }
-            NodeKind::TsUnionType => NodeKindData::TsUnionType(TsUnionType(node_id)),
-            NodeKind::TsIntersectionType => {
-                NodeKindData::TsIntersectionType(TsIntersectionType(node_id))
-            }
-            NodeKind::TsConditionalType => {
-                NodeKindData::TsConditionalType(TsConditionalType(node_id))
-            }
-            NodeKind::TsInferType => NodeKindData::TsInferType(TsInferType(node_id)),
-            NodeKind::TsTypeOperator => NodeKindData::TsTypeOperator(TsTypeOperator(node_id)),
-            NodeKind::TsParenthesizedType => {
-                NodeKindData::TsParenthesizedType(TsParenthesizedType(node_id))
-            }
-            NodeKind::TsFunctionType => NodeKindData::TsFunctionType(TsFunctionType(node_id)),
-            NodeKind::TsConstructorType => {
-                NodeKindData::TsConstructorType(TsConstructorType(node_id))
-            }
-            NodeKind::TsTypePredicate => NodeKindData::TsTypePredicate(TsTypePredicate(node_id)),
-            NodeKind::TsTypeLiteral => NodeKindData::TsTypeLiteral(TsTypeLiteral(node_id)),
-            NodeKind::TsMappedType => NodeKindData::TsMappedType(TsMappedType(node_id)),
-            NodeKind::TsPropertySignature => {
-                NodeKindData::TsPropertySignature(TsPropertySignature(node_id))
-            }
-            NodeKind::TsMethodSignature => {
-                NodeKindData::TsMethodSignature(TsMethodSignature(node_id))
-            }
-            NodeKind::TsCallSignatureDeclaration => {
-                NodeKindData::TsCallSignatureDeclaration(TsCallSignatureDeclaration(node_id))
-            }
-            NodeKind::TsConstructSignatureDeclaration => {
-                NodeKindData::TsConstructSignatureDeclaration(TsConstructSignatureDeclaration(
-                    node_id,
-                ))
-            }
-            NodeKind::TsIndexSignature => NodeKindData::TsIndexSignature(TsIndexSignature(node_id)),
-            NodeKind::TsTypeAliasDeclaration => {
-                NodeKindData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node_id))
-            }
-            NodeKind::TsInterfaceDeclaration => {
-                NodeKindData::TsInterfaceDeclaration(TsInterfaceDeclaration(node_id))
-            }
-            NodeKind::TsInterfaceBody => NodeKindData::TsInterfaceBody(TsInterfaceBody(node_id)),
-            NodeKind::TsInterfaceHeritage => {
-                NodeKindData::TsInterfaceHeritage(TsInterfaceHeritage(node_id))
-            }
-            NodeKind::TsClassImplements => {
-                NodeKindData::TsClassImplements(TsClassImplements(node_id))
-            }
-            NodeKind::TsEnumDeclaration => {
-                NodeKindData::TsEnumDeclaration(TsEnumDeclaration(node_id))
-            }
-            NodeKind::TsEnumBody => NodeKindData::TsEnumBody(TsEnumBody(node_id)),
-            NodeKind::TsEnumMember => NodeKindData::TsEnumMember(TsEnumMember(node_id)),
-            NodeKind::TsModuleDeclaration => {
-                NodeKindData::TsModuleDeclaration(TsModuleDeclaration(node_id))
-            }
-            NodeKind::TsModuleBlock => NodeKindData::TsModuleBlock(TsModuleBlock(node_id)),
-            NodeKind::TsGlobalDeclaration => {
-                NodeKindData::TsGlobalDeclaration(TsGlobalDeclaration(node_id))
-            }
-            NodeKind::TsParameterProperty => {
-                NodeKindData::TsParameterProperty(TsParameterProperty(node_id))
-            }
-            NodeKind::TsThisParameter => NodeKindData::TsThisParameter(TsThisParameter(node_id)),
-            NodeKind::TsAsExpression => NodeKindData::TsAsExpression(TsAsExpression(node_id)),
-            NodeKind::TsSatisfiesExpression => {
-                NodeKindData::TsSatisfiesExpression(TsSatisfiesExpression(node_id))
-            }
-            NodeKind::TsTypeAssertion => NodeKindData::TsTypeAssertion(TsTypeAssertion(node_id)),
-            NodeKind::TsNonNullExpression => {
-                NodeKindData::TsNonNullExpression(TsNonNullExpression(node_id))
-            }
-            NodeKind::TsInstantiationExpression => {
-                NodeKindData::TsInstantiationExpression(TsInstantiationExpression(node_id))
-            }
-            NodeKind::TsExportAssignment => {
-                NodeKindData::TsExportAssignment(TsExportAssignment(node_id))
-            }
-            NodeKind::TsNamespaceExportDeclaration => {
-                NodeKindData::TsNamespaceExportDeclaration(TsNamespaceExportDeclaration(node_id))
-            }
-            NodeKind::TsImportEqualsDeclaration => {
-                NodeKindData::TsImportEqualsDeclaration(TsImportEqualsDeclaration(node_id))
-            }
-            NodeKind::TsExternalModuleReference => {
-                NodeKindData::TsExternalModuleReference(TsExternalModuleReference(node_id))
-            }
-            NodeKind::JsxElement => NodeKindData::JsxElement(JsxElement(node_id)),
-            NodeKind::JsxOpeningElement => {
-                NodeKindData::JsxOpeningElement(JsxOpeningElement(node_id))
-            }
-            NodeKind::JsxClosingElement => {
-                NodeKindData::JsxClosingElement(JsxClosingElement(node_id))
-            }
-            NodeKind::JsxFragment => NodeKindData::JsxFragment(JsxFragment(node_id)),
-            NodeKind::JsxOpeningFragment => {
-                NodeKindData::JsxOpeningFragment(JsxOpeningFragment(node_id))
-            }
-            NodeKind::JsxClosingFragment => {
-                NodeKindData::JsxClosingFragment(JsxClosingFragment(node_id))
-            }
-            NodeKind::JsxIdentifier => NodeKindData::JsxIdentifier(JsxIdentifier(node_id)),
-            NodeKind::JsxNamespacedName => {
-                NodeKindData::JsxNamespacedName(JsxNamespacedName(node_id))
-            }
-            NodeKind::JsxMemberExpression => {
-                NodeKindData::JsxMemberExpression(JsxMemberExpression(node_id))
-            }
-            NodeKind::JsxAttribute => NodeKindData::JsxAttribute(JsxAttribute(node_id)),
-            NodeKind::JsxSpreadAttribute => {
-                NodeKindData::JsxSpreadAttribute(JsxSpreadAttribute(node_id))
-            }
-            NodeKind::JsxExpressionContainer => {
-                NodeKindData::JsxExpressionContainer(JsxExpressionContainer(node_id))
-            }
-            NodeKind::JsxEmptyExpression => {
-                NodeKindData::JsxEmptyExpression(JsxEmptyExpression(node_id))
-            }
-            NodeKind::JsxText => NodeKindData::JsxText(JsxText(node_id)),
-            NodeKind::JsxSpreadChild => NodeKindData::JsxSpreadChild(JsxSpreadChild(node_id)),
-        }
+        let kind = self.node_kind(node_id);
+        unsafe { std::mem::transmute(AstEnumDataRepr { kind, node_id }) }
     }
     #[inline]
     pub fn stmt_data(&self, node: Stmt) -> StmtData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::BlockStatement => StmtData::BlockStatement(BlockStatement(node.0)),
-            NodeKind::BreakStatement => StmtData::BreakStatement(BreakStatement(node.0)),
-            NodeKind::ContinueStatement => StmtData::ContinueStatement(ContinueStatement(node.0)),
-            NodeKind::DebuggerStatement => StmtData::DebuggerStatement(DebuggerStatement(node.0)),
-            NodeKind::DoWhileStatement => StmtData::DoWhileStatement(DoWhileStatement(node.0)),
-            NodeKind::EmptyStatement => StmtData::EmptyStatement(EmptyStatement(node.0)),
-            NodeKind::ExpressionStatement => {
-                StmtData::ExpressionStatement(ExpressionStatement(node.0))
-            }
-            NodeKind::ForInStatement => StmtData::ForInStatement(ForInStatement(node.0)),
-            NodeKind::ForOfStatement => StmtData::ForOfStatement(ForOfStatement(node.0)),
-            NodeKind::ForStatement => StmtData::ForStatement(ForStatement(node.0)),
-            NodeKind::IfStatement => StmtData::IfStatement(IfStatement(node.0)),
-            NodeKind::LabeledStatement => StmtData::LabeledStatement(LabeledStatement(node.0)),
-            NodeKind::ReturnStatement => StmtData::ReturnStatement(ReturnStatement(node.0)),
-            NodeKind::SwitchStatement => StmtData::SwitchStatement(SwitchStatement(node.0)),
-            NodeKind::ThrowStatement => StmtData::ThrowStatement(ThrowStatement(node.0)),
-            NodeKind::TryStatement => StmtData::TryStatement(TryStatement(node.0)),
-            NodeKind::WhileStatement => StmtData::WhileStatement(WhileStatement(node.0)),
-            NodeKind::WithStatement => StmtData::WithStatement(WithStatement(node.0)),
-            NodeKind::ImportDeclaration => StmtData::ImportDeclaration(ImportDeclaration(node.0)),
-            NodeKind::ExportNamedDeclaration => {
-                StmtData::ExportNamedDeclaration(ExportNamedDeclaration(node.0))
-            }
-            NodeKind::ExportDefaultDeclaration => {
-                StmtData::ExportDefaultDeclaration(ExportDefaultDeclaration(node.0))
-            }
-            NodeKind::ExportAllDeclaration => {
-                StmtData::ExportAllDeclaration(ExportAllDeclaration(node.0))
-            }
-            NodeKind::TsExportAssignment => {
-                StmtData::TsExportAssignment(TsExportAssignment(node.0))
-            }
-            NodeKind::TsNamespaceExportDeclaration => {
-                StmtData::TsNamespaceExportDeclaration(TsNamespaceExportDeclaration(node.0))
-            }
-            NodeKind::VariableDeclaration => {
-                StmtData::VariableDeclaration(VariableDeclaration(node.0))
-            }
-            NodeKind::FunctionDeclaration => {
-                StmtData::FunctionDeclaration(FunctionDeclaration(node.0))
-            }
-            NodeKind::ClassDeclaration => StmtData::ClassDeclaration(ClassDeclaration(node.0)),
-            NodeKind::TsFunction => StmtData::TsFunction(TsFunction(node.0)),
-            NodeKind::TsTypeAliasDeclaration => {
-                StmtData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node.0))
-            }
-            NodeKind::TsInterfaceDeclaration => {
-                StmtData::TsInterfaceDeclaration(TsInterfaceDeclaration(node.0))
-            }
-            NodeKind::TsEnumDeclaration => StmtData::TsEnumDeclaration(TsEnumDeclaration(node.0)),
-            NodeKind::TsModuleDeclaration => {
-                StmtData::TsModuleDeclaration(TsModuleDeclaration(node.0))
-            }
-            NodeKind::TsGlobalDeclaration => {
-                StmtData::TsGlobalDeclaration(TsGlobalDeclaration(node.0))
-            }
-            NodeKind::TsImportEqualsDeclaration => {
-                StmtData::TsImportEqualsDeclaration(TsImportEqualsDeclaration(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_stmt());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn decl_data(&self, node: Decl) -> DeclData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::VariableDeclaration => {
-                DeclData::VariableDeclaration(VariableDeclaration(node.0))
-            }
-            NodeKind::FunctionDeclaration => {
-                DeclData::FunctionDeclaration(FunctionDeclaration(node.0))
-            }
-            NodeKind::ClassDeclaration => DeclData::ClassDeclaration(ClassDeclaration(node.0)),
-            NodeKind::TsFunction => DeclData::TsFunction(TsFunction(node.0)),
-            NodeKind::TsTypeAliasDeclaration => {
-                DeclData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node.0))
-            }
-            NodeKind::TsInterfaceDeclaration => {
-                DeclData::TsInterfaceDeclaration(TsInterfaceDeclaration(node.0))
-            }
-            NodeKind::TsEnumDeclaration => DeclData::TsEnumDeclaration(TsEnumDeclaration(node.0)),
-            NodeKind::TsModuleDeclaration => {
-                DeclData::TsModuleDeclaration(TsModuleDeclaration(node.0))
-            }
-            NodeKind::TsGlobalDeclaration => {
-                DeclData::TsGlobalDeclaration(TsGlobalDeclaration(node.0))
-            }
-            NodeKind::TsImportEqualsDeclaration => {
-                DeclData::TsImportEqualsDeclaration(TsImportEqualsDeclaration(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_decl());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn expr_data(&self, node: Expr) -> ExprData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierReference => {
-                ExprData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => ExprData::ThisExpression(ThisExpression(node.0)),
-            NodeKind::Super => ExprData::Super(Super(node.0)),
-            NodeKind::MetaProperty => ExprData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => ExprData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => ExprData::NumericLiteral(NumericLiteral(node.0)),
-            NodeKind::BigIntLiteral => ExprData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => ExprData::BooleanLiteral(BooleanLiteral(node.0)),
-            NodeKind::NullLiteral => ExprData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => ExprData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => ExprData::TemplateLiteral(TemplateLiteral(node.0)),
-            NodeKind::BinaryExpression => ExprData::BinaryExpression(BinaryExpression(node.0)),
-            NodeKind::LogicalExpression => ExprData::LogicalExpression(LogicalExpression(node.0)),
-            NodeKind::UnaryExpression => ExprData::UnaryExpression(UnaryExpression(node.0)),
-            NodeKind::UpdateExpression => ExprData::UpdateExpression(UpdateExpression(node.0)),
-            NodeKind::AssignmentExpression => {
-                ExprData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                ExprData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                ExprData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => ExprData::MemberExpression(MemberExpression(node.0)),
-            NodeKind::CallExpression => ExprData::CallExpression(CallExpression(node.0)),
-            NodeKind::ChainExpression => ExprData::ChainExpression(ChainExpression(node.0)),
-            NodeKind::NewExpression => ExprData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                ExprData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                ExprData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => ExprData::ArrayExpression(ArrayExpression(node.0)),
-            NodeKind::ObjectExpression => ExprData::ObjectExpression(ObjectExpression(node.0)),
-            NodeKind::ParenthesizedExpression => {
-                ExprData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                ExprData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => ExprData::ClassExpression(ClassExpression(node.0)),
-            NodeKind::ImportExpression => ExprData::ImportExpression(ImportExpression(node.0)),
-            NodeKind::AwaitExpression => ExprData::AwaitExpression(AwaitExpression(node.0)),
-            NodeKind::YieldExpression => ExprData::YieldExpression(YieldExpression(node.0)),
-            NodeKind::PrivateIdentifier => ExprData::PrivateIdentifier(PrivateIdentifier(node.0)),
-            NodeKind::TsAsExpression => ExprData::TsAsExpression(TsAsExpression(node.0)),
-            NodeKind::TsSatisfiesExpression => {
-                ExprData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => ExprData::TsTypeAssertion(TsTypeAssertion(node.0)),
-            NodeKind::TsNonNullExpression => {
-                ExprData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                ExprData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => ExprData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => ExprData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_expr());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn binding_pattern_data(&self, node: BindingPattern) -> BindingPatternData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::BindingIdentifier => {
-                BindingPatternData::BindingIdentifier(BindingIdentifier(node.0))
-            }
-            NodeKind::AssignmentPattern => {
-                BindingPatternData::AssignmentPattern(AssignmentPattern(node.0))
-            }
-            NodeKind::BindingRestElement => {
-                BindingPatternData::BindingRestElement(BindingRestElement(node.0))
-            }
-            NodeKind::ArrayPattern => BindingPatternData::ArrayPattern(ArrayPattern(node.0)),
-            NodeKind::ObjectPattern => BindingPatternData::ObjectPattern(ObjectPattern(node.0)),
-            NodeKind::IdentifierReference => {
-                BindingPatternData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::MemberExpression => {
-                BindingPatternData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::TsAsExpression => BindingPatternData::TsAsExpression(TsAsExpression(node.0)),
-            NodeKind::TsSatisfiesExpression => {
-                BindingPatternData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                BindingPatternData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                BindingPatternData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_binding_pattern());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn assignment_target_data(&self, node: AssignmentTarget) -> AssignmentTargetData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::ArrayPattern => {
-                AssignmentTargetData::ArrayAssignmentTarget(ArrayPattern(node.0))
-            }
-            NodeKind::ObjectPattern => {
-                AssignmentTargetData::ObjectAssignmentTarget(ObjectPattern(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                AssignmentTargetData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::MemberExpression => {
-                AssignmentTargetData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                AssignmentTargetData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                AssignmentTargetData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                AssignmentTargetData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                AssignmentTargetData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_assignment_target());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -7226,467 +6752,101 @@ impl<'a> Ast<'a> {
         &self,
         node: SimpleAssignmentTarget,
     ) -> SimpleAssignmentTargetData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierReference => {
-                SimpleAssignmentTargetData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::MemberExpression => {
-                SimpleAssignmentTargetData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                SimpleAssignmentTargetData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                SimpleAssignmentTargetData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                SimpleAssignmentTargetData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                SimpleAssignmentTargetData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_simple_assignment_target());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn property_key_data(&self, node: PropertyKey) -> PropertyKeyData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierName => PropertyKeyData::IdentifierName(IdentifierName(node.0)),
-            NodeKind::IdentifierReference => {
-                PropertyKeyData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => PropertyKeyData::ThisExpression(ThisExpression(node.0)),
-            NodeKind::Super => PropertyKeyData::Super(Super(node.0)),
-            NodeKind::MetaProperty => PropertyKeyData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => PropertyKeyData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => PropertyKeyData::NumericLiteral(NumericLiteral(node.0)),
-            NodeKind::BigIntLiteral => PropertyKeyData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => PropertyKeyData::BooleanLiteral(BooleanLiteral(node.0)),
-            NodeKind::NullLiteral => PropertyKeyData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => PropertyKeyData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => PropertyKeyData::TemplateLiteral(TemplateLiteral(node.0)),
-            NodeKind::BinaryExpression => {
-                PropertyKeyData::BinaryExpression(BinaryExpression(node.0))
-            }
-            NodeKind::LogicalExpression => {
-                PropertyKeyData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => PropertyKeyData::UnaryExpression(UnaryExpression(node.0)),
-            NodeKind::UpdateExpression => {
-                PropertyKeyData::UpdateExpression(UpdateExpression(node.0))
-            }
-            NodeKind::AssignmentExpression => {
-                PropertyKeyData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                PropertyKeyData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                PropertyKeyData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => {
-                PropertyKeyData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => PropertyKeyData::CallExpression(CallExpression(node.0)),
-            NodeKind::ChainExpression => PropertyKeyData::ChainExpression(ChainExpression(node.0)),
-            NodeKind::NewExpression => PropertyKeyData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                PropertyKeyData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                PropertyKeyData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => PropertyKeyData::ArrayExpression(ArrayExpression(node.0)),
-            NodeKind::ObjectExpression => {
-                PropertyKeyData::ObjectExpression(ObjectExpression(node.0))
-            }
-            NodeKind::ParenthesizedExpression => {
-                PropertyKeyData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                PropertyKeyData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => PropertyKeyData::ClassExpression(ClassExpression(node.0)),
-            NodeKind::ImportExpression => {
-                PropertyKeyData::ImportExpression(ImportExpression(node.0))
-            }
-            NodeKind::AwaitExpression => PropertyKeyData::AwaitExpression(AwaitExpression(node.0)),
-            NodeKind::YieldExpression => PropertyKeyData::YieldExpression(YieldExpression(node.0)),
-            NodeKind::PrivateIdentifier => {
-                PropertyKeyData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => PropertyKeyData::TsAsExpression(TsAsExpression(node.0)),
-            NodeKind::TsSatisfiesExpression => {
-                PropertyKeyData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => PropertyKeyData::TsTypeAssertion(TsTypeAssertion(node.0)),
-            NodeKind::TsNonNullExpression => {
-                PropertyKeyData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                PropertyKeyData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => PropertyKeyData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => PropertyKeyData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_property_key());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn module_export_name_data(&self, node: ModuleExportName) -> ModuleExportNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierName => {
-                ModuleExportNameData::IdentifierName(IdentifierName(node.0))
-            }
-            NodeKind::StringLiteral => ModuleExportNameData::StringLiteral(StringLiteral(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_module_export_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn argument_data(&self, node: Argument) -> ArgumentData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::SpreadElement => ArgumentData::SpreadElement(SpreadElement(node.0)),
-            NodeKind::IdentifierReference => {
-                ArgumentData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => ArgumentData::ThisExpression(ThisExpression(node.0)),
-            NodeKind::Super => ArgumentData::Super(Super(node.0)),
-            NodeKind::MetaProperty => ArgumentData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => ArgumentData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => ArgumentData::NumericLiteral(NumericLiteral(node.0)),
-            NodeKind::BigIntLiteral => ArgumentData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => ArgumentData::BooleanLiteral(BooleanLiteral(node.0)),
-            NodeKind::NullLiteral => ArgumentData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => ArgumentData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => ArgumentData::TemplateLiteral(TemplateLiteral(node.0)),
-            NodeKind::BinaryExpression => ArgumentData::BinaryExpression(BinaryExpression(node.0)),
-            NodeKind::LogicalExpression => {
-                ArgumentData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => ArgumentData::UnaryExpression(UnaryExpression(node.0)),
-            NodeKind::UpdateExpression => ArgumentData::UpdateExpression(UpdateExpression(node.0)),
-            NodeKind::AssignmentExpression => {
-                ArgumentData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                ArgumentData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                ArgumentData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => ArgumentData::MemberExpression(MemberExpression(node.0)),
-            NodeKind::CallExpression => ArgumentData::CallExpression(CallExpression(node.0)),
-            NodeKind::ChainExpression => ArgumentData::ChainExpression(ChainExpression(node.0)),
-            NodeKind::NewExpression => ArgumentData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                ArgumentData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                ArgumentData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => ArgumentData::ArrayExpression(ArrayExpression(node.0)),
-            NodeKind::ObjectExpression => ArgumentData::ObjectExpression(ObjectExpression(node.0)),
-            NodeKind::ParenthesizedExpression => {
-                ArgumentData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                ArgumentData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => ArgumentData::ClassExpression(ClassExpression(node.0)),
-            NodeKind::ImportExpression => ArgumentData::ImportExpression(ImportExpression(node.0)),
-            NodeKind::AwaitExpression => ArgumentData::AwaitExpression(AwaitExpression(node.0)),
-            NodeKind::YieldExpression => ArgumentData::YieldExpression(YieldExpression(node.0)),
-            NodeKind::PrivateIdentifier => {
-                ArgumentData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => ArgumentData::TsAsExpression(TsAsExpression(node.0)),
-            NodeKind::TsSatisfiesExpression => {
-                ArgumentData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => ArgumentData::TsTypeAssertion(TsTypeAssertion(node.0)),
-            NodeKind::TsNonNullExpression => {
-                ArgumentData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                ArgumentData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => ArgumentData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => ArgumentData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_argument());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn object_property_kind_data(&self, node: ObjectPropertyKind) -> ObjectPropertyKindData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::ObjectProperty => {
-                ObjectPropertyKindData::ObjectProperty(ObjectProperty(node.0))
-            }
-            NodeKind::SpreadElement => ObjectPropertyKindData::SpreadElement(SpreadElement(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_object_property_kind());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn for_statement_init_data(&self, node: ForStatementInit) -> ForStatementInitData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::VariableDeclaration => {
-                ForStatementInitData::VariableDeclaration(VariableDeclaration(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                ForStatementInitData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => {
-                ForStatementInitData::ThisExpression(ThisExpression(node.0))
-            }
-            NodeKind::Super => ForStatementInitData::Super(Super(node.0)),
-            NodeKind::MetaProperty => ForStatementInitData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => ForStatementInitData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => {
-                ForStatementInitData::NumericLiteral(NumericLiteral(node.0))
-            }
-            NodeKind::BigIntLiteral => ForStatementInitData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => {
-                ForStatementInitData::BooleanLiteral(BooleanLiteral(node.0))
-            }
-            NodeKind::NullLiteral => ForStatementInitData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => ForStatementInitData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => {
-                ForStatementInitData::TemplateLiteral(TemplateLiteral(node.0))
-            }
-            NodeKind::BinaryExpression => {
-                ForStatementInitData::BinaryExpression(BinaryExpression(node.0))
-            }
-            NodeKind::LogicalExpression => {
-                ForStatementInitData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => {
-                ForStatementInitData::UnaryExpression(UnaryExpression(node.0))
-            }
-            NodeKind::UpdateExpression => {
-                ForStatementInitData::UpdateExpression(UpdateExpression(node.0))
-            }
-            NodeKind::AssignmentExpression => {
-                ForStatementInitData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                ForStatementInitData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                ForStatementInitData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => {
-                ForStatementInitData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => {
-                ForStatementInitData::CallExpression(CallExpression(node.0))
-            }
-            NodeKind::ChainExpression => {
-                ForStatementInitData::ChainExpression(ChainExpression(node.0))
-            }
-            NodeKind::NewExpression => ForStatementInitData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                ForStatementInitData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                ForStatementInitData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => {
-                ForStatementInitData::ArrayExpression(ArrayExpression(node.0))
-            }
-            NodeKind::ObjectExpression => {
-                ForStatementInitData::ObjectExpression(ObjectExpression(node.0))
-            }
-            NodeKind::ParenthesizedExpression => {
-                ForStatementInitData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                ForStatementInitData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => {
-                ForStatementInitData::ClassExpression(ClassExpression(node.0))
-            }
-            NodeKind::ImportExpression => {
-                ForStatementInitData::ImportExpression(ImportExpression(node.0))
-            }
-            NodeKind::AwaitExpression => {
-                ForStatementInitData::AwaitExpression(AwaitExpression(node.0))
-            }
-            NodeKind::YieldExpression => {
-                ForStatementInitData::YieldExpression(YieldExpression(node.0))
-            }
-            NodeKind::PrivateIdentifier => {
-                ForStatementInitData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                ForStatementInitData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                ForStatementInitData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                ForStatementInitData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                ForStatementInitData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                ForStatementInitData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => ForStatementInitData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => ForStatementInitData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_for_statement_init());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn for_statement_left_data(&self, node: ForStatementLeft) -> ForStatementLeftData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::VariableDeclaration => {
-                ForStatementLeftData::VariableDeclaration(VariableDeclaration(node.0))
-            }
-            NodeKind::ArrayPattern => {
-                ForStatementLeftData::ArrayAssignmentTarget(ArrayPattern(node.0))
-            }
-            NodeKind::ObjectPattern => {
-                ForStatementLeftData::ObjectAssignmentTarget(ObjectPattern(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                ForStatementLeftData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::MemberExpression => {
-                ForStatementLeftData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                ForStatementLeftData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                ForStatementLeftData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                ForStatementLeftData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                ForStatementLeftData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_for_statement_left());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn arrow_function_body_data(&self, node: ArrowFunctionBody) -> ArrowFunctionBodyData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::FunctionBody => ArrowFunctionBodyData::FunctionBody(FunctionBody(node.0)),
-            NodeKind::IdentifierReference => {
-                ArrowFunctionBodyData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => {
-                ArrowFunctionBodyData::ThisExpression(ThisExpression(node.0))
-            }
-            NodeKind::Super => ArrowFunctionBodyData::Super(Super(node.0)),
-            NodeKind::MetaProperty => ArrowFunctionBodyData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => ArrowFunctionBodyData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => {
-                ArrowFunctionBodyData::NumericLiteral(NumericLiteral(node.0))
-            }
-            NodeKind::BigIntLiteral => ArrowFunctionBodyData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => {
-                ArrowFunctionBodyData::BooleanLiteral(BooleanLiteral(node.0))
-            }
-            NodeKind::NullLiteral => ArrowFunctionBodyData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => ArrowFunctionBodyData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => {
-                ArrowFunctionBodyData::TemplateLiteral(TemplateLiteral(node.0))
-            }
-            NodeKind::BinaryExpression => {
-                ArrowFunctionBodyData::BinaryExpression(BinaryExpression(node.0))
-            }
-            NodeKind::LogicalExpression => {
-                ArrowFunctionBodyData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => {
-                ArrowFunctionBodyData::UnaryExpression(UnaryExpression(node.0))
-            }
-            NodeKind::UpdateExpression => {
-                ArrowFunctionBodyData::UpdateExpression(UpdateExpression(node.0))
-            }
-            NodeKind::AssignmentExpression => {
-                ArrowFunctionBodyData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                ArrowFunctionBodyData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                ArrowFunctionBodyData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => {
-                ArrowFunctionBodyData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => {
-                ArrowFunctionBodyData::CallExpression(CallExpression(node.0))
-            }
-            NodeKind::ChainExpression => {
-                ArrowFunctionBodyData::ChainExpression(ChainExpression(node.0))
-            }
-            NodeKind::NewExpression => ArrowFunctionBodyData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                ArrowFunctionBodyData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                ArrowFunctionBodyData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => {
-                ArrowFunctionBodyData::ArrayExpression(ArrayExpression(node.0))
-            }
-            NodeKind::ObjectExpression => {
-                ArrowFunctionBodyData::ObjectExpression(ObjectExpression(node.0))
-            }
-            NodeKind::ParenthesizedExpression => {
-                ArrowFunctionBodyData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                ArrowFunctionBodyData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => {
-                ArrowFunctionBodyData::ClassExpression(ClassExpression(node.0))
-            }
-            NodeKind::ImportExpression => {
-                ArrowFunctionBodyData::ImportExpression(ImportExpression(node.0))
-            }
-            NodeKind::AwaitExpression => {
-                ArrowFunctionBodyData::AwaitExpression(AwaitExpression(node.0))
-            }
-            NodeKind::YieldExpression => {
-                ArrowFunctionBodyData::YieldExpression(YieldExpression(node.0))
-            }
-            NodeKind::PrivateIdentifier => {
-                ArrowFunctionBodyData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                ArrowFunctionBodyData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                ArrowFunctionBodyData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                ArrowFunctionBodyData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                ArrowFunctionBodyData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                ArrowFunctionBodyData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => ArrowFunctionBodyData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => ArrowFunctionBodyData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_arrow_function_body());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn formal_parameter_item_data(&self, node: FormalParameterItem) -> FormalParameterItemData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::FormalParameter => {
-                FormalParameterItemData::FormalParameter(FormalParameter(node.0))
-            }
-            NodeKind::TsParameterProperty => {
-                FormalParameterItemData::TsParameterProperty(TsParameterProperty(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_formal_parameter_item());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -7694,63 +6854,24 @@ impl<'a> Ast<'a> {
         &self,
         node: FormalParameterPattern,
     ) -> FormalParameterPatternData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::TsThisParameter => {
-                FormalParameterPatternData::TsThisParameter(TsThisParameter(node.0))
-            }
-            NodeKind::BindingIdentifier => {
-                FormalParameterPatternData::BindingIdentifier(BindingIdentifier(node.0))
-            }
-            NodeKind::AssignmentPattern => {
-                FormalParameterPatternData::AssignmentPattern(AssignmentPattern(node.0))
-            }
-            NodeKind::BindingRestElement => {
-                FormalParameterPatternData::BindingRestElement(BindingRestElement(node.0))
-            }
-            NodeKind::ArrayPattern => {
-                FormalParameterPatternData::ArrayPattern(ArrayPattern(node.0))
-            }
-            NodeKind::ObjectPattern => {
-                FormalParameterPatternData::ObjectPattern(ObjectPattern(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                FormalParameterPatternData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::MemberExpression => {
-                FormalParameterPatternData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                FormalParameterPatternData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                FormalParameterPatternData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                FormalParameterPatternData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                FormalParameterPatternData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_formal_parameter_pattern());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn class_element_data(&self, node: ClassElement) -> ClassElementData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::MethodDefinition => {
-                ClassElementData::MethodDefinition(MethodDefinition(node.0))
-            }
-            NodeKind::PropertyDefinition => {
-                ClassElementData::PropertyDefinition(PropertyDefinition(node.0))
-            }
-            NodeKind::StaticBlock => ClassElementData::StaticBlock(StaticBlock(node.0)),
-            NodeKind::TsMethodDefinition => {
-                ClassElementData::TsMethodDefinition(TsMethodDefinition(node.0))
-            }
-            NodeKind::TsIndexSignature => {
-                ClassElementData::TsIndexSignature(TsIndexSignature(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_class_element());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -7758,21 +6879,13 @@ impl<'a> Ast<'a> {
         &self,
         node: ImportDeclarationSpecifier,
     ) -> ImportDeclarationSpecifierData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::ImportSpecifier => {
-                ImportDeclarationSpecifierData::ImportSpecifier(ImportSpecifier(node.0))
-            }
-            NodeKind::ImportDefaultSpecifier => {
-                ImportDeclarationSpecifierData::ImportDefaultSpecifier(ImportDefaultSpecifier(
-                    node.0,
-                ))
-            }
-            NodeKind::ImportNamespaceSpecifier => {
-                ImportDeclarationSpecifierData::ImportNamespaceSpecifier(ImportNamespaceSpecifier(
-                    node.0,
-                ))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_import_declaration_specifier());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -7780,224 +6893,35 @@ impl<'a> Ast<'a> {
         &self,
         node: ExportDefaultDeclarationKind,
     ) -> ExportDefaultDeclarationKindData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::FunctionDeclaration => {
-                ExportDefaultDeclarationKindData::FunctionDeclaration(FunctionDeclaration(node.0))
-            }
-            NodeKind::ClassDeclaration => {
-                ExportDefaultDeclarationKindData::ClassDeclaration(ClassDeclaration(node.0))
-            }
-            NodeKind::TsFunction => {
-                ExportDefaultDeclarationKindData::TsFunction(TsFunction(node.0))
-            }
-            NodeKind::TsInterfaceDeclaration => {
-                ExportDefaultDeclarationKindData::TsInterfaceDeclaration(TsInterfaceDeclaration(
-                    node.0,
-                ))
-            }
-            NodeKind::IdentifierReference => {
-                ExportDefaultDeclarationKindData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => {
-                ExportDefaultDeclarationKindData::ThisExpression(ThisExpression(node.0))
-            }
-            NodeKind::Super => ExportDefaultDeclarationKindData::Super(Super(node.0)),
-            NodeKind::MetaProperty => {
-                ExportDefaultDeclarationKindData::MetaProperty(MetaProperty(node.0))
-            }
-            NodeKind::StringLiteral => {
-                ExportDefaultDeclarationKindData::StringLiteral(StringLiteral(node.0))
-            }
-            NodeKind::NumericLiteral => {
-                ExportDefaultDeclarationKindData::NumericLiteral(NumericLiteral(node.0))
-            }
-            NodeKind::BigIntLiteral => {
-                ExportDefaultDeclarationKindData::BigIntLiteral(BigIntLiteral(node.0))
-            }
-            NodeKind::BooleanLiteral => {
-                ExportDefaultDeclarationKindData::BooleanLiteral(BooleanLiteral(node.0))
-            }
-            NodeKind::NullLiteral => {
-                ExportDefaultDeclarationKindData::NullLiteral(NullLiteral(node.0))
-            }
-            NodeKind::RegExpLiteral => {
-                ExportDefaultDeclarationKindData::RegExpLiteral(RegExpLiteral(node.0))
-            }
-            NodeKind::TemplateLiteral => {
-                ExportDefaultDeclarationKindData::TemplateLiteral(TemplateLiteral(node.0))
-            }
-            NodeKind::BinaryExpression => {
-                ExportDefaultDeclarationKindData::BinaryExpression(BinaryExpression(node.0))
-            }
-            NodeKind::LogicalExpression => {
-                ExportDefaultDeclarationKindData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => {
-                ExportDefaultDeclarationKindData::UnaryExpression(UnaryExpression(node.0))
-            }
-            NodeKind::UpdateExpression => {
-                ExportDefaultDeclarationKindData::UpdateExpression(UpdateExpression(node.0))
-            }
-            NodeKind::AssignmentExpression => {
-                ExportDefaultDeclarationKindData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                ExportDefaultDeclarationKindData::ConditionalExpression(ConditionalExpression(
-                    node.0,
-                ))
-            }
-            NodeKind::SequenceExpression => {
-                ExportDefaultDeclarationKindData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => {
-                ExportDefaultDeclarationKindData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => {
-                ExportDefaultDeclarationKindData::CallExpression(CallExpression(node.0))
-            }
-            NodeKind::ChainExpression => {
-                ExportDefaultDeclarationKindData::ChainExpression(ChainExpression(node.0))
-            }
-            NodeKind::NewExpression => {
-                ExportDefaultDeclarationKindData::NewExpression(NewExpression(node.0))
-            }
-            NodeKind::TaggedTemplateExpression => {
-                ExportDefaultDeclarationKindData::TaggedTemplateExpression(
-                    TaggedTemplateExpression(node.0),
-                )
-            }
-            NodeKind::ArrowFunctionExpression => {
-                ExportDefaultDeclarationKindData::ArrowFunctionExpression(ArrowFunctionExpression(
-                    node.0,
-                ))
-            }
-            NodeKind::ArrayExpression => {
-                ExportDefaultDeclarationKindData::ArrayExpression(ArrayExpression(node.0))
-            }
-            NodeKind::ObjectExpression => {
-                ExportDefaultDeclarationKindData::ObjectExpression(ObjectExpression(node.0))
-            }
-            NodeKind::ParenthesizedExpression => {
-                ExportDefaultDeclarationKindData::ParenthesizedExpression(ParenthesizedExpression(
-                    node.0,
-                ))
-            }
-            NodeKind::FunctionExpression => {
-                ExportDefaultDeclarationKindData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => {
-                ExportDefaultDeclarationKindData::ClassExpression(ClassExpression(node.0))
-            }
-            NodeKind::ImportExpression => {
-                ExportDefaultDeclarationKindData::ImportExpression(ImportExpression(node.0))
-            }
-            NodeKind::AwaitExpression => {
-                ExportDefaultDeclarationKindData::AwaitExpression(AwaitExpression(node.0))
-            }
-            NodeKind::YieldExpression => {
-                ExportDefaultDeclarationKindData::YieldExpression(YieldExpression(node.0))
-            }
-            NodeKind::PrivateIdentifier => {
-                ExportDefaultDeclarationKindData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                ExportDefaultDeclarationKindData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                ExportDefaultDeclarationKindData::TsSatisfiesExpression(TsSatisfiesExpression(
-                    node.0,
-                ))
-            }
-            NodeKind::TsTypeAssertion => {
-                ExportDefaultDeclarationKindData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                ExportDefaultDeclarationKindData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                ExportDefaultDeclarationKindData::TsInstantiationExpression(
-                    TsInstantiationExpression(node.0),
-                )
-            }
-            NodeKind::JsxElement => {
-                ExportDefaultDeclarationKindData::JsxElement(JsxElement(node.0))
-            }
-            NodeKind::JsxFragment => {
-                ExportDefaultDeclarationKindData::JsxFragment(JsxFragment(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_export_default_declaration_kind());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_type_data(&self, node: TsType) -> TsTypeData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::TsAnyKeyword => TsTypeData::TsAnyKeyword(TsAnyKeyword(node.0)),
-            NodeKind::TsUnknownKeyword => TsTypeData::TsUnknownKeyword(TsUnknownKeyword(node.0)),
-            NodeKind::TsNeverKeyword => TsTypeData::TsNeverKeyword(TsNeverKeyword(node.0)),
-            NodeKind::TsVoidKeyword => TsTypeData::TsVoidKeyword(TsVoidKeyword(node.0)),
-            NodeKind::TsNullKeyword => TsTypeData::TsNullKeyword(TsNullKeyword(node.0)),
-            NodeKind::TsUndefinedKeyword => {
-                TsTypeData::TsUndefinedKeyword(TsUndefinedKeyword(node.0))
-            }
-            NodeKind::TsStringKeyword => TsTypeData::TsStringKeyword(TsStringKeyword(node.0)),
-            NodeKind::TsNumberKeyword => TsTypeData::TsNumberKeyword(TsNumberKeyword(node.0)),
-            NodeKind::TsBigIntKeyword => TsTypeData::TsBigIntKeyword(TsBigIntKeyword(node.0)),
-            NodeKind::TsBooleanKeyword => TsTypeData::TsBooleanKeyword(TsBooleanKeyword(node.0)),
-            NodeKind::TsSymbolKeyword => TsTypeData::TsSymbolKeyword(TsSymbolKeyword(node.0)),
-            NodeKind::TsObjectKeyword => TsTypeData::TsObjectKeyword(TsObjectKeyword(node.0)),
-            NodeKind::TsIntrinsicKeyword => {
-                TsTypeData::TsIntrinsicKeyword(TsIntrinsicKeyword(node.0))
-            }
-            NodeKind::TsThisType => TsTypeData::TsThisType(TsThisType(node.0)),
-            NodeKind::TsTypeReference => TsTypeData::TsTypeReference(TsTypeReference(node.0)),
-            NodeKind::TsTypeQuery => TsTypeData::TsTypeQuery(TsTypeQuery(node.0)),
-            NodeKind::TsImportType => TsTypeData::TsImportType(TsImportType(node.0)),
-            NodeKind::TsLiteralType => TsTypeData::TsLiteralType(TsLiteralType(node.0)),
-            NodeKind::TsTemplateLiteralType => {
-                TsTypeData::TsTemplateLiteralType(TsTemplateLiteralType(node.0))
-            }
-            NodeKind::TsArrayType => TsTypeData::TsArrayType(TsArrayType(node.0)),
-            NodeKind::TsIndexedAccessType => {
-                TsTypeData::TsIndexedAccessType(TsIndexedAccessType(node.0))
-            }
-            NodeKind::TsTupleType => TsTypeData::TsTupleType(TsTupleType(node.0)),
-            NodeKind::TsOptionalType => TsTypeData::TsOptionalType(TsOptionalType(node.0)),
-            NodeKind::TsRestType => TsTypeData::TsRestType(TsRestType(node.0)),
-            NodeKind::TsJsDocNullableType => {
-                TsTypeData::TsJsDocNullableType(TsJsDocNullableType(node.0))
-            }
-            NodeKind::TsJsDocNonNullableType => {
-                TsTypeData::TsJsDocNonNullableType(TsJsDocNonNullableType(node.0))
-            }
-            NodeKind::TsJsDocUnknownType => {
-                TsTypeData::TsJsDocUnknownType(TsJsDocUnknownType(node.0))
-            }
-            NodeKind::TsUnionType => TsTypeData::TsUnionType(TsUnionType(node.0)),
-            NodeKind::TsIntersectionType => {
-                TsTypeData::TsIntersectionType(TsIntersectionType(node.0))
-            }
-            NodeKind::TsConditionalType => TsTypeData::TsConditionalType(TsConditionalType(node.0)),
-            NodeKind::TsInferType => TsTypeData::TsInferType(TsInferType(node.0)),
-            NodeKind::TsTypeOperator => TsTypeData::TsTypeOperator(TsTypeOperator(node.0)),
-            NodeKind::TsParenthesizedType => {
-                TsTypeData::TsParenthesizedType(TsParenthesizedType(node.0))
-            }
-            NodeKind::TsFunctionType => TsTypeData::TsFunctionType(TsFunctionType(node.0)),
-            NodeKind::TsConstructorType => TsTypeData::TsConstructorType(TsConstructorType(node.0)),
-            NodeKind::TsTypePredicate => TsTypeData::TsTypePredicate(TsTypePredicate(node.0)),
-            NodeKind::TsTypeLiteral => TsTypeData::TsTypeLiteral(TsTypeLiteral(node.0)),
-            NodeKind::TsMappedType => TsTypeData::TsMappedType(TsMappedType(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_type());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_type_name_data(&self, node: TsTypeName) -> TsTypeNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierReference => {
-                TsTypeNameData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::TsQualifiedName => TsTypeNameData::TsQualifiedName(TsQualifiedName(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_type_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -8005,23 +6929,13 @@ impl<'a> Ast<'a> {
         &self,
         node: TsQualifiedNameLeft,
     ) -> TsQualifiedNameLeftData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierReference => {
-                TsQualifiedNameLeftData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::IdentifierName => {
-                TsQualifiedNameLeftData::IdentifierName(IdentifierName(node.0))
-            }
-            NodeKind::BindingIdentifier => {
-                TsQualifiedNameLeftData::BindingIdentifier(BindingIdentifier(node.0))
-            }
-            NodeKind::ThisExpression => {
-                TsQualifiedNameLeftData::ThisExpression(ThisExpression(node.0))
-            }
-            NodeKind::TsQualifiedName => {
-                TsQualifiedNameLeftData::TsQualifiedName(TsQualifiedName(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_qualified_name_left());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -8029,14 +6943,13 @@ impl<'a> Ast<'a> {
         &self,
         node: TsImportTypeQualifier,
     ) -> TsImportTypeQualifierData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierName => {
-                TsImportTypeQualifierData::IdentifierName(IdentifierName(node.0))
-            }
-            NodeKind::TsQualifiedName => {
-                TsImportTypeQualifierData::TsQualifiedName(TsQualifiedName(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_import_type_qualifier());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -8044,140 +6957,46 @@ impl<'a> Ast<'a> {
         &self,
         node: TsTypeQueryExprName,
     ) -> TsTypeQueryExprNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::ThisExpression => {
-                TsTypeQueryExprNameData::ThisExpression(ThisExpression(node.0))
-            }
-            NodeKind::TsImportType => TsTypeQueryExprNameData::TsImportType(TsImportType(node.0)),
-            NodeKind::IdentifierReference => {
-                TsTypeQueryExprNameData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::TsQualifiedName => {
-                TsTypeQueryExprNameData::TsQualifiedName(TsQualifiedName(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_type_query_expr_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_literal_data(&self, node: TsLiteral) -> TsLiteralData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::StringLiteral => TsLiteralData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => TsLiteralData::NumericLiteral(NumericLiteral(node.0)),
-            NodeKind::BigIntLiteral => TsLiteralData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => TsLiteralData::BooleanLiteral(BooleanLiteral(node.0)),
-            NodeKind::TemplateLiteral => TsLiteralData::TemplateLiteral(TemplateLiteral(node.0)),
-            NodeKind::UnaryExpression => TsLiteralData::UnaryExpression(UnaryExpression(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_literal());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_tuple_element_data(&self, node: TsTupleElement) -> TsTupleElementData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::TsNamedTupleMember => {
-                TsTupleElementData::TsNamedTupleMember(TsNamedTupleMember(node.0))
-            }
-            NodeKind::TsAnyKeyword => TsTupleElementData::TsAnyKeyword(TsAnyKeyword(node.0)),
-            NodeKind::TsUnknownKeyword => {
-                TsTupleElementData::TsUnknownKeyword(TsUnknownKeyword(node.0))
-            }
-            NodeKind::TsNeverKeyword => TsTupleElementData::TsNeverKeyword(TsNeverKeyword(node.0)),
-            NodeKind::TsVoidKeyword => TsTupleElementData::TsVoidKeyword(TsVoidKeyword(node.0)),
-            NodeKind::TsNullKeyword => TsTupleElementData::TsNullKeyword(TsNullKeyword(node.0)),
-            NodeKind::TsUndefinedKeyword => {
-                TsTupleElementData::TsUndefinedKeyword(TsUndefinedKeyword(node.0))
-            }
-            NodeKind::TsStringKeyword => {
-                TsTupleElementData::TsStringKeyword(TsStringKeyword(node.0))
-            }
-            NodeKind::TsNumberKeyword => {
-                TsTupleElementData::TsNumberKeyword(TsNumberKeyword(node.0))
-            }
-            NodeKind::TsBigIntKeyword => {
-                TsTupleElementData::TsBigIntKeyword(TsBigIntKeyword(node.0))
-            }
-            NodeKind::TsBooleanKeyword => {
-                TsTupleElementData::TsBooleanKeyword(TsBooleanKeyword(node.0))
-            }
-            NodeKind::TsSymbolKeyword => {
-                TsTupleElementData::TsSymbolKeyword(TsSymbolKeyword(node.0))
-            }
-            NodeKind::TsObjectKeyword => {
-                TsTupleElementData::TsObjectKeyword(TsObjectKeyword(node.0))
-            }
-            NodeKind::TsIntrinsicKeyword => {
-                TsTupleElementData::TsIntrinsicKeyword(TsIntrinsicKeyword(node.0))
-            }
-            NodeKind::TsThisType => TsTupleElementData::TsThisType(TsThisType(node.0)),
-            NodeKind::TsTypeReference => {
-                TsTupleElementData::TsTypeReference(TsTypeReference(node.0))
-            }
-            NodeKind::TsTypeQuery => TsTupleElementData::TsTypeQuery(TsTypeQuery(node.0)),
-            NodeKind::TsImportType => TsTupleElementData::TsImportType(TsImportType(node.0)),
-            NodeKind::TsLiteralType => TsTupleElementData::TsLiteralType(TsLiteralType(node.0)),
-            NodeKind::TsTemplateLiteralType => {
-                TsTupleElementData::TsTemplateLiteralType(TsTemplateLiteralType(node.0))
-            }
-            NodeKind::TsArrayType => TsTupleElementData::TsArrayType(TsArrayType(node.0)),
-            NodeKind::TsIndexedAccessType => {
-                TsTupleElementData::TsIndexedAccessType(TsIndexedAccessType(node.0))
-            }
-            NodeKind::TsTupleType => TsTupleElementData::TsTupleType(TsTupleType(node.0)),
-            NodeKind::TsOptionalType => TsTupleElementData::TsOptionalType(TsOptionalType(node.0)),
-            NodeKind::TsRestType => TsTupleElementData::TsRestType(TsRestType(node.0)),
-            NodeKind::TsJsDocNullableType => {
-                TsTupleElementData::TsJsDocNullableType(TsJsDocNullableType(node.0))
-            }
-            NodeKind::TsJsDocNonNullableType => {
-                TsTupleElementData::TsJsDocNonNullableType(TsJsDocNonNullableType(node.0))
-            }
-            NodeKind::TsJsDocUnknownType => {
-                TsTupleElementData::TsJsDocUnknownType(TsJsDocUnknownType(node.0))
-            }
-            NodeKind::TsUnionType => TsTupleElementData::TsUnionType(TsUnionType(node.0)),
-            NodeKind::TsIntersectionType => {
-                TsTupleElementData::TsIntersectionType(TsIntersectionType(node.0))
-            }
-            NodeKind::TsConditionalType => {
-                TsTupleElementData::TsConditionalType(TsConditionalType(node.0))
-            }
-            NodeKind::TsInferType => TsTupleElementData::TsInferType(TsInferType(node.0)),
-            NodeKind::TsTypeOperator => TsTupleElementData::TsTypeOperator(TsTypeOperator(node.0)),
-            NodeKind::TsParenthesizedType => {
-                TsTupleElementData::TsParenthesizedType(TsParenthesizedType(node.0))
-            }
-            NodeKind::TsFunctionType => TsTupleElementData::TsFunctionType(TsFunctionType(node.0)),
-            NodeKind::TsConstructorType => {
-                TsTupleElementData::TsConstructorType(TsConstructorType(node.0))
-            }
-            NodeKind::TsTypePredicate => {
-                TsTupleElementData::TsTypePredicate(TsTypePredicate(node.0))
-            }
-            NodeKind::TsTypeLiteral => TsTupleElementData::TsTypeLiteral(TsTypeLiteral(node.0)),
-            NodeKind::TsMappedType => TsTupleElementData::TsMappedType(TsMappedType(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_tuple_element());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_type_element_data(&self, node: TsTypeElement) -> TsTypeElementData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::TsPropertySignature => {
-                TsTypeElementData::TsPropertySignature(TsPropertySignature(node.0))
-            }
-            NodeKind::TsMethodSignature => {
-                TsTypeElementData::TsMethodSignature(TsMethodSignature(node.0))
-            }
-            NodeKind::TsCallSignatureDeclaration => {
-                TsTypeElementData::TsCallSignatureDeclaration(TsCallSignatureDeclaration(node.0))
-            }
-            NodeKind::TsConstructSignatureDeclaration => {
-                TsTypeElementData::TsConstructSignatureDeclaration(TsConstructSignatureDeclaration(
-                    node.0,
-                ))
-            }
-            NodeKind::TsIndexSignature => {
-                TsTypeElementData::TsIndexSignature(TsIndexSignature(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_type_element());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -8185,172 +7004,68 @@ impl<'a> Ast<'a> {
         &self,
         node: TsTypePredicateName,
     ) -> TsTypePredicateNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierName => {
-                TsTypePredicateNameData::IdentifierName(IdentifierName(node.0))
-            }
-            NodeKind::TsThisType => TsTypePredicateNameData::TsThisType(TsThisType(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_type_predicate_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_enum_member_name_data(&self, node: TsEnumMemberName) -> TsEnumMemberNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierName => {
-                TsEnumMemberNameData::IdentifierName(IdentifierName(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                TsEnumMemberNameData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => {
-                TsEnumMemberNameData::ThisExpression(ThisExpression(node.0))
-            }
-            NodeKind::Super => TsEnumMemberNameData::Super(Super(node.0)),
-            NodeKind::MetaProperty => TsEnumMemberNameData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => TsEnumMemberNameData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => {
-                TsEnumMemberNameData::NumericLiteral(NumericLiteral(node.0))
-            }
-            NodeKind::BigIntLiteral => TsEnumMemberNameData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => {
-                TsEnumMemberNameData::BooleanLiteral(BooleanLiteral(node.0))
-            }
-            NodeKind::NullLiteral => TsEnumMemberNameData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => TsEnumMemberNameData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => {
-                TsEnumMemberNameData::TemplateLiteral(TemplateLiteral(node.0))
-            }
-            NodeKind::BinaryExpression => {
-                TsEnumMemberNameData::BinaryExpression(BinaryExpression(node.0))
-            }
-            NodeKind::LogicalExpression => {
-                TsEnumMemberNameData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => {
-                TsEnumMemberNameData::UnaryExpression(UnaryExpression(node.0))
-            }
-            NodeKind::UpdateExpression => {
-                TsEnumMemberNameData::UpdateExpression(UpdateExpression(node.0))
-            }
-            NodeKind::AssignmentExpression => {
-                TsEnumMemberNameData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                TsEnumMemberNameData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                TsEnumMemberNameData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => {
-                TsEnumMemberNameData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => {
-                TsEnumMemberNameData::CallExpression(CallExpression(node.0))
-            }
-            NodeKind::ChainExpression => {
-                TsEnumMemberNameData::ChainExpression(ChainExpression(node.0))
-            }
-            NodeKind::NewExpression => TsEnumMemberNameData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                TsEnumMemberNameData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                TsEnumMemberNameData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => {
-                TsEnumMemberNameData::ArrayExpression(ArrayExpression(node.0))
-            }
-            NodeKind::ObjectExpression => {
-                TsEnumMemberNameData::ObjectExpression(ObjectExpression(node.0))
-            }
-            NodeKind::ParenthesizedExpression => {
-                TsEnumMemberNameData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                TsEnumMemberNameData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => {
-                TsEnumMemberNameData::ClassExpression(ClassExpression(node.0))
-            }
-            NodeKind::ImportExpression => {
-                TsEnumMemberNameData::ImportExpression(ImportExpression(node.0))
-            }
-            NodeKind::AwaitExpression => {
-                TsEnumMemberNameData::AwaitExpression(AwaitExpression(node.0))
-            }
-            NodeKind::YieldExpression => {
-                TsEnumMemberNameData::YieldExpression(YieldExpression(node.0))
-            }
-            NodeKind::PrivateIdentifier => {
-                TsEnumMemberNameData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                TsEnumMemberNameData::TsAsExpression(TsAsExpression(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                TsEnumMemberNameData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                TsEnumMemberNameData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                TsEnumMemberNameData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                TsEnumMemberNameData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => TsEnumMemberNameData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => TsEnumMemberNameData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_enum_member_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_module_name_data(&self, node: TsModuleName) -> TsModuleNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::BindingIdentifier => {
-                TsModuleNameData::BindingIdentifier(BindingIdentifier(node.0))
-            }
-            NodeKind::StringLiteral => TsModuleNameData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::TsQualifiedName => TsModuleNameData::TsQualifiedName(TsQualifiedName(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_module_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_module_body_data(&self, node: TsModuleBody) -> TsModuleBodyData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::TsModuleBlock => TsModuleBodyData::TsModuleBlock(TsModuleBlock(node.0)),
-            NodeKind::TsModuleDeclaration => {
-                TsModuleBodyData::TsModuleDeclaration(TsModuleDeclaration(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_module_body());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn ts_module_reference_data(&self, node: TsModuleReference) -> TsModuleReferenceData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::TsExternalModuleReference => {
-                TsModuleReferenceData::TsExternalModuleReference(TsExternalModuleReference(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                TsModuleReferenceData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::TsQualifiedName => {
-                TsModuleReferenceData::TsQualifiedName(TsQualifiedName(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_module_reference());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn jsx_element_name_data(&self, node: JsxElementName) -> JsxElementNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::JsxIdentifier => JsxElementNameData::JsxIdentifier(JsxIdentifier(node.0)),
-            NodeKind::JsxNamespacedName => {
-                JsxElementNameData::JsxNamespacedName(JsxNamespacedName(node.0))
-            }
-            NodeKind::JsxMemberExpression => {
-                JsxElementNameData::JsxMemberExpression(JsxMemberExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_element_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
@@ -8358,160 +7073,68 @@ impl<'a> Ast<'a> {
         &self,
         node: JsxMemberExpressionObject,
     ) -> JsxMemberExpressionObjectData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::JsxIdentifier => {
-                JsxMemberExpressionObjectData::JsxIdentifier(JsxIdentifier(node.0))
-            }
-            NodeKind::JsxMemberExpression => {
-                JsxMemberExpressionObjectData::JsxMemberExpression(JsxMemberExpression(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_member_expression_object());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn jsx_attribute_name_data(&self, node: JsxAttributeName) -> JsxAttributeNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::JsxIdentifier => JsxAttributeNameData::JsxIdentifier(JsxIdentifier(node.0)),
-            NodeKind::JsxNamespacedName => {
-                JsxAttributeNameData::JsxNamespacedName(JsxNamespacedName(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_attribute_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn jsx_attribute_item_data(&self, node: JsxAttributeItem) -> JsxAttributeItemData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::JsxAttribute => JsxAttributeItemData::JsxAttribute(JsxAttribute(node.0)),
-            NodeKind::JsxSpreadAttribute => {
-                JsxAttributeItemData::JsxSpreadAttribute(JsxSpreadAttribute(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_attribute_item());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn jsx_attribute_value_data(&self, node: JsxAttributeValue) -> JsxAttributeValueData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::StringLiteral => JsxAttributeValueData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::JsxExpressionContainer => {
-                JsxAttributeValueData::JsxExpressionContainer(JsxExpressionContainer(node.0))
-            }
-            NodeKind::JsxElement => JsxAttributeValueData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => JsxAttributeValueData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_attribute_value());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn jsx_expression_data(&self, node: JsxExpression) -> JsxExpressionData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::JsxEmptyExpression => {
-                JsxExpressionData::JsxEmptyExpression(JsxEmptyExpression(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                JsxExpressionData::IdentifierReference(IdentifierReference(node.0))
-            }
-            NodeKind::ThisExpression => JsxExpressionData::ThisExpression(ThisExpression(node.0)),
-            NodeKind::Super => JsxExpressionData::Super(Super(node.0)),
-            NodeKind::MetaProperty => JsxExpressionData::MetaProperty(MetaProperty(node.0)),
-            NodeKind::StringLiteral => JsxExpressionData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => JsxExpressionData::NumericLiteral(NumericLiteral(node.0)),
-            NodeKind::BigIntLiteral => JsxExpressionData::BigIntLiteral(BigIntLiteral(node.0)),
-            NodeKind::BooleanLiteral => JsxExpressionData::BooleanLiteral(BooleanLiteral(node.0)),
-            NodeKind::NullLiteral => JsxExpressionData::NullLiteral(NullLiteral(node.0)),
-            NodeKind::RegExpLiteral => JsxExpressionData::RegExpLiteral(RegExpLiteral(node.0)),
-            NodeKind::TemplateLiteral => {
-                JsxExpressionData::TemplateLiteral(TemplateLiteral(node.0))
-            }
-            NodeKind::BinaryExpression => {
-                JsxExpressionData::BinaryExpression(BinaryExpression(node.0))
-            }
-            NodeKind::LogicalExpression => {
-                JsxExpressionData::LogicalExpression(LogicalExpression(node.0))
-            }
-            NodeKind::UnaryExpression => {
-                JsxExpressionData::UnaryExpression(UnaryExpression(node.0))
-            }
-            NodeKind::UpdateExpression => {
-                JsxExpressionData::UpdateExpression(UpdateExpression(node.0))
-            }
-            NodeKind::AssignmentExpression => {
-                JsxExpressionData::AssignmentExpression(AssignmentExpression(node.0))
-            }
-            NodeKind::ConditionalExpression => {
-                JsxExpressionData::ConditionalExpression(ConditionalExpression(node.0))
-            }
-            NodeKind::SequenceExpression => {
-                JsxExpressionData::SequenceExpression(SequenceExpression(node.0))
-            }
-            NodeKind::MemberExpression => {
-                JsxExpressionData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => JsxExpressionData::CallExpression(CallExpression(node.0)),
-            NodeKind::ChainExpression => {
-                JsxExpressionData::ChainExpression(ChainExpression(node.0))
-            }
-            NodeKind::NewExpression => JsxExpressionData::NewExpression(NewExpression(node.0)),
-            NodeKind::TaggedTemplateExpression => {
-                JsxExpressionData::TaggedTemplateExpression(TaggedTemplateExpression(node.0))
-            }
-            NodeKind::ArrowFunctionExpression => {
-                JsxExpressionData::ArrowFunctionExpression(ArrowFunctionExpression(node.0))
-            }
-            NodeKind::ArrayExpression => {
-                JsxExpressionData::ArrayExpression(ArrayExpression(node.0))
-            }
-            NodeKind::ObjectExpression => {
-                JsxExpressionData::ObjectExpression(ObjectExpression(node.0))
-            }
-            NodeKind::ParenthesizedExpression => {
-                JsxExpressionData::ParenthesizedExpression(ParenthesizedExpression(node.0))
-            }
-            NodeKind::FunctionExpression => {
-                JsxExpressionData::FunctionExpression(FunctionExpression(node.0))
-            }
-            NodeKind::ClassExpression => {
-                JsxExpressionData::ClassExpression(ClassExpression(node.0))
-            }
-            NodeKind::ImportExpression => {
-                JsxExpressionData::ImportExpression(ImportExpression(node.0))
-            }
-            NodeKind::AwaitExpression => {
-                JsxExpressionData::AwaitExpression(AwaitExpression(node.0))
-            }
-            NodeKind::YieldExpression => {
-                JsxExpressionData::YieldExpression(YieldExpression(node.0))
-            }
-            NodeKind::PrivateIdentifier => {
-                JsxExpressionData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::TsAsExpression => JsxExpressionData::TsAsExpression(TsAsExpression(node.0)),
-            NodeKind::TsSatisfiesExpression => {
-                JsxExpressionData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                JsxExpressionData::TsTypeAssertion(TsTypeAssertion(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                JsxExpressionData::TsNonNullExpression(TsNonNullExpression(node.0))
-            }
-            NodeKind::TsInstantiationExpression => {
-                JsxExpressionData::TsInstantiationExpression(TsInstantiationExpression(node.0))
-            }
-            NodeKind::JsxElement => JsxExpressionData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => JsxExpressionData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_expression());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]
     pub fn jsx_child_data(&self, node: JsxChild) -> JsxChildData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::JsxText => JsxChildData::JsxText(JsxText(node.0)),
-            NodeKind::JsxExpressionContainer => {
-                JsxChildData::JsxExpressionContainer(JsxExpressionContainer(node.0))
-            }
-            NodeKind::JsxSpreadChild => JsxChildData::JsxSpreadChild(JsxSpreadChild(node.0)),
-            NodeKind::JsxElement => JsxChildData::JsxElement(JsxElement(node.0)),
-            NodeKind::JsxFragment => JsxChildData::JsxFragment(JsxFragment(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_jsx_child());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
 }

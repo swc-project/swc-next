@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Expr, ExprLit, Item, ItemEnum, ItemStruct, Lit, LitInt, token::Eq};
+use syn::{Item, ItemEnum, ItemStruct, Type, parse_quote, token::Eq};
 
 pub fn expand_ast(repr: bool, item: Item) -> TokenStream {
     match item {
@@ -24,20 +24,30 @@ fn expand_enum(repr: bool, mut item: ItemEnum) -> TokenStream {
     let data_name = format_ident!("{name}Data");
     item.ident = data_name;
 
-    let repr_attr = repr.then(|| quote!(#[repr(C, u32)]));
+    let repr_attr = repr.then(|| quote!(#[repr(C, u8)]));
     if repr {
-        for (index, variant) in item.variants.iter_mut().enumerate() {
+        for variant in &mut item.variants {
             assert!(
                 variant.discriminant.is_none(),
                 "`#[ast(repr)]` does not support explicit discriminants"
             );
-            let value = LitInt::new(&(index + 1).to_string(), variant.ident.span());
+            let field = variant
+                .fields
+                .iter()
+                .next()
+                .expect("AST enum variants must contain one field");
+            let Type::Path(field_ty) = &field.ty else {
+                panic!("AST enum variant fields must be path types");
+            };
+            let node_kind = &field_ty
+                .path
+                .segments
+                .last()
+                .expect("AST enum variant field paths must not be empty")
+                .ident;
             variant.discriminant = Some((
                 Eq::default(),
-                Expr::Lit(ExprLit {
-                    attrs: Vec::new(),
-                    lit: Lit::Int(value),
-                }),
+                parse_quote!(crate::NodeKind::#node_kind as u8),
             ));
         }
     }

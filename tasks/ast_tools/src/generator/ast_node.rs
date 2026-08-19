@@ -16,7 +16,6 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
     let mut node_kind_variants = TokenStream::new();
     let mut node_kind_enum_checks = TokenStream::new();
     let mut node_kind_data_variants = TokenStream::new();
-    let mut node_kind_data_arms = TokenStream::new();
 
     for ty in &schema.types {
         match ty {
@@ -24,15 +23,14 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 node_impls.extend(generate_node_impls_for_struct(ast_struct));
 
                 let name = format_ident!("{}", ast_struct.name);
-                node_kind_data_variants.extend(quote!(#name(#name),));
                 node_kind_variants.extend(quote!(#name,));
-                node_kind_data_arms.extend(quote! {
-                    NodeKind::#name => NodeKindData::#name(#name(node_id)),
-                });
+                node_kind_data_variants.extend(quote!(
+                    #name(#name) = NodeKind::#name as u8,
+                ));
             }
             AstType::Enum(ast_enum) => {
                 node_impls.extend(generate_node_impls_for_enum(ast_enum));
-                data_accessors.extend(generate_data_accessor(ast_enum, schema));
+                data_accessors.extend(generate_data_accessor(ast_enum));
                 node_kind_enum_checks.extend(generate_node_kind_enum_check(ast_enum, schema));
             }
             _ => {}
@@ -57,7 +55,14 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 #node_kind_enum_checks
             }
 
+            #[repr(C)]
+            struct AstEnumDataRepr {
+                kind: NodeKind,
+                node_id: NodeId,
+            }
+
             /// The typed wrapper for the concrete node stored at a node ID.
+            #[repr(C, u8)]
             #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
             pub enum NodeKindData {
                 #node_kind_data_variants
@@ -69,9 +74,10 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 /// Returns the typed wrapper for the concrete node stored at `node_id`.
                 #[inline]
                 pub fn kind_data(&self, node_id: NodeId) -> NodeKindData {
-                    match self.node_kind(node_id) {
-                        #node_kind_data_arms
-                    }
+                    let kind = self.node_kind(node_id);
+                    // SAFETY: `NodeKindData` uses the same C layout, discriminant, and node ID
+                    // payload as `AstEnumDataRepr` for every `NodeKind`.
+                    unsafe { std::mem::transmute(AstEnumDataRepr { kind, node_id }) }
                 }
 
                 #data_accessors
@@ -101,39 +107,24 @@ fn generate_node_kind_enum_check(ast: &AstEnum, schema: &Schema) -> TokenStream 
     }
 }
 
-fn generate_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {
+fn generate_data_accessor(ast: &AstEnum) -> TokenStream {
     let wrapper_ident = format_ident!("{}", ast.name);
     let data_ident = format_ident!("{}Data", ast.name);
     let fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
-    let mut seen = HashSet::new();
-    let mut arms = TokenStream::new();
-
-    for variant in &ast.variants {
-        let Some(type_id) = variant.type_id else {
-            continue;
-        };
-        let variant_ident = format_ident!("{}", variant.name);
-        let payload_ident = schema.types[type_id].repr_ident(schema);
-        let node_kinds = concrete_node_kinds(type_id, schema);
-        for node_kind_name in node_kinds {
-            if !seen.insert(node_kind_name.clone()) {
-                continue;
-            }
-            let node_kind = format_ident!("{node_kind_name}");
-            arms.extend(quote! {
-                NodeKind::#node_kind => #data_ident::#variant_ident(#payload_ident(node.0)),
-            });
-        }
-    }
+    let kind_check = format_ident!("is_{}", ast.name.to_case(Case::Snake));
 
     quote! {
         #[inline]
         pub fn #fn_name(&self, node: #wrapper_ident) -> #data_ident {
-            match unsafe { *self.nodes.kind_unchecked(node.0) } {
-                #arms
-                // SAFETY: Typed wrappers can only be created by typed AST
-                // constructors, so their node kind belongs to this enum.
-                _ => unsafe { std::hint::unreachable_unchecked() },
+            let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+            debug_assert!(kind.#kind_check());
+            // SAFETY: `#[ast(repr)]` aligns every data variant discriminant with its
+            // payload's `NodeKind`. Typed wrappers guarantee `kind` belongs to this enum.
+            unsafe {
+                std::mem::transmute(AstEnumDataRepr {
+                    kind,
+                    node_id: node.0,
+                })
             }
         }
     }
