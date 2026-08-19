@@ -16,6 +16,16 @@ test("parseSync exposes the program lazily", () => {
   assert.equal(program.type, "Program");
   assert.equal(program.body[0].type, "VariableDeclaration");
   assert.equal(result.program, program);
+
+  const materializedDescriptor = Object.getOwnPropertyDescriptor(
+    result,
+    "program",
+  );
+  assert.equal(materializedDescriptor.get, undefined);
+  assert.equal(materializedDescriptor.value, program);
+  assert.equal(materializedDescriptor.writable, false);
+  assert.equal(materializedDescriptor.enumerable, true);
+  assert.equal(materializedDescriptor.configurable, true);
 });
 
 test("parseSync exposes flat comments lazily", () => {
@@ -45,6 +55,16 @@ test("parseSync exposes flat comments lazily", () => {
     },
   ]);
   assert.equal(result.comments, result.comments);
+
+  const materializedDescriptor = Object.getOwnPropertyDescriptor(
+    result,
+    "comments",
+  );
+  assert.equal(materializedDescriptor.get, undefined);
+  assert.equal(materializedDescriptor.value, result.comments);
+  assert.equal(materializedDescriptor.writable, false);
+  assert.equal(materializedDescriptor.enumerable, true);
+  assert.equal(materializedDescriptor.configurable, true);
 });
 
 test("parseSync exposes HTML comments without delimiters", () => {

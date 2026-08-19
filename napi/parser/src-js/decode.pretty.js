@@ -1831,17 +1831,25 @@ export function decode(buffer, source) {
     return result;
   }
 
-  let _program, _comments;
-  return {
+  const result = {
     get program() {
-      return _program !== undefined
-        ? _program
-        : (_program = node(programIndex));
+      const value = node(programIndex);
+      Object.defineProperty(result, "program", {
+        value,
+        enumerable: true,
+        configurable: true,
+      });
+      return value;
     },
     get comments() {
-      return _comments !== undefined
-        ? _comments
-        : (_comments = _decodeComments());
+      const value = _decodeComments();
+      Object.defineProperty(result, "comments", {
+        value,
+        enumerable: true,
+        configurable: true,
+      });
+      return value;
     },
   };
+  return result;
 }
