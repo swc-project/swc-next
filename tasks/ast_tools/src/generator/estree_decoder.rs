@@ -959,26 +959,18 @@ const POSTAMBLE: &str = r#"      default:
     return result;
   }
 
-  const result = {
+  let _program, _comments;
+  return {
     get program() {
-      const value = node(programIndex);
-      Object.defineProperty(result, "program", {
-        value,
-        enumerable: true,
-        configurable: true,
-      });
-      return value;
+      return _program !== undefined
+        ? _program
+        : (_program = node(programIndex));
     },
     get comments() {
-      const value = _decodeComments();
-      Object.defineProperty(result, "comments", {
-        value,
-        enumerable: true,
-        configurable: true,
-      });
-      return value;
+      return _comments !== undefined
+        ? _comments
+        : (_comments = _decodeComments());
     },
   };
-  return result;
 }
 "#;
