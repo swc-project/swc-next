@@ -71,7 +71,6 @@ impl From<AstLang> for Lang {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommentMode {
     None,
-    Attached,
     Flat,
 }
 
@@ -79,12 +78,7 @@ impl From<CommentMode> for AstCommentMode {
     fn from(value: CommentMode) -> Self {
         match value {
             CommentMode::None => Self::None,
-            // TODO: Transfer attachment metadata and expose `comments` on
-            // JavaScript AST nodes. Until then this only returns the flat list.
-            CommentMode::Attached => Self::Attached,
-            // The native AST keeps attachment metadata while the JavaScript
-            // API currently exposes only the flat, source-ordered list.
-            CommentMode::Flat => Self::Attached,
+            CommentMode::Flat => Self::Flat,
         }
     }
 }
@@ -108,9 +102,7 @@ pub struct ParserOptions {
     /// Determines how comments are exposed.
     ///
     /// `"none"` disables comment collection. `"flat"` exposes a
-    /// source-ordered comment list. `"attached"` is reserved for attaching
-    /// comments to JavaScript AST nodes and currently returns only the flat
-    /// list.
+    /// source-ordered comment list.
     ///
     /// @default "flat"
     pub comments: Option<CommentMode>,

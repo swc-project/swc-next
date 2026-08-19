@@ -2,7 +2,6 @@
 /* eslint-disable */
 export declare const enum CommentMode {
   None = 'none',
-  Attached = 'attached',
   Flat = 'flat'
 }
 
@@ -38,9 +37,7 @@ export interface ParserOptions {
    * Determines how comments are exposed.
    *
    * `"none"` disables comment collection. `"flat"` exposes a
-   * source-ordered comment list. `"attached"` is reserved for attaching
-   * comments to JavaScript AST nodes and currently returns only the flat
-   * list.
+   * source-ordered comment list.
    *
    * @default "flat"
    */

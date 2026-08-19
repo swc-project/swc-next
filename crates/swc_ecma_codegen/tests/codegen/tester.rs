@@ -80,7 +80,7 @@ fn expect_printed_common(
         source_type,
         lang,
         preserve_parens: false,
-        comments: CommentMode::Attached,
+        comments: CommentMode::Flat,
         ..Default::default()
     };
     let result = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();

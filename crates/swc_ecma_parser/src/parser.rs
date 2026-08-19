@@ -21,12 +21,12 @@ use crate::{
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
-/// Whether comments are attached to AST nodes.
+/// Whether comments are collected in a flat, source-ordered list.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CommentMode {
     None,
     #[default]
-    Attached,
+    Flat,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -42,7 +42,7 @@ pub struct Options {
     /// Represents parenthesized expressions and TypeScript types as explicit
     /// parenthesized nodes when true. Otherwise only the inner node is kept.
     pub preserve_parens: bool,
-    /// Determines whether comments are attached to AST nodes.
+    /// Determines whether comments are collected.
     pub comments: CommentMode,
     /// Allows `return` statements outside functions.
     pub allow_return_outside_function: bool,
@@ -54,7 +54,7 @@ impl Default for Options {
             source_type: SourceType::Module,
             lang: Lang::Js,
             preserve_parens: true,
-            comments: CommentMode::Attached,
+            comments: CommentMode::Flat,
             allow_return_outside_function: false,
         }
     }
@@ -747,7 +747,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ast.allocator(),
             source,
             allow_html_like_comments,
-            options.comments == CommentMode::Attached,
+            options.comments == CommentMode::Flat,
             config,
         );
         let initial_token = Token::eof(lexer.state.prev_token_end);
@@ -809,7 +809,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
         }
 
-        if self.comment_mode == CommentMode::Attached {
+        if self.comment_mode == CommentMode::Flat {
             self.ast.set_attached_comments(self.lexer.comments);
         }
         self.ast.set_root_program(program);
@@ -845,7 +845,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
                 }
 
-                if self.comment_mode == CommentMode::Attached {
+                if self.comment_mode == CommentMode::Flat {
                     self.ast.set_attached_comments(self.lexer.comments);
                 }
                 self.ast.set_root_expression(expr);

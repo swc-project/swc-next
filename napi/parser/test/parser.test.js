@@ -72,11 +72,3 @@ test("parseSync can disable comment collection", () => {
 
   assert.deepEqual(result.comments, []);
 });
-
-test("parseSync accepts attached comment mode", () => {
-  const result = parseSync("// retained", {
-    comments: CommentMode.Attached,
-  });
-
-  assert.equal(result.comments[0].value, " retained");
-});
