@@ -1271,9 +1271,9 @@ impl<'a> Printer<'a> {
     fn print_decl(&mut self, decl: Decl) {
         match self.ast.decl_data(decl) {
             DeclData::VariableDeclaration(v) => self.print_variable_decl(v, true),
-            DeclData::FunctionDeclaration(f) => self.print_function(f),
+            DeclData::FunctionDeclaration(f) => self.print_function_declaration(f),
             DeclData::TsFunction(f) => self.print_ts_function(f, true),
-            DeclData::ClassDeclaration(c) => self.print_class(c, true),
+            DeclData::ClassDeclaration(c) => self.print_class_declaration(c, true),
             DeclData::TsTypeAliasDeclaration(d) => self.print_ts_type_alias(d),
             DeclData::TsInterfaceDeclaration(d) => self.print_ts_interface(d),
             DeclData::TsEnumDeclaration(d) => self.print_ts_enum(d),
@@ -1309,8 +1309,47 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_function(&mut self, f: Function) {
-        let is_expression = matches!(f.function_type(self.ast), FunctionType::FunctionExpression);
+    fn print_function_declaration(&mut self, function: FunctionDeclaration) {
+        self.print_function(
+            function.span(self.ast),
+            function.id(self.ast),
+            function.type_parameters(self.ast),
+            function.params(self.ast),
+            function.return_type(self.ast),
+            function.body(self.ast),
+            function.generator(self.ast),
+            function.r#async(self.ast),
+            false,
+        );
+    }
+
+    fn print_function_expression(&mut self, function: FunctionExpression) {
+        self.print_function(
+            function.span(self.ast),
+            function.id(self.ast),
+            function.type_parameters(self.ast),
+            function.params(self.ast),
+            function.return_type(self.ast),
+            function.body(self.ast),
+            function.generator(self.ast),
+            function.r#async(self.ast),
+            true,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn print_function(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
+        generator: bool,
+        r#async: bool,
+        is_expression: bool,
+    ) {
         let offset = self.js.len();
         let wrap =
             is_expression && (offset == self.stmt_start || offset == self.export_default_start);
@@ -1318,28 +1357,28 @@ impl<'a> Printer<'a> {
             self.print("(");
         }
         self.print_space_before_identifier();
-        self.add_source_mapping(f.span(self.ast).start);
-        if f.r#async(self.ast) {
+        self.add_source_mapping(span.start);
+        if r#async {
             self.print("async ");
         }
         self.print("function");
-        if f.generator(self.ast) {
+        if generator {
             self.print("*");
             self.print_space();
         }
-        if let Some(id) = f.id(self.ast) {
+        if let Some(id) = id {
             self.print_space_before_identifier();
             self.print_binding_identifier(id, false);
         }
-        if let Some(params) = f.type_parameters(self.ast) {
-            self.print_ts_type_params(params);
+        if let Some(type_parameters) = type_parameters {
+            self.print_ts_type_params(type_parameters);
         }
-        self.print_formal_parameters(f.params(self.ast));
-        if let Some(ret) = f.return_type(self.ast) {
-            self.print_ts_annotation(ret);
+        self.print_formal_parameters(params);
+        if let Some(return_type) = return_type {
+            self.print_ts_annotation(return_type);
         }
         self.print_space();
-        self.print_function_body(f.body(self.ast));
+        self.print_function_body(body);
         if wrap {
             self.print(")");
         }
@@ -1922,8 +1961,8 @@ impl<'a> Printer<'a> {
                 self.print_expr(e.expression(self.ast), Precedence::Lowest);
                 self.print(")");
             }
-            ExprData::FunctionExpression(e) => self.print_function(e),
-            ExprData::ClassExpression(e) => self.print_class(e, false),
+            ExprData::FunctionExpression(e) => self.print_function_expression(e),
+            ExprData::ClassExpression(e) => self.print_class_expression(e),
             ExprData::ImportExpression(e) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
@@ -2744,8 +2783,56 @@ impl<'a> Printer<'a> {
         self.forbid_in = old_forbid_in;
     }
 
-    fn print_class(&mut self, c: Class, declaration: bool) {
-        let is_expression = c.class_type(self.ast) == ClassType::ClassExpression;
+    fn print_class_declaration(&mut self, class: ClassDeclaration, declaration: bool) {
+        self.print_class(
+            class.span(self.ast),
+            class.decorators(self.ast),
+            class.id(self.ast),
+            class.type_parameters(self.ast),
+            class.super_class(self.ast),
+            class.super_type_arguments(self.ast),
+            class.implements(self.ast),
+            class.body(self.ast),
+            class.r#abstract(self.ast),
+            class.declare(self.ast),
+            declaration,
+            false,
+        );
+    }
+
+    fn print_class_expression(&mut self, class: ClassExpression) {
+        self.print_class(
+            class.span(self.ast),
+            class.decorators(self.ast),
+            class.id(self.ast),
+            class.type_parameters(self.ast),
+            class.super_class(self.ast),
+            class.super_type_arguments(self.ast),
+            class.implements(self.ast),
+            class.body(self.ast),
+            class.r#abstract(self.ast),
+            class.declare(self.ast),
+            false,
+            true,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn print_class(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
+        super_type_arguments: Option<TsTypeParameterInstantiation>,
+        implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
+        r#abstract: bool,
+        declare: bool,
+        declaration: bool,
+        is_expression: bool,
+    ) {
         let offset = self.js.len();
         let wrap =
             is_expression && (offset == self.stmt_start || offset == self.export_default_start);
@@ -2755,36 +2842,34 @@ impl<'a> Printer<'a> {
         if declaration {
             self.print_indent();
         }
-        self.print_decorators(c.decorators(self.ast));
-        self.add_source_mapping(c.span(self.ast).start);
-        if c.declare(self.ast) {
+        self.print_decorators(decorators);
+        self.add_source_mapping(span.start);
+        if declare {
             self.print("declare ");
         }
-        if c.r#abstract(self.ast) {
+        if r#abstract {
             self.print("abstract ");
         }
         self.print_space_before_identifier();
         self.print("class");
-        if let Some(id) = c.id(self.ast) {
+        if let Some(id) = id {
             self.print(" ");
             self.print_binding_identifier(id, false);
         }
-        if let Some(t) = c.type_parameters(self.ast) {
+        if let Some(t) = type_parameters {
             self.print_ts_type_params(t);
         }
-        if let Some(s) = c.super_class(self.ast) {
+        if let Some(s) = super_class {
             self.print(" extends ");
-            let type_arguments = c.super_type_arguments(self.ast);
-            if type_arguments.is_some() {
+            if super_type_arguments.is_some() {
                 self.print_expr_before_type_arguments(s, Precedence::Postfix);
             } else {
                 self.print_expr(s, Precedence::Postfix);
             }
-            if let Some(t) = type_arguments {
+            if let Some(t) = super_type_arguments {
                 self.print_ts_type_args(t);
             }
         }
-        let implements = c.implements(self.ast);
         if !implements.is_empty() {
             self.print(" implements ");
             for (i, id) in implements.iter().enumerate() {
@@ -2802,26 +2887,22 @@ impl<'a> Printer<'a> {
         self.print_space();
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
-        self.add_source_mapping(c.body(self.ast).span(self.ast).start);
+        self.add_source_mapping(body.span(self.ast).start);
         self.print("{");
-        let body = c.body(self.ast).body(self.ast);
-        if !body.is_empty() || !self.options.minify {
+        let elements = body.body(self.ast);
+        if !elements.is_empty() || !self.options.minify {
             self.print_newline();
         }
         self.indent += 1;
-        for id in body.iter() {
+        for id in elements.iter() {
             self.print_semicolon_if_needed();
             self.print_class_element(self.ast.get_node_in_sub_range(id));
         }
         self.needs_semicolon = false;
-        self.print_comments_before(
-            c.body(self.ast).span(self.ast).end.saturating_sub(1),
-            true,
-            true,
-        );
+        self.print_comments_before(body.span(self.ast).end.saturating_sub(1), true, true);
         self.indent -= 1;
         self.print_indent();
-        self.add_source_mapping(c.body(self.ast).span(self.ast).end.saturating_sub(1));
+        self.add_source_mapping(body.span(self.ast).end.saturating_sub(1));
         self.print("}");
         self.forbid_in = old_forbid_in;
         if wrap {
@@ -3488,7 +3569,7 @@ impl<'a> Printer<'a> {
                     | DeclData::TsModuleDeclaration(_)
             );
             if let DeclData::ClassDeclaration(class) = self.ast.decl_data(decl) {
-                self.print_class(class, false);
+                self.print_class_declaration(class, false);
             } else {
                 self.print_decl(decl);
             }
@@ -3563,7 +3644,7 @@ impl<'a> Printer<'a> {
         self.export_default_start = self.js.len();
         match self.ast.export_default_declaration_kind_data(declaration) {
             ExportDefaultDeclarationKindData::FunctionDeclaration(f) => {
-                self.print_function(f);
+                self.print_function_declaration(f);
                 self.print_newline();
             }
             ExportDefaultDeclarationKindData::TsFunction(f) => {
@@ -3571,7 +3652,7 @@ impl<'a> Printer<'a> {
                 self.print_semicolon_after_statement();
             }
             ExportDefaultDeclarationKindData::ClassDeclaration(c) => {
-                self.print_class(c, false);
+                self.print_class_declaration(c, false);
                 self.print_newline();
             }
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(i) => {

@@ -172,11 +172,11 @@ impl Stmt {
     }
     #[inline]
     pub fn is_function_declaration(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionDeclaration
     }
     #[inline]
     pub fn is_class_declaration(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassDeclaration
     }
     #[inline]
     pub fn is_ts_function(self, ast: &Ast<'_>) -> bool {
@@ -385,14 +385,14 @@ impl Stmt {
         }
     }
     #[inline]
-    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<FunctionDeclaration> {
         match ast.stmt_data(self) {
             StmtData::FunctionDeclaration(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<ClassDeclaration> {
         match ast.stmt_data(self) {
             StmtData::ClassDeclaration(it) => Some(it),
             _ => None,
@@ -458,11 +458,11 @@ impl Decl {
     }
     #[inline]
     pub fn is_function_declaration(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionDeclaration
     }
     #[inline]
     pub fn is_class_declaration(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassDeclaration
     }
     #[inline]
     pub fn is_ts_function(self, ast: &Ast<'_>) -> bool {
@@ -500,14 +500,14 @@ impl Decl {
         }
     }
     #[inline]
-    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<FunctionDeclaration> {
         match ast.decl_data(self) {
             DeclData::FunctionDeclaration(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<ClassDeclaration> {
         match ast.decl_data(self) {
             DeclData::ClassDeclaration(it) => Some(it),
             _ => None,
@@ -677,11 +677,11 @@ impl Expr {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -917,14 +917,14 @@ impl Expr {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.expr_data(self) {
             ExprData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.expr_data(self) {
             ExprData::ClassExpression(it) => Some(it),
             _ => None,
@@ -1407,11 +1407,11 @@ impl PropertyKey {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -1654,14 +1654,14 @@ impl PropertyKey {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.property_key_data(self) {
             PropertyKeyData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.property_key_data(self) {
             PropertyKeyData::ClassExpression(it) => Some(it),
             _ => None,
@@ -1887,11 +1887,11 @@ impl Argument {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -2134,14 +2134,14 @@ impl Argument {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.argument_data(self) {
             ArgumentData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.argument_data(self) {
             ArgumentData::ClassExpression(it) => Some(it),
             _ => None,
@@ -2367,11 +2367,11 @@ impl ForStatementInit {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -2614,14 +2614,14 @@ impl ForStatementInit {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.for_statement_init_data(self) {
             ForStatementInitData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.for_statement_init_data(self) {
             ForStatementInitData::ClassExpression(it) => Some(it),
             _ => None,
@@ -2924,11 +2924,11 @@ impl ArrowFunctionBody {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -3171,14 +3171,14 @@ impl ArrowFunctionBody {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.arrow_function_body_data(self) {
             ArrowFunctionBodyData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.arrow_function_body_data(self) {
             ArrowFunctionBodyData::ClassExpression(it) => Some(it),
             _ => None,
@@ -3518,321 +3518,189 @@ impl ImportDeclarationSpecifier {
 impl ExportDefaultDeclarationKind {
     #[inline]
     pub fn is_function_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::FunctionDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::FunctionDeclaration
     }
     #[inline]
     pub fn is_class_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ClassDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ClassDeclaration
     }
     #[inline]
     pub fn is_ts_function(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsFunction(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsFunction
     }
     #[inline]
     pub fn is_ts_interface_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsInterfaceDeclaration
     }
     #[inline]
     pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::IdentifierReference(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
     }
     #[inline]
     pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ThisExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ThisExpression
     }
     #[inline]
     pub fn is_super(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Super(_)
-        )
+        ast.node_kind(self.0) == NodeKind::Super
     }
     #[inline]
     pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::MetaProperty(_)
-        )
+        ast.node_kind(self.0) == NodeKind::MetaProperty
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::StringLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::NumericLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
     }
     #[inline]
     pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::BigIntLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
     }
     #[inline]
     pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::BooleanLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
     }
     #[inline]
     pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::NullLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::NullLiteral
     }
     #[inline]
     pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::RegExpLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
     }
     #[inline]
     pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TemplateLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
     }
     #[inline]
     pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::BinaryExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
     }
     #[inline]
     pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::LogicalExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
     }
     #[inline]
     pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::UnaryExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
     }
     #[inline]
     pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::UpdateExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
     }
     #[inline]
     pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::AssignmentExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
     }
     #[inline]
     pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ConditionalExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
     }
     #[inline]
     pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::SequenceExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
     }
     #[inline]
     pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::MemberExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::MemberExpression
     }
     #[inline]
     pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::CallExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::CallExpression
     }
     #[inline]
     pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ChainExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ChainExpression
     }
     #[inline]
     pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::NewExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::NewExpression
     }
     #[inline]
     pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TaggedTemplateExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
     }
     #[inline]
     pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ArrowFunctionExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
     }
     #[inline]
     pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ArrayExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
     }
     #[inline]
     pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ObjectExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
     }
     #[inline]
     pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ParenthesizedExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::FunctionExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ClassExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::ImportExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ImportExpression
     }
     #[inline]
     pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::AwaitExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
     }
     #[inline]
     pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::YieldExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::YieldExpression
     }
     #[inline]
     pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::PrivateIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
     }
     #[inline]
     pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsAsExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
     }
     #[inline]
     pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsSatisfiesExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
     }
     #[inline]
     pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsTypeAssertion(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
     }
     #[inline]
     pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsNonNullExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
     }
     #[inline]
     pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsInstantiationExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
     }
     #[inline]
     pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::JsxElement(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxElement
     }
     #[inline]
     pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::JsxFragment(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
-    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_declaration(self, ast: &Ast<'_>) -> Option<FunctionDeclaration> {
         match ast.export_default_declaration_kind_data(self) {
             ExportDefaultDeclarationKindData::FunctionDeclaration(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_declaration(self, ast: &Ast<'_>) -> Option<ClassDeclaration> {
         match ast.export_default_declaration_kind_data(self) {
             ExportDefaultDeclarationKindData::ClassDeclaration(it) => Some(it),
             _ => None,
@@ -4042,14 +3910,14 @@ impl ExportDefaultDeclarationKind {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.export_default_declaration_kind_data(self) {
             ExportDefaultDeclarationKindData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.export_default_declaration_kind_data(self) {
             ExportDefaultDeclarationKindData::ClassExpression(it) => Some(it),
             _ => None,
@@ -5730,32 +5598,27 @@ impl Decorator {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
 }
-impl Class {
-    #[inline]
-    pub fn class_type<'a>(self, ast: &crate::Ast<'a>) -> ClassType {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        unsafe { std::mem::transmute::<u8, ClassType>(raw as u8) }
-    }
+impl ClassDeclaration {
     #[inline]
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 24usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 48usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn r#abstract<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 255u32;
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
         raw != 0
     }
     #[inline]
     pub fn declare<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 255u32;
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 255u32;
         raw != 0
     }
     #[inline]
@@ -5842,18 +5705,11 @@ impl Class {
         }
     }
     #[inline]
-    pub fn set_class_type<'a>(self, ast: &mut crate::Ast<'a>, class_type: ClassType) {
-        let field_val: u32 = class_type as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Option<BindingIdentifier>) {
         let field_val: u32 = id.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463302549837747060735u128)
-            | (((field_val as u128) & 4294967295u128) << 24usize);
+        payload.0 = (payload.0 & 340282366920938463463374325956791566335u128)
+            | (((field_val as u128) & 4294967295u128) << 16usize);
     }
     #[inline]
     pub fn set_type_parameters<'a>(
@@ -5863,22 +5719,248 @@ impl Class {
     ) {
         let field_val: u32 = type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920628978453625319957081358335u128)
-            | (((field_val as u128) & 4294967295u128) << 56usize);
+        payload.0 = (payload.0 & 340282366920937254537555274277570215935u128)
+            | (((field_val as u128) & 4294967295u128) << 48usize);
     }
     #[inline]
     pub fn set_abstract<'a>(self, ast: &mut crate::Ast<'a>, r#abstract: bool) {
         let field_val: u32 = r#abstract as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768146175u128)
-            | (((field_val as u128) & 255u128) << 8usize);
+        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
+            | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
     pub fn set_declare<'a>(self, ast: &mut crate::Ast<'a>, declare: bool) {
         let field_val: u32 = declare as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431751499775u128)
-            | (((field_val as u128) & 255u128) << 16usize);
+        payload.0 = (payload.0 & 340282366920938463463374607431768146175u128)
+            | (((field_val as u128) & 255u128) << 8usize);
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_super_class<'a>(self, ast: &mut crate::Ast<'a>, super_class: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = super_class.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_super_type_arguments<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        super_type_arguments: Option<TsTypeParameterInstantiation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = super_type_arguments.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_implements<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        implements: TypedSubRange<TsClassImplements>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = implements.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: ClassBody) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
+    }
+}
+impl ClassExpression {
+    #[inline]
+    pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 48usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn r#abstract<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
+        raw != 0
+    }
+    #[inline]
+    pub fn declare<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 255u32;
+        raw != 0
+    }
+    #[inline]
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn super_class<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn super_type_arguments<'a>(
+        self,
+        ast: &crate::Ast<'a>,
+    ) -> Option<TsTypeParameterInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn implements<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsClassImplements> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> ClassBody {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Option<BindingIdentifier>) {
+        let field_val: u32 = id.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374325956791566335u128)
+            | (((field_val as u128) & 4294967295u128) << 16usize);
+    }
+    #[inline]
+    pub fn set_type_parameters<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+    ) {
+        let field_val: u32 = type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920937254537555274277570215935u128)
+            | (((field_val as u128) & 4294967295u128) << 48usize);
+    }
+    #[inline]
+    pub fn set_abstract<'a>(self, ast: &mut crate::Ast<'a>, r#abstract: bool) {
+        let field_val: u32 = r#abstract as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
+            | (((field_val as u128) & 255u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_declare<'a>(self, ast: &mut crate::Ast<'a>, declare: bool) {
+        let field_val: u32 = declare as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607431768146175u128)
+            | (((field_val as u128) & 255u128) << 8usize);
     }
     #[inline]
     pub fn set_decorators<'a>(
@@ -6041,7 +6123,7 @@ impl MethodDefinition {
         }
     }
     #[inline]
-    pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Function {
+    pub fn value<'a>(self, ast: &crate::Ast<'a>) -> FunctionExpression {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -6132,7 +6214,7 @@ impl MethodDefinition {
         };
     }
     #[inline]
-    pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Function) {
+    pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: FunctionExpression) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -6415,32 +6497,27 @@ impl StaticBlock {
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
 }
-impl Function {
-    #[inline]
-    pub fn function_type<'a>(self, ast: &crate::Ast<'a>) -> FunctionType {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        unsafe { std::mem::transmute::<u8, FunctionType>(raw as u8) }
-    }
+impl FunctionDeclaration {
     #[inline]
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 24usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 48usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn generator<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 255u32;
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
         raw != 0
     }
     #[inline]
     pub fn r#async<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 255u32;
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 255u32;
         raw != 0
     }
     #[inline]
@@ -6492,18 +6569,11 @@ impl Function {
         }
     }
     #[inline]
-    pub fn set_function_type<'a>(self, ast: &mut crate::Ast<'a>, function_type: FunctionType) {
-        let field_val: u32 = function_type as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Option<BindingIdentifier>) {
         let field_val: u32 = id.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463302549837747060735u128)
-            | (((field_val as u128) & 4294967295u128) << 24usize);
+        payload.0 = (payload.0 & 340282366920938463463374325956791566335u128)
+            | (((field_val as u128) & 4294967295u128) << 16usize);
     }
     #[inline]
     pub fn set_type_parameters<'a>(
@@ -6513,22 +6583,175 @@ impl Function {
     ) {
         let field_val: u32 = type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920628978453625319957081358335u128)
-            | (((field_val as u128) & 4294967295u128) << 56usize);
+        payload.0 = (payload.0 & 340282366920937254537555274277570215935u128)
+            | (((field_val as u128) & 4294967295u128) << 48usize);
     }
     #[inline]
     pub fn set_generator<'a>(self, ast: &mut crate::Ast<'a>, generator: bool) {
         let field_val: u32 = generator as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768146175u128)
-            | (((field_val as u128) & 255u128) << 8usize);
+        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
+            | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
     pub fn set_async<'a>(self, ast: &mut crate::Ast<'a>, r#async: bool) {
         let field_val: u32 = r#async as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431751499775u128)
-            | (((field_val as u128) & 255u128) << 16usize);
+        payload.0 = (payload.0 & 340282366920938463463374607431768146175u128)
+            | (((field_val as u128) & 255u128) << 8usize);
+    }
+    #[inline]
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = params.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_return_type<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        return_type: Option<TsTypeAnnotation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = return_type.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: FunctionBody) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
+    }
+}
+impl FunctionExpression {
+    #[inline]
+    pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 48usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn generator<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
+        raw != 0
+    }
+    #[inline]
+    pub fn r#async<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 255u32;
+        raw != 0
+    }
+    #[inline]
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> FunctionBody {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Option<BindingIdentifier>) {
+        let field_val: u32 = id.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374325956791566335u128)
+            | (((field_val as u128) & 4294967295u128) << 16usize);
+    }
+    #[inline]
+    pub fn set_type_parameters<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+    ) {
+        let field_val: u32 = type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920937254537555274277570215935u128)
+            | (((field_val as u128) & 4294967295u128) << 48usize);
+    }
+    #[inline]
+    pub fn set_generator<'a>(self, ast: &mut crate::Ast<'a>, generator: bool) {
+        let field_val: u32 = generator as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
+            | (((field_val as u128) & 255u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_async<'a>(self, ast: &mut crate::Ast<'a>, r#async: bool) {
+        let field_val: u32 = r#async as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607431768146175u128)
+            | (((field_val as u128) & 255u128) << 8usize);
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
@@ -9172,11 +9395,11 @@ impl TsEnumMemberName {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -9419,14 +9642,14 @@ impl TsEnumMemberName {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.ts_enum_member_name_data(self) {
             TsEnumMemberNameData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.ts_enum_member_name_data(self) {
             TsEnumMemberNameData::ClassExpression(it) => Some(it),
             _ => None,
@@ -12251,11 +12474,11 @@ impl JsxExpression {
     }
     #[inline]
     pub fn is_function_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        ast.node_kind(self.0) == NodeKind::FunctionExpression
     }
     #[inline]
     pub fn is_class_expression(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        ast.node_kind(self.0) == NodeKind::ClassExpression
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
@@ -12498,14 +12721,14 @@ impl JsxExpression {
         }
     }
     #[inline]
-    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<Function> {
+    pub fn as_function_expression(self, ast: &Ast<'_>) -> Option<FunctionExpression> {
         match ast.jsx_expression_data(self) {
             JsxExpressionData::FunctionExpression(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<Class> {
+    pub fn as_class_expression(self, ast: &Ast<'_>) -> Option<ClassExpression> {
         match ast.jsx_expression_data(self) {
             JsxExpressionData::ClassExpression(it) => Some(it),
             _ => None,

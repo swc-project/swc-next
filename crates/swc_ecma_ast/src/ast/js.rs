@@ -54,17 +54,6 @@ pub enum Accessibility {
     Protected,
 }
 
-/// Class form.
-///
-/// `ClassDeclaration` for `class Foo {}`. `ClassExpression` for
-/// `const x = class {}`.
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum ClassType {
-    ClassDeclaration,
-    ClassExpression,
-}
-
 /// Binary operators.
 ///
 /// ## Example
@@ -214,17 +203,6 @@ impl VariableKind {
     }
 }
 
-/// Form of a function node.
-///
-/// `FunctionDeclaration` for `function foo() {}`.
-/// `FunctionExpression` for `const x = function () {}`.
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum FunctionType {
-    FunctionDeclaration,
-    FunctionExpression,
-}
-
 /// Which grammar production the parameter list came from.
 ///
 /// Constrains which binding forms are legal and whether duplicates are
@@ -303,14 +281,12 @@ pub enum ImportPhase {
 impl_extra_data_compact!(
     MethodDefinitionKind,
     Accessibility,
-    ClassType,
     BinaryOperator,
     LogicalOperator,
     UnaryOperator,
     UpdateOperator,
     AssignmentOperator,
     VariableKind,
-    FunctionType,
     FormalParameterKind,
     PropertyKind,
     NumericLiteralKind,
@@ -387,8 +363,8 @@ pub enum Stmt {
 
     // =========== Decl ===========
     VariableDeclaration(VariableDeclaration),
-    FunctionDeclaration(Function),
-    ClassDeclaration(Class),
+    FunctionDeclaration(FunctionDeclaration),
+    ClassDeclaration(ClassDeclaration),
     TsFunction(TsFunction),
     TsTypeAliasDeclaration(TsTypeAliasDeclaration),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
@@ -401,8 +377,8 @@ pub enum Stmt {
 #[ast(repr)]
 pub enum Decl {
     VariableDeclaration(VariableDeclaration),
-    FunctionDeclaration(Function),
-    ClassDeclaration(Class),
+    FunctionDeclaration(FunctionDeclaration),
+    ClassDeclaration(ClassDeclaration),
     TsFunction(TsFunction),
     TsTypeAliasDeclaration(TsTypeAliasDeclaration),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
@@ -441,8 +417,8 @@ pub enum Expr {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(Function),
-    ClassExpression(Class),
+    FunctionExpression(FunctionExpression),
+    ClassExpression(ClassExpression),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -529,8 +505,8 @@ pub enum PropertyKey {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(Function),
-    ClassExpression(Class),
+    FunctionExpression(FunctionExpression),
+    ClassExpression(ClassExpression),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -582,8 +558,8 @@ pub enum Argument {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(Function),
-    ClassExpression(Class),
+    FunctionExpression(FunctionExpression),
+    ClassExpression(ClassExpression),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -635,8 +611,8 @@ pub enum ForStatementInit {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(Function),
-    ClassExpression(Class),
+    FunctionExpression(FunctionExpression),
+    ClassExpression(ClassExpression),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -699,8 +675,8 @@ pub enum ArrowFunctionBody {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(Function),
-    ClassExpression(Class),
+    FunctionExpression(FunctionExpression),
+    ClassExpression(ClassExpression),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -759,8 +735,8 @@ pub enum ImportDeclarationSpecifier {
 #[ast(repr, group(Expr))]
 pub enum ExportDefaultDeclarationKind {
     // =========== Declaration ===========
-    FunctionDeclaration(Function),
-    ClassDeclaration(Class),
+    FunctionDeclaration(FunctionDeclaration),
+    ClassDeclaration(ClassDeclaration),
     TsFunction(TsFunction),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
 
@@ -792,8 +768,8 @@ pub enum ExportDefaultDeclarationKind {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(Function),
-    ClassExpression(Class),
+    FunctionExpression(FunctionExpression),
+    ClassExpression(ClassExpression),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -1574,7 +1550,7 @@ pub struct Decorator {
     expression: Expr,
 }
 
-/// A class declaration or expression.
+/// A class declaration.
 ///
 /// See: <https://tc39.es/ecma262/#prod-ClassDeclaration>
 ///
@@ -1592,8 +1568,32 @@ pub struct Decorator {
 /// `@dec class` populates `decorators`. `abstract class` sets `abstract`.
 /// `declare class` sets `declare`.
 #[ast]
-pub struct Class {
-    class_type: ClassType,
+pub struct ClassDeclaration {
+    /// `decorator[]`
+    decorators: Vec<Decorator>,
+    /// `binding_identifier`. `None` for anonymous default exports.
+    id: Option<BindingIdentifier>,
+    /// `ts_type_parameter_declaration`. `None` when the class has no `<T, U>`
+    /// parameters.
+    type_parameters: Option<TsTypeParameterDeclaration>,
+    /// any expression. `None` when the class has no `extends` clause.
+    super_class: Option<Expr>,
+    /// `ts_type_parameter_instantiation`. `None` when `extends` has no `<T>`
+    /// arguments.
+    super_type_arguments: Option<TsTypeParameterInstantiation>,
+    /// `ts_class_implements[]`. Empty when the class has no `implements`
+    /// clause.
+    implements: Vec<TsClassImplements>,
+    /// `class_body`
+    body: ClassBody,
+    r#abstract: bool,
+    /// true for `declare class`.
+    declare: bool,
+}
+
+/// A class expression.
+#[ast]
+pub struct ClassExpression {
     /// `decorator[]`
     decorators: Vec<Decorator>,
     /// `binding_identifier`. `None` for anonymous class expressions.
@@ -1650,8 +1650,8 @@ pub struct MethodDefinition {
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
-    /// `function`
-    value: Function,
+    /// `function_expression`
+    value: FunctionExpression,
     kind: MethodDefinitionKind,
     /// true when the key is written inside `[...]`.
     computed: bool,
@@ -1722,7 +1722,7 @@ pub struct StaticBlock {
     body: Vec<Stmt>,
 }
 
-/// A function declaration or expression.
+/// A function declaration.
 ///
 /// See: <https://tc39.es/ecma262/#prod-FunctionDeclaration>
 ///
@@ -1737,8 +1737,24 @@ pub struct StaticBlock {
 /// //                              ^^^^^^^^^^^^ body
 /// ```
 #[ast]
-pub struct Function {
-    function_type: FunctionType,
+pub struct FunctionDeclaration {
+    /// `binding_identifier`. `None` for anonymous default exports.
+    id: Option<BindingIdentifier>,
+    /// `ts_type_parameter_declaration`. `None` when absent.
+    type_parameters: Option<TsTypeParameterDeclaration>,
+    /// `formal_parameters`
+    params: FormalParameters,
+    /// `ts_type_annotation`. `None` when absent.
+    return_type: Option<TsTypeAnnotation>,
+    /// `function_body`
+    body: FunctionBody,
+    generator: bool,
+    r#async: bool,
+}
+
+/// A function expression.
+#[ast]
+pub struct FunctionExpression {
     /// `binding_identifier`. `None` for anonymous functions.
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when absent.

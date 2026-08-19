@@ -235,14 +235,12 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
                         | "ImportPhase"
                         | "MethodDefinitionKind"
                         | "Accessibility"
-                        | "ClassType"
                         | "BinaryOperator"
                         | "LogicalOperator"
                         | "UnaryOperator"
                         | "UpdateOperator"
                         | "AssignmentOperator"
                         | "VariableKind"
-                        | "FunctionType"
                         | "FormalParameterKind"
                         | "PropertyKind"
                         | "NumericLiteralKind"
@@ -322,7 +320,8 @@ fn is_special_node(name: &str) -> bool {
             | "TsModuleBlock"
             | "FormalParameter"
             | "FormalParameters"
-            | "Function"
+            | "FunctionDeclaration"
+            | "FunctionExpression"
             | "TsFunction"
             | "ArrowFunctionExpression"
             | "Directive"
@@ -333,7 +332,8 @@ fn is_special_node(name: &str) -> bool {
             | "NullLiteral"
             | "RegExpLiteral"
             | "TemplateElement"
-            | "Class"
+            | "ClassDeclaration"
+            | "ClassExpression"
             | "MethodDefinition"
             | "TsMethodDefinition"
             | "PropertyDefinition"
@@ -391,10 +391,14 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
         "FormalParameters" => output.push_str(
             "        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };\n",
         ),
-        "Function" => output.push_str(
-            r#"        result = {
-          type: f_functionType, start, end,
-          id: f_id,
+        "FunctionDeclaration" | "FunctionExpression" => {
+            writeln!(
+                output,
+                "        result = {{\n          type: \"{name}\", start, end,"
+            )
+            .unwrap();
+            output.push_str(
+                r#"          id: f_id,
           generator: f_generator,
           async: f_async,
           params: f_params.params,
@@ -407,7 +411,8 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
           result.declare = false;
         }
 "#,
-        ),
+            );
+        }
         "TsFunction" => output.push_str(
             r#"        result = {
           type: "TSDeclareFunction",
@@ -495,10 +500,14 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
         };
 "#,
         ),
-        "Class" => output.push_str(
-            r#"        result = {
-          type: f_classType, start, end,
-          decorators: f_decorators,
+        "ClassDeclaration" | "ClassExpression" => {
+            writeln!(
+                output,
+                "        result = {{\n          type: \"{name}\", start, end,"
+            )
+            .unwrap();
+            output.push_str(
+                r#"          decorators: f_decorators,
           id: f_id,
           superClass: f_superClass,
           body: f_body,
@@ -511,7 +520,8 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
           result.declare = f_declare;
         }
 "#,
-        ),
+            );
+        }
         "MethodDefinition" | "TsMethodDefinition" => {
             if name == "TsMethodDefinition" {
                 output.push_str(
@@ -790,14 +800,12 @@ const ENUMS = Object.freeze({
   SourceType: ["module", "script", "commonjs"],
   MethodDefinitionKind: ["constructor", "method", "get", "set"],
   Accessibility: [null, "public", "private", "protected"],
-  ClassType: ["ClassDeclaration", "ClassExpression"],
   BinaryOperator: ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"],
   LogicalOperator: ["&&", "||", "??"],
   UnaryOperator: ["-", "+", "!", "~", "typeof", "void", "delete"],
   UpdateOperator: ["++", "--"],
   AssignmentOperator: ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="],
   VariableKind: ["var", "let", "const", "using", "await using"],
-  FunctionType: ["FunctionDeclaration", "FunctionExpression"],
   FormalParameterKind: ["formal", "unique", "arrow", "signature"],
   PropertyKind: ["init", "get", "set"],
   NumericLiteralKind: ["decimal", "hex", "octal", "binary"],

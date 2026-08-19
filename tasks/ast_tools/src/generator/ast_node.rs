@@ -24,8 +24,8 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 node_impls.extend(generate_node_impls_for_struct(ast_struct));
 
                 let name = format_ident!("{}", ast_struct.name);
-                node_kind_variants.extend(quote!(#name,));
                 node_kind_data_variants.extend(quote!(#name(#name),));
+                node_kind_variants.extend(quote!(#name,));
                 node_kind_data_arms.extend(quote! {
                     NodeKind::#name => NodeKindData::#name(#name(node_id)),
                 });
@@ -120,38 +120,9 @@ fn generate_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {
                 continue;
             }
             let node_kind = format_ident!("{node_kind_name}");
-            let arm = match (
-                ast.name.as_str(),
-                variant.name.as_str(),
-                node_kind_name.as_str(),
-            ) {
-                // Function and class declarations share their concrete node types with function
-                // and class expressions. Recover the semantic variant from the concrete payload.
-                ("ExportDefaultDeclarationKind", "FunctionDeclaration", "Function") => quote! {
-                    NodeKind::Function => {
-                        let function = Function(node.0);
-                        if function.function_type(self) == FunctionType::FunctionDeclaration {
-                            #data_ident::FunctionDeclaration(function)
-                        } else {
-                            #data_ident::FunctionExpression(function)
-                        }
-                    },
-                },
-                ("ExportDefaultDeclarationKind", "ClassDeclaration", "Class") => quote! {
-                    NodeKind::Class => {
-                        let class = Class(node.0);
-                        if class.class_type(self) == ClassType::ClassDeclaration {
-                            #data_ident::ClassDeclaration(class)
-                        } else {
-                            #data_ident::ClassExpression(class)
-                        }
-                    },
-                },
-                _ => quote! {
-                    NodeKind::#node_kind => #data_ident::#variant_ident(#payload_ident(node.0)),
-                },
-            };
-            arms.extend(arm);
+            arms.extend(quote! {
+                NodeKind::#node_kind => #data_ident::#variant_ident(#payload_ident(node.0)),
+            });
         }
     }
 

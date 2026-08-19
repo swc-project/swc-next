@@ -267,31 +267,67 @@ fn enter_function_grammar_context(
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ParsedFunction {
-    Function(Function),
+    Declaration(FunctionDeclaration),
+    Expression(FunctionExpression),
     TsFunction(TsFunction),
 }
 
 impl ParsedFunction {
     fn into_declaration(self) -> Decl {
         match self {
-            Self::Function(function) => Decl::FunctionDeclaration(function),
+            Self::Declaration(function) => Decl::FunctionDeclaration(function),
+            Self::Expression(_) => unreachable!("function declarations are not expressions"),
             Self::TsFunction(function) => Decl::TsFunction(function),
         }
     }
 
     fn into_default_export_declaration(self) -> ExportDefaultDeclarationKind {
         match self {
-            Self::Function(function) => ExportDefaultDeclarationKind::FunctionDeclaration(function),
+            Self::Declaration(function) => {
+                ExportDefaultDeclarationKind::FunctionDeclaration(function)
+            }
+            Self::Expression(_) => {
+                unreachable!("default function declarations are not expressions")
+            }
             Self::TsFunction(function) => ExportDefaultDeclarationKind::TsFunction(function),
         }
     }
 
-    fn into_function_expression(self) -> Function {
+    fn into_function_expression(self) -> FunctionExpression {
         match self {
-            Self::Function(function) => function,
-            Self::TsFunction(_) => {
+            Self::Expression(function) => function,
+            Self::Declaration(_) | Self::TsFunction(_) => {
                 unreachable!("function expressions always have a body")
             }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ParsedClass {
+    Declaration(ClassDeclaration),
+    Expression(ClassExpression),
+}
+
+impl ParsedClass {
+    fn span(self, ast: &Ast<'_>) -> Span {
+        match self {
+            Self::Declaration(class) => class.span(ast),
+            Self::Expression(class) => class.span(ast),
+        }
+    }
+
+    fn into_declaration(self) -> ClassDeclaration {
+        match self {
+            Self::Declaration(class) => class,
+            Self::Expression(_) => unreachable!("class declarations are not expressions"),
+        }
+    }
+
+    fn into_expression(self) -> ClassExpression {
+        match self {
+            Self::Expression(class) => class,
+            Self::Declaration(_) => unreachable!("class expressions are not declarations"),
         }
     }
 }
@@ -1229,7 +1265,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Async => self.parse_async_function_or_expression(),
             TokenTag::For => self.parse_for_statement(),
             TokenTag::Class => Some(Stmt::from(Decl::ClassDeclaration(
-                self.parse_class(ParseClassOpts::default(), None)?,
+                self.parse_class(ParseClassOpts::default(), None)?
+                    .into_declaration(),
             ))),
             TokenTag::At => self.parse_decorated_statement(),
             TokenTag::Switch => self.parse_switch_statement(),
@@ -1250,7 +1287,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ParseClassOpts::default(),
                     Some(decorators_start),
                     decorators,
-                )?,
+                )?
+                .into_declaration(),
             )));
         }
         self.parse_export_decorated(decorators_start, decorators)
@@ -1273,6 +1311,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             decorators,
         )?;
         let end = class.span(&self.ast).end;
+        let class = class.into_declaration();
         if is_default {
             Some(self.ast.stmt_export_default_declaration(
                 Span::new(export_start, end),
@@ -2088,23 +2127,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let span = Span::new(start, end);
         if let Some(body) = body {
-            let function_type = if is_function_expression {
-                FunctionType::FunctionExpression
+            Some(if is_function_expression {
+                ParsedFunction::Expression(self.ast.function_expression(
+                    span,
+                    id,
+                    type_parameters,
+                    params,
+                    return_type,
+                    body,
+                    generator,
+                    opts.is_async,
+                ))
             } else {
-                FunctionType::FunctionDeclaration
-            };
-            let function = self.ast.function(
-                span,
-                function_type,
-                id,
-                type_parameters,
-                params,
-                return_type,
-                body,
-                generator,
-                opts.is_async,
-            );
-            Some(ParsedFunction::Function(function))
+                ParsedFunction::Declaration(self.ast.function_declaration(
+                    span,
+                    id,
+                    type_parameters,
+                    params,
+                    return_type,
+                    body,
+                    generator,
+                    opts.is_async,
+                ))
+            })
         } else {
             let function = self.ast.ts_function(
                 span,
@@ -2124,7 +2169,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         opts: ParseClassOpts,
         start_from_param: Option<u32>,
-    ) -> Option<Class> {
+    ) -> Option<ParsedClass> {
         let decorators = TypedSubRange::empty();
         self.parse_class_decorated(opts, start_from_param, decorators)
     }
@@ -2134,7 +2179,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         opts: ParseClassOpts,
         start_from_param: Option<u32>,
         decorators: TypedSubRange<Decorator>,
-    ) -> Option<Class> {
+    ) -> Option<ParsedClass> {
         debug_assert!(
             start_from_param.is_some()
                 || matches!(self.current_token.tag, TokenTag::Class | TokenTag::Abstract)
@@ -2155,14 +2200,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::Class, "Expected 'class' keyword", None) {
             return None;
         }
-        let class_type = if opts.is_expression && !opts.is_default_export {
-            ClassType::ClassExpression
-        } else {
-            ClassType::ClassDeclaration
-        };
-        if class_type == ClassType::ClassDeclaration
-            && !self.statement_context.permits_declaration()
-        {
+        let is_class_expression = opts.is_expression && !opts.is_default_export;
+        if !is_class_expression && !self.statement_context.permits_declaration() {
             self.report(
                 Span::new(start, self.current_token.span.end),
                 "Class declarations are not allowed in single-statement contexts",
@@ -2223,19 +2262,34 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let body = self.parse_class_body()?;
         let end = body.span(&self.ast).end;
-        Some(self.ast.class(
-            Span::new(start, end),
-            class_type,
-            decorators,
-            id,
-            type_parameters,
-            super_class,
-            super_type_arguments,
-            implements,
-            body,
-            is_abstract,
-            opts.is_declare,
-        ))
+        let span = Span::new(start, end);
+        Some(if is_class_expression {
+            ParsedClass::Expression(self.ast.class_expression(
+                span,
+                decorators,
+                id,
+                type_parameters,
+                super_class,
+                super_type_arguments,
+                implements,
+                body,
+                is_abstract,
+                opts.is_declare,
+            ))
+        } else {
+            ParsedClass::Declaration(self.ast.class_declaration(
+                span,
+                decorators,
+                id,
+                type_parameters,
+                super_class,
+                super_type_arguments,
+                implements,
+                body,
+                is_abstract,
+                opts.is_declare,
+            ))
+        })
     }
 
     fn can_start_class_name(&mut self) -> bool {
@@ -2722,9 +2776,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let function_span = Span::new(function_start, end);
         let method_span = Span::new(start, end);
         if let Some(body) = body {
-            let function = self.ast.function(
+            let function = self.ast.function_expression(
                 function_span,
-                FunctionType::FunctionExpression,
                 None,
                 type_parameters,
                 params,
@@ -3812,7 +3865,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None,
             )?;
             return Some(DefaultExportPart {
-                declaration: ExportDefaultDeclarationKind::ClassDeclaration(class),
+                declaration: ExportDefaultDeclarationKind::ClassDeclaration(
+                    class.into_declaration(),
+                ),
                 needs_semi: false,
             });
         }
@@ -3828,7 +3883,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 decorators,
             )?;
             return Some(DefaultExportPart {
-                declaration: ExportDefaultDeclarationKind::ClassDeclaration(class),
+                declaration: ExportDefaultDeclarationKind::ClassDeclaration(
+                    class.into_declaration(),
+                ),
                 needs_semi: false,
             });
         }
@@ -3846,7 +3903,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     Some(abstract_start),
                 )?;
                 return Some(DefaultExportPart {
-                    declaration: ExportDefaultDeclarationKind::ClassDeclaration(class),
+                    declaration: ExportDefaultDeclarationKind::ClassDeclaration(
+                        class.into_declaration(),
+                    ),
                     needs_semi: false,
                 });
             }
@@ -4020,13 +4079,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             let declaration = if self.current_token.tag == TokenTag::At {
                 let (decorators_start, decorators) = self.parse_decorators()?;
-                Decl::ClassDeclaration(self.parse_class_decorated(
-                    ParseClassOpts::default(),
-                    Some(decorators_start),
-                    decorators,
-                )?)
+                Decl::ClassDeclaration(
+                    self.parse_class_decorated(
+                        ParseClassOpts::default(),
+                        Some(decorators_start),
+                        decorators,
+                    )?
+                    .into_declaration(),
+                )
             } else if self.current_token.tag == TokenTag::Class {
-                Decl::ClassDeclaration(self.parse_class(ParseClassOpts::default(), None)?)
+                Decl::ClassDeclaration(
+                    self.parse_class(ParseClassOpts::default(), None)?
+                        .into_declaration(),
+                )
             } else {
                 let is_async = self.current_token.tag == TokenTag::Async;
                 let function_start = if is_async {
@@ -4479,14 +4544,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .into_declaration(),
                 ))
             }
-            TokenTag::Class => Some(Stmt::from(Decl::ClassDeclaration(self.parse_class(
-                ParseClassOpts {
-                    is_declare: modifiers.declare,
-                    is_abstract: modifiers.r#abstract,
-                    ..ParseClassOpts::default()
-                },
-                Some(start),
-            )?))),
+            TokenTag::Class => Some(Stmt::from(Decl::ClassDeclaration(
+                self.parse_class(
+                    ParseClassOpts {
+                        is_declare: modifiers.declare,
+                        is_abstract: modifiers.r#abstract,
+                        ..ParseClassOpts::default()
+                    },
+                    Some(start),
+                )?
+                .into_declaration(),
+            ))),
             TokenTag::Import => self.parse_declare_import_equals(start),
             TokenTag::Namespace => self.parse_module_declaration(
                 start,
@@ -7311,14 +7379,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         if tag == TokenTag::At {
             let (start, decorators) = self.parse_decorators()?;
-            return Some(Expr::ClassExpression(self.parse_class_decorated(
-                ParseClassOpts {
-                    is_expression: true,
-                    ..ParseClassOpts::default()
-                },
-                Some(start),
-                decorators,
-            )?));
+            return Some(Expr::ClassExpression(
+                self.parse_class_decorated(
+                    ParseClassOpts {
+                        is_expression: true,
+                        ..ParseClassOpts::default()
+                    },
+                    Some(start),
+                    decorators,
+                )?
+                .into_expression(),
+            ));
         }
 
         if tag.is_unary_operator() {
@@ -7412,13 +7483,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )?
                 .into_function_expression(),
             )),
-            TokenTag::Class => Some(Expr::ClassExpression(self.parse_class(
-                ParseClassOpts {
-                    is_expression: true,
-                    ..ParseClassOpts::default()
-                },
-                None,
-            )?)),
+            TokenTag::Class => Some(Expr::ClassExpression(
+                self.parse_class(
+                    ParseClassOpts {
+                        is_expression: true,
+                        ..ParseClassOpts::default()
+                    },
+                    None,
+                )?
+                .into_expression(),
+            )),
             // `import.meta` is a PrimaryExpression and can therefore be the
             // constructor target in `new import.meta()`. Import calls share
             // this parser entry and are rejected by `parse_new_expression`.
@@ -9472,9 +9546,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = context;
         let (params, type_parameters, return_type, body) = result?;
         let span = Span::new(start, body.span(&self.ast).end);
-        let function = self.ast.function(
+        let function = self.ast.function_expression(
             Span::new(function_start, body.span(&self.ast).end),
-            FunctionType::FunctionExpression,
             None,
             type_parameters,
             params,

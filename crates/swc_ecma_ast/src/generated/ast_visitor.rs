@@ -362,9 +362,15 @@ pub trait Visit<'a> {
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_class(&mut self, node: Class) {
+    fn visit_class_declaration(&mut self, node: ClassDeclaration) {
         self.enter_node(node.node_id());
-        <Class as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ClassDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_class_expression(&mut self, node: ClassExpression) {
+        self.enter_node(node.node_id());
+        <ClassExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
@@ -392,9 +398,15 @@ pub trait Visit<'a> {
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_function(&mut self, node: Function) {
+    fn visit_function_declaration(&mut self, node: FunctionDeclaration) {
         self.enter_node(node.node_id());
-        <Function as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <FunctionDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_function_expression(&mut self, node: FunctionExpression) {
+        self.enter_node(node.node_id());
+        <FunctionExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
@@ -1530,9 +1542,11 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decl {
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             DeclData::FunctionDeclaration(it) => {
-                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+                <FunctionDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::ClassDeclaration(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            DeclData::ClassDeclaration(it) => {
+                <ClassDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
             DeclData::TsFunction(it) => <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor),
             DeclData::TsTypeAliasDeclaration(it) => {
                 <TsTypeAliasDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -1641,9 +1655,11 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
                 <ParenthesizedExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             ExprData::FunctionExpression(it) => {
-                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+                <FunctionExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ClassExpression(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::ClassExpression(it) => {
+                <ClassExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
             ExprData::ImportExpression(it) => {
                 <ImportExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1974,10 +1990,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclarationKin
                 <Expr as VisitWith<'a, V>>::visit_with(Expr(self.0), visitor)
             }
             ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
-                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+                <FunctionDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
-                <Class as VisitWith<'a, V>>::visit_with(it, visitor)
+                <ClassDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             ExportDefaultDeclarationKindData::TsFunction(it) => {
                 <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -2522,33 +2538,62 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decorator {
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassDeclaration {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class(visitor, self)
+        <V as Visit<'a>>::visit_class_declaration(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.decorators(visitor.ast());
-        let field_value_2 = self.id(visitor.ast());
-        let field_value_3 = self.type_parameters(visitor.ast());
-        let field_value_4 = self.super_class(visitor.ast());
-        let field_value_5 = self.super_type_arguments(visitor.ast());
-        let field_value_6 = self.implements(visitor.ast());
-        let field_value_7 = self.body(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.id(visitor.ast());
+        let field_value_2 = self.type_parameters(visitor.ast());
+        let field_value_3 = self.super_class(visitor.ast());
+        let field_value_4 = self.super_type_arguments(visitor.ast());
+        let field_value_5 = self.implements(visitor.ast());
+        let field_value_6 = self.body(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
-            field_value_3,
+            field_value_2,
             visitor,
         );
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
         <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
-            field_value_5,
+            field_value_4,
             visitor,
         );
-        <TypedSubRange<TsClassImplements> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
-        <ClassBody as VisitWith<'a, V>>::visit_with(field_value_7, visitor);
+        <TypedSubRange<TsClassImplements> as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
+        <ClassBody as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_class_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.id(visitor.ast());
+        let field_value_2 = self.type_parameters(visitor.ast());
+        let field_value_3 = self.super_class(visitor.ast());
+        let field_value_4 = self.super_type_arguments(visitor.ast());
+        let field_value_5 = self.implements(visitor.ast());
+        let field_value_6 = self.body(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_2,
+            visitor,
+        );
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_4,
+            visitor,
+        );
+        <TypedSubRange<TsClassImplements> as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
+        <ClassBody as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassBody {
@@ -2574,7 +2619,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodDefinition {
         let field_value_2 = self.value(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <FunctionExpression as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyDefinition {
@@ -2605,26 +2650,48 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StaticBlock {
         <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionDeclaration {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_function(visitor, self)
+        <V as Visit<'a>>::visit_function_declaration(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.id(visitor.ast());
-        let field_value_2 = self.type_parameters(visitor.ast());
-        let field_value_3 = self.params(visitor.ast());
-        let field_value_4 = self.return_type(visitor.ast());
-        let field_value_5 = self.body(visitor.ast());
-        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.type_parameters(visitor.ast());
+        let field_value_2 = self.params(visitor.ast());
+        let field_value_3 = self.return_type(visitor.ast());
+        let field_value_4 = self.body(visitor.ast());
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
-            field_value_2,
+            field_value_1,
             visitor,
         );
-        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
-        <FunctionBody as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <FunctionBody as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_function_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.type_parameters(visitor.ast());
+        let field_value_2 = self.params(visitor.ast());
+        let field_value_3 = self.return_type(visitor.ast());
+        let field_value_4 = self.body(visitor.ast());
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <FunctionBody as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionBody {
@@ -5603,8 +5670,12 @@ pub trait VisitMut<'a> {
         <Decorator as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_class(&mut self, node: Class) -> Option<Class> {
-        <Class as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_class_declaration(&mut self, node: ClassDeclaration) -> Option<ClassDeclaration> {
+        <ClassDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_class_expression(&mut self, node: ClassExpression) -> Option<ClassExpression> {
+        <ClassExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_class_body(&mut self, node: ClassBody) -> Option<ClassBody> {
@@ -5626,8 +5697,18 @@ pub trait VisitMut<'a> {
         <StaticBlock as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_function(&mut self, node: Function) -> Option<Function> {
-        <Function as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_function_declaration(
+        &mut self,
+        node: FunctionDeclaration,
+    ) -> Option<FunctionDeclaration> {
+        <FunctionDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_function_expression(
+        &mut self,
+        node: FunctionExpression,
+    ) -> Option<FunctionExpression> {
+        <FunctionExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_function_body(&mut self, node: FunctionBody) -> Option<FunctionBody> {
@@ -6898,11 +6979,11 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decl {
                     .map(Decl::VariableDeclaration)
             }
             DeclData::FunctionDeclaration(it) => {
-                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                <FunctionDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::FunctionDeclaration)
             }
             DeclData::ClassDeclaration(it) => {
-                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                <ClassDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::ClassDeclaration)
             }
             DeclData::TsFunction(it) => {
@@ -7053,11 +7134,11 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
                     .map(Expr::ParenthesizedExpression)
             }
             ExprData::FunctionExpression(it) => {
-                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                <FunctionExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::FunctionExpression)
             }
             ExprData::ClassExpression(it) => {
-                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                <ClassExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ClassExpression)
             }
             ExprData::ImportExpression(it) => {
@@ -7465,11 +7546,11 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDeclarat
                     .map(<ExportDefaultDeclarationKind as From<Expr>>::from)
             }
             ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
-                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                <FunctionDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ExportDefaultDeclarationKind::FunctionDeclaration)
             }
             ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
-                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                <ClassDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ExportDefaultDeclarationKind::ClassDeclaration)
             }
             ExportDefaultDeclarationKindData::TsFunction(it) => {
@@ -8357,10 +8438,71 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decorator {
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Class {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassDeclaration {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
-        <V as VisitMut<'a>>::visit_mut_class(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_class_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
+        let field_value = self.decorators(visitor.ast());
+        if let Some(field_value) =
+            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_decorators(visitor.ast(), field_value);
+        }
+        let field_value = self.id(visitor.ast());
+        if let Some(field_value) =
+            <Option<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_id(visitor.ast(), field_value);
+        }
+        let field_value = self.type_parameters(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+                field_value,
+                visitor,
+            )
+        {
+            self.set_type_parameters(visitor.ast(), field_value);
+        }
+        let field_value = self.super_class(visitor.ast());
+        if let Some(field_value) =
+            <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_super_class(visitor.ast(), field_value);
+        }
+        let field_value = self.super_type_arguments(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+                field_value,
+                visitor,
+            )
+        {
+            self.set_super_type_arguments(visitor.ast(), field_value);
+        }
+        let field_value = self.implements(visitor.ast());
+        if let Some(field_value) =
+            <TypedSubRange<TsClassImplements> as VisitMutWith<'a, V>>::visit_mut_with(
+                field_value,
+                visitor,
+            )
+        {
+            self.set_implements(visitor.ast(), field_value);
+        }
+        let field_value = self.body(visitor.ast());
+        if let Some(field_value) =
+            <ClassBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_body(visitor.ast(), field_value);
+        }
+        None
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
+        <V as VisitMut<'a>>::visit_mut_class_expression(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
@@ -8458,7 +8600,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MethodDefinition {
         }
         let field_value = self.value(visitor.ast());
         if let Some(field_value) =
-            <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <FunctionExpression as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_value(visitor.ast(), field_value);
         }
@@ -8515,10 +8657,53 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StaticBlock {
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Function {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FunctionDeclaration {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
-        <V as VisitMut<'a>>::visit_mut_function(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_function_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
+        let field_value = self.id(visitor.ast());
+        if let Some(field_value) =
+            <Option<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_id(visitor.ast(), field_value);
+        }
+        let field_value = self.type_parameters(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+                field_value,
+                visitor,
+            )
+        {
+            self.set_type_parameters(visitor.ast(), field_value);
+        }
+        let field_value = self.params(visitor.ast());
+        if let Some(field_value) =
+            <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_params(visitor.ast(), field_value);
+        }
+        let field_value = self.return_type(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_return_type(visitor.ast(), field_value);
+        }
+        let field_value = self.body(visitor.ast());
+        if let Some(field_value) =
+            <FunctionBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_body(visitor.ast(), field_value);
+        }
+        None
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FunctionExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
+        <V as VisitMut<'a>>::visit_mut_function_expression(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
@@ -12915,15 +13100,35 @@ pub trait Traverse<'a, State = ()> {
     #[inline]
     fn exit_decorator(&mut self, node: Decorator, ctx: &mut TraverseCtx<'_, 'a, State>) {}
     #[inline]
-    fn enter_class(
+    fn enter_class_declaration(
         &mut self,
-        node: Class,
+        node: ClassDeclaration,
         ctx: &mut TraverseCtx<'_, 'a, State>,
-    ) -> TraverseAction<Class> {
+    ) -> TraverseAction<ClassDeclaration> {
         TraverseAction::Proceed
     }
     #[inline]
-    fn exit_class(&mut self, node: Class, ctx: &mut TraverseCtx<'_, 'a, State>) {}
+    fn exit_class_declaration(
+        &mut self,
+        node: ClassDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_class_expression(
+        &mut self,
+        node: ClassExpression,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<ClassExpression> {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_class_expression(
+        &mut self,
+        node: ClassExpression,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+    }
     #[inline]
     fn enter_class_body(
         &mut self,
@@ -12975,15 +13180,35 @@ pub trait Traverse<'a, State = ()> {
     #[inline]
     fn exit_static_block(&mut self, node: StaticBlock, ctx: &mut TraverseCtx<'_, 'a, State>) {}
     #[inline]
-    fn enter_function(
+    fn enter_function_declaration(
         &mut self,
-        node: Function,
+        node: FunctionDeclaration,
         ctx: &mut TraverseCtx<'_, 'a, State>,
-    ) -> TraverseAction<Function> {
+    ) -> TraverseAction<FunctionDeclaration> {
         TraverseAction::Proceed
     }
     #[inline]
-    fn exit_function(&mut self, node: Function, ctx: &mut TraverseCtx<'_, 'a, State>) {}
+    fn exit_function_declaration(
+        &mut self,
+        node: FunctionDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_function_expression(
+        &mut self,
+        node: FunctionExpression,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<FunctionExpression> {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_function_expression(
+        &mut self,
+        node: FunctionExpression,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+    }
     #[inline]
     fn enter_function_body(
         &mut self,
@@ -14977,7 +15202,9 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                 }
             }
             DeclData::FunctionDeclaration(it) => {
-                match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                match <FunctionDeclaration as TraverseWith<'a, State>>::traverse_with(
+                    it, traverser, ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
@@ -14987,7 +15214,9 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                 }
             }
             DeclData::ClassDeclaration(it) => {
-                match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                match <ClassDeclaration as TraverseWith<'a, State>>::traverse_with(
+                    it, traverser, ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
@@ -15401,7 +15630,9 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                 }
             }
             ExprData::FunctionExpression(it) => {
-                match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                match <FunctionExpression as TraverseWith<'a, State>>::traverse_with(
+                    it, traverser, ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
@@ -15411,7 +15642,9 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                 }
             }
             ExprData::ClassExpression(it) => {
-                match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                match <ClassExpression as TraverseWith<'a, State>>::traverse_with(
+                    it, traverser, ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
@@ -16220,7 +16453,9 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
                 }
             }
             ExportDefaultDeclarationKindData::FunctionDeclaration(it) => {
-                match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                match <FunctionDeclaration as TraverseWith<'a, State>>::traverse_with(
+                    it, traverser, ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
@@ -16230,7 +16465,9 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
                 }
             }
             ExportDefaultDeclarationKindData::ClassDeclaration(it) => {
-                match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
+                match <ClassDeclaration as TraverseWith<'a, State>>::traverse_with(
+                    it, traverser, ctx,
+                ) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
                     TraverseAction::Stop => TraverseAction::Stop,
@@ -16770,15 +17007,26 @@ impl<'a, State> TraverseWith<'a, State> for Decorator {
         walk_decorator(self, traverser, ctx)
     }
 }
-impl<'a, State> TraverseWith<'a, State> for Class {
-    type Node = Class;
+impl<'a, State> TraverseWith<'a, State> for ClassDeclaration {
+    type Node = ClassDeclaration;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
         self,
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        walk_class(self, traverser, ctx)
+        walk_class_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseWith<'a, State> for ClassExpression {
+    type Node = ClassExpression;
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<Self::Node> {
+        walk_class_expression(self, traverser, ctx)
     }
 }
 impl<'a, State> TraverseWith<'a, State> for ClassBody {
@@ -16825,15 +17073,26 @@ impl<'a, State> TraverseWith<'a, State> for StaticBlock {
         walk_static_block(self, traverser, ctx)
     }
 }
-impl<'a, State> TraverseWith<'a, State> for Function {
-    type Node = Function;
+impl<'a, State> TraverseWith<'a, State> for FunctionDeclaration {
+    type Node = FunctionDeclaration;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
         self,
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        walk_function(self, traverser, ctx)
+        walk_function_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseWith<'a, State> for FunctionExpression {
+    type Node = FunctionExpression;
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<Self::Node> {
+        walk_function_expression(self, traverser, ctx)
     }
 }
 impl<'a, State> TraverseWith<'a, State> for FunctionBody {
@@ -22945,15 +23204,15 @@ fn walk_decorator<'a, State, T: ?Sized + Traverse<'a, State>>(
     TraverseAction::Proceed
 }
 #[inline]
-fn walk_class<'a, State, T: ?Sized + Traverse<'a, State>>(
-    node: Class,
+fn walk_class_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
+    node: ClassDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseCtx<'_, 'a, State>,
-) -> TraverseAction<Class> {
+) -> TraverseAction<ClassDeclaration> {
     let node_id = node.node_id();
     ctx.push_node(node_id);
-    let action = match traverser.enter_node::<Class>(node_id, ctx) {
-        TraverseAction::Proceed => traverser.enter_class(node, ctx),
+    let action = match traverser.enter_node::<ClassDeclaration>(node_id, ctx) {
+        TraverseAction::Proceed => traverser.enter_class_declaration(node, ctx),
         action => action,
     };
     match action {
@@ -23058,7 +23317,126 @@ fn walk_class<'a, State, T: ?Sized + Traverse<'a, State>>(
         ctx.pop_node(node_id);
         return TraverseAction::Stop;
     }
-    traverser.exit_class(node, ctx);
+    traverser.exit_class_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+    ctx.pop_node(node_id);
+    TraverseAction::Proceed
+}
+#[inline]
+fn walk_class_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
+    node: ClassExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseCtx<'_, 'a, State>,
+) -> TraverseAction<ClassExpression> {
+    let node_id = node.node_id();
+    ctx.push_node(node_id);
+    let action = match traverser.enter_node::<ClassExpression>(node_id, ctx) {
+        TraverseAction::Proceed => traverser.enter_class_expression(node, ctx),
+        action => action,
+    };
+    match action {
+        TraverseAction::Skip => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Proceed;
+        }
+        TraverseAction::Stop => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Stop;
+        }
+        TraverseAction::Replace(replacement) => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Replace(replacement);
+        }
+        TraverseAction::Proceed => {}
+    }
+    let children_stopped = 'traverse_children: {
+        let child = node.decorators(ctx.ast);
+        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(_) => {
+                unreachable!("sub-range traversal consumes child replacements")
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.id(ctx.ast);
+        match <Option<BindingIdentifier> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_id(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.type_parameters(ctx.ast);
+        match <Option<TsTypeParameterDeclaration> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_type_parameters(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.super_class(ctx.ast);
+        match <Option<Expr> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_super_class(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.super_type_arguments(ctx.ast);
+        match <Option<TsTypeParameterInstantiation> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_super_type_arguments(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.implements(ctx.ast);
+        match <TypedSubRange<TsClassImplements> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(_) => {
+                unreachable!("sub-range traversal consumes child replacements")
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.body(ctx.ast);
+        match <ClassBody as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_body(ctx.ast, replacement);
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        false
+    };
+    if children_stopped {
+        ctx.pop_node(node_id);
+        return TraverseAction::Stop;
+    }
+    traverser.exit_class_expression(node, ctx);
     traverser.exit_node(node_id, ctx);
     ctx.pop_node(node_id);
     TraverseAction::Proceed
@@ -23165,7 +23543,8 @@ fn walk_method_definition<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.value(ctx.ast);
-        match <Function as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
+        match <FunctionExpression as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -23319,15 +23698,15 @@ fn walk_static_block<'a, State, T: ?Sized + Traverse<'a, State>>(
     TraverseAction::Proceed
 }
 #[inline]
-fn walk_function<'a, State, T: ?Sized + Traverse<'a, State>>(
-    node: Function,
+fn walk_function_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
+    node: FunctionDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseCtx<'_, 'a, State>,
-) -> TraverseAction<Function> {
+) -> TraverseAction<FunctionDeclaration> {
     let node_id = node.node_id();
     ctx.push_node(node_id);
-    let action = match traverser.enter_node::<Function>(node_id, ctx) {
-        TraverseAction::Proceed => traverser.enter_function(node, ctx),
+    let action = match traverser.enter_node::<FunctionDeclaration>(node_id, ctx) {
+        TraverseAction::Proceed => traverser.enter_function_declaration(node, ctx),
         action => action,
     };
     match action {
@@ -23408,7 +23787,102 @@ fn walk_function<'a, State, T: ?Sized + Traverse<'a, State>>(
         ctx.pop_node(node_id);
         return TraverseAction::Stop;
     }
-    traverser.exit_function(node, ctx);
+    traverser.exit_function_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+    ctx.pop_node(node_id);
+    TraverseAction::Proceed
+}
+#[inline]
+fn walk_function_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
+    node: FunctionExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseCtx<'_, 'a, State>,
+) -> TraverseAction<FunctionExpression> {
+    let node_id = node.node_id();
+    ctx.push_node(node_id);
+    let action = match traverser.enter_node::<FunctionExpression>(node_id, ctx) {
+        TraverseAction::Proceed => traverser.enter_function_expression(node, ctx),
+        action => action,
+    };
+    match action {
+        TraverseAction::Skip => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Proceed;
+        }
+        TraverseAction::Stop => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Stop;
+        }
+        TraverseAction::Replace(replacement) => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Replace(replacement);
+        }
+        TraverseAction::Proceed => {}
+    }
+    let children_stopped = 'traverse_children: {
+        let child = node.id(ctx.ast);
+        match <Option<BindingIdentifier> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_id(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.type_parameters(ctx.ast);
+        match <Option<TsTypeParameterDeclaration> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_type_parameters(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.params(ctx.ast);
+        match <FormalParameters as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_params(ctx.ast, replacement);
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.return_type(ctx.ast);
+        match <Option<TsTypeAnnotation> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_return_type(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.body(ctx.ast);
+        match <FunctionBody as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_body(ctx.ast, replacement);
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        false
+    };
+    if children_stopped {
+        ctx.pop_node(node_id);
+        return TraverseAction::Stop;
+    }
+    traverser.exit_function_expression(node, ctx);
     traverser.exit_node(node_id, ctx);
     ctx.pop_node(node_id);
     TraverseAction::Proceed

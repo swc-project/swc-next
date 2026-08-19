@@ -226,10 +226,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn stmt_function(
+    pub fn stmt_function_declaration(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -239,9 +238,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> Stmt {
         Stmt::FunctionDeclaration(
-            self.function(
+            self.function_declaration(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -254,10 +252,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn stmt_class(
+    pub fn stmt_class_declaration(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -269,9 +266,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> Stmt {
         Stmt::ClassDeclaration(
-            self.class(
+            self.class_declaration(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -405,10 +401,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn decl_function(
+    pub fn decl_function_declaration(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -418,9 +413,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> Decl {
         Decl::FunctionDeclaration(
-            self.function(
+            self.function_declaration(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -433,10 +427,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn decl_class(
+    pub fn decl_class_declaration(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -448,9 +441,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> Decl {
         Decl::ClassDeclaration(
-            self.class(
+            self.class_declaration(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -808,10 +800,9 @@ impl<'a> Ast<'a> {
         Expr::ParenthesizedExpression(self.parenthesized_expression(span, expression).into())
     }
     #[inline]
-    pub fn expr_function(
+    pub fn expr_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -821,9 +812,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> Expr {
         Expr::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -836,10 +826,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn expr_class(
+    pub fn expr_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -851,9 +840,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> Expr {
         Expr::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -1549,10 +1537,9 @@ impl<'a> Ast<'a> {
         PropertyKey::ParenthesizedExpression(self.parenthesized_expression(span, expression).into())
     }
     #[inline]
-    pub fn property_key_function(
+    pub fn property_key_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -1562,9 +1549,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> PropertyKey {
         PropertyKey::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -1577,10 +1563,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn property_key_class(
+    pub fn property_key_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -1592,9 +1577,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> PropertyKey {
         PropertyKey::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -1990,10 +1974,9 @@ impl<'a> Ast<'a> {
         Argument::ParenthesizedExpression(self.parenthesized_expression(span, expression).into())
     }
     #[inline]
-    pub fn argument_function(
+    pub fn argument_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -2003,9 +1986,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> Argument {
         Argument::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -2018,10 +2000,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn argument_class(
+    pub fn argument_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -2033,9 +2014,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> Argument {
         Argument::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -2469,10 +2449,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn for_statement_init_function(
+    pub fn for_statement_init_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -2482,9 +2461,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> ForStatementInit {
         ForStatementInit::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -2497,10 +2475,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn for_statement_init_class(
+    pub fn for_statement_init_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -2512,9 +2489,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> ForStatementInit {
         ForStatementInit::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -3048,10 +3024,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn arrow_function_body_function(
+    pub fn arrow_function_body_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -3061,9 +3036,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -3076,10 +3050,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn arrow_function_body_class(
+    pub fn arrow_function_body_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -3091,9 +3064,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -3422,7 +3394,7 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: TypedSubRange<Decorator>,
         key: PropertyKey,
-        value: Function,
+        value: FunctionExpression,
         kind: MethodDefinitionKind,
         computed: bool,
         r#static: bool,
@@ -3579,7 +3551,6 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_function_declaration(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -3589,9 +3560,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::FunctionDeclaration(
-            self.function(
+            self.function_declaration(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -3607,7 +3577,6 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_class_declaration(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -3619,9 +3588,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::ClassDeclaration(
-            self.class(
+            self.class_declaration(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -3976,7 +3944,6 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -3986,9 +3953,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -4004,7 +3970,6 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -4016,9 +3981,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -4874,10 +4838,9 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn class(
+    pub fn class_declaration(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -4887,7 +4850,7 @@ impl<'a> Ast<'a> {
         body: ClassBody,
         r#abstract: bool,
         declare: bool,
-    ) -> Class {
+    ) -> ClassDeclaration {
         let _extra_data = [
             decorators.to_extra_data(self),
             super_class.to_extra_data(self),
@@ -4896,19 +4859,56 @@ impl<'a> Ast<'a> {
             body.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
-        Class(self.add_node(
+        ClassDeclaration(self.add_node(
             span,
-            NodeKind::Class,
+            NodeKind::ClassDeclaration,
             NodePayload(
                 0u128
-                    | ((class_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 24usize)
+                        << 16usize)
                     | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 56usize)
-                    | ((r#abstract as u32 as u128) << 8usize)
-                    | ((declare as u32 as u128) << 16usize)
+                        << 48usize)
+                    | ((r#abstract as u32 as u128) << 0usize)
+                    | ((declare as u32 as u128) << 8usize)
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn class_expression(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
+        super_type_arguments: Option<TsTypeParameterInstantiation>,
+        implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
+        r#abstract: bool,
+        declare: bool,
+    ) -> ClassExpression {
+        let _extra_data = [
+            decorators.to_extra_data(self),
+            super_class.to_extra_data(self),
+            super_type_arguments.to_extra_data(self),
+            implements.to_extra_data(self),
+            body.to_extra_data(self),
+        ];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        ClassExpression(self.add_node(
+            span,
+            NodeKind::ClassExpression,
+            NodePayload(
+                0u128
+                    | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 16usize)
+                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                        as u128)
+                        << 48usize)
+                    | ((r#abstract as u32 as u128) << 0usize)
+                    | ((declare as u32 as u128) << 8usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -4927,7 +4927,7 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: TypedSubRange<Decorator>,
         key: PropertyKey,
-        value: Function,
+        value: FunctionExpression,
         kind: MethodDefinitionKind,
         computed: bool,
         r#static: bool,
@@ -5009,10 +5009,9 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn function(
+    pub fn function_declaration(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -5020,26 +5019,59 @@ impl<'a> Ast<'a> {
         body: FunctionBody,
         generator: bool,
         r#async: bool,
-    ) -> Function {
+    ) -> FunctionDeclaration {
         let _extra_data = [
             params.to_extra_data(self),
             return_type.to_extra_data(self),
             body.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
-        Function(self.add_node(
+        FunctionDeclaration(self.add_node(
             span,
-            NodeKind::Function,
+            NodeKind::FunctionDeclaration,
             NodePayload(
                 0u128
-                    | ((function_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 24usize)
+                        << 16usize)
                     | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 56usize)
-                    | ((generator as u32 as u128) << 8usize)
-                    | ((r#async as u32 as u128) << 16usize)
+                        << 48usize)
+                    | ((generator as u32 as u128) << 0usize)
+                    | ((r#async as u32 as u128) << 8usize)
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn function_expression(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
+        generator: bool,
+        r#async: bool,
+    ) -> FunctionExpression {
+        let _extra_data = [
+            params.to_extra_data(self),
+            return_type.to_extra_data(self),
+            body.to_extra_data(self),
+        ];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        FunctionExpression(self.add_node(
+            span,
+            NodeKind::FunctionExpression,
+            NodePayload(
+                0u128
+                    | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 16usize)
+                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
+                        as u128)
+                        << 48usize)
+                    | ((generator as u32 as u128) << 0usize)
+                    | ((r#async as u32 as u128) << 8usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -6728,10 +6760,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn ts_enum_member_name_function(
+    pub fn ts_enum_member_name_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -6741,9 +6772,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> TsEnumMemberName {
         TsEnumMemberName::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -6756,10 +6786,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn ts_enum_member_name_class(
+    pub fn ts_enum_member_name_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -6771,9 +6800,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> TsEnumMemberName {
         TsEnumMemberName::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -8457,10 +8485,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn jsx_expression_function(
+    pub fn jsx_expression_function_expression(
         &mut self,
         span: Span,
-        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -8470,9 +8497,8 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> JsxExpression {
         JsxExpression::FunctionExpression(
-            self.function(
+            self.function_expression(
                 span,
-                function_type,
                 id,
                 type_parameters,
                 params,
@@ -8485,10 +8511,9 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn jsx_expression_class(
+    pub fn jsx_expression_class_expression(
         &mut self,
         span: Span,
-        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -8500,9 +8525,8 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> JsxExpression {
         JsxExpression::ClassExpression(
-            self.class(
+            self.class_expression(
                 span,
-                class_type,
                 decorators,
                 id,
                 type_parameters,

@@ -1,7 +1,8 @@
 use std::vec::Vec;
 
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId,
+    ArrowFunctionExpression, Ast, ClassDeclaration, ClassExpression, Directive, FunctionBody,
+    FunctionDeclaration, FunctionExpression, NodeId,
 };
 
 use crate::{
@@ -127,8 +128,18 @@ impl<'a> SemanticContext<'a> {
         self.scope.enter_directive(tree, directive);
     }
 
-    pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
-        self.scope.enter_function(tree, function, annex_b_if_body);
+    pub fn enter_function_declaration(
+        &mut self,
+        tree: &Ast,
+        function: FunctionDeclaration,
+        annex_b_if_body: bool,
+    ) {
+        self.scope
+            .enter_function_declaration(tree, function, annex_b_if_body);
+    }
+
+    pub fn enter_function_expression(&mut self, tree: &Ast, function: FunctionExpression) {
+        self.scope.enter_function_expression(tree, function);
     }
 
     pub fn enter_ts_function(&mut self, node: NodeId) {
@@ -234,8 +245,12 @@ impl<'a> SemanticContext<'a> {
         self.ts_namespace_depth -= 1;
     }
 
-    pub fn enter_class(&mut self, tree: &Ast, class: Class) {
-        self.scope.enter_class(tree, class);
+    pub fn enter_class_declaration(&mut self, class: ClassDeclaration) {
+        self.scope.enter_class_declaration(class);
+    }
+
+    pub fn enter_class_expression(&mut self, tree: &Ast, class: ClassExpression) {
+        self.scope.enter_class_expression(tree, class);
     }
 
     pub fn enter_static_block(&mut self, node: NodeId) {

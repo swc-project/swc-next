@@ -52,12 +52,14 @@ pub enum NodeKind {
     EmptyStatement,
     Directive,
     Decorator,
-    Class,
+    ClassDeclaration,
+    ClassExpression,
     ClassBody,
     MethodDefinition,
     PropertyDefinition,
     StaticBlock,
-    Function,
+    FunctionDeclaration,
+    FunctionExpression,
     FunctionBody,
     BlockStatement,
     WhileStatement,
@@ -210,8 +212,8 @@ impl NodeKind {
                 | Self::TsExportAssignment
                 | Self::TsNamespaceExportDeclaration
                 | Self::VariableDeclaration
-                | Self::Function
-                | Self::Class
+                | Self::FunctionDeclaration
+                | Self::ClassDeclaration
                 | Self::TsFunction
                 | Self::TsTypeAliasDeclaration
                 | Self::TsInterfaceDeclaration
@@ -226,8 +228,8 @@ impl NodeKind {
         matches!(
             self,
             Self::VariableDeclaration
-                | Self::Function
-                | Self::Class
+                | Self::FunctionDeclaration
+                | Self::ClassDeclaration
                 | Self::TsFunction
                 | Self::TsTypeAliasDeclaration
                 | Self::TsInterfaceDeclaration
@@ -268,8 +270,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -358,8 +360,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -409,8 +411,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -460,8 +462,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -522,8 +524,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -581,8 +583,8 @@ impl NodeKind {
     pub const fn is_export_default_declaration_kind(self) -> bool {
         matches!(
             self,
-            Self::Function
-                | Self::Class
+            Self::FunctionDeclaration
+                | Self::ClassDeclaration
                 | Self::TsFunction
                 | Self::TsInterfaceDeclaration
                 | Self::IdentifierReference
@@ -612,6 +614,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -802,8 +806,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -896,8 +900,8 @@ impl NodeKind {
                 | Self::ArrayExpression
                 | Self::ObjectExpression
                 | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
+                | Self::FunctionExpression
+                | Self::ClassExpression
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
@@ -973,12 +977,14 @@ pub enum NodeKindData {
     EmptyStatement(EmptyStatement),
     Directive(Directive),
     Decorator(Decorator),
-    Class(Class),
+    ClassDeclaration(ClassDeclaration),
+    ClassExpression(ClassExpression),
     ClassBody(ClassBody),
     MethodDefinition(MethodDefinition),
     PropertyDefinition(PropertyDefinition),
     StaticBlock(StaticBlock),
-    Function(Function),
+    FunctionDeclaration(FunctionDeclaration),
+    FunctionExpression(FunctionExpression),
     FunctionBody(FunctionBody),
     BlockStatement(BlockStatement),
     WhileStatement(WhileStatement),
@@ -2791,25 +2797,51 @@ impl SetSpan for Decorator {
         }
     }
 }
-impl Class {
+impl ClassDeclaration {
     #[inline]
     pub fn node_id(self) -> NodeId {
         self.0
     }
 }
-impl AstNode for Class {
+impl AstNode for ClassDeclaration {
     #[inline]
     fn node_id(self) -> NodeId {
         self.0
     }
 }
-impl GetSpan for Class {
+impl GetSpan for ClassDeclaration {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
         unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
-impl SetSpan for Class {
+impl SetSpan for ClassDeclaration {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
+impl ClassExpression {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ClassExpression {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for ClassExpression {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for ClassExpression {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
@@ -2921,25 +2953,51 @@ impl SetSpan for StaticBlock {
         }
     }
 }
-impl Function {
+impl FunctionDeclaration {
     #[inline]
     pub fn node_id(self) -> NodeId {
         self.0
     }
 }
-impl AstNode for Function {
+impl AstNode for FunctionDeclaration {
     #[inline]
     fn node_id(self) -> NodeId {
         self.0
     }
 }
-impl GetSpan for Function {
+impl GetSpan for FunctionDeclaration {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
         unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
-impl SetSpan for Function {
+impl SetSpan for FunctionDeclaration {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
+impl FunctionExpression {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for FunctionExpression {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for FunctionExpression {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for FunctionExpression {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
@@ -6691,14 +6749,20 @@ impl<'a> Ast<'a> {
             NodeKind::EmptyStatement => NodeKindData::EmptyStatement(EmptyStatement(node_id)),
             NodeKind::Directive => NodeKindData::Directive(Directive(node_id)),
             NodeKind::Decorator => NodeKindData::Decorator(Decorator(node_id)),
-            NodeKind::Class => NodeKindData::Class(Class(node_id)),
+            NodeKind::ClassDeclaration => NodeKindData::ClassDeclaration(ClassDeclaration(node_id)),
+            NodeKind::ClassExpression => NodeKindData::ClassExpression(ClassExpression(node_id)),
             NodeKind::ClassBody => NodeKindData::ClassBody(ClassBody(node_id)),
             NodeKind::MethodDefinition => NodeKindData::MethodDefinition(MethodDefinition(node_id)),
             NodeKind::PropertyDefinition => {
                 NodeKindData::PropertyDefinition(PropertyDefinition(node_id))
             }
             NodeKind::StaticBlock => NodeKindData::StaticBlock(StaticBlock(node_id)),
-            NodeKind::Function => NodeKindData::Function(Function(node_id)),
+            NodeKind::FunctionDeclaration => {
+                NodeKindData::FunctionDeclaration(FunctionDeclaration(node_id))
+            }
+            NodeKind::FunctionExpression => {
+                NodeKindData::FunctionExpression(FunctionExpression(node_id))
+            }
             NodeKind::FunctionBody => NodeKindData::FunctionBody(FunctionBody(node_id)),
             NodeKind::BlockStatement => NodeKindData::BlockStatement(BlockStatement(node_id)),
             NodeKind::WhileStatement => NodeKindData::WhileStatement(WhileStatement(node_id)),
@@ -6972,8 +7036,10 @@ impl<'a> Ast<'a> {
             NodeKind::VariableDeclaration => {
                 StmtData::VariableDeclaration(VariableDeclaration(node.0))
             }
-            NodeKind::Function => StmtData::FunctionDeclaration(Function(node.0)),
-            NodeKind::Class => StmtData::ClassDeclaration(Class(node.0)),
+            NodeKind::FunctionDeclaration => {
+                StmtData::FunctionDeclaration(FunctionDeclaration(node.0))
+            }
+            NodeKind::ClassDeclaration => StmtData::ClassDeclaration(ClassDeclaration(node.0)),
             NodeKind::TsFunction => StmtData::TsFunction(TsFunction(node.0)),
             NodeKind::TsTypeAliasDeclaration => {
                 StmtData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node.0))
@@ -7000,8 +7066,10 @@ impl<'a> Ast<'a> {
             NodeKind::VariableDeclaration => {
                 DeclData::VariableDeclaration(VariableDeclaration(node.0))
             }
-            NodeKind::Function => DeclData::FunctionDeclaration(Function(node.0)),
-            NodeKind::Class => DeclData::ClassDeclaration(Class(node.0)),
+            NodeKind::FunctionDeclaration => {
+                DeclData::FunctionDeclaration(FunctionDeclaration(node.0))
+            }
+            NodeKind::ClassDeclaration => DeclData::ClassDeclaration(ClassDeclaration(node.0)),
             NodeKind::TsFunction => DeclData::TsFunction(TsFunction(node.0)),
             NodeKind::TsTypeAliasDeclaration => {
                 DeclData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node.0))
@@ -7066,8 +7134,10 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 ExprData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => ExprData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => ExprData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                ExprData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => ExprData::ClassExpression(ClassExpression(node.0)),
             NodeKind::ImportExpression => ExprData::ImportExpression(ImportExpression(node.0)),
             NodeKind::AwaitExpression => ExprData::AwaitExpression(AwaitExpression(node.0)),
             NodeKind::YieldExpression => ExprData::YieldExpression(YieldExpression(node.0)),
@@ -7233,8 +7303,10 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 PropertyKeyData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => PropertyKeyData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => PropertyKeyData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                PropertyKeyData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => PropertyKeyData::ClassExpression(ClassExpression(node.0)),
             NodeKind::ImportExpression => {
                 PropertyKeyData::ImportExpression(ImportExpression(node.0))
             }
@@ -7316,8 +7388,10 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 ArgumentData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => ArgumentData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => ArgumentData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                ArgumentData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => ArgumentData::ClassExpression(ClassExpression(node.0)),
             NodeKind::ImportExpression => ArgumentData::ImportExpression(ImportExpression(node.0)),
             NodeKind::AwaitExpression => ArgumentData::AwaitExpression(AwaitExpression(node.0)),
             NodeKind::YieldExpression => ArgumentData::YieldExpression(YieldExpression(node.0)),
@@ -7423,8 +7497,12 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 ForStatementInitData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => ForStatementInitData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => ForStatementInitData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                ForStatementInitData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => {
+                ForStatementInitData::ClassExpression(ClassExpression(node.0))
+            }
             NodeKind::ImportExpression => {
                 ForStatementInitData::ImportExpression(ImportExpression(node.0))
             }
@@ -7561,8 +7639,12 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 ArrowFunctionBodyData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => ArrowFunctionBodyData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => ArrowFunctionBodyData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                ArrowFunctionBodyData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => {
+                ArrowFunctionBodyData::ClassExpression(ClassExpression(node.0))
+            }
             NodeKind::ImportExpression => {
                 ArrowFunctionBodyData::ImportExpression(ImportExpression(node.0))
             }
@@ -7699,21 +7781,11 @@ impl<'a> Ast<'a> {
         node: ExportDefaultDeclarationKind,
     ) -> ExportDefaultDeclarationKindData {
         match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::Function => {
-                let function = Function(node.0);
-                if function.function_type(self) == FunctionType::FunctionDeclaration {
-                    ExportDefaultDeclarationKindData::FunctionDeclaration(function)
-                } else {
-                    ExportDefaultDeclarationKindData::FunctionExpression(function)
-                }
+            NodeKind::FunctionDeclaration => {
+                ExportDefaultDeclarationKindData::FunctionDeclaration(FunctionDeclaration(node.0))
             }
-            NodeKind::Class => {
-                let class = Class(node.0);
-                if class.class_type(self) == ClassType::ClassDeclaration {
-                    ExportDefaultDeclarationKindData::ClassDeclaration(class)
-                } else {
-                    ExportDefaultDeclarationKindData::ClassExpression(class)
-                }
+            NodeKind::ClassDeclaration => {
+                ExportDefaultDeclarationKindData::ClassDeclaration(ClassDeclaration(node.0))
             }
             NodeKind::TsFunction => {
                 ExportDefaultDeclarationKindData::TsFunction(TsFunction(node.0))
@@ -7809,6 +7881,12 @@ impl<'a> Ast<'a> {
                 ExportDefaultDeclarationKindData::ParenthesizedExpression(ParenthesizedExpression(
                     node.0,
                 ))
+            }
+            NodeKind::FunctionExpression => {
+                ExportDefaultDeclarationKindData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => {
+                ExportDefaultDeclarationKindData::ClassExpression(ClassExpression(node.0))
             }
             NodeKind::ImportExpression => {
                 ExportDefaultDeclarationKindData::ImportExpression(ImportExpression(node.0))
@@ -8188,8 +8266,12 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 TsEnumMemberNameData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => TsEnumMemberNameData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => TsEnumMemberNameData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                TsEnumMemberNameData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => {
+                TsEnumMemberNameData::ClassExpression(ClassExpression(node.0))
+            }
             NodeKind::ImportExpression => {
                 TsEnumMemberNameData::ImportExpression(ImportExpression(node.0))
             }
@@ -8383,8 +8465,12 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 JsxExpressionData::ParenthesizedExpression(ParenthesizedExpression(node.0))
             }
-            NodeKind::Function => JsxExpressionData::FunctionExpression(Function(node.0)),
-            NodeKind::Class => JsxExpressionData::ClassExpression(Class(node.0)),
+            NodeKind::FunctionExpression => {
+                JsxExpressionData::FunctionExpression(FunctionExpression(node.0))
+            }
+            NodeKind::ClassExpression => {
+                JsxExpressionData::ClassExpression(ClassExpression(node.0))
+            }
             NodeKind::ImportExpression => {
                 JsxExpressionData::ImportExpression(ImportExpression(node.0))
             }

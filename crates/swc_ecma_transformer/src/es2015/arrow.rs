@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use swc_next_ecma_ast::{
-    Ast, Class, DUMMY_SP, Expr, FormalParameterKind, Function, FunctionType, GetSpan,
-    IdentifierReference, MethodDefinition, MethodDefinitionKind, StaticBlock, Stmt, TypedSubRange,
-    VisitMut, VisitMutWith,
+    Ast, ClassDeclaration, ClassExpression, DUMMY_SP, Expr, FormalParameterKind,
+    FunctionDeclaration, FunctionExpression, GetSpan, IdentifierReference, MethodDefinition,
+    MethodDefinitionKind, StaticBlock, Stmt, TypedSubRange, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -53,7 +53,10 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
         }
     }
 
-    fn convert_arrow(&mut self, arrow: swc_next_ecma_ast::ArrowFunctionExpression) -> Function {
+    fn convert_arrow(
+        &mut self,
+        arrow: swc_next_ecma_ast::ArrowFunctionExpression,
+    ) -> FunctionExpression {
         let (span, params, body, is_async) = (
             arrow.span(self.ast),
             arrow.params(self.ast),
@@ -81,17 +84,8 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
                 .function_body(DUMMY_SP, TypedSubRange::empty(), body_items)
         };
 
-        self.ast.function(
-            span,
-            FunctionType::FunctionExpression,
-            None,
-            None,
-            params,
-            None,
-            body,
-            false,
-            is_async,
-        )
+        self.ast
+            .function_expression(span, None, None, params, None, body, false, is_async)
     }
 }
 
@@ -120,7 +114,10 @@ impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast> {
         None
     }
 
-    fn visit_mut_function(&mut self, node: Function) -> Option<Function> {
+    fn visit_mut_function_declaration(
+        &mut self,
+        node: FunctionDeclaration,
+    ) -> Option<FunctionDeclaration> {
         let derived_constructor = self
             .next_method_is_derived_constructor
             .take()
@@ -129,13 +126,47 @@ impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast> {
         self.hoister.push_frame();
         node.visit_mut_children_with(self);
         let frame = self.hoister.take_frame();
-        self.hoister
-            .inject_into_function(node, frame, derived_constructor, self.ast);
+        self.hoister.inject_into_function_body(
+            node.body(self.ast),
+            frame,
+            derived_constructor,
+            self.ast,
+        );
         self.hoister.set_in_arrow(old_in_arrow);
         None
     }
 
-    fn visit_mut_class(&mut self, node: Class) -> Option<Class> {
+    fn visit_mut_function_expression(
+        &mut self,
+        node: FunctionExpression,
+    ) -> Option<FunctionExpression> {
+        let derived_constructor = self
+            .next_method_is_derived_constructor
+            .take()
+            .unwrap_or(false);
+        let old_in_arrow = self.hoister.set_in_arrow(false);
+        self.hoister.push_frame();
+        node.visit_mut_children_with(self);
+        let frame = self.hoister.take_frame();
+        self.hoister.inject_into_function_body(
+            node.body(self.ast),
+            frame,
+            derived_constructor,
+            self.ast,
+        );
+        self.hoister.set_in_arrow(old_in_arrow);
+        None
+    }
+
+    fn visit_mut_class_declaration(&mut self, node: ClassDeclaration) -> Option<ClassDeclaration> {
+        let old = self.in_subclass;
+        self.in_subclass = node.super_class(self.ast).is_some();
+        node.visit_mut_children_with(self);
+        self.in_subclass = old;
+        None
+    }
+
+    fn visit_mut_class_expression(&mut self, node: ClassExpression) -> Option<ClassExpression> {
         let old = self.in_subclass;
         self.in_subclass = node.super_class(self.ast).is_some();
         node.visit_mut_children_with(self);

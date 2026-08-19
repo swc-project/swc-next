@@ -3,13 +3,13 @@ use std::hash::BuildHasher;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, AstWtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration,
-    ExportSpecifier, Function, FunctionType, IdentifierReference, ImportDeclaration,
-    ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxElementName, JsxElementNameData,
-    JsxIdentifier, JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind,
-    NodeKindData, ReferenceId, ScopeId, SourceType, SymbolId, TsEnumDeclaration, TsEnumMember,
-    TsInterfaceDeclaration, TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate,
-    VariableDeclaration, VariableKind,
+    Ast, AstUtf8, AstWtf8, BindingIdentifier, ClassDeclaration, ClassExpression,
+    ExportNamedDeclaration, ExportSpecifier, FunctionDeclaration, FunctionExpression,
+    IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
+    JsxElementName, JsxElementNameData, JsxIdentifier, JsxMemberExpressionObjectData,
+    JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId, ScopeId, SourceType, SymbolId,
+    TsEnumDeclaration, TsEnumMember, TsInterfaceDeclaration, TsModuleDeclaration,
+    TsTypeAliasDeclaration, TsTypePredicate, VariableDeclaration, VariableKind,
 };
 
 use crate::{
@@ -685,9 +685,45 @@ impl<'a> SymbolTracker<'a> {
         kind == VariableKind::Var && scope.var_write_crosses_with()
     }
 
-    pub fn enter_function(&mut self, tree: &Ast, function: Function, scope: &ScopeTracker<'a>) {
+    pub fn enter_function_declaration(
+        &mut self,
+        tree: &Ast,
+        function: FunctionDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.enter_function(
+            tree,
+            function.generator(tree),
+            function.r#async(tree),
+            true,
+            scope,
+        );
+    }
+
+    pub fn enter_function_expression(
+        &mut self,
+        tree: &Ast,
+        function: FunctionExpression,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.enter_function(
+            tree,
+            function.generator(tree),
+            function.r#async(tree),
+            false,
+            scope,
+        );
+    }
+
+    fn enter_function(
+        &mut self,
+        tree: &Ast,
+        generator: bool,
+        r#async: bool,
+        is_declaration: bool,
+        scope: &ScopeTracker<'a>,
+    ) {
         self.push_saved_context();
-        let is_declaration = function.function_type(tree) == FunctionType::FunctionDeclaration;
         let target = if is_declaration {
             scope
                 .current_scope()
@@ -707,8 +743,8 @@ impl<'a> SymbolTracker<'a> {
             && is_declaration
             && target_kind == ScopeKind::Block
             && !target_scope.flags.strict
-            && !function.generator(tree)
-            && !function.r#async(tree);
+            && !generator
+            && !r#async;
         let allow_overload = (tree.is_ts() && !ts_catch_scope)
             || matches!(
                 target_kind,
@@ -723,7 +759,7 @@ impl<'a> SymbolTracker<'a> {
             flags: SymbolFlags::FUNCTION
                 .with(
                     SymbolFlags::ANNEX_B_FUNCTION,
-                    is_declaration && !function.generator(tree) && !function.r#async(tree),
+                    is_declaration && !generator && !r#async,
                 )
                 .with(SymbolFlags::AMBIENT, self.ambient),
             excludes: if annex_b_block_function {
@@ -754,12 +790,34 @@ impl<'a> SymbolTracker<'a> {
         };
     }
 
-    pub fn enter_class(&mut self, tree: &Ast, class: Class, scope: &ScopeTracker<'a>) {
+    pub fn enter_class_declaration(
+        &mut self,
+        tree: &Ast,
+        class: ClassDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.enter_class(tree, class.declare(tree), true, scope);
+    }
+
+    pub fn enter_class_expression(
+        &mut self,
+        tree: &Ast,
+        class: ClassExpression,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.enter_class(tree, class.declare(tree), false, scope);
+    }
+
+    fn enter_class(
+        &mut self,
+        _tree: &Ast,
+        declare: bool,
+        is_declaration: bool,
+        scope: &ScopeTracker<'a>,
+    ) {
         self.push_saved_context();
-        let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
         self.pending = PendingBinding {
-            flags: SymbolFlags::CLASS
-                .with(SymbolFlags::AMBIENT, class.declare(tree) || self.ambient),
+            flags: SymbolFlags::CLASS.with(SymbolFlags::AMBIENT, declare || self.ambient),
             excludes: Excludes::CLASS,
             scope: if is_declaration {
                 scope
@@ -1603,7 +1661,7 @@ fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeI
 fn is_arguments_barrier(tree: &Ast<'_>, scope: scope::Scope) -> bool {
     match scope.kind {
         ScopeKind::Function => match tree.node_kind(scope.node) {
-            NodeKind::Function => true,
+            NodeKind::FunctionDeclaration | NodeKind::FunctionExpression => true,
             NodeKind::Program => tree.source_type() == SourceType::CommonJs,
             _ => false,
         },
