@@ -11,6 +11,7 @@ version               = "0.1.2"
 [dependencies]
 bitflags   = { workspace = true }
 oxc_index  = { workspace = true }
+rustc-hash = { workspace = true }
 
 swc_next_allocator          = { workspace = true }
 swc_next_ecma_ast           = { workspace = true }

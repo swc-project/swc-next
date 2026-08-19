@@ -2829,6 +2829,7 @@ dependencies = [
  "bitflags",
  "clap",
  "oxc_index",
+ "rustc-hash",
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
