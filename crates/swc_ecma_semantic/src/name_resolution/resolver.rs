@@ -235,6 +235,12 @@ impl<'ast> Resolver<'ast> {
         self.record_scope(reference.node_id(), scope);
     }
 
+    fn resolve_jsx_identifier(&mut self, identifier: JsxIdentifier) {
+        let name = self.name(identifier.name(self.ast));
+        let scope = self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id);
+        self.record_scope(identifier.node_id(), scope);
+    }
+
     fn resolve_export_name(&mut self, name: ModuleExportName) {
         if let ModuleExportNameData::IdentifierName(identifier) =
             self.ast.module_export_name_data(name)
@@ -323,6 +329,29 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
     fn visit_label_identifier(&mut self, label: LabelIdentifier) {
         self.record_scope(label.node_id(), self.label_scope_id);
+    }
+
+    fn visit_jsx_element_name(&mut self, name: JsxElementName) {
+        match self.ast.jsx_element_name_data(name) {
+            JsxElementNameData::JsxIdentifier(identifier) => {
+                self.resolve_jsx_identifier(identifier);
+            }
+            JsxElementNameData::JsxMemberExpression(member) => {
+                member.object(self.ast).visit_with(self);
+            }
+            JsxElementNameData::JsxNamespacedName(_) => {}
+        }
+    }
+
+    fn visit_jsx_member_expression_object(&mut self, object: JsxMemberExpressionObject) {
+        match self.ast.jsx_member_expression_object_data(object) {
+            JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
+                self.resolve_jsx_identifier(identifier);
+            }
+            JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
+                member.object(self.ast).visit_with(self);
+            }
+        }
     }
 
     fn visit_block_statement(&mut self, block: BlockStatement) {
