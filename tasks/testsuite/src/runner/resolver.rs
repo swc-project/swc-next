@@ -9,25 +9,14 @@ use swc_next_ecma_semantic::name_resolution::{NameResolution, resolver};
 
 use crate::{
     cases::{Case, swc_resolver::SwcResolverCase},
-    runner::{Runner, parse_case},
+    runner::{Runner, parse_case_with_recovery},
     suite::TestResult,
 };
-
-const IGNORED_TESTS: &[&str] = &[
-    "typescript/tests/cases/compiler/binderBinaryExpressionStress.ts.snap",
-    "typescript/tests/cases/compiler/binderBinaryExpressionStressJs.ts.snap",
-];
 
 pub struct ResolverRunner;
 
 impl Runner<SwcResolverCase> for ResolverRunner {
     const NAME: &'static str = "resolver";
-
-    fn should_run(case: &SwcResolverCase) -> bool {
-        // These contain deeply nested binary-expression chains that overflow
-        // the default visitor stack before a result can be produced.
-        !IGNORED_TESTS.contains(&case.relative_path().to_str().unwrap())
-    }
 
     fn run(case: &SwcResolverCase) -> TestResult {
         let path = case.relative_path().to_path_buf();
@@ -52,7 +41,9 @@ impl Runner<SwcResolverCase> for ResolverRunner {
 
 fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     let allocator = Allocator::new();
-    let ast = parse_case(&allocator, case)?;
+    // The resolver oracle is generated for every program accepted by the
+    // experimental parser, including programs with recoverable early errors.
+    let ast = parse_case_with_recovery(&allocator, case);
     let resolution = resolver(&ast);
     let actual = resolver_snapshot(&ast, &resolution);
 
@@ -67,13 +58,13 @@ fn resolver_snapshot(ast: &Ast<'_>, resolution: &NameResolution<'_>) -> String {
     let mut output = String::new();
     writeln!(
         output,
-        "Top level: #{}",
+        "Top level: ScopeId({})",
         context_for_scope(resolution, resolution.top_level_scope_id())
     )
     .unwrap();
     writeln!(
         output,
-        "Unresolved: #{}",
+        "Unresolved: ScopeId({})",
         context_for_scope(resolution, resolution.unresolved_scope_id())
     )
     .unwrap();
@@ -92,7 +83,7 @@ fn context_for_scope(resolution: &NameResolution<'_>, scope: ScopeId) -> u32 {
     } else if scope == resolution.unresolved_scope_id() {
         1
     } else if scope == resolution.label_scope_id() {
-        0
+        u32::MAX
     } else {
         scope.raw() - 1
     }
@@ -109,12 +100,12 @@ impl ResolverDisplayVisitor<'_, '_> {
     fn write_identifier<N: AstNode>(&mut self, node: N, name: AstUtf8) {
         let name = self.ast.get_utf8(name);
         let context = context_for_scope(self.resolution, self.resolution.node_scope(node));
-        writeln!(self.output, "{name} ({name:?}) -> #{context}").unwrap();
+        writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 
     fn write_identifier_name(&mut self, identifier: IdentifierName, context: u32) {
         let name = self.ast.get_utf8(identifier.name(self.ast));
-        writeln!(self.output, "{name} ({name:?}) -> #{context}").unwrap();
+        writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 
     fn write_module_export_name(&mut self, name: ModuleExportName, resolved: bool) {
@@ -124,22 +115,9 @@ impl ResolverDisplayVisitor<'_, '_> {
             let context = if resolved {
                 context_for_scope(self.resolution, self.resolution.node_scope(identifier))
             } else {
-                0
+                context_for_scope(self.resolution, self.resolution.unresolved_scope_id())
             };
             self.write_identifier_name(identifier, context);
-        }
-    }
-
-    fn visit_ts_property_key(&mut self, key: PropertyKey) {
-        match self.ast.property_key_data(key) {
-            PropertyKeyData::IdentifierName(identifier) => {
-                self.write_identifier_name(identifier, 0);
-            }
-            PropertyKeyData::Expr(expression) => expression.visit_with(self),
-            PropertyKeyData::PrivateIdentifier(_)
-            | PropertyKeyData::StringLiteral(_)
-            | PropertyKeyData::NumericLiteral(_)
-            | PropertyKeyData::BigIntLiteral(_) => {}
         }
     }
 }
@@ -233,73 +211,5 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
                 member.object(self.ast).visit_with(self);
             }
         }
-    }
-
-    fn visit_ts_qualified_name_left(&mut self, node: TsQualifiedNameLeft) {
-        if let TsQualifiedNameLeftData::IdentifierName(identifier) =
-            self.ast.ts_qualified_name_left_data(node)
-        {
-            self.write_identifier(identifier, identifier.name(self.ast));
-        } else {
-            node.visit_children_with(self);
-        }
-    }
-
-    fn visit_ts_import_type_qualifier(&mut self, node: TsImportTypeQualifier) {
-        if let TsImportTypeQualifierData::IdentifierName(identifier) =
-            self.ast.ts_import_type_qualifier_data(node)
-        {
-            self.write_identifier(identifier, identifier.name(self.ast));
-        } else {
-            node.visit_children_with(self);
-        }
-    }
-
-    fn visit_ts_type_predicate_name(&mut self, node: TsTypePredicateName) {
-        if let TsTypePredicateNameData::IdentifierName(identifier) =
-            self.ast.ts_type_predicate_name_data(node)
-        {
-            self.write_identifier(identifier, identifier.name(self.ast));
-        }
-    }
-
-    fn visit_ts_enum_member_name(&mut self, node: TsEnumMemberName) {
-        if let TsEnumMemberNameData::IdentifierName(identifier) =
-            self.ast.ts_enum_member_name_data(node)
-        {
-            self.write_identifier(identifier, identifier.name(self.ast));
-        } else {
-            node.visit_children_with(self);
-        }
-    }
-
-    fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
-        let identifier = node.id(self.ast);
-        self.write_identifier(identifier, identifier.name(self.ast));
-        node.body(self.ast).visit_with(self);
-    }
-
-    fn visit_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
-        let identifier = node.id(self.ast);
-        self.write_identifier(identifier, identifier.name(self.ast));
-    }
-
-    fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
-        self.visit_ts_property_key(node.key(self.ast));
-        node.type_annotation(self.ast).visit_with(self);
-    }
-
-    fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
-        self.visit_ts_property_key(node.key(self.ast));
-        // Preserve legacy SWC field traversal order.
-        node.params(self.ast).visit_with(self);
-        node.return_type(self.ast).visit_with(self);
-        node.type_parameters(self.ast).visit_with(self);
-    }
-
-    fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
-        // The legacy AST represented this label as an `Ident` inside a pattern.
-        self.write_identifier_name(node.label(self.ast), 0);
-        node.element_type(self.ast).visit_with(self);
     }
 }

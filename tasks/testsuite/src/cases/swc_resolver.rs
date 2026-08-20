@@ -65,7 +65,6 @@ impl SwcResolverCase {
         };
         let fixture_root = match suite.to_str() {
             Some("test262") => workspace_root.join("tasks/testsuite/fixtures/test262"),
-            Some("typescript") => workspace_root.join("tasks/testsuite/fixtures/typescript"),
             Some("swc") => workspace_root.join("fixtures/swc"),
             _ => panic!("unknown resolver oracle suite: {}", suite.display()),
         };
