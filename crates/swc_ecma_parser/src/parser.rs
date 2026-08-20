@@ -7782,6 +7782,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 ArrowHead::No => {}
             }
+        } else if self.context.can_be_module
+            && minimum <= Precedence::Assignment
+            && self.classify_arrow_head() != ArrowHead::No
+            && let Some(arrow) = self.try_parse_arrow(false, start)?
+        {
+            return Some(arrow);
         }
         let cover = self.parse_parenthesized_cover()?;
         let is_arrow = self.current_token.tag == TokenTag::Arrow
@@ -8309,6 +8315,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             enter_grammar_context![&mut self.context, ?Yield, ?Await]
         };
+        self.context.can_be_module = false;
         let result = self.parse_arrow_inner(is_async, start);
         self.context = context;
         result
@@ -8325,7 +8332,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let params =
             self.parse_formal_parameters(FormalParameterKind::ArrowFormalParameters, false)?;
-        let return_type = if self.current_token.tag == TokenTag::Colon {
+        let return_type = if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon
+        {
             Some(self.parse_return_type_annotation()?)
         } else {
             None
@@ -12082,11 +12090,15 @@ mod tests {
 
     #[test]
     fn unambiguous() {
-        fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
+        fn assert_unambiguous_source_type_with_lang(
+            source: &str,
+            lang: Lang,
+            expected: SourceType,
+        ) {
             let allocator = Allocator::new();
             let options = Options {
                 source_type: SourceType::Unambiguous,
-                lang: Lang::Ts,
+                lang,
                 ..Options::default()
             };
             let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
@@ -12095,7 +12107,22 @@ mod tests {
             assert_eq!(result.ast.source_type(), expected, "{source}");
         }
 
+        fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
+            assert_unambiguous_source_type_with_lang(source, Lang::Ts, expected);
+        }
+
         assert_unambiguous_source_type("const value = 1;", SourceType::Script);
+        assert_unambiguous_source_type("const f = (x = await + value) => x;", SourceType::Script);
+        assert_unambiguous_source_type_with_lang(
+            "const f = (x = await + value) => x;",
+            Lang::Js,
+            SourceType::Script,
+        );
+        assert_unambiguous_source_type_with_lang(
+            "(x = await value);",
+            Lang::Js,
+            SourceType::Module,
+        );
         assert_unambiguous_source_type("import value from 'value';", SourceType::Module);
         assert_unambiguous_source_type("export const value = 1;", SourceType::Module);
         assert_unambiguous_source_type("const value = import.meta.url;", SourceType::Module);
