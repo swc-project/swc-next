@@ -2128,12 +2128,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         start_from_param: Option<u32>,
         decorators: TypedSubRange<Decorator>,
     ) -> Option<Class> {
-        debug_assert!(
-            start_from_param.is_some()
-                || matches!(self.current_token.tag, TokenTag::Class | TokenTag::Abstract)
-        );
         let start = start_from_param.unwrap_or(self.current_token.span.start);
-
         let mut is_abstract = opts.is_abstract;
         if self.current_token.tag == TokenTag::Abstract
             && !is_abstract
