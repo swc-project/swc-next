@@ -640,11 +640,11 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     statement_context: StatementContext,
     ts_context: TsContext,
     state: ParserState,
-    /// Start offsets which failed speculative parenthesized-arrow parsing.
+    /// Start offsets whose isolated arrow-parameter parse need not be retried.
     ///
-    /// This cache is intentionally not part of [`Checkpoint`]: a failed
-    /// speculation remains impossible after rewinding and must not be retried
-    /// by an enclosing speculative parse.
+    /// This cache is intentionally not part of [`Checkpoint`]: information
+    /// learned while parsing a failed outer speculation remains valid after
+    /// rewinding and prevents nested candidates from being parsed again.
     not_parenthesized_arrow: FxHashSet<u32>,
 }
 
@@ -7347,31 +7347,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_parenthesized_or_arrow_function(None, minimum);
         }
 
-        if tag == TokenTag::Await {
-            let unambiguous_await = !self.context.r#await && self.context.can_be_module;
+        if tag == TokenTag::Await && (self.context.r#await || self.context.can_be_module) {
+            let token = self.current_token;
+            let unambiguous_await = !self.context.r#await;
+            self.advance_without_escape_check()?;
             let parse_as_await = self.context.r#await
-                || unambiguous_await && {
-                    let next = self.peek_ahead()?;
-                    !next.has_line_terminator_before()
-                        && !matches!(
-                            next.tag,
-                            TokenTag::Semicolon
-                                | TokenTag::RightBrace
-                                | TokenTag::RightParen
-                                | TokenTag::RightBracket
-                                | TokenTag::Comma
-                                | TokenTag::Colon
-                                | TokenTag::Eof
-                        )
-                };
+                || !self.current_token.has_line_terminator_before()
+                    && !matches!(
+                        self.current_token.tag,
+                        TokenTag::Semicolon
+                            | TokenTag::RightBrace
+                            | TokenTag::RightParen
+                            | TokenTag::RightBracket
+                            | TokenTag::Comma
+                            | TokenTag::Colon
+                            | TokenTag::Eof
+                    );
             if parse_as_await {
+                self.report_if_escaped_keyword(token);
                 if unambiguous_await && self.statement_context == StatementContext::ModuleItem {
                     self.has_module_syntax = true;
                 }
-                let start = self.current_token.span.start;
-                self.advance()?;
-                return self.parse_await_expression(start);
+                return self.parse_await_expression(token.span.start);
             }
+
+            self.validate_identifier(token, "an identifier");
+            let name = self.identifier_name(token);
+            return Some(self.ast.expr_identifier_reference(token.span, name));
         }
 
         if tag == TokenTag::Yield && self.context.r#yield && minimum < Precedence::Add {
@@ -7762,7 +7764,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         arrow_start: Option<u32>,
         minimum: Precedence,
     ) -> Option<Expr> {
-        let start = arrow_start.unwrap_or(self.current_token.span.start);
+        let position = self.current_token.span.start;
+        let start = arrow_start.unwrap_or(position);
         if self.lang.is_typescript() && minimum <= Precedence::Assignment {
             match self.classify_arrow_head() {
                 ArrowHead::Yes => {
@@ -7782,7 +7785,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         {
             return Some(arrow);
         }
-        let cover = self.parse_parenthesized_cover()?;
+        let cover = match self.parse_parenthesized_cover() {
+            Some(cover) => cover,
+            None => {
+                if self.source_type == SourceType::Unambiguous
+                    && !self.context.can_be_module
+                    && !self.lang.is_typescript()
+                    && minimum <= Precedence::Assignment
+                {
+                    self.not_parenthesized_arrow.insert(position);
+                }
+                return None;
+            }
+        };
         let is_arrow = self.current_token.tag == TokenTag::Arrow
             && !self.current_token.has_line_terminator_before()
             && minimum <= Precedence::Assignment;
@@ -8270,9 +8285,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let checkpoint = self.checkpoint();
+        let cache_nested_parentheses = self.context.can_be_module && !self.lang.is_typescript();
         let arrow = match self.parse_arrow(is_async, start) {
             Some(arrow) => arrow,
             None => {
+                if cache_nested_parentheses {
+                    self.cache_parenthesized_expressions(checkpoint.nodes_len);
+                }
                 self.rewind(checkpoint);
                 self.not_parenthesized_arrow.insert(position);
                 return Some(None);
@@ -8286,11 +8305,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && return_type.is_some()
             && self.current_token.tag != TokenTag::Colon
         {
+            if cache_nested_parentheses {
+                self.cache_parenthesized_expressions(checkpoint.nodes_len);
+            }
             self.rewind(checkpoint);
             self.not_parenthesized_arrow.insert(position);
             return Some(None);
         }
         Some(Some(arrow))
+    }
+
+    /// Reuses completed nested covers when a JS arrow speculation is rewound.
+    fn cache_parenthesized_expressions(&mut self, start: usize) {
+        for index in start..self.ast.node_count() {
+            let node = NodeId::from_raw_unchecked(index as u32);
+            if self.ast.node_kind(node) == NodeKind::ParenthesizedExpression {
+                self.not_parenthesized_arrow
+                    .insert(self.ast.span(node).start);
+            }
+        }
     }
 
     fn try_parse_generic_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
@@ -12116,6 +12149,11 @@ mod tests {
             Lang::Js,
             SourceType::Module,
         );
+        assert_unambiguous_source_type_with_lang(
+            "(a = (b = (c = await value)));",
+            Lang::Js,
+            SourceType::Module,
+        );
         assert_unambiguous_source_type("import value from 'value';", SourceType::Module);
         assert_unambiguous_source_type("export const value = 1;", SourceType::Module);
         assert_unambiguous_source_type("const value = import.meta.url;", SourceType::Module);
@@ -12147,6 +12185,21 @@ mod tests {
         assert_unambiguous_source_type("export {}; await\nvalue;", SourceType::Module);
         assert_unambiguous_source_type("await\nvalue; export {};", SourceType::Module);
         assert_unambiguous_source_type("await; export {};", SourceType::Module);
+
+        let allocator = Allocator::new();
+        let result = Parser::init(
+            &allocator,
+            "value + await \"unterminated",
+            Options {
+                source_type: SourceType::Unambiguous,
+                lang: Lang::Js,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
+        assert_eq!(result.diagnostics[0].message, "Unterminated string literal");
 
         let allocator = Allocator::new();
         let result = Parser::init(
