@@ -117,6 +117,9 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     pub(crate) config: C,
     pub(crate) tokens: ArenaVec<'a, Token>,
     pub(crate) comments: ArenaVec<'a, Comment>,
+    /// Annex B comments which become errors if an unambiguous program resolves
+    /// to a module.
+    pub(crate) module_mode_errors: ArenaVec<'a, Span>,
     pub(crate) processed_comments: usize,
 
     pub(crate) cursor: u32,
@@ -153,6 +156,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let mut lexer = Self {
             config,
             comments: ArenaVec::with_capacity_in(comment_capacity, allocator),
+            module_mode_errors: ArenaVec::new_in(allocator),
             processed_comments: 0,
             tokens,
             collect_comments,
@@ -168,22 +172,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             lexer.state.prev_token_end = lexer.cursor;
         }
         lexer
-    }
-
-    #[cold]
-    pub(crate) fn reset(&mut self, allow_html_like_comments: bool) {
-        self.comments.clear();
-        self.processed_comments = 0;
-        self.tokens.clear();
-        self.cursor = 0;
-        self.allow_html_like_comments = allow_html_like_comments;
-        self.hashbang = None;
-        self.state = LexerState::default();
-        self.mode = LexerMode::Normal;
-        self.skip_hashbang();
-        if self.hashbang.is_some() {
-            self.state.prev_token_end = self.cursor;
-        }
     }
 
     fn skip_hashbang(&mut self) {
@@ -1394,6 +1382,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             if c == b'-' && self.peek(1) == b'-' && self.peek(2) == b'>' {
                 self.cursor += 3;
                 self.record_comment(CommentKind::Line, start, self.cursor, trailing)?;
+                self.module_mode_errors.push(Span::new(start, self.cursor));
                 self.state.had_line_break = true;
                 return Ok(());
             }
@@ -1403,6 +1392,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.cursor += 1;
         }
         self.record_comment(CommentKind::Line, start, self.cursor, trailing)?;
+        self.module_mode_errors.push(Span::new(start, self.cursor));
         self.state.had_line_break = true;
         Ok(())
     }
@@ -1423,6 +1413,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.cursor += 1;
         }
         self.record_comment(CommentKind::Line, start, self.cursor, trailing)?;
+        self.module_mode_errors.push(Span::new(start, self.cursor));
         self.state.had_line_break = true;
         Ok(())
     }

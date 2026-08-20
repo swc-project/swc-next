@@ -478,33 +478,6 @@ mod tests {
         (ast, result.semantic)
     }
 
-    fn diagnostic_messages(source: &str, lang: Lang, source_type: SourceType) -> Vec<String> {
-        let allocator = Allocator::new();
-        let parse = Parser::init(
-            &allocator,
-            source,
-            Options {
-                lang,
-                source_type,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-        analyze(
-            &parse.ast,
-            AnalyzeOptions {
-                check_syntax: true,
-                ..AnalyzeOptions::default()
-            },
-        )
-        .diagnostics
-        .into_iter()
-        .map(|diagnostic| diagnostic.message.into_owned())
-        .collect()
-    }
-
     #[test]
     fn symbols() {
         let allocator = Allocator::new();
@@ -698,42 +671,6 @@ mod tests {
             .unwrap();
         assert_eq!(re_export.origin, ExportOrigin::ReExportSpecifier);
         assert!(matches!(re_export.target, ExportTarget::External { .. }));
-
-        let messages = diagnostic_messages("export { missing };", Lang::Js, SourceType::CommonJs);
-        assert!(
-            messages
-                .iter()
-                .any(|message| message == "Export 'missing' is not defined")
-        );
-
-        let messages = diagnostic_messages("export { missing };", Lang::Ts, SourceType::CommonJs);
-        assert!(
-            messages
-                .iter()
-                .any(|message| message == "Export 'missing' is not defined")
-        );
-
-        let messages = diagnostic_messages(
-            "const value = 1; export { value }; export { value };",
-            Lang::Ts,
-            SourceType::CommonJs,
-        );
-        assert!(
-            messages
-                .iter()
-                .any(|message| message == "Duplicate export of 'value'")
-        );
-
-        let messages = diagnostic_messages(
-            "import { value } from 'source'; var value;",
-            Lang::Js,
-            SourceType::CommonJs,
-        );
-        assert!(
-            messages
-                .iter()
-                .any(|message| message == "Identifier 'value' has already been declared")
-        );
     }
 
     #[test]

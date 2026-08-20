@@ -73,6 +73,8 @@ struct Context {
     r#await: bool,
     /// The grammar's `[Return]` parameter.
     r#return: bool,
+    /// Whether top-level `await` may resolve an unambiguous program to a module.
+    can_be_module: bool,
 }
 
 /// Enters a derived grammatical context and returns the previous context.
@@ -114,6 +116,7 @@ impl Default for Context {
             r#yield: false,
             r#await: false,
             r#return: false,
+            can_be_module: false,
         }
     }
 }
@@ -121,7 +124,11 @@ impl Default for Context {
 impl From<SourceType> for Context {
     fn from(source_type: SourceType) -> Self {
         match source_type {
-            SourceType::Script | SourceType::Unambiguous => Self::default(),
+            SourceType::Script => Self::default(),
+            SourceType::Unambiguous => Self {
+                can_be_module: true,
+                ..Self::default()
+            },
             SourceType::CommonJs => Self {
                 r#return: true,
                 ..Self::default()
@@ -165,60 +172,6 @@ impl Default for TsContext {
 struct ParsedBody {
     directives: TypedSubRange<Directive>,
     body: TypedSubRange<Stmt>,
-}
-
-struct UnambiguousAwaitVisitor<'ast, 'a> {
-    ast: &'ast Ast<'a>,
-    awaits: &'ast [(u32, bool)],
-    next_await: usize,
-    saw_module_syntax: bool,
-    saw_ambiguous_await: bool,
-}
-
-impl<'a> Visit<'a> for UnambiguousAwaitVisitor<'_, 'a> {
-    fn ast(&self) -> &Ast<'a> {
-        self.ast
-    }
-
-    fn visit_function(&mut self, _node: Function) {}
-
-    fn visit_arrow_function_expression(&mut self, _node: ArrowFunctionExpression) {}
-
-    fn visit_static_block(&mut self, _node: StaticBlock) {}
-
-    fn visit_ts_module_block(&mut self, _node: TsModuleBlock) {}
-
-    fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
-        self.saw_module_syntax |= node.kind(self.ast) == VariableKind::AwaitUsing;
-        node.visit_children_with(self);
-    }
-
-    fn visit_for_of_statement(&mut self, node: ForOfStatement) {
-        self.saw_module_syntax |= node.r#await(self.ast);
-        node.visit_children_with(self);
-    }
-
-    fn visit_await_expression(&mut self, node: AwaitExpression) {
-        let start = node.span(self.ast).start;
-        while self
-            .awaits
-            .get(self.next_await)
-            .is_some_and(|(await_start, _)| *await_start < start)
-        {
-            self.next_await += 1;
-        }
-        if let Some((await_start, ambiguous)) = self.awaits.get(self.next_await)
-            && *await_start == start
-        {
-            if *ambiguous {
-                self.saw_ambiguous_await = true;
-            } else {
-                self.saw_module_syntax = true;
-            }
-            self.next_await += 1;
-        }
-        node.visit_children_with(self);
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -311,12 +264,14 @@ fn enter_function_grammar_context(
     generator: bool,
     async_function: bool,
 ) -> Context {
-    match (generator, async_function) {
-        (false, false) => enter_grammar_context![context, ~Yield, ~Await],
-        (true, false) => enter_grammar_context![context, +Yield, ~Await],
-        (false, true) => enter_grammar_context![context, ~Yield, +Await],
-        (true, true) => enter_grammar_context![context, +Yield, +Await],
-    }
+    let previous = match (generator, async_function) {
+        (false, false) => enter_grammar_context![&mut *context, ~Yield, ~Await],
+        (true, false) => enter_grammar_context![&mut *context, +Yield, ~Await],
+        (false, true) => enter_grammar_context![&mut *context, ~Yield, +Await],
+        (true, true) => enter_grammar_context![&mut *context, +Yield, +Await],
+    };
+    context.can_be_module = false;
+    previous
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -691,9 +646,6 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// speculation remains impossible after rewinding and must not be retried
     /// by an enclosing speculative parse.
     not_parenthesized_arrow: FxHashSet<u32>,
-    /// `(await token start, is ambiguous in Script grammar)` during the
-    /// module-first pass for unambiguous input.
-    unambiguous_awaits: Option<Vec<(u32, bool)>>,
 }
 
 pub struct ParseReturn<'a> {
@@ -709,6 +661,7 @@ struct Checkpoint {
     lexer_state: LexerState,
     lexer_mode: LexerMode,
     lexer_comments_len: usize,
+    lexer_module_mode_errors_len: usize,
     lexer_processed_comments: usize,
     lexer_tokens_len: usize,
     // Parser token stream.
@@ -730,6 +683,7 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     state: LexerState,
     cursor: u32,
     comments_len: usize,
+    module_mode_errors_len: usize,
     processed_comments: usize,
     tokens_len: usize,
     active: bool,
@@ -746,6 +700,9 @@ impl<C: ParserConfig> Peek<'_, '_, C> {
         self.lexer.state = self.state;
         self.lexer.cursor = self.cursor;
         self.lexer.comments.truncate(self.comments_len);
+        self.lexer
+            .module_mode_errors
+            .truncate(self.module_mode_errors_len);
         self.lexer.processed_comments = self.processed_comments;
         self.lexer.tokens.truncate(self.tokens_len);
         self.active = false;
@@ -799,10 +756,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         assert!(source.len() <= u32::MAX as usize);
         let mut ast = Ast::new(source, allocator);
         ast.set_source_metadata(options.source_type, options.lang);
-        let allow_html_like_comments = matches!(
-            options.source_type,
-            SourceType::Script | SourceType::CommonJs
-        );
+        let allow_html_like_comments = options.source_type != SourceType::Module;
         let lexer = Lexer::init(
             ast.allocator(),
             source,
@@ -836,53 +790,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             },
             state: ParserState::default(),
             not_parenthesized_arrow: FxHashSet::default(),
-            unambiguous_awaits: None,
         }
     }
 
     pub fn parse(mut self) -> ParseReturn<'a> {
-        if self.source_type == SourceType::Unambiguous {
-            return self.parse_unambiguous();
-        }
-
-        let program = self.parse_program_once();
-        self.finish_parse(program)
-    }
-
-    #[cold]
-    fn parse_unambiguous(mut self) -> ParseReturn<'a> {
-        self.unambiguous_awaits = Some(Vec::new());
-        self.set_source_type(SourceType::Module);
-
-        let mut program = self.parse_program_once();
-        let saw_ambiguous_await =
-            !self.has_module_syntax && self.classify_unambiguous_awaits(program);
-        let module_parse_failed = self
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.severity == Severity::Error);
-
-        if !self.has_module_syntax && (saw_ambiguous_await || module_parse_failed) {
-            self.reset_for_source_type(SourceType::Script);
-            program = self.parse_program_once();
-
-            if self.has_module_syntax
-                || self
-                    .diagnostics
-                    .iter()
-                    .any(|diagnostic| diagnostic.severity == Severity::Error)
-            {
-                self.reset_for_source_type(SourceType::Module);
-                program = self.parse_program_once();
-            }
-        } else if !self.has_module_syntax {
-            self.set_source_type(SourceType::Script);
-        }
-
-        self.finish_parse(program)
-    }
-
-    fn parse_program_once(&mut self) -> Program {
         self.context = self.source_type.into();
         self.context.r#return |= self.allow_return_outside_function;
         if self.advance().is_none() {
@@ -897,78 +808,28 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
-        self.ast
-            .program(Span::new(0, end), directives, body, hashbang)
-    }
-
-    fn classify_unambiguous_awaits(&mut self, program: Program) -> bool {
-        let mut visitor = UnambiguousAwaitVisitor {
-            ast: &self.ast,
-            awaits: self
-                .unambiguous_awaits
-                .as_deref()
-                .expect("unambiguous await classification is active"),
-            next_await: 0,
-            saw_module_syntax: false,
-            saw_ambiguous_await: false,
-        };
-        program.visit_with(&mut visitor);
-        self.has_module_syntax |= visitor.saw_module_syntax;
-        visitor.saw_ambiguous_await
-    }
-
-    #[cold]
-    fn record_unambiguous_await(&mut self, start: u32, ambiguous: bool) {
-        let Some(awaits) = &mut self.unambiguous_awaits else {
-            return;
-        };
-        if awaits
-            .last()
-            .is_none_or(|(await_start, _)| *await_start < start)
-        {
-            awaits.push((start, ambiguous));
-            return;
+        if self.source_type == SourceType::Unambiguous {
+            self.source_type = if self.has_module_syntax {
+                SourceType::Module
+            } else {
+                SourceType::Script
+            };
+            self.ast.set_source_metadata(self.source_type, self.lang);
         }
-
-        let index = awaits.partition_point(|(await_start, _)| *await_start < start);
-        if let Some((await_start, previous_ambiguous)) = awaits.get_mut(index)
-            && *await_start == start
-        {
-            *previous_ambiguous |= ambiguous;
-        } else {
-            awaits.insert(index, (start, ambiguous));
+        if self.source_type == SourceType::Module {
+            for index in 0..self.lexer.module_mode_errors.len() {
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Borrowed("Legacy comments cannot be used in module code"),
+                    span: self.lexer.module_mode_errors[index],
+                    help: None,
+                    labels: Vec::new(),
+                });
+            }
         }
-    }
-
-    fn set_source_type(&mut self, source_type: SourceType) {
-        self.source_type = source_type;
-        self.ast.set_source_metadata(source_type, self.lang);
-    }
-
-    fn reset_for_source_type(&mut self, source_type: SourceType) {
-        self.ast.truncate(0, 0);
-        self.set_source_type(source_type);
-        self.lexer.reset(source_type != SourceType::Module);
-        self.has_module_syntax = false;
-        self.unambiguous_awaits = None;
-        self.diagnostics.clear();
-        self.current_token = Token::eof(self.lexer.state.prev_token_end);
-        self.scratch_statements.items.clear();
-        self.scratch_cover.items.clear();
-        self.scratch_decorators.items.clear();
-        self.scratch_a.items.clear();
-        self.scratch_b.items.clear();
-        self.context = Context::default();
-        self.statement_context = StatementContext::default();
-        self.ts_context = TsContext {
-            ambient: self.lang == Lang::Dts,
-            ..TsContext::default()
-        };
-        self.state = ParserState::default();
-        self.not_parenthesized_arrow.clear();
-    }
-
-    fn finish_parse(mut self, program: Program) -> ParseReturn<'a> {
+        let program = self
+            .ast
+            .program(Span::new(0, end), directives, body, hashbang);
         if !self.preserve_parens {
             strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
         }
@@ -1208,6 +1069,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             lexer_state: self.lexer.state,
             lexer_mode: self.lexer.mode,
             lexer_comments_len: self.lexer.comments.len(),
+            lexer_module_mode_errors_len: self.lexer.module_mode_errors.len(),
             lexer_processed_comments: self.lexer.processed_comments,
             lexer_tokens_len: self.lexer.tokens.len(),
             current_token: self.current_token,
@@ -1228,6 +1090,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.lexer.state = checkpoint.lexer_state;
         self.lexer.mode = checkpoint.lexer_mode;
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
+        self.lexer
+            .module_mode_errors
+            .truncate(checkpoint.lexer_module_mode_errors_len);
         self.lexer.processed_comments = checkpoint.lexer_processed_comments;
         self.lexer.tokens.truncate(checkpoint.lexer_tokens_len);
         self.current_token = checkpoint.current_token;
@@ -1246,6 +1111,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             state: self.lexer.state,
             cursor: self.lexer.cursor,
             comments_len: self.lexer.comments.len(),
+            module_mode_errors_len: self.lexer.module_mode_errors.len(),
             processed_comments: self.lexer.processed_comments,
             tokens_len: self.lexer.tokens.len(),
             active: true,
@@ -1336,19 +1202,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             StmtData::ExportDefaultDeclaration(_) => true,
             StmtData::ExportAllDeclaration(_) => true,
             StmtData::TsExportAssignment(_) => true,
-            StmtData::ForOfStatement(statement) => statement.r#await(&self.ast),
-            StmtData::Declaration(declaration) => match self.ast.decl_data(declaration) {
-                DeclData::VariableDeclaration(declaration) => {
-                    matches!(
-                        declaration.kind(&self.ast),
-                        VariableKind::Using | VariableKind::AwaitUsing
-                    )
-                }
-                DeclData::TsImportEqualsDeclaration(declaration) => declaration
+            StmtData::Declaration(declaration) => {
+                let DeclData::TsImportEqualsDeclaration(declaration) =
+                    self.ast.decl_data(declaration)
+                else {
+                    return false;
+                };
+                declaration
                     .module_reference(&self.ast)
-                    .is_ts_external_module_reference(&self.ast),
-                _ => false,
-            },
+                    .is_ts_external_module_reference(&self.ast)
+            }
             _ => false,
         }
     }
@@ -1499,6 +1362,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn report_await_using_if_disallowed(&mut self, span: Span) {
         if self.context.r#await {
+            return;
+        }
+        if self.context.can_be_module {
+            if self.statement_context == StatementContext::ModuleItem {
+                self.has_module_syntax = true;
+            }
             return;
         }
         self.report(
@@ -5003,6 +4872,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let context = enter_grammar_context![&mut self.context, ~Return];
+        self.context.can_be_module = false;
         let ParsedBody { directives, body } =
             self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
         self.context = context;
@@ -6768,7 +6638,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         if self.current_token.tag == TokenTag::Await {
-            if !self.context.r#await {
+            if !self.context.r#await && !self.context.can_be_module {
                 self.report(
                     self.current_token.span,
                     "'for await' is only valid in async functions or modules",
@@ -7483,35 +7353,31 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_parenthesized_or_arrow_function(None, minimum);
         }
 
-        if tag == TokenTag::Await && self.context.r#await {
-            let start = self.current_token.span.start;
-            let ambiguous = if self.unambiguous_awaits.is_some() {
-                let next = self.peek_ahead()?;
-                Some(
-                    next.has_line_terminator_before()
-                        || self.lang.is_typescript() && next.tag == TokenTag::LogicalNot
-                        || matches!(
+        if tag == TokenTag::Await {
+            let unambiguous_await = !self.context.r#await && self.context.can_be_module;
+            let parse_as_await = self.context.r#await
+                || unambiguous_await && {
+                    let next = self.peek_ahead()?;
+                    !next.has_line_terminator_before()
+                        && !matches!(
                             next.tag,
-                            TokenTag::Plus
-                                | TokenTag::Minus
-                                | TokenTag::LeftParen
-                                | TokenTag::LeftBracket
-                                | TokenTag::NoSubstitutionTemplate
-                                | TokenTag::TemplateHead
-                                | TokenTag::Of
-                                | TokenTag::RegexLiteral
-                                | TokenTag::Slash
-                        ),
-                )
-            } else {
-                None
-            };
-            self.advance()?;
-            let expression = self.parse_await_expression(start)?;
-            if let Some(ambiguous) = ambiguous {
-                self.record_unambiguous_await(start, ambiguous);
+                            TokenTag::Semicolon
+                                | TokenTag::RightBrace
+                                | TokenTag::RightParen
+                                | TokenTag::RightBracket
+                                | TokenTag::Comma
+                                | TokenTag::Colon
+                                | TokenTag::Eof
+                        )
+                };
+            if parse_as_await {
+                if unambiguous_await && self.statement_context == StatementContext::ModuleItem {
+                    self.has_module_syntax = true;
+                }
+                let start = self.current_token.span.start;
+                self.advance()?;
+                return self.parse_await_expression(start);
             }
-            return Some(expression);
         }
 
         if tag == TokenTag::Yield && self.context.r#yield && minimum < Precedence::Add {
@@ -12238,82 +12104,62 @@ mod tests {
         assert_unambiguous_source_type("export as namespace Foo", SourceType::Script);
         assert_unambiguous_source_type("await value;", SourceType::Module);
         assert_unambiguous_source_type("await;", SourceType::Script);
-        assert_unambiguous_source_type("await.foo;", SourceType::Script);
-        assert_unambiguous_source_type("await = value;", SourceType::Script);
-        assert_unambiguous_source_type("await++;", SourceType::Script);
-        assert_unambiguous_source_type("await! + value;", SourceType::Script);
+        assert_unambiguous_source_type("await! + value;", SourceType::Module);
+        assert_unambiguous_source_type("await<T>(value);", SourceType::Module);
+        assert_unambiguous_source_type("await /1/u; var await = 1, u = 1;", SourceType::Module);
         assert_unambiguous_source_type("await\nvalue;", SourceType::Script);
-        assert_unambiguous_source_type("for await (const value of values) {}", SourceType::Module);
+        assert_unambiguous_source_type("for await (const value of values) {}", SourceType::Script);
         assert_unambiguous_source_type(
             "{ for await (const value of values) {} }",
-            SourceType::Module,
+            SourceType::Script,
         );
         assert_unambiguous_source_type("await using value = resource;", SourceType::Module);
-        assert_unambiguous_source_type("{ await using value = resource; }", SourceType::Module);
-        assert_unambiguous_source_type("using value = resource;", SourceType::Module);
+        assert_unambiguous_source_type("{ await using value = resource; }", SourceType::Script);
+        assert_unambiguous_source_type("using value = resource;", SourceType::Script);
         assert_unambiguous_source_type("async function f() { await value; }", SourceType::Script);
         assert_unambiguous_source_type(
             "async function f() { await value; } await other;",
             SourceType::Module,
         );
         assert_unambiguous_source_type("{ using value = resource; }", SourceType::Script);
+        assert_unambiguous_source_type("export {}; await\nvalue;", SourceType::Module);
+        assert_unambiguous_source_type("await\nvalue; export {};", SourceType::Module);
+        assert_unambiguous_source_type("await; export {};", SourceType::Module);
 
         let allocator = Allocator::new();
         let result = Parser::init(
             &allocator,
-            "export {}; await\nvalue;",
+            "value\n<!-- comment",
             Options {
                 source_type: SourceType::Unambiguous,
+                lang: Lang::Js,
                 ..Options::default()
             },
             NoTokenParserConfig,
         )
         .parse();
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        let body = result.ast.root_program().body(&result.ast);
-        assert_eq!(body.len(), 2);
-        let statement = body.get_node(&result.ast, 1).unwrap();
-        let expression = statement
-            .as_expression_statement(&result.ast)
-            .unwrap()
-            .expression(&result.ast);
-        assert!(expression.is_await_expression(&result.ast));
+        assert_eq!(result.ast.source_type(), SourceType::Script);
+        assert_eq!(result.ast.root_program().body(&result.ast).len(), 1);
 
         let allocator = Allocator::new();
         let result = Parser::init(
             &allocator,
-            "await\nvalue; export {};",
+            "value\n<!-- comment\nexport {};",
             Options {
                 source_type: SourceType::Unambiguous,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        assert_eq!(result.ast.source_type(), SourceType::Module);
-        let body = result.ast.root_program().body(&result.ast);
-        assert_eq!(body.len(), 2);
-        let statement = body.get_node(&result.ast, 0).unwrap();
-        let expression = statement
-            .as_expression_statement(&result.ast)
-            .unwrap()
-            .expression(&result.ast);
-        assert!(expression.is_await_expression(&result.ast));
-
-        let allocator = Allocator::new();
-        let result = Parser::init(
-            &allocator,
-            "await; export {};",
-            Options {
-                source_type: SourceType::Unambiguous,
+                lang: Lang::Js,
                 ..Options::default()
             },
             NoTokenParserConfig,
         )
         .parse();
         assert_eq!(result.ast.source_type(), SourceType::Module);
-        assert!(!result.diagnostics.is_empty());
+        assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
+        assert_eq!(
+            result.diagnostics[0].message,
+            "Legacy comments cannot be used in module code"
+        );
     }
 
     #[test]
