@@ -282,6 +282,20 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    #[inline]
+    pub(crate) fn rewind_module_mode_errors(&mut self, cursor: u32) {
+        if self
+            .module_mode_errors
+            .last()
+            .is_some_and(|span| span.start >= cursor)
+        {
+            let len = self
+                .module_mode_errors
+                .partition_point(|span| span.start < cursor);
+            self.module_mode_errors.truncate(len);
+        }
+    }
+
     fn scan_simple_punctuation(&mut self) -> Token {
         debug_assert!((self.cursor as usize) < self.source.len());
         let start = self.cursor;

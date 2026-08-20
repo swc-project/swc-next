@@ -661,7 +661,6 @@ struct Checkpoint {
     lexer_state: LexerState,
     lexer_mode: LexerMode,
     lexer_comments_len: usize,
-    lexer_module_mode_errors_len: usize,
     lexer_processed_comments: usize,
     lexer_tokens_len: usize,
     // Parser token stream.
@@ -683,7 +682,6 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     state: LexerState,
     cursor: u32,
     comments_len: usize,
-    module_mode_errors_len: usize,
     processed_comments: usize,
     tokens_len: usize,
     active: bool,
@@ -700,9 +698,7 @@ impl<C: ParserConfig> Peek<'_, '_, C> {
         self.lexer.state = self.state;
         self.lexer.cursor = self.cursor;
         self.lexer.comments.truncate(self.comments_len);
-        self.lexer
-            .module_mode_errors
-            .truncate(self.module_mode_errors_len);
+        self.lexer.rewind_module_mode_errors(self.cursor);
         self.lexer.processed_comments = self.processed_comments;
         self.lexer.tokens.truncate(self.tokens_len);
         self.active = false;
@@ -1069,7 +1065,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             lexer_state: self.lexer.state,
             lexer_mode: self.lexer.mode,
             lexer_comments_len: self.lexer.comments.len(),
-            lexer_module_mode_errors_len: self.lexer.module_mode_errors.len(),
             lexer_processed_comments: self.lexer.processed_comments,
             lexer_tokens_len: self.lexer.tokens.len(),
             current_token: self.current_token,
@@ -1091,8 +1086,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.lexer.mode = checkpoint.lexer_mode;
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
         self.lexer
-            .module_mode_errors
-            .truncate(checkpoint.lexer_module_mode_errors_len);
+            .rewind_module_mode_errors(checkpoint.lexer_cursor);
         self.lexer.processed_comments = checkpoint.lexer_processed_comments;
         self.lexer.tokens.truncate(checkpoint.lexer_tokens_len);
         self.current_token = checkpoint.current_token;
@@ -1111,7 +1105,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             state: self.lexer.state,
             cursor: self.lexer.cursor,
             comments_len: self.lexer.comments.len(),
-            module_mode_errors_len: self.lexer.module_mode_errors.len(),
             processed_comments: self.lexer.processed_comments,
             tokens_len: self.lexer.tokens.len(),
             active: true,
