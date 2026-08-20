@@ -2825,6 +2825,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let value = if self.eat(TokenTag::Assign)? {
             let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
+            self.context.can_be_module = false;
             let value = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
             self.context = context;
             Some(value?)
@@ -12108,6 +12109,7 @@ mod tests {
         assert_unambiguous_source_type("await<T>(value);", SourceType::Module);
         assert_unambiguous_source_type("await /1/u; var await = 1, u = 1;", SourceType::Module);
         assert_unambiguous_source_type("await\nvalue;", SourceType::Script);
+        assert_unambiguous_source_type("class C { field = await + value; }", SourceType::Script);
         assert_unambiguous_source_type("for await (const value of values) {}", SourceType::Script);
         assert_unambiguous_source_type(
             "{ for await (const value of values) {} }",
