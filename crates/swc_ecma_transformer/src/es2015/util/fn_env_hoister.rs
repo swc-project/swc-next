@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use swc_next_ecma_ast::{
-    AssignmentOperator, Ast, AstUtf8, ClassDeclaration, ClassExpression, DUMMY_SP, Decl, Expr,
-    FunctionBody, FunctionDeclaration, FunctionExpression, GetSpan, IdentifierReference, Program,
-    StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut, VisitMutWith,
+    AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
+    IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut,
+    VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 
@@ -222,18 +222,20 @@ impl<'semantic> FnEnvHoister<'semantic> {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
         };
-        let statement = Stmt::from(Decl::VariableDeclaration(declaration));
+        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
         let body = prepend_statement(program.body(ast), statement, ast);
         program.set_body(ast, body);
     }
 
-    pub fn inject_into_function_body(
+    pub fn inject_into_function(
         &mut self,
-        body: FunctionBody,
+        function: Function,
         frame: CaptureFrame,
         derived_constructor: bool,
         ast: &mut Ast<'_>,
     ) {
+        let body = function.body(ast);
+
         if derived_constructor && let Some(this_name) = frame.this {
             rewrite_derived_super_calls(body, this_name, ast);
         }
@@ -242,7 +244,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         else {
             return;
         };
-        let statement = Stmt::from(Decl::VariableDeclaration(declaration));
+        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
         let statements = prepend_statement(body.body(ast), statement, ast);
         body.set_body(ast, statements);
     }
@@ -256,7 +258,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
         };
-        let statement = Stmt::from(Decl::VariableDeclaration(declaration));
+        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
         let statements = prepend_statement(block.body(ast), statement, ast);
         block.set_body(ast, statements);
     }
@@ -284,31 +286,11 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
             self.ast
         }
 
-        fn visit_mut_function_declaration(
-            &mut self,
-            _node: FunctionDeclaration,
-        ) -> Option<FunctionDeclaration> {
+        fn visit_mut_function(&mut self, _node: Function) -> Option<Function> {
             None
         }
 
-        fn visit_mut_function_expression(
-            &mut self,
-            _node: FunctionExpression,
-        ) -> Option<FunctionExpression> {
-            None
-        }
-
-        fn visit_mut_class_declaration(
-            &mut self,
-            _node: ClassDeclaration,
-        ) -> Option<ClassDeclaration> {
-            None
-        }
-
-        fn visit_mut_class_expression(
-            &mut self,
-            _node: ClassExpression,
-        ) -> Option<ClassExpression> {
+        fn visit_mut_class(&mut self, _node: Class) -> Option<Class> {
             None
         }
 
@@ -332,7 +314,10 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
             );
             let left = self
                 .ast
-                .assignment_target_identifier_reference(DUMMY_SP, self.this_name);
+                .assignment_target_simple_assignment_target_identifier_reference(
+                    DUMMY_SP,
+                    self.this_name,
+                );
             let this = self.ast.expr_this_expression(DUMMY_SP);
             let assignment = self.ast.expr_assignment_expression(
                 DUMMY_SP,

@@ -1,8 +1,8 @@
 use oxc_index::Idx;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, ClassDeclaration, ClassExpression, Directive, FunctionBody,
-    FunctionDeclaration, FunctionExpression, NodeId, NodeKindData, ScopeId, SourceType,
+    ArrowFunctionExpression, Ast, Class, ClassType, Directive, Function, FunctionBody,
+    FunctionType, NodeId, NodeKindData, ScopeId, SourceType,
 };
 
 use crate::ecmascript;
@@ -243,40 +243,8 @@ impl<'a> ScopeTracker<'a> {
         }
     }
 
-    pub fn enter_function_declaration(
-        &mut self,
-        tree: &Ast,
-        function: FunctionDeclaration,
-        annex_b_if_body: bool,
-    ) {
-        self.enter_function(
-            tree,
-            function.node_id(),
-            function.body(tree),
-            false,
-            annex_b_if_body,
-        );
-    }
-
-    pub fn enter_function_expression(&mut self, tree: &Ast, function: FunctionExpression) {
-        self.enter_function(
-            tree,
-            function.node_id(),
-            function.body(tree),
-            function.id(tree).is_some(),
-            false,
-        );
-    }
-
-    fn enter_function(
-        &mut self,
-        tree: &Ast,
-        node: NodeId,
-        body: FunctionBody,
-        named_expression: bool,
-        annex_b_if_body: bool,
-    ) {
-        let flags = if self.has_retroactive_use_strict(tree, body) {
+    pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
+        let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
             ScopeFlags {
                 strict: true,
                 ..ScopeFlags::default()
@@ -290,13 +258,13 @@ impl<'a> ScopeTracker<'a> {
         // Use the function node as the scope creator so `exit_scope` removes
         // this scope together with the function scope below.
         if annex_b_if_body && !flags.strict {
-            self.push_scope(ScopeKind::Block, node, flags);
+            self.push_scope(ScopeKind::Block, function.node_id(), flags);
         }
-        if named_expression {
+        if is_named_function_expression(tree, function) {
             // The expression-name scope sits between outer and body.
-            self.push_scope(ScopeKind::ExpressionName, node, flags);
+            self.push_scope(ScopeKind::ExpressionName, function.node_id(), flags);
         }
-        self.push_scope(ScopeKind::Function, node, flags);
+        self.push_scope(ScopeKind::Function, function.node_id(), flags);
     }
 
     pub fn enter_ts_function(&mut self, node: NodeId) {
@@ -322,8 +290,7 @@ impl<'a> ScopeTracker<'a> {
         // contains expressions; see ScopeKind::FunctionBody.
         let Some(parent) = parent else { return };
         let params = match tree.kind_data(parent) {
-            NodeKindData::FunctionDeclaration(function) => function.params(tree),
-            NodeKindData::FunctionExpression(function) => function.params(tree),
+            NodeKindData::Function(function) => function.params(tree),
             NodeKindData::ArrowFunctionExpression(arrow) => arrow.params(tree),
             _ => return,
         };
@@ -401,24 +368,16 @@ impl<'a> ScopeTracker<'a> {
         self.push_scope(ScopeKind::TsModule, node, self.inherit_strict_flag());
     }
 
-    pub fn enter_class_declaration(&mut self, class: ClassDeclaration) {
-        self.enter_class(class.node_id(), false);
-    }
-
-    pub fn enter_class_expression(&mut self, tree: &Ast, class: ClassExpression) {
-        self.enter_class(class.node_id(), class.id(tree).is_some());
-    }
-
-    fn enter_class(&mut self, node: NodeId, named_expression: bool) {
+    pub fn enter_class(&mut self, tree: &Ast, class: Class) {
         // Classes are always strict mode (section 15.7.14).
         let flags = ScopeFlags {
             strict: true,
             ..ScopeFlags::default()
         };
-        if named_expression {
-            self.push_scope(ScopeKind::ExpressionName, node, flags);
+        if is_named_class_expression(tree, class) {
+            self.push_scope(ScopeKind::ExpressionName, class.node_id(), flags);
         }
-        self.push_scope(ScopeKind::Class, node, flags);
+        self.push_scope(ScopeKind::Class, class.node_id(), flags);
     }
 
     pub fn enter_static_block(&mut self, node: NodeId) {
@@ -566,4 +525,12 @@ impl<'a> ScopeTracker<'a> {
         debug_assert!(self.active_with_scopes.is_empty());
         (ScopeTree { list: self.scopes }, self.has_with_statement)
     }
+}
+
+fn is_named_function_expression(tree: &Ast<'_>, function: Function) -> bool {
+    function.function_type(tree) == FunctionType::FunctionExpression && function.id(tree).is_some()
+}
+
+fn is_named_class_expression(tree: &Ast<'_>, class: Class) -> bool {
+    class.class_type(tree) != ClassType::ClassDeclaration && class.id(tree).is_some()
 }

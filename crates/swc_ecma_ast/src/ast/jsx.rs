@@ -1,6 +1,6 @@
 use swc_next_ast_macros::ast;
 
-use super::{js::*, ts::*};
+use super::js::*;
 
 #[ast(repr)]
 pub enum JsxElementName {
@@ -35,51 +35,10 @@ pub enum JsxAttributeValue {
     JsxFragment(JsxFragment),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum JsxExpression {
+    Expr(Expr),
     JsxEmptyExpression(JsxEmptyExpression),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
 }
 
 #[ast(repr)]

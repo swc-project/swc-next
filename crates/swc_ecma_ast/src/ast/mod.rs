@@ -11,11 +11,6 @@ pub use js::*;
 pub use jsx::*;
 pub use ts::*;
 
-// `match_*!` macros are exported at the crate root. Re-export them from `ast` too so existing
-// `use crate::ast::*` imports make enum-inheritance patterns available.
-#[allow(unused_imports)]
-pub use crate::generated::ast_groups::*;
-
 /// Source type of a JavaScript or TypeScript file.
 ///
 /// Determines whether the file is parsed as an ES module, a CommonJS module,

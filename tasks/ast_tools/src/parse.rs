@@ -180,12 +180,14 @@ impl Parser {
             "SourceType" => primitive("SourceType"),
             "MethodDefinitionKind" => primitive("MethodDefinitionKind"),
             "Accessibility" => primitive("Accessibility"),
+            "ClassType" => primitive("ClassType"),
             "BinaryOperator" => primitive("BinaryOperator"),
             "LogicalOperator" => primitive("LogicalOperator"),
             "UnaryOperator" => primitive("UnaryOperator"),
             "UpdateOperator" => primitive("UpdateOperator"),
             "AssignmentOperator" => primitive("AssignmentOperator"),
             "VariableKind" => primitive("VariableKind"),
+            "FunctionType" => primitive("FunctionType"),
             "FormalParameterKind" => primitive("FormalParameterKind"),
             "PropertyKind" => primitive("PropertyKind"),
             "NumericLiteralKind" => primitive("NumericLiteralKind"),
@@ -243,12 +245,9 @@ fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
                 if meta_list.path.is_ident("ast") {
                     has_ast_attr = true;
                     let args = meta_list
-                        .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                        .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
                         .expect("Unable to parse `#[ast]`");
-                    ast_attrs.extend(args.into_iter().filter_map(|arg| match arg {
-                        Meta::Path(path) => path.get_ident().map(Ident::to_string),
-                        Meta::List(_) | Meta::NameValue(_) => None,
-                    }));
+                    ast_attrs.extend(args.into_iter().map(|arg| arg.to_string()));
                 }
                 if meta_list.path.is_ident("generate_derive") {
                     let args = meta_list
@@ -303,7 +302,6 @@ impl Parser {
 
     fn parse_enum(&mut self, type_id: TypeId, attrs: AstAttrs, item: ItemEnum) -> AstType {
         let name = item.ident.to_string();
-        let groups = parse_ast_groups(&item.attrs);
         let variants = item
             .variants
             .into_iter()
@@ -312,7 +310,6 @@ impl Parser {
         AstType::Enum(AstEnum {
             type_id,
             name,
-            groups,
             variants,
             _attrs: attrs,
         })
@@ -414,31 +411,6 @@ impl Parser {
         };
         Some(type_id)
     }
-}
-
-fn parse_ast_groups(attrs: &[Attribute]) -> Vec<String> {
-    attrs
-        .iter()
-        .filter_map(|attr| match &attr.meta {
-            Meta::List(ast_meta) if ast_meta.path.is_ident("ast") => Some(
-                ast_meta
-                    .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                    .expect("Unable to parse `#[ast(...)]`"),
-            ),
-            _ => None,
-        })
-        .flatten()
-        .filter_map(|meta| match meta {
-            Meta::List(group_meta) if group_meta.path.is_ident("group") => Some(
-                group_meta
-                    .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
-                    .expect("Unable to parse `group(...)` in `#[ast(...)]`"),
-            ),
-            Meta::Path(_) | Meta::List(_) | Meta::NameValue(_) => None,
-        })
-        .flatten()
-        .map(|ident| ident.to_string())
-        .collect()
 }
 
 fn parse_field_attrs(attrs: &[Attribute]) -> AstAttrs {

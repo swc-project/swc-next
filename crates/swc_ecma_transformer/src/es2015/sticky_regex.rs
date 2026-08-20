@@ -25,8 +25,8 @@ impl StickyRegex {
         }
 
         let ast = &mut *ctx.ast;
-        let pattern = ast.argument_string_literal(span, pattern.into(), ast.empty_utf8());
-        let flags = ast.argument_string_literal(span, flags.into(), ast.empty_utf8());
+        let pattern = ast.argument_expr_string_literal(span, pattern.into(), ast.empty_utf8());
+        let flags = ast.argument_expr_string_literal(span, flags.into(), ast.empty_utf8());
         let arguments = ast.add_typed_sub_range([pattern, flags]);
         let reg_exp_name = ast.add_utf8("RegExp");
         let callee = ast.expr_identifier_reference(span, reg_exp_name);

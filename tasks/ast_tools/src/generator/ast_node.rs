@@ -30,7 +30,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
             }
             AstType::Enum(ast_enum) => {
                 node_impls.extend(generate_node_impls_for_enum(ast_enum));
-                data_accessors.extend(generate_data_accessor(ast_enum));
+                data_accessors.extend(generate_data_accessor(ast_enum, schema));
                 node_kind_enum_checks.extend(generate_node_kind_enum_check(ast_enum, schema));
             }
             _ => {}
@@ -107,7 +107,27 @@ fn generate_node_kind_enum_check(ast: &AstEnum, schema: &Schema) -> TokenStream 
     }
 }
 
-fn generate_data_accessor(ast: &AstEnum) -> TokenStream {
+fn generate_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {
+    let has_nested_enum = ast.variants.iter().any(|variant| {
+        variant
+            .type_id
+            .is_some_and(|type_id| matches!(schema.types[type_id], AstType::Enum(_)))
+    });
+    let marked_nested = ast._attrs.ast_attrs.contains("nested");
+    assert_eq!(
+        marked_nested, has_nested_enum,
+        "AST enum `{}` must use `#[ast(repr, nested)]` exactly when it directly contains another AST enum",
+        ast.name
+    );
+
+    if has_nested_enum {
+        generate_nested_data_accessor(ast, schema)
+    } else {
+        generate_flat_data_accessor(ast)
+    }
+}
+
+fn generate_flat_data_accessor(ast: &AstEnum) -> TokenStream {
     let wrapper_ident = format_ident!("{}", ast.name);
     let data_ident = format_ident!("{}Data", ast.name);
     let fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
@@ -118,13 +138,80 @@ fn generate_data_accessor(ast: &AstEnum) -> TokenStream {
         pub fn #fn_name(&self, node: #wrapper_ident) -> #data_ident {
             let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
             debug_assert!(kind.#kind_check());
-            // SAFETY: `#[ast(repr)]` aligns every data variant discriminant with its
+            // SAFETY: Flat `#[ast(repr)]` enums align every data variant discriminant with its
             // payload's `NodeKind`. Typed wrappers guarantee `kind` belongs to this enum.
             unsafe {
                 std::mem::transmute(AstEnumDataRepr {
                     kind,
                     node_id: node.0,
                 })
+            }
+        }
+    }
+}
+
+fn generate_nested_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {
+    let wrapper_ident = format_ident!("{}", ast.name);
+    let data_ident = format_ident!("{}Data", ast.name);
+    let fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
+    let mut seen = HashSet::new();
+    let mut arms = TokenStream::new();
+
+    for variant in &ast.variants {
+        let Some(type_id) = variant.type_id else {
+            continue;
+        };
+        let variant_ident = format_ident!("{}", variant.name);
+        let payload_ident = schema.types[type_id].repr_ident(schema);
+        let node_kinds = concrete_node_kinds(type_id, schema);
+        for node_kind_name in node_kinds {
+            if !seen.insert(node_kind_name.clone()) {
+                continue;
+            }
+            let node_kind = format_ident!("{node_kind_name}");
+            let arm = match (
+                ast.name.as_str(),
+                variant.name.as_str(),
+                node_kind_name.as_str(),
+            ) {
+                // `Expr` also contains function and class nodes. Recover their
+                // declaration/expression form from the concrete node payload.
+                ("ExportDefaultDeclarationKind", "Expr", "Function") => quote! {
+                    NodeKind::Function => {
+                        let function = Function(node.0);
+                        if function.function_type(self) == FunctionType::FunctionDeclaration {
+                            #data_ident::Function(function)
+                        } else {
+                            #data_ident::Expr(#payload_ident(node.0))
+                        }
+                    },
+                },
+                ("ExportDefaultDeclarationKind", "Expr", "Class") => quote! {
+                    NodeKind::Class => {
+                        let class = Class(node.0);
+                        if class.class_type(self) == ClassType::ClassDeclaration {
+                            #data_ident::Class(class)
+                        } else {
+                            #data_ident::Expr(#payload_ident(node.0))
+                        }
+                    },
+                },
+                _ => quote! {
+                    NodeKind::#node_kind => #data_ident::#variant_ident(#payload_ident(node.0)),
+                },
+            };
+            arms.extend(arm);
+        }
+    }
+
+    quote! {
+        #[inline]
+        pub fn #fn_name(&self, node: #wrapper_ident) -> #data_ident {
+            match unsafe { *self.nodes.kind_unchecked(node.0) } {
+                #arms
+                // SAFETY: Typed wrappers can only be created by typed AST
+                // constructors, so their node kind belongs to this enum.
+                _ => unsafe { std::hint::unreachable_unchecked() },
             }
         }
     }

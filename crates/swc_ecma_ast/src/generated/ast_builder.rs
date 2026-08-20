@@ -146,6 +146,187 @@ impl<'a> Ast<'a> {
         Stmt::WithStatement(self.with_statement(span, object, body).into())
     }
     #[inline]
+    pub fn stmt_decl_variable_declaration(
+        &mut self,
+        span: Span,
+        kind: VariableKind,
+        declarators: TypedSubRange<VariableDeclarator>,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::VariableDeclaration(
+            self.variable_declaration(span, kind, declarators, declare)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_function(
+        &mut self,
+        span: Span,
+        function_type: FunctionType,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
+        generator: bool,
+        r#async: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::Function(
+            self.function(
+                span,
+                function_type,
+                id,
+                type_parameters,
+                params,
+                return_type,
+                body,
+                generator,
+                r#async,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_class(
+        &mut self,
+        span: Span,
+        class_type: ClassType,
+        decorators: TypedSubRange<Decorator>,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
+        super_type_arguments: Option<TsTypeParameterInstantiation>,
+        implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
+        r#abstract: bool,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::Class(
+            self.class(
+                span,
+                class_type,
+                decorators,
+                id,
+                type_parameters,
+                super_class,
+                super_type_arguments,
+                implements,
+                body,
+                r#abstract,
+                declare,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_function(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        generator: bool,
+        r#async: bool,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsFunction(
+            self.ts_function(
+                span,
+                id,
+                type_parameters,
+                params,
+                return_type,
+                generator,
+                r#async,
+                declare,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_type_alias_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        type_annotation: TsType,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsTypeAliasDeclaration(
+            self.ts_type_alias_declaration(span, id, type_parameters, type_annotation, declare)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_interface_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        extends: TypedSubRange<TsInterfaceHeritage>,
+        body: TsInterfaceBody,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsInterfaceDeclaration(
+            self.ts_interface_declaration(span, id, type_parameters, extends, body, declare)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_enum_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        body: TsEnumBody,
+        is_const: bool,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsEnumDeclaration(
+            self.ts_enum_declaration(span, id, body, is_const, declare)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_module_declaration(
+        &mut self,
+        span: Span,
+        id: TsModuleName,
+        body: Option<TsModuleBody>,
+        kind: TsModuleDeclarationKind,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsModuleDeclaration(
+            self.ts_module_declaration(span, id, body, kind, declare)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_global_declaration(
+        &mut self,
+        span: Span,
+        id: IdentifierName,
+        body: TsModuleBlock,
+        declare: bool,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsGlobalDeclaration(
+            self.ts_global_declaration(span, id, body, declare).into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_import_equals_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        module_reference: TsModuleReference,
+        import_kind: ImportOrExportKind,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsImportEqualsDeclaration(
+            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
+                .into(),
+        ))
+    }
+    #[inline]
     pub fn stmt_import_declaration(
         &mut self,
         span: Span,
@@ -213,181 +394,6 @@ impl<'a> Ast<'a> {
         Stmt::TsNamespaceExportDeclaration(self.ts_namespace_export_declaration(span, id).into())
     }
     #[inline]
-    pub fn stmt_variable_declaration(
-        &mut self,
-        span: Span,
-        kind: VariableKind,
-        declarators: TypedSubRange<VariableDeclarator>,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::VariableDeclaration(
-            self.variable_declaration(span, kind, declarators, declare)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_function_declaration(
-        &mut self,
-        span: Span,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        params: FormalParameters,
-        return_type: Option<TsTypeAnnotation>,
-        body: FunctionBody,
-        generator: bool,
-        r#async: bool,
-    ) -> Stmt {
-        Stmt::FunctionDeclaration(
-            self.function_declaration(
-                span,
-                id,
-                type_parameters,
-                params,
-                return_type,
-                body,
-                generator,
-                r#async,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_class_declaration(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::ClassDeclaration(
-            self.class_declaration(
-                span,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_ts_function(
-        &mut self,
-        span: Span,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        params: FormalParameters,
-        return_type: Option<TsTypeAnnotation>,
-        generator: bool,
-        r#async: bool,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::TsFunction(
-            self.ts_function(
-                span,
-                id,
-                type_parameters,
-                params,
-                return_type,
-                generator,
-                r#async,
-                declare,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_ts_type_alias_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        type_annotation: TsType,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::TsTypeAliasDeclaration(
-            self.ts_type_alias_declaration(span, id, type_parameters, type_annotation, declare)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_ts_interface_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        extends: TypedSubRange<TsInterfaceHeritage>,
-        body: TsInterfaceBody,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::TsInterfaceDeclaration(
-            self.ts_interface_declaration(span, id, type_parameters, extends, body, declare)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_ts_enum_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        body: TsEnumBody,
-        is_const: bool,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::TsEnumDeclaration(
-            self.ts_enum_declaration(span, id, body, is_const, declare)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_ts_module_declaration(
-        &mut self,
-        span: Span,
-        id: TsModuleName,
-        body: Option<TsModuleBody>,
-        kind: TsModuleDeclarationKind,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::TsModuleDeclaration(
-            self.ts_module_declaration(span, id, body, kind, declare)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn stmt_ts_global_declaration(
-        &mut self,
-        span: Span,
-        id: IdentifierName,
-        body: TsModuleBlock,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::TsGlobalDeclaration(self.ts_global_declaration(span, id, body, declare).into())
-    }
-    #[inline]
-    pub fn stmt_ts_import_equals_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        module_reference: TsModuleReference,
-        import_kind: ImportOrExportKind,
-    ) -> Stmt {
-        Stmt::TsImportEqualsDeclaration(
-            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
-                .into(),
-        )
-    }
-    #[inline]
     pub fn decl_variable_declaration(
         &mut self,
         span: Span,
@@ -401,9 +407,10 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn decl_function_declaration(
+    pub fn decl_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -412,9 +419,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> Decl {
-        Decl::FunctionDeclaration(
-            self.function_declaration(
+        Decl::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -427,9 +435,10 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn decl_class_declaration(
+    pub fn decl_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -440,9 +449,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> Decl {
-        Decl::ClassDeclaration(
-            self.class_declaration(
+        Decl::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -800,9 +810,10 @@ impl<'a> Ast<'a> {
         Expr::ParenthesizedExpression(self.parenthesized_expression(span, expression).into())
     }
     #[inline]
-    pub fn expr_function_expression(
+    pub fn expr_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -811,9 +822,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> Expr {
-        Expr::FunctionExpression(
-            self.function_expression(
+        Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -826,9 +838,10 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn expr_class_expression(
+    pub fn expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -839,9 +852,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> Expr {
-        Expr::ClassExpression(
-            self.class_expression(
+        Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -979,6 +993,76 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
+    pub fn binding_pattern_simple_assignment_target_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_member_expression(
+        &mut self,
+        span: Span,
+        object: Expr,
+        property: PropertyKey,
+        computed: bool,
+        optional: bool,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::MemberExpression(
+            self.member_expression(span, object, property, computed, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_as_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsAsExpression(
+            self.ts_as_expression(span, expression, type_annotation)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_satisfies_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsSatisfiesExpression(
+            self.ts_satisfies_expression(span, expression, type_annotation)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        type_annotation: TsType,
+        expression: Expr,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsTypeAssertion(
+            self.ts_type_assertion(span, type_annotation, expression)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
+    }
+    #[inline]
     pub fn binding_pattern_assignment_pattern(
         &mut self,
         span: Span,
@@ -1045,70 +1129,74 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn binding_pattern_identifier_reference(
+    pub fn assignment_target_simple_assignment_target_identifier_reference(
         &mut self,
         span: Span,
         name: AstUtf8,
-    ) -> BindingPattern {
-        BindingPattern::IdentifierReference(self.identifier_reference(span, name).into())
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn binding_pattern_member_expression(
+    pub fn assignment_target_simple_assignment_target_member_expression(
         &mut self,
         span: Span,
         object: Expr,
         property: PropertyKey,
         computed: bool,
         optional: bool,
-    ) -> BindingPattern {
-        BindingPattern::MemberExpression(
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn binding_pattern_ts_as_expression(
+    pub fn assignment_target_simple_assignment_target_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
-    ) -> BindingPattern {
-        BindingPattern::TsAsExpression(
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn binding_pattern_ts_satisfies_expression(
+    pub fn assignment_target_simple_assignment_target_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
-    ) -> BindingPattern {
-        BindingPattern::TsSatisfiesExpression(
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn binding_pattern_ts_type_assertion(
+    pub fn assignment_target_simple_assignment_target_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
-    ) -> BindingPattern {
-        BindingPattern::TsTypeAssertion(
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn binding_pattern_ts_non_null_expression(
+    pub fn assignment_target_simple_assignment_target_ts_non_null_expression(
         &mut self,
         span: Span,
         expression: Expr,
-    ) -> BindingPattern {
-        BindingPattern::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
     pub fn assignment_target_array_pattern(
@@ -1146,72 +1234,6 @@ impl<'a> Ast<'a> {
             )
             .into(),
         )
-    }
-    #[inline]
-    pub fn assignment_target_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> AssignmentTarget {
-        AssignmentTarget::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn assignment_target_member_expression(
-        &mut self,
-        span: Span,
-        object: Expr,
-        property: PropertyKey,
-        computed: bool,
-        optional: bool,
-    ) -> AssignmentTarget {
-        AssignmentTarget::MemberExpression(
-            self.member_expression(span, object, property, computed, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn assignment_target_ts_as_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> AssignmentTarget {
-        AssignmentTarget::TsAsExpression(
-            self.ts_as_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn assignment_target_ts_satisfies_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> AssignmentTarget {
-        AssignmentTarget::TsSatisfiesExpression(
-            self.ts_satisfies_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn assignment_target_ts_type_assertion(
-        &mut self,
-        span: Span,
-        type_annotation: TsType,
-        expression: Expr,
-    ) -> AssignmentTarget {
-        AssignmentTarget::TsTypeAssertion(
-            self.ts_type_assertion(span, type_annotation, expression)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn assignment_target_ts_non_null_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> AssignmentTarget {
-        AssignmentTarget::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
     }
     #[inline]
     pub fn simple_assignment_target_identifier_reference(
@@ -1286,25 +1308,8 @@ impl<'a> Ast<'a> {
         PropertyKey::IdentifierName(self.identifier_name(span, name).into())
     }
     #[inline]
-    pub fn property_key_identifier_reference(&mut self, span: Span, name: AstUtf8) -> PropertyKey {
-        PropertyKey::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn property_key_this_expression(&mut self, span: Span) -> PropertyKey {
-        PropertyKey::ThisExpression(self.this_expression(span).into())
-    }
-    #[inline]
-    pub fn property_key_super(&mut self, span: Span) -> PropertyKey {
-        PropertyKey::Super(self.super_(span).into())
-    }
-    #[inline]
-    pub fn property_key_meta_property(
-        &mut self,
-        span: Span,
-        meta: IdentifierName,
-        property: IdentifierName,
-    ) -> PropertyKey {
-        PropertyKey::MetaProperty(self.meta_property(span, meta, property).into())
+    pub fn property_key_private_identifier(&mut self, span: Span, name: AstUtf8) -> PropertyKey {
+        PropertyKey::PrivateIdentifier(self.private_identifier(span, name).into())
     }
     #[inline]
     pub fn property_key_string_literal(
@@ -1329,109 +1334,178 @@ impl<'a> Ast<'a> {
         PropertyKey::BigIntLiteral(self.big_int_literal(span, raw).into())
     }
     #[inline]
-    pub fn property_key_boolean_literal(&mut self, span: Span, value: bool) -> PropertyKey {
-        PropertyKey::BooleanLiteral(self.boolean_literal(span, value).into())
+    pub fn property_key_expr_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_null_literal(&mut self, span: Span) -> PropertyKey {
-        PropertyKey::NullLiteral(self.null_literal(span).into())
+    pub fn property_key_expr_this_expression(&mut self, span: Span) -> PropertyKey {
+        PropertyKey::Expr(Expr::ThisExpression(self.this_expression(span).into()))
     }
     #[inline]
-    pub fn property_key_reg_exp_literal(
+    pub fn property_key_expr_super(&mut self, span: Span) -> PropertyKey {
+        PropertyKey::Expr(Expr::Super(self.super_(span).into()))
+    }
+    #[inline]
+    pub fn property_key_expr_meta_property(
+        &mut self,
+        span: Span,
+        meta: IdentifierName,
+        property: IdentifierName,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
+    }
+    #[inline]
+    pub fn property_key_expr_string_literal(
+        &mut self,
+        span: Span,
+        value: AstWtf8,
+        raw: AstUtf8,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn property_key_expr_numeric_literal(
+        &mut self,
+        span: Span,
+        kind: NumericLiteralKind,
+        raw: AstUtf8,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn property_key_expr_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> PropertyKey {
+        PropertyKey::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
+    }
+    #[inline]
+    pub fn property_key_expr_boolean_literal(&mut self, span: Span, value: bool) -> PropertyKey {
+        PropertyKey::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
+    }
+    #[inline]
+    pub fn property_key_expr_null_literal(&mut self, span: Span) -> PropertyKey {
+        PropertyKey::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn property_key_expr_reg_exp_literal(
         &mut self,
         span: Span,
         pattern: AstUtf8,
         flags: AstUtf8,
     ) -> PropertyKey {
-        PropertyKey::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
+        PropertyKey::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_template_literal(
+    pub fn property_key_expr_template_literal(
         &mut self,
         span: Span,
         quasis: TypedSubRange<TemplateElement>,
         expressions: TypedSubRange<Expr>,
     ) -> PropertyKey {
-        PropertyKey::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
+        PropertyKey::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_binary_expression(
+    pub fn property_key_expr_binary_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: BinaryOperator,
     ) -> PropertyKey {
-        PropertyKey::BinaryExpression(self.binary_expression(span, left, right, operator).into())
+        PropertyKey::Expr(Expr::BinaryExpression(
+            self.binary_expression(span, left, right, operator).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_logical_expression(
+    pub fn property_key_expr_logical_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: LogicalOperator,
     ) -> PropertyKey {
-        PropertyKey::LogicalExpression(self.logical_expression(span, left, right, operator).into())
+        PropertyKey::Expr(Expr::LogicalExpression(
+            self.logical_expression(span, left, right, operator).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_unary_expression(
+    pub fn property_key_expr_unary_expression(
         &mut self,
         span: Span,
         argument: Expr,
         operator: UnaryOperator,
     ) -> PropertyKey {
-        PropertyKey::UnaryExpression(self.unary_expression(span, argument, operator).into())
+        PropertyKey::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_update_expression(
+    pub fn property_key_expr_update_expression(
         &mut self,
         span: Span,
         argument: SimpleAssignmentTarget,
         operator: UpdateOperator,
         prefix: bool,
     ) -> PropertyKey {
-        PropertyKey::UpdateExpression(
+        PropertyKey::Expr(Expr::UpdateExpression(
             self.update_expression(span, argument, operator, prefix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_assignment_expression(
+    pub fn property_key_expr_assignment_expression(
         &mut self,
         span: Span,
         left: AssignmentTarget,
         right: Expr,
         operator: AssignmentOperator,
     ) -> PropertyKey {
-        PropertyKey::AssignmentExpression(
+        PropertyKey::Expr(Expr::AssignmentExpression(
             self.assignment_expression(span, left, right, operator)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_conditional_expression(
+    pub fn property_key_expr_conditional_expression(
         &mut self,
         span: Span,
         test: Expr,
         consequent: Expr,
         alternate: Expr,
     ) -> PropertyKey {
-        PropertyKey::ConditionalExpression(
+        PropertyKey::Expr(Expr::ConditionalExpression(
             self.conditional_expression(span, test, consequent, alternate)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_sequence_expression(
+    pub fn property_key_expr_sequence_expression(
         &mut self,
         span: Span,
         expressions: TypedSubRange<Expr>,
     ) -> PropertyKey {
-        PropertyKey::SequenceExpression(self.sequence_expression(span, expressions).into())
+        PropertyKey::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_member_expression(
+    pub fn property_key_expr_member_expression(
         &mut self,
         span: Span,
         object: Expr,
@@ -1439,13 +1513,13 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> PropertyKey {
-        PropertyKey::MemberExpression(
+        PropertyKey::Expr(Expr::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_call_expression(
+    pub fn property_key_expr_call_expression(
         &mut self,
         span: Span,
         callee: Expr,
@@ -1453,43 +1527,49 @@ impl<'a> Ast<'a> {
         arguments: TypedSubRange<Argument>,
         optional: bool,
     ) -> PropertyKey {
-        PropertyKey::CallExpression(
+        PropertyKey::Expr(Expr::CallExpression(
             self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_chain_expression(&mut self, span: Span, expression: Expr) -> PropertyKey {
-        PropertyKey::ChainExpression(self.chain_expression(span, expression).into())
+    pub fn property_key_expr_chain_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_new_expression(
+    pub fn property_key_expr_new_expression(
         &mut self,
         span: Span,
         callee: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
     ) -> PropertyKey {
-        PropertyKey::NewExpression(
+        PropertyKey::Expr(Expr::NewExpression(
             self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_tagged_template_expression(
+    pub fn property_key_expr_tagged_template_expression(
         &mut self,
         span: Span,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         quasi: TemplateLiteral,
     ) -> PropertyKey {
-        PropertyKey::TaggedTemplateExpression(
+        PropertyKey::Expr(Expr::TaggedTemplateExpression(
             self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_arrow_function_expression(
+    pub fn property_key_expr_arrow_function_expression(
         &mut self,
         span: Span,
         expression: bool,
@@ -1499,7 +1579,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> PropertyKey {
-        PropertyKey::ArrowFunctionExpression(
+        PropertyKey::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
@@ -1510,36 +1590,43 @@ impl<'a> Ast<'a> {
                 body,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_array_expression(
+    pub fn property_key_expr_array_expression(
         &mut self,
         span: Span,
         elements: TypedSubRange<Option<Argument>>,
     ) -> PropertyKey {
-        PropertyKey::ArrayExpression(self.array_expression(span, elements).into())
+        PropertyKey::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_object_expression(
+    pub fn property_key_expr_object_expression(
         &mut self,
         span: Span,
         properties: TypedSubRange<ObjectPropertyKind>,
     ) -> PropertyKey {
-        PropertyKey::ObjectExpression(self.object_expression(span, properties).into())
+        PropertyKey::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_parenthesized_expression(
+    pub fn property_key_expr_parenthesized_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> PropertyKey {
-        PropertyKey::ParenthesizedExpression(self.parenthesized_expression(span, expression).into())
+        PropertyKey::Expr(Expr::ParenthesizedExpression(
+            self.parenthesized_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_function_expression(
+    pub fn property_key_expr_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -1548,9 +1635,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> PropertyKey {
-        PropertyKey::FunctionExpression(
-            self.function_expression(
+        PropertyKey::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -1560,12 +1648,13 @@ impl<'a> Ast<'a> {
                 r#async,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_class_expression(
+    pub fn property_key_expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -1576,9 +1665,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> PropertyKey {
-        PropertyKey::ClassExpression(
-            self.class_expression(
+        PropertyKey::Expr(Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -1590,10 +1680,10 @@ impl<'a> Ast<'a> {
                 declare,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_import_expression(
+    pub fn property_key_expr_import_expression(
         &mut self,
         span: Span,
         source: Expr,
@@ -1601,109 +1691,125 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> PropertyKey {
-        PropertyKey::ImportExpression(
+        PropertyKey::Expr(Expr::ImportExpression(
             self.import_expression(span, source, options, phase, sync)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_await_expression(&mut self, span: Span, argument: Expr) -> PropertyKey {
-        PropertyKey::AwaitExpression(self.await_expression(span, argument).into())
+    pub fn property_key_expr_await_expression(
+        &mut self,
+        span: Span,
+        argument: Expr,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_yield_expression(
+    pub fn property_key_expr_yield_expression(
         &mut self,
         span: Span,
         argument: Option<Expr>,
         delegate: bool,
     ) -> PropertyKey {
-        PropertyKey::YieldExpression(self.yield_expression(span, argument, delegate).into())
+        PropertyKey::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_private_identifier(&mut self, span: Span, name: AstUtf8) -> PropertyKey {
-        PropertyKey::PrivateIdentifier(self.private_identifier(span, name).into())
+    pub fn property_key_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_ts_as_expression(
+    pub fn property_key_expr_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> PropertyKey {
-        PropertyKey::TsAsExpression(
+        PropertyKey::Expr(Expr::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_ts_satisfies_expression(
+    pub fn property_key_expr_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> PropertyKey {
-        PropertyKey::TsSatisfiesExpression(
+        PropertyKey::Expr(Expr::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_ts_type_assertion(
+    pub fn property_key_expr_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
     ) -> PropertyKey {
-        PropertyKey::TsTypeAssertion(
+        PropertyKey::Expr(Expr::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_ts_non_null_expression(
+    pub fn property_key_expr_ts_non_null_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> PropertyKey {
-        PropertyKey::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+        PropertyKey::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn property_key_ts_instantiation_expression(
+    pub fn property_key_expr_ts_instantiation_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_arguments: TsTypeParameterInstantiation,
     ) -> PropertyKey {
-        PropertyKey::TsInstantiationExpression(
+        PropertyKey::Expr(Expr::TsInstantiationExpression(
             self.ts_instantiation_expression(span, expression, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_jsx_element(
+    pub fn property_key_expr_jsx_element(
         &mut self,
         span: Span,
         opening_element: JsxOpeningElement,
         children: TypedSubRange<JsxChild>,
         closing_element: Option<JsxClosingElement>,
     ) -> PropertyKey {
-        PropertyKey::JsxElement(
+        PropertyKey::Expr(Expr::JsxElement(
             self.jsx_element(span, opening_element, children, closing_element)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn property_key_jsx_fragment(
+    pub fn property_key_expr_jsx_fragment(
         &mut self,
         span: Span,
         opening_fragment: JsxOpeningFragment,
         children: TypedSubRange<JsxChild>,
         closing_fragment: JsxClosingFragment,
     ) -> PropertyKey {
-        PropertyKey::JsxFragment(
+        PropertyKey::Expr(Expr::JsxFragment(
             self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
-        )
+        ))
     }
     #[inline]
     pub fn module_export_name_identifier_name(
@@ -1723,156 +1829,174 @@ impl<'a> Ast<'a> {
         ModuleExportName::StringLiteral(self.string_literal(span, value, raw).into())
     }
     #[inline]
-    pub fn argument_spread_element(&mut self, span: Span, argument: Expr) -> Argument {
-        Argument::SpreadElement(self.spread_element(span, argument).into())
+    pub fn argument_expr_identifier_reference(&mut self, span: Span, name: AstUtf8) -> Argument {
+        Argument::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn argument_identifier_reference(&mut self, span: Span, name: AstUtf8) -> Argument {
-        Argument::IdentifierReference(self.identifier_reference(span, name).into())
+    pub fn argument_expr_this_expression(&mut self, span: Span) -> Argument {
+        Argument::Expr(Expr::ThisExpression(self.this_expression(span).into()))
     }
     #[inline]
-    pub fn argument_this_expression(&mut self, span: Span) -> Argument {
-        Argument::ThisExpression(self.this_expression(span).into())
+    pub fn argument_expr_super(&mut self, span: Span) -> Argument {
+        Argument::Expr(Expr::Super(self.super_(span).into()))
     }
     #[inline]
-    pub fn argument_super(&mut self, span: Span) -> Argument {
-        Argument::Super(self.super_(span).into())
-    }
-    #[inline]
-    pub fn argument_meta_property(
+    pub fn argument_expr_meta_property(
         &mut self,
         span: Span,
         meta: IdentifierName,
         property: IdentifierName,
     ) -> Argument {
-        Argument::MetaProperty(self.meta_property(span, meta, property).into())
+        Argument::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
     }
     #[inline]
-    pub fn argument_string_literal(
+    pub fn argument_expr_string_literal(
         &mut self,
         span: Span,
         value: AstWtf8,
         raw: AstUtf8,
     ) -> Argument {
-        Argument::StringLiteral(self.string_literal(span, value, raw).into())
+        Argument::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
     }
     #[inline]
-    pub fn argument_numeric_literal(
+    pub fn argument_expr_numeric_literal(
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
         raw: AstUtf8,
     ) -> Argument {
-        Argument::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+        Argument::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
     }
     #[inline]
-    pub fn argument_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> Argument {
-        Argument::BigIntLiteral(self.big_int_literal(span, raw).into())
+    pub fn argument_expr_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> Argument {
+        Argument::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
     #[inline]
-    pub fn argument_boolean_literal(&mut self, span: Span, value: bool) -> Argument {
-        Argument::BooleanLiteral(self.boolean_literal(span, value).into())
+    pub fn argument_expr_boolean_literal(&mut self, span: Span, value: bool) -> Argument {
+        Argument::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
     }
     #[inline]
-    pub fn argument_null_literal(&mut self, span: Span) -> Argument {
-        Argument::NullLiteral(self.null_literal(span).into())
+    pub fn argument_expr_null_literal(&mut self, span: Span) -> Argument {
+        Argument::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
-    pub fn argument_reg_exp_literal(
+    pub fn argument_expr_reg_exp_literal(
         &mut self,
         span: Span,
         pattern: AstUtf8,
         flags: AstUtf8,
     ) -> Argument {
-        Argument::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
+        Argument::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
     }
     #[inline]
-    pub fn argument_template_literal(
+    pub fn argument_expr_template_literal(
         &mut self,
         span: Span,
         quasis: TypedSubRange<TemplateElement>,
         expressions: TypedSubRange<Expr>,
     ) -> Argument {
-        Argument::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
+        Argument::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn argument_binary_expression(
+    pub fn argument_expr_binary_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: BinaryOperator,
     ) -> Argument {
-        Argument::BinaryExpression(self.binary_expression(span, left, right, operator).into())
+        Argument::Expr(Expr::BinaryExpression(
+            self.binary_expression(span, left, right, operator).into(),
+        ))
     }
     #[inline]
-    pub fn argument_logical_expression(
+    pub fn argument_expr_logical_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: LogicalOperator,
     ) -> Argument {
-        Argument::LogicalExpression(self.logical_expression(span, left, right, operator).into())
+        Argument::Expr(Expr::LogicalExpression(
+            self.logical_expression(span, left, right, operator).into(),
+        ))
     }
     #[inline]
-    pub fn argument_unary_expression(
+    pub fn argument_expr_unary_expression(
         &mut self,
         span: Span,
         argument: Expr,
         operator: UnaryOperator,
     ) -> Argument {
-        Argument::UnaryExpression(self.unary_expression(span, argument, operator).into())
+        Argument::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
     }
     #[inline]
-    pub fn argument_update_expression(
+    pub fn argument_expr_update_expression(
         &mut self,
         span: Span,
         argument: SimpleAssignmentTarget,
         operator: UpdateOperator,
         prefix: bool,
     ) -> Argument {
-        Argument::UpdateExpression(
+        Argument::Expr(Expr::UpdateExpression(
             self.update_expression(span, argument, operator, prefix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_assignment_expression(
+    pub fn argument_expr_assignment_expression(
         &mut self,
         span: Span,
         left: AssignmentTarget,
         right: Expr,
         operator: AssignmentOperator,
     ) -> Argument {
-        Argument::AssignmentExpression(
+        Argument::Expr(Expr::AssignmentExpression(
             self.assignment_expression(span, left, right, operator)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_conditional_expression(
+    pub fn argument_expr_conditional_expression(
         &mut self,
         span: Span,
         test: Expr,
         consequent: Expr,
         alternate: Expr,
     ) -> Argument {
-        Argument::ConditionalExpression(
+        Argument::Expr(Expr::ConditionalExpression(
             self.conditional_expression(span, test, consequent, alternate)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_sequence_expression(
+    pub fn argument_expr_sequence_expression(
         &mut self,
         span: Span,
         expressions: TypedSubRange<Expr>,
     ) -> Argument {
-        Argument::SequenceExpression(self.sequence_expression(span, expressions).into())
+        Argument::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn argument_member_expression(
+    pub fn argument_expr_member_expression(
         &mut self,
         span: Span,
         object: Expr,
@@ -1880,13 +2004,13 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> Argument {
-        Argument::MemberExpression(
+        Argument::Expr(Expr::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_call_expression(
+    pub fn argument_expr_call_expression(
         &mut self,
         span: Span,
         callee: Expr,
@@ -1894,43 +2018,45 @@ impl<'a> Ast<'a> {
         arguments: TypedSubRange<Argument>,
         optional: bool,
     ) -> Argument {
-        Argument::CallExpression(
+        Argument::Expr(Expr::CallExpression(
             self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_chain_expression(&mut self, span: Span, expression: Expr) -> Argument {
-        Argument::ChainExpression(self.chain_expression(span, expression).into())
+    pub fn argument_expr_chain_expression(&mut self, span: Span, expression: Expr) -> Argument {
+        Argument::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn argument_new_expression(
+    pub fn argument_expr_new_expression(
         &mut self,
         span: Span,
         callee: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
     ) -> Argument {
-        Argument::NewExpression(
+        Argument::Expr(Expr::NewExpression(
             self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_tagged_template_expression(
+    pub fn argument_expr_tagged_template_expression(
         &mut self,
         span: Span,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         quasi: TemplateLiteral,
     ) -> Argument {
-        Argument::TaggedTemplateExpression(
+        Argument::Expr(Expr::TaggedTemplateExpression(
             self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_arrow_function_expression(
+    pub fn argument_expr_arrow_function_expression(
         &mut self,
         span: Span,
         expression: bool,
@@ -1940,7 +2066,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> Argument {
-        Argument::ArrowFunctionExpression(
+        Argument::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
@@ -1951,32 +2077,43 @@ impl<'a> Ast<'a> {
                 body,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_array_expression(
+    pub fn argument_expr_array_expression(
         &mut self,
         span: Span,
         elements: TypedSubRange<Option<Argument>>,
     ) -> Argument {
-        Argument::ArrayExpression(self.array_expression(span, elements).into())
+        Argument::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
     }
     #[inline]
-    pub fn argument_object_expression(
+    pub fn argument_expr_object_expression(
         &mut self,
         span: Span,
         properties: TypedSubRange<ObjectPropertyKind>,
     ) -> Argument {
-        Argument::ObjectExpression(self.object_expression(span, properties).into())
+        Argument::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
     }
     #[inline]
-    pub fn argument_parenthesized_expression(&mut self, span: Span, expression: Expr) -> Argument {
-        Argument::ParenthesizedExpression(self.parenthesized_expression(span, expression).into())
-    }
-    #[inline]
-    pub fn argument_function_expression(
+    pub fn argument_expr_parenthesized_expression(
         &mut self,
         span: Span,
+        expression: Expr,
+    ) -> Argument {
+        Argument::Expr(Expr::ParenthesizedExpression(
+            self.parenthesized_expression(span, expression).into(),
+        ))
+    }
+    #[inline]
+    pub fn argument_expr_function(
+        &mut self,
+        span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -1985,9 +2122,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> Argument {
-        Argument::FunctionExpression(
-            self.function_expression(
+        Argument::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -1997,12 +2135,13 @@ impl<'a> Ast<'a> {
                 r#async,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_class_expression(
+    pub fn argument_expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -2013,9 +2152,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> Argument {
-        Argument::ClassExpression(
-            self.class_expression(
+        Argument::Expr(Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -2027,10 +2167,10 @@ impl<'a> Ast<'a> {
                 declare,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_import_expression(
+    pub fn argument_expr_import_expression(
         &mut self,
         span: Span,
         source: Expr,
@@ -2038,105 +2178,121 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> Argument {
-        Argument::ImportExpression(
+        Argument::Expr(Expr::ImportExpression(
             self.import_expression(span, source, options, phase, sync)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_await_expression(&mut self, span: Span, argument: Expr) -> Argument {
-        Argument::AwaitExpression(self.await_expression(span, argument).into())
+    pub fn argument_expr_await_expression(&mut self, span: Span, argument: Expr) -> Argument {
+        Argument::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
     }
     #[inline]
-    pub fn argument_yield_expression(
+    pub fn argument_expr_yield_expression(
         &mut self,
         span: Span,
         argument: Option<Expr>,
         delegate: bool,
     ) -> Argument {
-        Argument::YieldExpression(self.yield_expression(span, argument, delegate).into())
+        Argument::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
     }
     #[inline]
-    pub fn argument_private_identifier(&mut self, span: Span, name: AstUtf8) -> Argument {
-        Argument::PrivateIdentifier(self.private_identifier(span, name).into())
+    pub fn argument_expr_private_identifier(&mut self, span: Span, name: AstUtf8) -> Argument {
+        Argument::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn argument_ts_as_expression(
+    pub fn argument_expr_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> Argument {
-        Argument::TsAsExpression(
+        Argument::Expr(Expr::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_ts_satisfies_expression(
+    pub fn argument_expr_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> Argument {
-        Argument::TsSatisfiesExpression(
+        Argument::Expr(Expr::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_ts_type_assertion(
+    pub fn argument_expr_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
     ) -> Argument {
-        Argument::TsTypeAssertion(
+        Argument::Expr(Expr::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_ts_non_null_expression(&mut self, span: Span, expression: Expr) -> Argument {
-        Argument::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+    pub fn argument_expr_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> Argument {
+        Argument::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn argument_ts_instantiation_expression(
+    pub fn argument_expr_ts_instantiation_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_arguments: TsTypeParameterInstantiation,
     ) -> Argument {
-        Argument::TsInstantiationExpression(
+        Argument::Expr(Expr::TsInstantiationExpression(
             self.ts_instantiation_expression(span, expression, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_jsx_element(
+    pub fn argument_expr_jsx_element(
         &mut self,
         span: Span,
         opening_element: JsxOpeningElement,
         children: TypedSubRange<JsxChild>,
         closing_element: Option<JsxClosingElement>,
     ) -> Argument {
-        Argument::JsxElement(
+        Argument::Expr(Expr::JsxElement(
             self.jsx_element(span, opening_element, children, closing_element)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn argument_jsx_fragment(
+    pub fn argument_expr_jsx_fragment(
         &mut self,
         span: Span,
         opening_fragment: JsxOpeningFragment,
         children: TypedSubRange<JsxChild>,
         closing_fragment: JsxClosingFragment,
     ) -> Argument {
-        Argument::JsxFragment(
+        Argument::Expr(Expr::JsxFragment(
             self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
-        )
+        ))
+    }
+    #[inline]
+    pub fn argument_spread_element(&mut self, span: Span, argument: Expr) -> Argument {
+        Argument::SpreadElement(self.spread_element(span, argument).into())
     }
     #[inline]
     pub fn object_property_kind_object_property(
@@ -2176,168 +2332,186 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn for_statement_init_identifier_reference(
+    pub fn for_statement_init_expr_identifier_reference(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> ForStatementInit {
-        ForStatementInit::IdentifierReference(self.identifier_reference(span, name).into())
+        ForStatementInit::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_this_expression(&mut self, span: Span) -> ForStatementInit {
-        ForStatementInit::ThisExpression(self.this_expression(span).into())
+    pub fn for_statement_init_expr_this_expression(&mut self, span: Span) -> ForStatementInit {
+        ForStatementInit::Expr(Expr::ThisExpression(self.this_expression(span).into()))
     }
     #[inline]
-    pub fn for_statement_init_super(&mut self, span: Span) -> ForStatementInit {
-        ForStatementInit::Super(self.super_(span).into())
+    pub fn for_statement_init_expr_super(&mut self, span: Span) -> ForStatementInit {
+        ForStatementInit::Expr(Expr::Super(self.super_(span).into()))
     }
     #[inline]
-    pub fn for_statement_init_meta_property(
+    pub fn for_statement_init_expr_meta_property(
         &mut self,
         span: Span,
         meta: IdentifierName,
         property: IdentifierName,
     ) -> ForStatementInit {
-        ForStatementInit::MetaProperty(self.meta_property(span, meta, property).into())
+        ForStatementInit::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_string_literal(
+    pub fn for_statement_init_expr_string_literal(
         &mut self,
         span: Span,
         value: AstWtf8,
         raw: AstUtf8,
     ) -> ForStatementInit {
-        ForStatementInit::StringLiteral(self.string_literal(span, value, raw).into())
+        ForStatementInit::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_numeric_literal(
+    pub fn for_statement_init_expr_numeric_literal(
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
         raw: AstUtf8,
     ) -> ForStatementInit {
-        ForStatementInit::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+        ForStatementInit::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_big_int_literal(
+    pub fn for_statement_init_expr_big_int_literal(
         &mut self,
         span: Span,
         raw: AstUtf8,
     ) -> ForStatementInit {
-        ForStatementInit::BigIntLiteral(self.big_int_literal(span, raw).into())
+        ForStatementInit::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
     #[inline]
-    pub fn for_statement_init_boolean_literal(
+    pub fn for_statement_init_expr_boolean_literal(
         &mut self,
         span: Span,
         value: bool,
     ) -> ForStatementInit {
-        ForStatementInit::BooleanLiteral(self.boolean_literal(span, value).into())
+        ForStatementInit::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_null_literal(&mut self, span: Span) -> ForStatementInit {
-        ForStatementInit::NullLiteral(self.null_literal(span).into())
+    pub fn for_statement_init_expr_null_literal(&mut self, span: Span) -> ForStatementInit {
+        ForStatementInit::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
-    pub fn for_statement_init_reg_exp_literal(
+    pub fn for_statement_init_expr_reg_exp_literal(
         &mut self,
         span: Span,
         pattern: AstUtf8,
         flags: AstUtf8,
     ) -> ForStatementInit {
-        ForStatementInit::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
+        ForStatementInit::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_template_literal(
+    pub fn for_statement_init_expr_template_literal(
         &mut self,
         span: Span,
         quasis: TypedSubRange<TemplateElement>,
         expressions: TypedSubRange<Expr>,
     ) -> ForStatementInit {
-        ForStatementInit::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
+        ForStatementInit::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_binary_expression(
+    pub fn for_statement_init_expr_binary_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: BinaryOperator,
     ) -> ForStatementInit {
-        ForStatementInit::BinaryExpression(
+        ForStatementInit::Expr(Expr::BinaryExpression(
             self.binary_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_logical_expression(
+    pub fn for_statement_init_expr_logical_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: LogicalOperator,
     ) -> ForStatementInit {
-        ForStatementInit::LogicalExpression(
+        ForStatementInit::Expr(Expr::LogicalExpression(
             self.logical_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_unary_expression(
+    pub fn for_statement_init_expr_unary_expression(
         &mut self,
         span: Span,
         argument: Expr,
         operator: UnaryOperator,
     ) -> ForStatementInit {
-        ForStatementInit::UnaryExpression(self.unary_expression(span, argument, operator).into())
+        ForStatementInit::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_update_expression(
+    pub fn for_statement_init_expr_update_expression(
         &mut self,
         span: Span,
         argument: SimpleAssignmentTarget,
         operator: UpdateOperator,
         prefix: bool,
     ) -> ForStatementInit {
-        ForStatementInit::UpdateExpression(
+        ForStatementInit::Expr(Expr::UpdateExpression(
             self.update_expression(span, argument, operator, prefix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_assignment_expression(
+    pub fn for_statement_init_expr_assignment_expression(
         &mut self,
         span: Span,
         left: AssignmentTarget,
         right: Expr,
         operator: AssignmentOperator,
     ) -> ForStatementInit {
-        ForStatementInit::AssignmentExpression(
+        ForStatementInit::Expr(Expr::AssignmentExpression(
             self.assignment_expression(span, left, right, operator)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_conditional_expression(
+    pub fn for_statement_init_expr_conditional_expression(
         &mut self,
         span: Span,
         test: Expr,
         consequent: Expr,
         alternate: Expr,
     ) -> ForStatementInit {
-        ForStatementInit::ConditionalExpression(
+        ForStatementInit::Expr(Expr::ConditionalExpression(
             self.conditional_expression(span, test, consequent, alternate)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_sequence_expression(
+    pub fn for_statement_init_expr_sequence_expression(
         &mut self,
         span: Span,
         expressions: TypedSubRange<Expr>,
     ) -> ForStatementInit {
-        ForStatementInit::SequenceExpression(self.sequence_expression(span, expressions).into())
+        ForStatementInit::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_member_expression(
+    pub fn for_statement_init_expr_member_expression(
         &mut self,
         span: Span,
         object: Expr,
@@ -2345,13 +2519,13 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> ForStatementInit {
-        ForStatementInit::MemberExpression(
+        ForStatementInit::Expr(Expr::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_call_expression(
+    pub fn for_statement_init_expr_call_expression(
         &mut self,
         span: Span,
         callee: Expr,
@@ -2359,47 +2533,49 @@ impl<'a> Ast<'a> {
         arguments: TypedSubRange<Argument>,
         optional: bool,
     ) -> ForStatementInit {
-        ForStatementInit::CallExpression(
+        ForStatementInit::Expr(Expr::CallExpression(
             self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_chain_expression(
+    pub fn for_statement_init_expr_chain_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> ForStatementInit {
-        ForStatementInit::ChainExpression(self.chain_expression(span, expression).into())
+        ForStatementInit::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_new_expression(
+    pub fn for_statement_init_expr_new_expression(
         &mut self,
         span: Span,
         callee: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
     ) -> ForStatementInit {
-        ForStatementInit::NewExpression(
+        ForStatementInit::Expr(Expr::NewExpression(
             self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_tagged_template_expression(
+    pub fn for_statement_init_expr_tagged_template_expression(
         &mut self,
         span: Span,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         quasi: TemplateLiteral,
     ) -> ForStatementInit {
-        ForStatementInit::TaggedTemplateExpression(
+        ForStatementInit::Expr(Expr::TaggedTemplateExpression(
             self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_arrow_function_expression(
+    pub fn for_statement_init_expr_arrow_function_expression(
         &mut self,
         span: Span,
         expression: bool,
@@ -2409,7 +2585,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> ForStatementInit {
-        ForStatementInit::ArrowFunctionExpression(
+        ForStatementInit::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
@@ -2420,38 +2596,43 @@ impl<'a> Ast<'a> {
                 body,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_array_expression(
+    pub fn for_statement_init_expr_array_expression(
         &mut self,
         span: Span,
         elements: TypedSubRange<Option<Argument>>,
     ) -> ForStatementInit {
-        ForStatementInit::ArrayExpression(self.array_expression(span, elements).into())
+        ForStatementInit::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_object_expression(
+    pub fn for_statement_init_expr_object_expression(
         &mut self,
         span: Span,
         properties: TypedSubRange<ObjectPropertyKind>,
     ) -> ForStatementInit {
-        ForStatementInit::ObjectExpression(self.object_expression(span, properties).into())
+        ForStatementInit::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_parenthesized_expression(
+    pub fn for_statement_init_expr_parenthesized_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> ForStatementInit {
-        ForStatementInit::ParenthesizedExpression(
+        ForStatementInit::Expr(Expr::ParenthesizedExpression(
             self.parenthesized_expression(span, expression).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_function_expression(
+    pub fn for_statement_init_expr_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -2460,9 +2641,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> ForStatementInit {
-        ForStatementInit::FunctionExpression(
-            self.function_expression(
+        ForStatementInit::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -2472,12 +2654,13 @@ impl<'a> Ast<'a> {
                 r#async,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_class_expression(
+    pub fn for_statement_init_expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -2488,9 +2671,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> ForStatementInit {
-        ForStatementInit::ClassExpression(
-            self.class_expression(
+        ForStatementInit::Expr(Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -2502,10 +2686,10 @@ impl<'a> Ast<'a> {
                 declare,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_import_expression(
+    pub fn for_statement_init_expr_import_expression(
         &mut self,
         span: Span,
         source: Expr,
@@ -2513,117 +2697,125 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> ForStatementInit {
-        ForStatementInit::ImportExpression(
+        ForStatementInit::Expr(Expr::ImportExpression(
             self.import_expression(span, source, options, phase, sync)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_await_expression(
+    pub fn for_statement_init_expr_await_expression(
         &mut self,
         span: Span,
         argument: Expr,
     ) -> ForStatementInit {
-        ForStatementInit::AwaitExpression(self.await_expression(span, argument).into())
+        ForStatementInit::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_yield_expression(
+    pub fn for_statement_init_expr_yield_expression(
         &mut self,
         span: Span,
         argument: Option<Expr>,
         delegate: bool,
     ) -> ForStatementInit {
-        ForStatementInit::YieldExpression(self.yield_expression(span, argument, delegate).into())
+        ForStatementInit::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_private_identifier(
+    pub fn for_statement_init_expr_private_identifier(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> ForStatementInit {
-        ForStatementInit::PrivateIdentifier(self.private_identifier(span, name).into())
+        ForStatementInit::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_ts_as_expression(
+    pub fn for_statement_init_expr_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> ForStatementInit {
-        ForStatementInit::TsAsExpression(
+        ForStatementInit::Expr(Expr::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_ts_satisfies_expression(
+    pub fn for_statement_init_expr_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> ForStatementInit {
-        ForStatementInit::TsSatisfiesExpression(
+        ForStatementInit::Expr(Expr::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_ts_type_assertion(
+    pub fn for_statement_init_expr_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
     ) -> ForStatementInit {
-        ForStatementInit::TsTypeAssertion(
+        ForStatementInit::Expr(Expr::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_ts_non_null_expression(
+    pub fn for_statement_init_expr_ts_non_null_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> ForStatementInit {
-        ForStatementInit::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+        ForStatementInit::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn for_statement_init_ts_instantiation_expression(
+    pub fn for_statement_init_expr_ts_instantiation_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_arguments: TsTypeParameterInstantiation,
     ) -> ForStatementInit {
-        ForStatementInit::TsInstantiationExpression(
+        ForStatementInit::Expr(Expr::TsInstantiationExpression(
             self.ts_instantiation_expression(span, expression, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_jsx_element(
+    pub fn for_statement_init_expr_jsx_element(
         &mut self,
         span: Span,
         opening_element: JsxOpeningElement,
         children: TypedSubRange<JsxChild>,
         closing_element: Option<JsxClosingElement>,
     ) -> ForStatementInit {
-        ForStatementInit::JsxElement(
+        ForStatementInit::Expr(Expr::JsxElement(
             self.jsx_element(span, opening_element, children, closing_element)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_init_jsx_fragment(
+    pub fn for_statement_init_expr_jsx_fragment(
         &mut self,
         span: Span,
         opening_fragment: JsxOpeningFragment,
         children: TypedSubRange<JsxChild>,
         closing_fragment: JsxClosingFragment,
     ) -> ForStatementInit {
-        ForStatementInit::JsxFragment(
+        ForStatementInit::Expr(Expr::JsxFragment(
             self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
-        )
+        ))
     }
     #[inline]
     pub fn for_statement_left_variable_declaration(
@@ -2639,7 +2831,89 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn for_statement_left_array_pattern(
+    pub fn for_statement_left_assignment_target_simple_assignment_target_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::IdentifierReference(
+                self.identifier_reference(span, name).into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_simple_assignment_target_member_expression(
+        &mut self,
+        span: Span,
+        object: Expr,
+        property: PropertyKey,
+        computed: bool,
+        optional: bool,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::MemberExpression(
+                self.member_expression(span, object, property, computed, optional)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_simple_assignment_target_ts_as_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsAsExpression(
+                self.ts_as_expression(span, expression, type_annotation)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_simple_assignment_target_ts_satisfies_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsSatisfiesExpression(
+                self.ts_satisfies_expression(span, expression, type_annotation)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_simple_assignment_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        type_annotation: TsType,
+        expression: Expr,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsTypeAssertion(
+                self.ts_type_assertion(span, type_annotation, expression)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_simple_assignment_target_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsNonNullExpression(
+                self.ts_non_null_expression(span, expression).into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_array_pattern(
         &mut self,
         span: Span,
         decorators: TypedSubRange<Decorator>,
@@ -2648,13 +2922,13 @@ impl<'a> Ast<'a> {
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ForStatementLeft {
-        ForStatementLeft::ArrayAssignmentTarget(
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::ArrayAssignmentTarget(
             self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn for_statement_left_object_pattern(
+    pub fn for_statement_left_assignment_target_object_pattern(
         &mut self,
         span: Span,
         decorators: TypedSubRange<Decorator>,
@@ -2663,7 +2937,7 @@ impl<'a> Ast<'a> {
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ForStatementLeft {
-        ForStatementLeft::ObjectAssignmentTarget(
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::ObjectAssignmentTarget(
             self.object_pattern(
                 span,
                 decorators,
@@ -2673,73 +2947,7 @@ impl<'a> Ast<'a> {
                 optional,
             )
             .into(),
-        )
-    }
-    #[inline]
-    pub fn for_statement_left_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> ForStatementLeft {
-        ForStatementLeft::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn for_statement_left_member_expression(
-        &mut self,
-        span: Span,
-        object: Expr,
-        property: PropertyKey,
-        computed: bool,
-        optional: bool,
-    ) -> ForStatementLeft {
-        ForStatementLeft::MemberExpression(
-            self.member_expression(span, object, property, computed, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn for_statement_left_ts_as_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> ForStatementLeft {
-        ForStatementLeft::TsAsExpression(
-            self.ts_as_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn for_statement_left_ts_satisfies_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> ForStatementLeft {
-        ForStatementLeft::TsSatisfiesExpression(
-            self.ts_satisfies_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn for_statement_left_ts_type_assertion(
-        &mut self,
-        span: Span,
-        type_annotation: TsType,
-        expression: Expr,
-    ) -> ForStatementLeft {
-        ForStatementLeft::TsTypeAssertion(
-            self.ts_type_assertion(span, type_annotation, expression)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn for_statement_left_ts_non_null_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> ForStatementLeft {
-        ForStatementLeft::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+        ))
     }
     #[inline]
     pub fn arrow_function_body_function_body(
@@ -2751,168 +2959,186 @@ impl<'a> Ast<'a> {
         ArrowFunctionBody::FunctionBody(self.function_body(span, directives, body).into())
     }
     #[inline]
-    pub fn arrow_function_body_identifier_reference(
+    pub fn arrow_function_body_expr_identifier_reference(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::IdentifierReference(self.identifier_reference(span, name).into())
+        ArrowFunctionBody::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_this_expression(&mut self, span: Span) -> ArrowFunctionBody {
-        ArrowFunctionBody::ThisExpression(self.this_expression(span).into())
+    pub fn arrow_function_body_expr_this_expression(&mut self, span: Span) -> ArrowFunctionBody {
+        ArrowFunctionBody::Expr(Expr::ThisExpression(self.this_expression(span).into()))
     }
     #[inline]
-    pub fn arrow_function_body_super(&mut self, span: Span) -> ArrowFunctionBody {
-        ArrowFunctionBody::Super(self.super_(span).into())
+    pub fn arrow_function_body_expr_super(&mut self, span: Span) -> ArrowFunctionBody {
+        ArrowFunctionBody::Expr(Expr::Super(self.super_(span).into()))
     }
     #[inline]
-    pub fn arrow_function_body_meta_property(
+    pub fn arrow_function_body_expr_meta_property(
         &mut self,
         span: Span,
         meta: IdentifierName,
         property: IdentifierName,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::MetaProperty(self.meta_property(span, meta, property).into())
+        ArrowFunctionBody::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_string_literal(
+    pub fn arrow_function_body_expr_string_literal(
         &mut self,
         span: Span,
         value: AstWtf8,
         raw: AstUtf8,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::StringLiteral(self.string_literal(span, value, raw).into())
+        ArrowFunctionBody::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_numeric_literal(
+    pub fn arrow_function_body_expr_numeric_literal(
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
         raw: AstUtf8,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+        ArrowFunctionBody::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_big_int_literal(
+    pub fn arrow_function_body_expr_big_int_literal(
         &mut self,
         span: Span,
         raw: AstUtf8,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::BigIntLiteral(self.big_int_literal(span, raw).into())
+        ArrowFunctionBody::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
     #[inline]
-    pub fn arrow_function_body_boolean_literal(
+    pub fn arrow_function_body_expr_boolean_literal(
         &mut self,
         span: Span,
         value: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::BooleanLiteral(self.boolean_literal(span, value).into())
+        ArrowFunctionBody::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_null_literal(&mut self, span: Span) -> ArrowFunctionBody {
-        ArrowFunctionBody::NullLiteral(self.null_literal(span).into())
+    pub fn arrow_function_body_expr_null_literal(&mut self, span: Span) -> ArrowFunctionBody {
+        ArrowFunctionBody::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
-    pub fn arrow_function_body_reg_exp_literal(
+    pub fn arrow_function_body_expr_reg_exp_literal(
         &mut self,
         span: Span,
         pattern: AstUtf8,
         flags: AstUtf8,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
+        ArrowFunctionBody::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_template_literal(
+    pub fn arrow_function_body_expr_template_literal(
         &mut self,
         span: Span,
         quasis: TypedSubRange<TemplateElement>,
         expressions: TypedSubRange<Expr>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
+        ArrowFunctionBody::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_binary_expression(
+    pub fn arrow_function_body_expr_binary_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: BinaryOperator,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::BinaryExpression(
+        ArrowFunctionBody::Expr(Expr::BinaryExpression(
             self.binary_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_logical_expression(
+    pub fn arrow_function_body_expr_logical_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: LogicalOperator,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::LogicalExpression(
+        ArrowFunctionBody::Expr(Expr::LogicalExpression(
             self.logical_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_unary_expression(
+    pub fn arrow_function_body_expr_unary_expression(
         &mut self,
         span: Span,
         argument: Expr,
         operator: UnaryOperator,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::UnaryExpression(self.unary_expression(span, argument, operator).into())
+        ArrowFunctionBody::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_update_expression(
+    pub fn arrow_function_body_expr_update_expression(
         &mut self,
         span: Span,
         argument: SimpleAssignmentTarget,
         operator: UpdateOperator,
         prefix: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::UpdateExpression(
+        ArrowFunctionBody::Expr(Expr::UpdateExpression(
             self.update_expression(span, argument, operator, prefix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_assignment_expression(
+    pub fn arrow_function_body_expr_assignment_expression(
         &mut self,
         span: Span,
         left: AssignmentTarget,
         right: Expr,
         operator: AssignmentOperator,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::AssignmentExpression(
+        ArrowFunctionBody::Expr(Expr::AssignmentExpression(
             self.assignment_expression(span, left, right, operator)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_conditional_expression(
+    pub fn arrow_function_body_expr_conditional_expression(
         &mut self,
         span: Span,
         test: Expr,
         consequent: Expr,
         alternate: Expr,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ConditionalExpression(
+        ArrowFunctionBody::Expr(Expr::ConditionalExpression(
             self.conditional_expression(span, test, consequent, alternate)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_sequence_expression(
+    pub fn arrow_function_body_expr_sequence_expression(
         &mut self,
         span: Span,
         expressions: TypedSubRange<Expr>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::SequenceExpression(self.sequence_expression(span, expressions).into())
+        ArrowFunctionBody::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_member_expression(
+    pub fn arrow_function_body_expr_member_expression(
         &mut self,
         span: Span,
         object: Expr,
@@ -2920,13 +3146,13 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::MemberExpression(
+        ArrowFunctionBody::Expr(Expr::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_call_expression(
+    pub fn arrow_function_body_expr_call_expression(
         &mut self,
         span: Span,
         callee: Expr,
@@ -2934,47 +3160,49 @@ impl<'a> Ast<'a> {
         arguments: TypedSubRange<Argument>,
         optional: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::CallExpression(
+        ArrowFunctionBody::Expr(Expr::CallExpression(
             self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_chain_expression(
+    pub fn arrow_function_body_expr_chain_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ChainExpression(self.chain_expression(span, expression).into())
+        ArrowFunctionBody::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_new_expression(
+    pub fn arrow_function_body_expr_new_expression(
         &mut self,
         span: Span,
         callee: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::NewExpression(
+        ArrowFunctionBody::Expr(Expr::NewExpression(
             self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_tagged_template_expression(
+    pub fn arrow_function_body_expr_tagged_template_expression(
         &mut self,
         span: Span,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         quasi: TemplateLiteral,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TaggedTemplateExpression(
+        ArrowFunctionBody::Expr(Expr::TaggedTemplateExpression(
             self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_arrow_function_expression(
+    pub fn arrow_function_body_expr_arrow_function_expression(
         &mut self,
         span: Span,
         expression: bool,
@@ -2984,7 +3212,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ArrowFunctionExpression(
+        ArrowFunctionBody::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
@@ -2995,38 +3223,43 @@ impl<'a> Ast<'a> {
                 body,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_array_expression(
+    pub fn arrow_function_body_expr_array_expression(
         &mut self,
         span: Span,
         elements: TypedSubRange<Option<Argument>>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ArrayExpression(self.array_expression(span, elements).into())
+        ArrowFunctionBody::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_object_expression(
+    pub fn arrow_function_body_expr_object_expression(
         &mut self,
         span: Span,
         properties: TypedSubRange<ObjectPropertyKind>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ObjectExpression(self.object_expression(span, properties).into())
+        ArrowFunctionBody::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_parenthesized_expression(
+    pub fn arrow_function_body_expr_parenthesized_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ParenthesizedExpression(
+        ArrowFunctionBody::Expr(Expr::ParenthesizedExpression(
             self.parenthesized_expression(span, expression).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_function_expression(
+    pub fn arrow_function_body_expr_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -3035,9 +3268,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::FunctionExpression(
-            self.function_expression(
+        ArrowFunctionBody::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -3047,12 +3281,13 @@ impl<'a> Ast<'a> {
                 r#async,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_class_expression(
+    pub fn arrow_function_body_expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -3063,9 +3298,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ClassExpression(
-            self.class_expression(
+        ArrowFunctionBody::Expr(Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -3077,10 +3313,10 @@ impl<'a> Ast<'a> {
                 declare,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_import_expression(
+    pub fn arrow_function_body_expr_import_expression(
         &mut self,
         span: Span,
         source: Expr,
@@ -3088,117 +3324,125 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::ImportExpression(
+        ArrowFunctionBody::Expr(Expr::ImportExpression(
             self.import_expression(span, source, options, phase, sync)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_await_expression(
+    pub fn arrow_function_body_expr_await_expression(
         &mut self,
         span: Span,
         argument: Expr,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::AwaitExpression(self.await_expression(span, argument).into())
+        ArrowFunctionBody::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_yield_expression(
+    pub fn arrow_function_body_expr_yield_expression(
         &mut self,
         span: Span,
         argument: Option<Expr>,
         delegate: bool,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::YieldExpression(self.yield_expression(span, argument, delegate).into())
+        ArrowFunctionBody::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_private_identifier(
+    pub fn arrow_function_body_expr_private_identifier(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::PrivateIdentifier(self.private_identifier(span, name).into())
+        ArrowFunctionBody::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_ts_as_expression(
+    pub fn arrow_function_body_expr_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TsAsExpression(
+        ArrowFunctionBody::Expr(Expr::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_ts_satisfies_expression(
+    pub fn arrow_function_body_expr_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TsSatisfiesExpression(
+        ArrowFunctionBody::Expr(Expr::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_ts_type_assertion(
+    pub fn arrow_function_body_expr_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TsTypeAssertion(
+        ArrowFunctionBody::Expr(Expr::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_ts_non_null_expression(
+    pub fn arrow_function_body_expr_ts_non_null_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+        ArrowFunctionBody::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_ts_instantiation_expression(
+    pub fn arrow_function_body_expr_ts_instantiation_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_arguments: TsTypeParameterInstantiation,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::TsInstantiationExpression(
+        ArrowFunctionBody::Expr(Expr::TsInstantiationExpression(
             self.ts_instantiation_expression(span, expression, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_jsx_element(
+    pub fn arrow_function_body_expr_jsx_element(
         &mut self,
         span: Span,
         opening_element: JsxOpeningElement,
         children: TypedSubRange<JsxChild>,
         closing_element: Option<JsxClosingElement>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::JsxElement(
+        ArrowFunctionBody::Expr(Expr::JsxElement(
             self.jsx_element(span, opening_element, children, closing_element)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn arrow_function_body_jsx_fragment(
+    pub fn arrow_function_body_expr_jsx_fragment(
         &mut self,
         span: Span,
         opening_fragment: JsxOpeningFragment,
         children: TypedSubRange<JsxChild>,
         closing_fragment: JsxClosingFragment,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::JsxFragment(
+        ArrowFunctionBody::Expr(Expr::JsxFragment(
             self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
-        )
+        ))
     }
     #[inline]
     pub fn formal_parameter_item_formal_parameter(
@@ -3231,6 +3475,168 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_binding_identifier(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+        decorators: TypedSubRange<Decorator>,
+        type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::BindingIdentifier(
+            self.binding_identifier(span, name, decorators, type_annotation, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::IdentifierReference(
+                self.identifier_reference(span, name).into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_member_expression(
+        &mut self,
+        span: Span,
+        object: Expr,
+        property: PropertyKey,
+        computed: bool,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::MemberExpression(
+                self.member_expression(span, object, property, computed, optional)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_as_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsAsExpression(
+                self.ts_as_expression(span, expression, type_annotation)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_satisfies_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsSatisfiesExpression(
+                self.ts_satisfies_expression(span, expression, type_annotation)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        type_annotation: TsType,
+        expression: Expr,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsTypeAssertion(
+                self.ts_type_assertion(span, type_annotation, expression)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsNonNullExpression(
+                self.ts_non_null_expression(span, expression).into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_assignment_pattern(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        left: BindingPattern,
+        type_annotation: Option<TsTypeAnnotation>,
+        right: Expr,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::AssignmentPattern(
+            self.assignment_pattern(span, decorators, left, type_annotation, right, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_binding_rest_element(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        argument: BindingPattern,
+        type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::BindingRestElement(
+            self.binding_rest_element(span, decorators, argument, type_annotation, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_array_pattern(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        elements: TypedSubRange<Option<BindingPattern>>,
+        rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::ArrayPattern(
+            self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_object_pattern(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        properties: TypedSubRange<BindingProperty>,
+        rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::ObjectPattern(
+            self.object_pattern(
+                span,
+                decorators,
+                properties,
+                rest,
+                type_annotation,
+                optional,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
     pub fn formal_parameter_pattern_ts_this_parameter(
         &mut self,
         span: Span,
@@ -3241,160 +3647,12 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn formal_parameter_pattern_binding_identifier(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-        decorators: TypedSubRange<Decorator>,
-        type_annotation: Option<TsTypeAnnotation>,
-        optional: bool,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::BindingIdentifier(
-            self.binding_identifier(span, name, decorators, type_annotation, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_assignment_pattern(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        left: BindingPattern,
-        type_annotation: Option<TsTypeAnnotation>,
-        right: Expr,
-        optional: bool,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::AssignmentPattern(
-            self.assignment_pattern(span, decorators, left, type_annotation, right, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_binding_rest_element(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        argument: BindingPattern,
-        type_annotation: Option<TsTypeAnnotation>,
-        optional: bool,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::BindingRestElement(
-            self.binding_rest_element(span, decorators, argument, type_annotation, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_array_pattern(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        elements: TypedSubRange<Option<BindingPattern>>,
-        rest: Option<BindingRestElement>,
-        type_annotation: Option<TsTypeAnnotation>,
-        optional: bool,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::ArrayPattern(
-            self.array_pattern(span, decorators, elements, rest, type_annotation, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_object_pattern(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        properties: TypedSubRange<BindingProperty>,
-        rest: Option<BindingRestElement>,
-        type_annotation: Option<TsTypeAnnotation>,
-        optional: bool,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::ObjectPattern(
-            self.object_pattern(
-                span,
-                decorators,
-                properties,
-                rest,
-                type_annotation,
-                optional,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_member_expression(
-        &mut self,
-        span: Span,
-        object: Expr,
-        property: PropertyKey,
-        computed: bool,
-        optional: bool,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::MemberExpression(
-            self.member_expression(span, object, property, computed, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_ts_as_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::TsAsExpression(
-            self.ts_as_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_ts_satisfies_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::TsSatisfiesExpression(
-            self.ts_satisfies_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_ts_type_assertion(
-        &mut self,
-        span: Span,
-        type_annotation: TsType,
-        expression: Expr,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::TsTypeAssertion(
-            self.ts_type_assertion(span, type_annotation, expression)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_ts_non_null_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::TsNonNullExpression(
-            self.ts_non_null_expression(span, expression).into(),
-        )
-    }
-    #[inline]
     pub fn class_element_method_definition(
         &mut self,
         span: Span,
         decorators: TypedSubRange<Decorator>,
         key: PropertyKey,
-        value: FunctionExpression,
+        value: Function,
         kind: MethodDefinitionKind,
         computed: bool,
         r#static: bool,
@@ -3548,9 +3806,318 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn export_default_declaration_kind_function_declaration(
+    pub fn export_default_declaration_kind_expr_identifier_reference(
         &mut self,
         span: Span,
+        name: AstUtf8,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_this_expression(
+        &mut self,
+        span: Span,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ThisExpression(self.this_expression(span).into()))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_super(
+        &mut self,
+        span: Span,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::Super(self.super_(span).into()))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_meta_property(
+        &mut self,
+        span: Span,
+        meta: IdentifierName,
+        property: IdentifierName,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_string_literal(
+        &mut self,
+        span: Span,
+        value: AstWtf8,
+        raw: AstUtf8,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_numeric_literal(
+        &mut self,
+        span: Span,
+        kind: NumericLiteralKind,
+        raw: AstUtf8,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_big_int_literal(
+        &mut self,
+        span: Span,
+        raw: AstUtf8,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::BigIntLiteral(
+            self.big_int_literal(span, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_boolean_literal(
+        &mut self,
+        span: Span,
+        value: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_null_literal(
+        &mut self,
+        span: Span,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_reg_exp_literal(
+        &mut self,
+        span: Span,
+        pattern: AstUtf8,
+        flags: AstUtf8,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_template_literal(
+        &mut self,
+        span: Span,
+        quasis: TypedSubRange<TemplateElement>,
+        expressions: TypedSubRange<Expr>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_binary_expression(
+        &mut self,
+        span: Span,
+        left: Expr,
+        right: Expr,
+        operator: BinaryOperator,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::BinaryExpression(
+            self.binary_expression(span, left, right, operator).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_logical_expression(
+        &mut self,
+        span: Span,
+        left: Expr,
+        right: Expr,
+        operator: LogicalOperator,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::LogicalExpression(
+            self.logical_expression(span, left, right, operator).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_unary_expression(
+        &mut self,
+        span: Span,
+        argument: Expr,
+        operator: UnaryOperator,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_update_expression(
+        &mut self,
+        span: Span,
+        argument: SimpleAssignmentTarget,
+        operator: UpdateOperator,
+        prefix: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::UpdateExpression(
+            self.update_expression(span, argument, operator, prefix)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_assignment_expression(
+        &mut self,
+        span: Span,
+        left: AssignmentTarget,
+        right: Expr,
+        operator: AssignmentOperator,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::AssignmentExpression(
+            self.assignment_expression(span, left, right, operator)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_conditional_expression(
+        &mut self,
+        span: Span,
+        test: Expr,
+        consequent: Expr,
+        alternate: Expr,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ConditionalExpression(
+            self.conditional_expression(span, test, consequent, alternate)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_sequence_expression(
+        &mut self,
+        span: Span,
+        expressions: TypedSubRange<Expr>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_member_expression(
+        &mut self,
+        span: Span,
+        object: Expr,
+        property: PropertyKey,
+        computed: bool,
+        optional: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::MemberExpression(
+            self.member_expression(span, object, property, computed, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_call_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
+        optional: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::CallExpression(
+            self.call_expression(span, callee, type_arguments, arguments, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_chain_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_new_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+        arguments: TypedSubRange<Argument>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::NewExpression(
+            self.new_expression(span, callee, type_arguments, arguments)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_tagged_template_expression(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+        quasi: TemplateLiteral,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TaggedTemplateExpression(
+            self.tagged_template_expression(span, tag, type_arguments, quasi)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_arrow_function_expression(
+        &mut self,
+        span: Span,
+        expression: bool,
+        r#async: bool,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: ArrowFunctionBody,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ArrowFunctionExpression(
+            self.arrow_function_expression(
+                span,
+                expression,
+                r#async,
+                type_parameters,
+                params,
+                return_type,
+                body,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_array_expression(
+        &mut self,
+        span: Span,
+        elements: TypedSubRange<Option<Argument>>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_object_expression(
+        &mut self,
+        span: Span,
+        properties: TypedSubRange<ObjectPropertyKind>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_parenthesized_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ParenthesizedExpression(
+            self.parenthesized_expression(span, expression).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_function(
+        &mut self,
+        span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -3559,9 +4126,199 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::FunctionDeclaration(
-            self.function_declaration(
+        ExportDefaultDeclarationKind::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
+                id,
+                type_parameters,
+                params,
+                return_type,
+                body,
+                generator,
+                r#async,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_class(
+        &mut self,
+        span: Span,
+        class_type: ClassType,
+        decorators: TypedSubRange<Decorator>,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        super_class: Option<Expr>,
+        super_type_arguments: Option<TsTypeParameterInstantiation>,
+        implements: TypedSubRange<TsClassImplements>,
+        body: ClassBody,
+        r#abstract: bool,
+        declare: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::Class(
+            self.class(
+                span,
+                class_type,
+                decorators,
+                id,
+                type_parameters,
+                super_class,
+                super_type_arguments,
+                implements,
+                body,
+                r#abstract,
+                declare,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_import_expression(
+        &mut self,
+        span: Span,
+        source: Expr,
+        options: Option<Expr>,
+        phase: Option<ImportPhase>,
+        sync: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::ImportExpression(
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_await_expression(
+        &mut self,
+        span: Span,
+        argument: Expr,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_yield_expression(
+        &mut self,
+        span: Span,
+        argument: Option<Expr>,
+        delegate: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_ts_as_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TsAsExpression(
+            self.ts_as_expression(span, expression, type_annotation)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_ts_satisfies_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TsSatisfiesExpression(
+            self.ts_satisfies_expression(span, expression, type_annotation)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_ts_type_assertion(
+        &mut self,
+        span: Span,
+        type_annotation: TsType,
+        expression: Expr,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, type_annotation, expression)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_ts_instantiation_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_arguments: TsTypeParameterInstantiation,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::TsInstantiationExpression(
+            self.ts_instantiation_expression(span, expression, type_arguments)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_jsx_element(
+        &mut self,
+        span: Span,
+        opening_element: JsxOpeningElement,
+        children: TypedSubRange<JsxChild>,
+        closing_element: Option<JsxClosingElement>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::JsxElement(
+            self.jsx_element(span, opening_element, children, closing_element)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_jsx_fragment(
+        &mut self,
+        span: Span,
+        opening_fragment: JsxOpeningFragment,
+        children: TypedSubRange<JsxChild>,
+        closing_fragment: JsxClosingFragment,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::JsxFragment(
+            self.jsx_fragment(span, opening_fragment, children, closing_fragment)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_function(
+        &mut self,
+        span: Span,
+        function_type: FunctionType,
+        id: Option<BindingIdentifier>,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        params: FormalParameters,
+        return_type: Option<TsTypeAnnotation>,
+        body: FunctionBody,
+        generator: bool,
+        r#async: bool,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Function(
+            self.function(
+                span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -3574,9 +4331,10 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn export_default_declaration_kind_class_declaration(
+    pub fn export_default_declaration_kind_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -3587,9 +4345,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ClassDeclaration(
-            self.class_declaration(
+        ExportDefaultDeclarationKind::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -3641,483 +4400,6 @@ impl<'a> Ast<'a> {
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::TsInterfaceDeclaration(
             self.ts_interface_declaration(span, id, type_parameters, extends, body, declare)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::IdentifierReference(
-            self.identifier_reference(span, name).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_this_expression(
-        &mut self,
-        span: Span,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ThisExpression(self.this_expression(span).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_super(
-        &mut self,
-        span: Span,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::Super(self.super_(span).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_meta_property(
-        &mut self,
-        span: Span,
-        meta: IdentifierName,
-        property: IdentifierName,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::MetaProperty(self.meta_property(span, meta, property).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_string_literal(
-        &mut self,
-        span: Span,
-        value: AstWtf8,
-        raw: AstUtf8,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::StringLiteral(self.string_literal(span, value, raw).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_numeric_literal(
-        &mut self,
-        span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::NumericLiteral(self.numeric_literal(span, kind, raw).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_big_int_literal(
-        &mut self,
-        span: Span,
-        raw: AstUtf8,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::BigIntLiteral(self.big_int_literal(span, raw).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_boolean_literal(
-        &mut self,
-        span: Span,
-        value: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::BooleanLiteral(self.boolean_literal(span, value).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_null_literal(
-        &mut self,
-        span: Span,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::NullLiteral(self.null_literal(span).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_reg_exp_literal(
-        &mut self,
-        span: Span,
-        pattern: AstUtf8,
-        flags: AstUtf8,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::RegExpLiteral(
-            self.reg_exp_literal(span, pattern, flags).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_template_literal(
-        &mut self,
-        span: Span,
-        quasis: TypedSubRange<TemplateElement>,
-        expressions: TypedSubRange<Expr>,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TemplateLiteral(
-            self.template_literal(span, quasis, expressions).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_binary_expression(
-        &mut self,
-        span: Span,
-        left: Expr,
-        right: Expr,
-        operator: BinaryOperator,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::BinaryExpression(
-            self.binary_expression(span, left, right, operator).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_logical_expression(
-        &mut self,
-        span: Span,
-        left: Expr,
-        right: Expr,
-        operator: LogicalOperator,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::LogicalExpression(
-            self.logical_expression(span, left, right, operator).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_unary_expression(
-        &mut self,
-        span: Span,
-        argument: Expr,
-        operator: UnaryOperator,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::UnaryExpression(
-            self.unary_expression(span, argument, operator).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_update_expression(
-        &mut self,
-        span: Span,
-        argument: SimpleAssignmentTarget,
-        operator: UpdateOperator,
-        prefix: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::UpdateExpression(
-            self.update_expression(span, argument, operator, prefix)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_assignment_expression(
-        &mut self,
-        span: Span,
-        left: AssignmentTarget,
-        right: Expr,
-        operator: AssignmentOperator,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::AssignmentExpression(
-            self.assignment_expression(span, left, right, operator)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_conditional_expression(
-        &mut self,
-        span: Span,
-        test: Expr,
-        consequent: Expr,
-        alternate: Expr,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ConditionalExpression(
-            self.conditional_expression(span, test, consequent, alternate)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_sequence_expression(
-        &mut self,
-        span: Span,
-        expressions: TypedSubRange<Expr>,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::SequenceExpression(
-            self.sequence_expression(span, expressions).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_member_expression(
-        &mut self,
-        span: Span,
-        object: Expr,
-        property: PropertyKey,
-        computed: bool,
-        optional: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::MemberExpression(
-            self.member_expression(span, object, property, computed, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_call_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-        arguments: TypedSubRange<Argument>,
-        optional: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_chain_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ChainExpression(
-            self.chain_expression(span, expression).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_new_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-        arguments: TypedSubRange<Argument>,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::NewExpression(
-            self.new_expression(span, callee, type_arguments, arguments)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_tagged_template_expression(
-        &mut self,
-        span: Span,
-        tag: Expr,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-        quasi: TemplateLiteral,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TaggedTemplateExpression(
-            self.tagged_template_expression(span, tag, type_arguments, quasi)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_arrow_function_expression(
-        &mut self,
-        span: Span,
-        expression: bool,
-        r#async: bool,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        params: FormalParameters,
-        return_type: Option<TsTypeAnnotation>,
-        body: ArrowFunctionBody,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ArrowFunctionExpression(
-            self.arrow_function_expression(
-                span,
-                expression,
-                r#async,
-                type_parameters,
-                params,
-                return_type,
-                body,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_array_expression(
-        &mut self,
-        span: Span,
-        elements: TypedSubRange<Option<Argument>>,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ArrayExpression(self.array_expression(span, elements).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_object_expression(
-        &mut self,
-        span: Span,
-        properties: TypedSubRange<ObjectPropertyKind>,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ObjectExpression(
-            self.object_expression(span, properties).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_parenthesized_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ParenthesizedExpression(
-            self.parenthesized_expression(span, expression).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_function_expression(
-        &mut self,
-        span: Span,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        params: FormalParameters,
-        return_type: Option<TsTypeAnnotation>,
-        body: FunctionBody,
-        generator: bool,
-        r#async: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::FunctionExpression(
-            self.function_expression(
-                span,
-                id,
-                type_parameters,
-                params,
-                return_type,
-                body,
-                generator,
-                r#async,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_class_expression(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ClassExpression(
-            self.class_expression(
-                span,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_import_expression(
-        &mut self,
-        span: Span,
-        source: Expr,
-        options: Option<Expr>,
-        phase: Option<ImportPhase>,
-        sync: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::ImportExpression(
-            self.import_expression(span, source, options, phase, sync)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_await_expression(
-        &mut self,
-        span: Span,
-        argument: Expr,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::AwaitExpression(self.await_expression(span, argument).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_yield_expression(
-        &mut self,
-        span: Span,
-        argument: Option<Expr>,
-        delegate: bool,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::YieldExpression(
-            self.yield_expression(span, argument, delegate).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_private_identifier(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::PrivateIdentifier(self.private_identifier(span, name).into())
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_ts_as_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TsAsExpression(
-            self.ts_as_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_ts_satisfies_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_annotation: TsType,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TsSatisfiesExpression(
-            self.ts_satisfies_expression(span, expression, type_annotation)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_ts_type_assertion(
-        &mut self,
-        span: Span,
-        type_annotation: TsType,
-        expression: Expr,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TsTypeAssertion(
-            self.ts_type_assertion(span, type_annotation, expression)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_ts_non_null_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TsNonNullExpression(
-            self.ts_non_null_expression(span, expression).into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_ts_instantiation_expression(
-        &mut self,
-        span: Span,
-        expression: Expr,
-        type_arguments: TsTypeParameterInstantiation,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::TsInstantiationExpression(
-            self.ts_instantiation_expression(span, expression, type_arguments)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_jsx_element(
-        &mut self,
-        span: Span,
-        opening_element: JsxOpeningElement,
-        children: TypedSubRange<JsxChild>,
-        closing_element: Option<JsxClosingElement>,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::JsxElement(
-            self.jsx_element(span, opening_element, children, closing_element)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn export_default_declaration_kind_jsx_fragment(
-        &mut self,
-        span: Span,
-        opening_fragment: JsxOpeningFragment,
-        children: TypedSubRange<JsxChild>,
-        closing_fragment: JsxClosingFragment,
-    ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::JsxFragment(
-            self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
         )
     }
@@ -4838,9 +5120,10 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn class_declaration(
+    pub fn class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -4850,7 +5133,7 @@ impl<'a> Ast<'a> {
         body: ClassBody,
         r#abstract: bool,
         declare: bool,
-    ) -> ClassDeclaration {
+    ) -> Class {
         let _extra_data = [
             decorators.to_extra_data(self),
             super_class.to_extra_data(self),
@@ -4859,56 +5142,19 @@ impl<'a> Ast<'a> {
             body.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
-        ClassDeclaration(self.add_node(
+        Class(self.add_node(
             span,
-            NodeKind::ClassDeclaration,
+            NodeKind::Class,
             NodePayload(
                 0u128
+                    | ((class_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 16usize)
+                        << 24usize)
                     | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 48usize)
-                    | ((r#abstract as u32 as u128) << 0usize)
-                    | ((declare as u32 as u128) << 8usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
-            ),
-        ))
-    }
-    #[inline]
-    pub fn class_expression(
-        &mut self,
-        span: Span,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> ClassExpression {
-        let _extra_data = [
-            decorators.to_extra_data(self),
-            super_class.to_extra_data(self),
-            super_type_arguments.to_extra_data(self),
-            implements.to_extra_data(self),
-            body.to_extra_data(self),
-        ];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
-        ClassExpression(self.add_node(
-            span,
-            NodeKind::ClassExpression,
-            NodePayload(
-                0u128
-                    | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 16usize)
-                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
-                        as u128)
-                        << 48usize)
-                    | ((r#abstract as u32 as u128) << 0usize)
-                    | ((declare as u32 as u128) << 8usize)
+                        << 56usize)
+                    | ((r#abstract as u32 as u128) << 8usize)
+                    | ((declare as u32 as u128) << 16usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -4927,7 +5173,7 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: TypedSubRange<Decorator>,
         key: PropertyKey,
-        value: FunctionExpression,
+        value: Function,
         kind: MethodDefinitionKind,
         computed: bool,
         r#static: bool,
@@ -5009,9 +5255,10 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn function_declaration(
+    pub fn function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -5019,59 +5266,26 @@ impl<'a> Ast<'a> {
         body: FunctionBody,
         generator: bool,
         r#async: bool,
-    ) -> FunctionDeclaration {
+    ) -> Function {
         let _extra_data = [
             params.to_extra_data(self),
             return_type.to_extra_data(self),
             body.to_extra_data(self),
         ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
-        FunctionDeclaration(self.add_node(
+        Function(self.add_node(
             span,
-            NodeKind::FunctionDeclaration,
+            NodeKind::Function,
             NodePayload(
                 0u128
+                    | ((function_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 16usize)
+                        << 24usize)
                     | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 48usize)
-                    | ((generator as u32 as u128) << 0usize)
-                    | ((r#async as u32 as u128) << 8usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
-            ),
-        ))
-    }
-    #[inline]
-    pub fn function_expression(
-        &mut self,
-        span: Span,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        params: FormalParameters,
-        return_type: Option<TsTypeAnnotation>,
-        body: FunctionBody,
-        generator: bool,
-        r#async: bool,
-    ) -> FunctionExpression {
-        let _extra_data = [
-            params.to_extra_data(self),
-            return_type.to_extra_data(self),
-            body.to_extra_data(self),
-        ];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
-        FunctionExpression(self.add_node(
-            span,
-            NodeKind::FunctionExpression,
-            NodePayload(
-                0u128
-                    | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 16usize)
-                    | ((type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32)
-                        as u128)
-                        << 48usize)
-                    | ((generator as u32 as u128) << 0usize)
-                    | ((r#async as u32 as u128) << 8usize)
+                        << 56usize)
+                    | ((generator as u32 as u128) << 8usize)
+                    | ((r#async as u32 as u128) << 16usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -5980,6 +6194,27 @@ impl<'a> Ast<'a> {
         TsImportTypeQualifier::TsQualifiedName(self.ts_qualified_name(span, left, right).into())
     }
     #[inline]
+    pub fn ts_type_query_expr_name_ts_type_name_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> TsTypeQueryExprName {
+        TsTypeQueryExprName::TsTypeName(TsTypeName::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_type_query_expr_name_ts_type_name_ts_qualified_name(
+        &mut self,
+        span: Span,
+        left: TsQualifiedNameLeft,
+        right: IdentifierName,
+    ) -> TsTypeQueryExprName {
+        TsTypeQueryExprName::TsTypeName(TsTypeName::TsQualifiedName(
+            self.ts_qualified_name(span, left, right).into(),
+        ))
+    }
+    #[inline]
     pub fn ts_type_query_expr_name_this_expression(&mut self, span: Span) -> TsTypeQueryExprName {
         TsTypeQueryExprName::ThisExpression(self.this_expression(span).into())
     }
@@ -5996,23 +6231,6 @@ impl<'a> Ast<'a> {
             self.ts_import_type(span, source, options, qualifier, type_arguments)
                 .into(),
         )
-    }
-    #[inline]
-    pub fn ts_type_query_expr_name_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> TsTypeQueryExprName {
-        TsTypeQueryExprName::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn ts_type_query_expr_name_ts_qualified_name(
-        &mut self,
-        span: Span,
-        left: TsQualifiedNameLeft,
-        right: IdentifierName,
-    ) -> TsTypeQueryExprName {
-        TsTypeQueryExprName::TsQualifiedName(self.ts_qualified_name(span, left, right).into())
     }
     #[inline]
     pub fn ts_literal_string_literal(
@@ -6059,97 +6277,96 @@ impl<'a> Ast<'a> {
         TsLiteral::UnaryExpression(self.unary_expression(span, argument, operator).into())
     }
     #[inline]
-    pub fn ts_tuple_element_ts_named_tuple_member(
-        &mut self,
-        span: Span,
-        label: IdentifierName,
-        element_type: TsType,
-        optional: bool,
-    ) -> TsTupleElement {
-        TsTupleElement::TsNamedTupleMember(
-            self.ts_named_tuple_member(span, label, element_type, optional)
-                .into(),
-        )
+    pub fn ts_tuple_element_ts_type_ts_any_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsAnyKeyword(self.ts_any_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_any_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsAnyKeyword(self.ts_any_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_unknown_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsUnknownKeyword(
+            self.ts_unknown_keyword(span).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_unknown_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsUnknownKeyword(self.ts_unknown_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_never_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsNeverKeyword(self.ts_never_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_never_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsNeverKeyword(self.ts_never_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_void_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsVoidKeyword(self.ts_void_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_void_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsVoidKeyword(self.ts_void_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_null_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsNullKeyword(self.ts_null_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_null_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsNullKeyword(self.ts_null_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_undefined_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsUndefinedKeyword(
+            self.ts_undefined_keyword(span).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_undefined_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsUndefinedKeyword(self.ts_undefined_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_string_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsStringKeyword(self.ts_string_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_string_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsStringKeyword(self.ts_string_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_number_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsNumberKeyword(self.ts_number_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_number_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsNumberKeyword(self.ts_number_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_big_int_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsBigIntKeyword(
+            self.ts_big_int_keyword(span).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_big_int_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsBigIntKeyword(self.ts_big_int_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_boolean_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsBooleanKeyword(
+            self.ts_boolean_keyword(span).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_boolean_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsBooleanKeyword(self.ts_boolean_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_symbol_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsSymbolKeyword(self.ts_symbol_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_symbol_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsSymbolKeyword(self.ts_symbol_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_object_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsObjectKeyword(self.ts_object_keyword(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_object_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsObjectKeyword(self.ts_object_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_intrinsic_keyword(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsIntrinsicKeyword(
+            self.ts_intrinsic_keyword(span).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_intrinsic_keyword(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsIntrinsicKeyword(self.ts_intrinsic_keyword(span).into())
+    pub fn ts_tuple_element_ts_type_ts_this_type(&mut self, span: Span) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsThisType(self.ts_this_type(span).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_this_type(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsThisType(self.ts_this_type(span).into())
-    }
-    #[inline]
-    pub fn ts_tuple_element_ts_type_reference(
+    pub fn ts_tuple_element_ts_type_ts_type_reference(
         &mut self,
         span: Span,
         type_name: TsTypeName,
         type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> TsTupleElement {
-        TsTupleElement::TsTypeReference(
+        TsTupleElement::TsType(TsType::TsTypeReference(
             self.ts_type_reference(span, type_name, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_type_query(
+    pub fn ts_tuple_element_ts_type_ts_type_query(
         &mut self,
         span: Span,
         expr_name: TsTypeQueryExprName,
         type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> TsTupleElement {
-        TsTupleElement::TsTypeQuery(self.ts_type_query(span, expr_name, type_arguments).into())
+        TsTupleElement::TsType(TsType::TsTypeQuery(
+            self.ts_type_query(span, expr_name, type_arguments).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_import_type(
+    pub fn ts_tuple_element_ts_type_ts_import_type(
         &mut self,
         span: Span,
         source: StringLiteral,
@@ -6157,120 +6374,137 @@ impl<'a> Ast<'a> {
         qualifier: Option<TsImportTypeQualifier>,
         type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> TsTupleElement {
-        TsTupleElement::TsImportType(
+        TsTupleElement::TsType(TsType::TsImportType(
             self.ts_import_type(span, source, options, qualifier, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_literal_type(
+    pub fn ts_tuple_element_ts_type_ts_literal_type(
         &mut self,
         span: Span,
         literal: TsLiteral,
     ) -> TsTupleElement {
-        TsTupleElement::TsLiteralType(self.ts_literal_type(span, literal).into())
+        TsTupleElement::TsType(TsType::TsLiteralType(
+            self.ts_literal_type(span, literal).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_template_literal_type(
+    pub fn ts_tuple_element_ts_type_ts_template_literal_type(
         &mut self,
         span: Span,
         quasis: TypedSubRange<TemplateElement>,
         types: TypedSubRange<TsType>,
     ) -> TsTupleElement {
-        TsTupleElement::TsTemplateLiteralType(
+        TsTupleElement::TsType(TsType::TsTemplateLiteralType(
             self.ts_template_literal_type(span, quasis, types).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_array_type(
+    pub fn ts_tuple_element_ts_type_ts_array_type(
         &mut self,
         span: Span,
         element_type: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsArrayType(self.ts_array_type(span, element_type).into())
+        TsTupleElement::TsType(TsType::TsArrayType(
+            self.ts_array_type(span, element_type).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_indexed_access_type(
+    pub fn ts_tuple_element_ts_type_ts_indexed_access_type(
         &mut self,
         span: Span,
         object_type: TsType,
         index_type: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsIndexedAccessType(
+        TsTupleElement::TsType(TsType::TsIndexedAccessType(
             self.ts_indexed_access_type(span, object_type, index_type)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_tuple_type(
+    pub fn ts_tuple_element_ts_type_ts_tuple_type(
         &mut self,
         span: Span,
         element_types: TypedSubRange<TsTupleElement>,
     ) -> TsTupleElement {
-        TsTupleElement::TsTupleType(self.ts_tuple_type(span, element_types).into())
+        TsTupleElement::TsType(TsType::TsTupleType(
+            self.ts_tuple_type(span, element_types).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_optional_type(
+    pub fn ts_tuple_element_ts_type_ts_optional_type(
         &mut self,
         span: Span,
         type_annotation: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsOptionalType(self.ts_optional_type(span, type_annotation).into())
+        TsTupleElement::TsType(TsType::TsOptionalType(
+            self.ts_optional_type(span, type_annotation).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_rest_type(
+    pub fn ts_tuple_element_ts_type_ts_rest_type(
         &mut self,
         span: Span,
         type_annotation: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsRestType(self.ts_rest_type(span, type_annotation).into())
+        TsTupleElement::TsType(TsType::TsRestType(
+            self.ts_rest_type(span, type_annotation).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_js_doc_nullable_type(
+    pub fn ts_tuple_element_ts_type_ts_js_doc_nullable_type(
         &mut self,
         span: Span,
         type_annotation: TsType,
         postfix: bool,
     ) -> TsTupleElement {
-        TsTupleElement::TsJsDocNullableType(
+        TsTupleElement::TsType(TsType::TsJsDocNullableType(
             self.ts_js_doc_nullable_type(span, type_annotation, postfix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_js_doc_non_nullable_type(
+    pub fn ts_tuple_element_ts_type_ts_js_doc_non_nullable_type(
         &mut self,
         span: Span,
         type_annotation: TsType,
         postfix: bool,
     ) -> TsTupleElement {
-        TsTupleElement::TsJsDocNonNullableType(
+        TsTupleElement::TsType(TsType::TsJsDocNonNullableType(
             self.ts_js_doc_non_nullable_type(span, type_annotation, postfix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_js_doc_unknown_type(&mut self, span: Span) -> TsTupleElement {
-        TsTupleElement::TsJsDocUnknownType(self.ts_js_doc_unknown_type(span).into())
+    pub fn ts_tuple_element_ts_type_ts_js_doc_unknown_type(
+        &mut self,
+        span: Span,
+    ) -> TsTupleElement {
+        TsTupleElement::TsType(TsType::TsJsDocUnknownType(
+            self.ts_js_doc_unknown_type(span).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_union_type(
+    pub fn ts_tuple_element_ts_type_ts_union_type(
         &mut self,
         span: Span,
         types: TypedSubRange<TsType>,
     ) -> TsTupleElement {
-        TsTupleElement::TsUnionType(self.ts_union_type(span, types).into())
+        TsTupleElement::TsType(TsType::TsUnionType(self.ts_union_type(span, types).into()))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_intersection_type(
+    pub fn ts_tuple_element_ts_type_ts_intersection_type(
         &mut self,
         span: Span,
         types: TypedSubRange<TsType>,
     ) -> TsTupleElement {
-        TsTupleElement::TsIntersectionType(self.ts_intersection_type(span, types).into())
+        TsTupleElement::TsType(TsType::TsIntersectionType(
+            self.ts_intersection_type(span, types).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_conditional_type(
+    pub fn ts_tuple_element_ts_type_ts_conditional_type(
         &mut self,
         span: Span,
         check_type: TsType,
@@ -6278,56 +6512,58 @@ impl<'a> Ast<'a> {
         true_type: TsType,
         false_type: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsConditionalType(
+        TsTupleElement::TsType(TsType::TsConditionalType(
             self.ts_conditional_type(span, check_type, extends_type, true_type, false_type)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_infer_type(
+    pub fn ts_tuple_element_ts_type_ts_infer_type(
         &mut self,
         span: Span,
         type_parameter: TsTypeParameter,
     ) -> TsTupleElement {
-        TsTupleElement::TsInferType(self.ts_infer_type(span, type_parameter).into())
+        TsTupleElement::TsType(TsType::TsInferType(
+            self.ts_infer_type(span, type_parameter).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_type_operator(
+    pub fn ts_tuple_element_ts_type_ts_type_operator(
         &mut self,
         span: Span,
         operator: TsTypeOperatorKind,
         type_annotation: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsTypeOperator(
+        TsTupleElement::TsType(TsType::TsTypeOperator(
             self.ts_type_operator(span, operator, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_parenthesized_type(
+    pub fn ts_tuple_element_ts_type_ts_parenthesized_type(
         &mut self,
         span: Span,
         type_annotation: TsType,
     ) -> TsTupleElement {
-        TsTupleElement::TsParenthesizedType(
+        TsTupleElement::TsType(TsType::TsParenthesizedType(
             self.ts_parenthesized_type(span, type_annotation).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_function_type(
+    pub fn ts_tuple_element_ts_type_ts_function_type(
         &mut self,
         span: Span,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
         return_type: TsTypeAnnotation,
     ) -> TsTupleElement {
-        TsTupleElement::TsFunctionType(
+        TsTupleElement::TsType(TsType::TsFunctionType(
             self.ts_function_type(span, type_parameters, params, return_type)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_constructor_type(
+    pub fn ts_tuple_element_ts_type_ts_constructor_type(
         &mut self,
         span: Span,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -6335,34 +6571,36 @@ impl<'a> Ast<'a> {
         return_type: TsTypeAnnotation,
         r#abstract: bool,
     ) -> TsTupleElement {
-        TsTupleElement::TsConstructorType(
+        TsTupleElement::TsType(TsType::TsConstructorType(
             self.ts_constructor_type(span, type_parameters, params, return_type, r#abstract)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_type_predicate(
+    pub fn ts_tuple_element_ts_type_ts_type_predicate(
         &mut self,
         span: Span,
         parameter_name: TsTypePredicateName,
         type_annotation: Option<TsTypeAnnotation>,
         asserts: bool,
     ) -> TsTupleElement {
-        TsTupleElement::TsTypePredicate(
+        TsTupleElement::TsType(TsType::TsTypePredicate(
             self.ts_type_predicate(span, parameter_name, type_annotation, asserts)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_type_literal(
+    pub fn ts_tuple_element_ts_type_ts_type_literal(
         &mut self,
         span: Span,
         members: TypedSubRange<TsTypeElement>,
     ) -> TsTupleElement {
-        TsTupleElement::TsTypeLiteral(self.ts_type_literal(span, members).into())
+        TsTupleElement::TsType(TsType::TsTypeLiteral(
+            self.ts_type_literal(span, members).into(),
+        ))
     }
     #[inline]
-    pub fn ts_tuple_element_ts_mapped_type(
+    pub fn ts_tuple_element_ts_type_ts_mapped_type(
         &mut self,
         span: Span,
         key: BindingIdentifier,
@@ -6372,7 +6610,7 @@ impl<'a> Ast<'a> {
         optional: TsMappedTypeModifier,
         readonly: TsMappedTypeModifier,
     ) -> TsTupleElement {
-        TsTupleElement::TsMappedType(
+        TsTupleElement::TsType(TsType::TsMappedType(
             self.ts_mapped_type(
                 span,
                 key,
@@ -6383,6 +6621,19 @@ impl<'a> Ast<'a> {
                 readonly,
             )
             .into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_tuple_element_ts_named_tuple_member(
+        &mut self,
+        span: Span,
+        label: IdentifierName,
+        element_type: TsType,
+        optional: bool,
+    ) -> TsTupleElement {
+        TsTupleElement::TsNamedTupleMember(
+            self.ts_named_tuple_member(span, label, element_type, optional)
+                .into(),
         )
     }
     #[inline]
@@ -6487,31 +6738,6 @@ impl<'a> Ast<'a> {
         TsEnumMemberName::IdentifierName(self.identifier_name(span, name).into())
     }
     #[inline]
-    pub fn ts_enum_member_name_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_this_expression(&mut self, span: Span) -> TsEnumMemberName {
-        TsEnumMemberName::ThisExpression(self.this_expression(span).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_super(&mut self, span: Span) -> TsEnumMemberName {
-        TsEnumMemberName::Super(self.super_(span).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_meta_property(
-        &mut self,
-        span: Span,
-        meta: IdentifierName,
-        property: IdentifierName,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::MetaProperty(self.meta_property(span, meta, property).into())
-    }
-    #[inline]
     pub fn ts_enum_member_name_string_literal(
         &mut self,
         span: Span,
@@ -6519,44 +6745,6 @@ impl<'a> Ast<'a> {
         raw: AstUtf8,
     ) -> TsEnumMemberName {
         TsEnumMemberName::StringLiteral(self.string_literal(span, value, raw).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_numeric_literal(
-        &mut self,
-        span: Span,
-        kind: NumericLiteralKind,
-        raw: AstUtf8,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::NumericLiteral(self.numeric_literal(span, kind, raw).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_big_int_literal(
-        &mut self,
-        span: Span,
-        raw: AstUtf8,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::BigIntLiteral(self.big_int_literal(span, raw).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_boolean_literal(
-        &mut self,
-        span: Span,
-        value: bool,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::BooleanLiteral(self.boolean_literal(span, value).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_null_literal(&mut self, span: Span) -> TsEnumMemberName {
-        TsEnumMemberName::NullLiteral(self.null_literal(span).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_reg_exp_literal(
-        &mut self,
-        span: Span,
-        pattern: AstUtf8,
-        flags: AstUtf8,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
     }
     #[inline]
     pub fn ts_enum_member_name_template_literal(
@@ -6568,87 +6756,186 @@ impl<'a> Ast<'a> {
         TsEnumMemberName::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
     }
     #[inline]
-    pub fn ts_enum_member_name_binary_expression(
+    pub fn ts_enum_member_name_expr_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_this_expression(&mut self, span: Span) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::ThisExpression(self.this_expression(span).into()))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_super(&mut self, span: Span) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::Super(self.super_(span).into()))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_meta_property(
+        &mut self,
+        span: Span,
+        meta: IdentifierName,
+        property: IdentifierName,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_string_literal(
+        &mut self,
+        span: Span,
+        value: AstWtf8,
+        raw: AstUtf8,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_numeric_literal(
+        &mut self,
+        span: Span,
+        kind: NumericLiteralKind,
+        raw: AstUtf8,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_big_int_literal(
+        &mut self,
+        span: Span,
+        raw: AstUtf8,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_boolean_literal(
+        &mut self,
+        span: Span,
+        value: bool,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_null_literal(&mut self, span: Span) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::NullLiteral(self.null_literal(span).into()))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_reg_exp_literal(
+        &mut self,
+        span: Span,
+        pattern: AstUtf8,
+        flags: AstUtf8,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_template_literal(
+        &mut self,
+        span: Span,
+        quasis: TypedSubRange<TemplateElement>,
+        expressions: TypedSubRange<Expr>,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_enum_member_name_expr_binary_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: BinaryOperator,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::BinaryExpression(
+        TsEnumMemberName::Expr(Expr::BinaryExpression(
             self.binary_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_logical_expression(
+    pub fn ts_enum_member_name_expr_logical_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: LogicalOperator,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::LogicalExpression(
+        TsEnumMemberName::Expr(Expr::LogicalExpression(
             self.logical_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_unary_expression(
+    pub fn ts_enum_member_name_expr_unary_expression(
         &mut self,
         span: Span,
         argument: Expr,
         operator: UnaryOperator,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::UnaryExpression(self.unary_expression(span, argument, operator).into())
+        TsEnumMemberName::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_update_expression(
+    pub fn ts_enum_member_name_expr_update_expression(
         &mut self,
         span: Span,
         argument: SimpleAssignmentTarget,
         operator: UpdateOperator,
         prefix: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::UpdateExpression(
+        TsEnumMemberName::Expr(Expr::UpdateExpression(
             self.update_expression(span, argument, operator, prefix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_assignment_expression(
+    pub fn ts_enum_member_name_expr_assignment_expression(
         &mut self,
         span: Span,
         left: AssignmentTarget,
         right: Expr,
         operator: AssignmentOperator,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::AssignmentExpression(
+        TsEnumMemberName::Expr(Expr::AssignmentExpression(
             self.assignment_expression(span, left, right, operator)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_conditional_expression(
+    pub fn ts_enum_member_name_expr_conditional_expression(
         &mut self,
         span: Span,
         test: Expr,
         consequent: Expr,
         alternate: Expr,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ConditionalExpression(
+        TsEnumMemberName::Expr(Expr::ConditionalExpression(
             self.conditional_expression(span, test, consequent, alternate)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_sequence_expression(
+    pub fn ts_enum_member_name_expr_sequence_expression(
         &mut self,
         span: Span,
         expressions: TypedSubRange<Expr>,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::SequenceExpression(self.sequence_expression(span, expressions).into())
+        TsEnumMemberName::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_member_expression(
+    pub fn ts_enum_member_name_expr_member_expression(
         &mut self,
         span: Span,
         object: Expr,
@@ -6656,13 +6943,13 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::MemberExpression(
+        TsEnumMemberName::Expr(Expr::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_call_expression(
+    pub fn ts_enum_member_name_expr_call_expression(
         &mut self,
         span: Span,
         callee: Expr,
@@ -6670,47 +6957,49 @@ impl<'a> Ast<'a> {
         arguments: TypedSubRange<Argument>,
         optional: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::CallExpression(
+        TsEnumMemberName::Expr(Expr::CallExpression(
             self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_chain_expression(
+    pub fn ts_enum_member_name_expr_chain_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ChainExpression(self.chain_expression(span, expression).into())
+        TsEnumMemberName::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_new_expression(
+    pub fn ts_enum_member_name_expr_new_expression(
         &mut self,
         span: Span,
         callee: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::NewExpression(
+        TsEnumMemberName::Expr(Expr::NewExpression(
             self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_tagged_template_expression(
+    pub fn ts_enum_member_name_expr_tagged_template_expression(
         &mut self,
         span: Span,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         quasi: TemplateLiteral,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::TaggedTemplateExpression(
+        TsEnumMemberName::Expr(Expr::TaggedTemplateExpression(
             self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_arrow_function_expression(
+    pub fn ts_enum_member_name_expr_arrow_function_expression(
         &mut self,
         span: Span,
         expression: bool,
@@ -6720,7 +7009,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ArrowFunctionExpression(
+        TsEnumMemberName::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
@@ -6731,38 +7020,43 @@ impl<'a> Ast<'a> {
                 body,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_array_expression(
+    pub fn ts_enum_member_name_expr_array_expression(
         &mut self,
         span: Span,
         elements: TypedSubRange<Option<Argument>>,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ArrayExpression(self.array_expression(span, elements).into())
+        TsEnumMemberName::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_object_expression(
+    pub fn ts_enum_member_name_expr_object_expression(
         &mut self,
         span: Span,
         properties: TypedSubRange<ObjectPropertyKind>,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ObjectExpression(self.object_expression(span, properties).into())
+        TsEnumMemberName::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_parenthesized_expression(
+    pub fn ts_enum_member_name_expr_parenthesized_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ParenthesizedExpression(
+        TsEnumMemberName::Expr(Expr::ParenthesizedExpression(
             self.parenthesized_expression(span, expression).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_function_expression(
+    pub fn ts_enum_member_name_expr_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -6771,9 +7065,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::FunctionExpression(
-            self.function_expression(
+        TsEnumMemberName::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -6783,12 +7078,13 @@ impl<'a> Ast<'a> {
                 r#async,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_class_expression(
+    pub fn ts_enum_member_name_expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -6799,9 +7095,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ClassExpression(
-            self.class_expression(
+        TsEnumMemberName::Expr(Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -6813,10 +7110,10 @@ impl<'a> Ast<'a> {
                 declare,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_import_expression(
+    pub fn ts_enum_member_name_expr_import_expression(
         &mut self,
         span: Span,
         source: Expr,
@@ -6824,117 +7121,125 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::ImportExpression(
+        TsEnumMemberName::Expr(Expr::ImportExpression(
             self.import_expression(span, source, options, phase, sync)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_await_expression(
+    pub fn ts_enum_member_name_expr_await_expression(
         &mut self,
         span: Span,
         argument: Expr,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::AwaitExpression(self.await_expression(span, argument).into())
+        TsEnumMemberName::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_yield_expression(
+    pub fn ts_enum_member_name_expr_yield_expression(
         &mut self,
         span: Span,
         argument: Option<Expr>,
         delegate: bool,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::YieldExpression(self.yield_expression(span, argument, delegate).into())
+        TsEnumMemberName::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_private_identifier(
+    pub fn ts_enum_member_name_expr_private_identifier(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::PrivateIdentifier(self.private_identifier(span, name).into())
+        TsEnumMemberName::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_ts_as_expression(
+    pub fn ts_enum_member_name_expr_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::TsAsExpression(
+        TsEnumMemberName::Expr(Expr::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_ts_satisfies_expression(
+    pub fn ts_enum_member_name_expr_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::TsSatisfiesExpression(
+        TsEnumMemberName::Expr(Expr::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_ts_type_assertion(
+    pub fn ts_enum_member_name_expr_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::TsTypeAssertion(
+        TsEnumMemberName::Expr(Expr::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_ts_non_null_expression(
+    pub fn ts_enum_member_name_expr_ts_non_null_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+        TsEnumMemberName::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_ts_instantiation_expression(
+    pub fn ts_enum_member_name_expr_ts_instantiation_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_arguments: TsTypeParameterInstantiation,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::TsInstantiationExpression(
+        TsEnumMemberName::Expr(Expr::TsInstantiationExpression(
             self.ts_instantiation_expression(span, expression, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_jsx_element(
+    pub fn ts_enum_member_name_expr_jsx_element(
         &mut self,
         span: Span,
         opening_element: JsxOpeningElement,
         children: TypedSubRange<JsxChild>,
         closing_element: Option<JsxClosingElement>,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::JsxElement(
+        TsEnumMemberName::Expr(Expr::JsxElement(
             self.jsx_element(span, opening_element, children, closing_element)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn ts_enum_member_name_jsx_fragment(
+    pub fn ts_enum_member_name_expr_jsx_fragment(
         &mut self,
         span: Span,
         opening_fragment: JsxOpeningFragment,
         children: TypedSubRange<JsxChild>,
         closing_fragment: JsxClosingFragment,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::JsxFragment(
+        TsEnumMemberName::Expr(Expr::JsxFragment(
             self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
-        )
+        ))
     }
     #[inline]
     pub fn ts_module_name_binding_identifier(
@@ -6992,6 +7297,27 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
+    pub fn ts_module_reference_ts_type_name_identifier_reference(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+    ) -> TsModuleReference {
+        TsModuleReference::TsTypeName(TsTypeName::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_module_reference_ts_type_name_ts_qualified_name(
+        &mut self,
+        span: Span,
+        left: TsQualifiedNameLeft,
+        right: IdentifierName,
+    ) -> TsModuleReference {
+        TsModuleReference::TsTypeName(TsTypeName::TsQualifiedName(
+            self.ts_qualified_name(span, left, right).into(),
+        ))
+    }
+    #[inline]
     pub fn ts_module_reference_ts_external_module_reference(
         &mut self,
         span: Span,
@@ -7000,23 +7326,6 @@ impl<'a> Ast<'a> {
         TsModuleReference::TsExternalModuleReference(
             self.ts_external_module_reference(span, expression).into(),
         )
-    }
-    #[inline]
-    pub fn ts_module_reference_identifier_reference(
-        &mut self,
-        span: Span,
-        name: AstUtf8,
-    ) -> TsModuleReference {
-        TsModuleReference::IdentifierReference(self.identifier_reference(span, name).into())
-    }
-    #[inline]
-    pub fn ts_module_reference_ts_qualified_name(
-        &mut self,
-        span: Span,
-        left: TsQualifiedNameLeft,
-        right: IdentifierName,
-    ) -> TsModuleReference {
-        TsModuleReference::TsQualifiedName(self.ts_qualified_name(span, left, right).into())
     }
     #[inline]
     pub fn ts_function(
@@ -8218,162 +8527,186 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn jsx_expression_jsx_empty_expression(&mut self, span: Span) -> JsxExpression {
-        JsxExpression::JsxEmptyExpression(self.jsx_empty_expression(span).into())
-    }
-    #[inline]
-    pub fn jsx_expression_identifier_reference(
+    pub fn jsx_expression_expr_identifier_reference(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> JsxExpression {
-        JsxExpression::IdentifierReference(self.identifier_reference(span, name).into())
+        JsxExpression::Expr(Expr::IdentifierReference(
+            self.identifier_reference(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_this_expression(&mut self, span: Span) -> JsxExpression {
-        JsxExpression::ThisExpression(self.this_expression(span).into())
+    pub fn jsx_expression_expr_this_expression(&mut self, span: Span) -> JsxExpression {
+        JsxExpression::Expr(Expr::ThisExpression(self.this_expression(span).into()))
     }
     #[inline]
-    pub fn jsx_expression_super(&mut self, span: Span) -> JsxExpression {
-        JsxExpression::Super(self.super_(span).into())
+    pub fn jsx_expression_expr_super(&mut self, span: Span) -> JsxExpression {
+        JsxExpression::Expr(Expr::Super(self.super_(span).into()))
     }
     #[inline]
-    pub fn jsx_expression_meta_property(
+    pub fn jsx_expression_expr_meta_property(
         &mut self,
         span: Span,
         meta: IdentifierName,
         property: IdentifierName,
     ) -> JsxExpression {
-        JsxExpression::MetaProperty(self.meta_property(span, meta, property).into())
+        JsxExpression::Expr(Expr::MetaProperty(
+            self.meta_property(span, meta, property).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_string_literal(
+    pub fn jsx_expression_expr_string_literal(
         &mut self,
         span: Span,
         value: AstWtf8,
         raw: AstUtf8,
     ) -> JsxExpression {
-        JsxExpression::StringLiteral(self.string_literal(span, value, raw).into())
+        JsxExpression::Expr(Expr::StringLiteral(
+            self.string_literal(span, value, raw).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_numeric_literal(
+    pub fn jsx_expression_expr_numeric_literal(
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
         raw: AstUtf8,
     ) -> JsxExpression {
-        JsxExpression::NumericLiteral(self.numeric_literal(span, kind, raw).into())
+        JsxExpression::Expr(Expr::NumericLiteral(
+            self.numeric_literal(span, kind, raw).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> JsxExpression {
-        JsxExpression::BigIntLiteral(self.big_int_literal(span, raw).into())
+    pub fn jsx_expression_expr_big_int_literal(
+        &mut self,
+        span: Span,
+        raw: AstUtf8,
+    ) -> JsxExpression {
+        JsxExpression::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
     #[inline]
-    pub fn jsx_expression_boolean_literal(&mut self, span: Span, value: bool) -> JsxExpression {
-        JsxExpression::BooleanLiteral(self.boolean_literal(span, value).into())
+    pub fn jsx_expression_expr_boolean_literal(
+        &mut self,
+        span: Span,
+        value: bool,
+    ) -> JsxExpression {
+        JsxExpression::Expr(Expr::BooleanLiteral(
+            self.boolean_literal(span, value).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_null_literal(&mut self, span: Span) -> JsxExpression {
-        JsxExpression::NullLiteral(self.null_literal(span).into())
+    pub fn jsx_expression_expr_null_literal(&mut self, span: Span) -> JsxExpression {
+        JsxExpression::Expr(Expr::NullLiteral(self.null_literal(span).into()))
     }
     #[inline]
-    pub fn jsx_expression_reg_exp_literal(
+    pub fn jsx_expression_expr_reg_exp_literal(
         &mut self,
         span: Span,
         pattern: AstUtf8,
         flags: AstUtf8,
     ) -> JsxExpression {
-        JsxExpression::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
+        JsxExpression::Expr(Expr::RegExpLiteral(
+            self.reg_exp_literal(span, pattern, flags).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_template_literal(
+    pub fn jsx_expression_expr_template_literal(
         &mut self,
         span: Span,
         quasis: TypedSubRange<TemplateElement>,
         expressions: TypedSubRange<Expr>,
     ) -> JsxExpression {
-        JsxExpression::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
+        JsxExpression::Expr(Expr::TemplateLiteral(
+            self.template_literal(span, quasis, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_binary_expression(
+    pub fn jsx_expression_expr_binary_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: BinaryOperator,
     ) -> JsxExpression {
-        JsxExpression::BinaryExpression(self.binary_expression(span, left, right, operator).into())
+        JsxExpression::Expr(Expr::BinaryExpression(
+            self.binary_expression(span, left, right, operator).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_logical_expression(
+    pub fn jsx_expression_expr_logical_expression(
         &mut self,
         span: Span,
         left: Expr,
         right: Expr,
         operator: LogicalOperator,
     ) -> JsxExpression {
-        JsxExpression::LogicalExpression(
+        JsxExpression::Expr(Expr::LogicalExpression(
             self.logical_expression(span, left, right, operator).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_unary_expression(
+    pub fn jsx_expression_expr_unary_expression(
         &mut self,
         span: Span,
         argument: Expr,
         operator: UnaryOperator,
     ) -> JsxExpression {
-        JsxExpression::UnaryExpression(self.unary_expression(span, argument, operator).into())
+        JsxExpression::Expr(Expr::UnaryExpression(
+            self.unary_expression(span, argument, operator).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_update_expression(
+    pub fn jsx_expression_expr_update_expression(
         &mut self,
         span: Span,
         argument: SimpleAssignmentTarget,
         operator: UpdateOperator,
         prefix: bool,
     ) -> JsxExpression {
-        JsxExpression::UpdateExpression(
+        JsxExpression::Expr(Expr::UpdateExpression(
             self.update_expression(span, argument, operator, prefix)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_assignment_expression(
+    pub fn jsx_expression_expr_assignment_expression(
         &mut self,
         span: Span,
         left: AssignmentTarget,
         right: Expr,
         operator: AssignmentOperator,
     ) -> JsxExpression {
-        JsxExpression::AssignmentExpression(
+        JsxExpression::Expr(Expr::AssignmentExpression(
             self.assignment_expression(span, left, right, operator)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_conditional_expression(
+    pub fn jsx_expression_expr_conditional_expression(
         &mut self,
         span: Span,
         test: Expr,
         consequent: Expr,
         alternate: Expr,
     ) -> JsxExpression {
-        JsxExpression::ConditionalExpression(
+        JsxExpression::Expr(Expr::ConditionalExpression(
             self.conditional_expression(span, test, consequent, alternate)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_sequence_expression(
+    pub fn jsx_expression_expr_sequence_expression(
         &mut self,
         span: Span,
         expressions: TypedSubRange<Expr>,
     ) -> JsxExpression {
-        JsxExpression::SequenceExpression(self.sequence_expression(span, expressions).into())
+        JsxExpression::Expr(Expr::SequenceExpression(
+            self.sequence_expression(span, expressions).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_member_expression(
+    pub fn jsx_expression_expr_member_expression(
         &mut self,
         span: Span,
         object: Expr,
@@ -8381,13 +8714,13 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> JsxExpression {
-        JsxExpression::MemberExpression(
+        JsxExpression::Expr(Expr::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_call_expression(
+    pub fn jsx_expression_expr_call_expression(
         &mut self,
         span: Span,
         callee: Expr,
@@ -8395,47 +8728,49 @@ impl<'a> Ast<'a> {
         arguments: TypedSubRange<Argument>,
         optional: bool,
     ) -> JsxExpression {
-        JsxExpression::CallExpression(
+        JsxExpression::Expr(Expr::CallExpression(
             self.call_expression(span, callee, type_arguments, arguments, optional)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_chain_expression(
+    pub fn jsx_expression_expr_chain_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> JsxExpression {
-        JsxExpression::ChainExpression(self.chain_expression(span, expression).into())
+        JsxExpression::Expr(Expr::ChainExpression(
+            self.chain_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_new_expression(
+    pub fn jsx_expression_expr_new_expression(
         &mut self,
         span: Span,
         callee: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: TypedSubRange<Argument>,
     ) -> JsxExpression {
-        JsxExpression::NewExpression(
+        JsxExpression::Expr(Expr::NewExpression(
             self.new_expression(span, callee, type_arguments, arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_tagged_template_expression(
+    pub fn jsx_expression_expr_tagged_template_expression(
         &mut self,
         span: Span,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
         quasi: TemplateLiteral,
     ) -> JsxExpression {
-        JsxExpression::TaggedTemplateExpression(
+        JsxExpression::Expr(Expr::TaggedTemplateExpression(
             self.tagged_template_expression(span, tag, type_arguments, quasi)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_arrow_function_expression(
+    pub fn jsx_expression_expr_arrow_function_expression(
         &mut self,
         span: Span,
         expression: bool,
@@ -8445,7 +8780,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> JsxExpression {
-        JsxExpression::ArrowFunctionExpression(
+        JsxExpression::Expr(Expr::ArrowFunctionExpression(
             self.arrow_function_expression(
                 span,
                 expression,
@@ -8456,38 +8791,43 @@ impl<'a> Ast<'a> {
                 body,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_array_expression(
+    pub fn jsx_expression_expr_array_expression(
         &mut self,
         span: Span,
         elements: TypedSubRange<Option<Argument>>,
     ) -> JsxExpression {
-        JsxExpression::ArrayExpression(self.array_expression(span, elements).into())
+        JsxExpression::Expr(Expr::ArrayExpression(
+            self.array_expression(span, elements).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_object_expression(
+    pub fn jsx_expression_expr_object_expression(
         &mut self,
         span: Span,
         properties: TypedSubRange<ObjectPropertyKind>,
     ) -> JsxExpression {
-        JsxExpression::ObjectExpression(self.object_expression(span, properties).into())
+        JsxExpression::Expr(Expr::ObjectExpression(
+            self.object_expression(span, properties).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_parenthesized_expression(
+    pub fn jsx_expression_expr_parenthesized_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> JsxExpression {
-        JsxExpression::ParenthesizedExpression(
+        JsxExpression::Expr(Expr::ParenthesizedExpression(
             self.parenthesized_expression(span, expression).into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_function_expression(
+    pub fn jsx_expression_expr_function(
         &mut self,
         span: Span,
+        function_type: FunctionType,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
         params: FormalParameters,
@@ -8496,9 +8836,10 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
     ) -> JsxExpression {
-        JsxExpression::FunctionExpression(
-            self.function_expression(
+        JsxExpression::Expr(Expr::Function(
+            self.function(
                 span,
+                function_type,
                 id,
                 type_parameters,
                 params,
@@ -8508,12 +8849,13 @@ impl<'a> Ast<'a> {
                 r#async,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_class_expression(
+    pub fn jsx_expression_expr_class(
         &mut self,
         span: Span,
+        class_type: ClassType,
         decorators: TypedSubRange<Decorator>,
         id: Option<BindingIdentifier>,
         type_parameters: Option<TsTypeParameterDeclaration>,
@@ -8524,9 +8866,10 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         declare: bool,
     ) -> JsxExpression {
-        JsxExpression::ClassExpression(
-            self.class_expression(
+        JsxExpression::Expr(Expr::Class(
+            self.class(
                 span,
+                class_type,
                 decorators,
                 id,
                 type_parameters,
@@ -8538,10 +8881,10 @@ impl<'a> Ast<'a> {
                 declare,
             )
             .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_import_expression(
+    pub fn jsx_expression_expr_import_expression(
         &mut self,
         span: Span,
         source: Expr,
@@ -8549,113 +8892,129 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> JsxExpression {
-        JsxExpression::ImportExpression(
+        JsxExpression::Expr(Expr::ImportExpression(
             self.import_expression(span, source, options, phase, sync)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_await_expression(&mut self, span: Span, argument: Expr) -> JsxExpression {
-        JsxExpression::AwaitExpression(self.await_expression(span, argument).into())
+    pub fn jsx_expression_expr_await_expression(
+        &mut self,
+        span: Span,
+        argument: Expr,
+    ) -> JsxExpression {
+        JsxExpression::Expr(Expr::AwaitExpression(
+            self.await_expression(span, argument).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_yield_expression(
+    pub fn jsx_expression_expr_yield_expression(
         &mut self,
         span: Span,
         argument: Option<Expr>,
         delegate: bool,
     ) -> JsxExpression {
-        JsxExpression::YieldExpression(self.yield_expression(span, argument, delegate).into())
+        JsxExpression::Expr(Expr::YieldExpression(
+            self.yield_expression(span, argument, delegate).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_private_identifier(
+    pub fn jsx_expression_expr_private_identifier(
         &mut self,
         span: Span,
         name: AstUtf8,
     ) -> JsxExpression {
-        JsxExpression::PrivateIdentifier(self.private_identifier(span, name).into())
+        JsxExpression::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_ts_as_expression(
+    pub fn jsx_expression_expr_ts_as_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> JsxExpression {
-        JsxExpression::TsAsExpression(
+        JsxExpression::Expr(Expr::TsAsExpression(
             self.ts_as_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_ts_satisfies_expression(
+    pub fn jsx_expression_expr_ts_satisfies_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_annotation: TsType,
     ) -> JsxExpression {
-        JsxExpression::TsSatisfiesExpression(
+        JsxExpression::Expr(Expr::TsSatisfiesExpression(
             self.ts_satisfies_expression(span, expression, type_annotation)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_ts_type_assertion(
+    pub fn jsx_expression_expr_ts_type_assertion(
         &mut self,
         span: Span,
         type_annotation: TsType,
         expression: Expr,
     ) -> JsxExpression {
-        JsxExpression::TsTypeAssertion(
+        JsxExpression::Expr(Expr::TsTypeAssertion(
             self.ts_type_assertion(span, type_annotation, expression)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_ts_non_null_expression(
+    pub fn jsx_expression_expr_ts_non_null_expression(
         &mut self,
         span: Span,
         expression: Expr,
     ) -> JsxExpression {
-        JsxExpression::TsNonNullExpression(self.ts_non_null_expression(span, expression).into())
+        JsxExpression::Expr(Expr::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expression_ts_instantiation_expression(
+    pub fn jsx_expression_expr_ts_instantiation_expression(
         &mut self,
         span: Span,
         expression: Expr,
         type_arguments: TsTypeParameterInstantiation,
     ) -> JsxExpression {
-        JsxExpression::TsInstantiationExpression(
+        JsxExpression::Expr(Expr::TsInstantiationExpression(
             self.ts_instantiation_expression(span, expression, type_arguments)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_jsx_element(
+    pub fn jsx_expression_expr_jsx_element(
         &mut self,
         span: Span,
         opening_element: JsxOpeningElement,
         children: TypedSubRange<JsxChild>,
         closing_element: Option<JsxClosingElement>,
     ) -> JsxExpression {
-        JsxExpression::JsxElement(
+        JsxExpression::Expr(Expr::JsxElement(
             self.jsx_element(span, opening_element, children, closing_element)
                 .into(),
-        )
+        ))
     }
     #[inline]
-    pub fn jsx_expression_jsx_fragment(
+    pub fn jsx_expression_expr_jsx_fragment(
         &mut self,
         span: Span,
         opening_fragment: JsxOpeningFragment,
         children: TypedSubRange<JsxChild>,
         closing_fragment: JsxClosingFragment,
     ) -> JsxExpression {
-        JsxExpression::JsxFragment(
+        JsxExpression::Expr(Expr::JsxFragment(
             self.jsx_fragment(span, opening_fragment, children, closing_fragment)
                 .into(),
-        )
+        ))
+    }
+    #[inline]
+    pub fn jsx_expression_jsx_empty_expression(&mut self, span: Span) -> JsxExpression {
+        JsxExpression::JsxEmptyExpression(self.jsx_empty_expression(span).into())
     }
     #[inline]
     pub fn jsx_child_jsx_text(&mut self, span: Span, value: AstUtf8) -> JsxChild {

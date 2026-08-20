@@ -1,9 +1,9 @@
 use crate::{
-    Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, FormalParameterKind,
-    ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind, NumericLiteralKind,
-    PropertyKind, SourceType, Span, TsMappedTypeModifier, TsMethodSignatureKind,
-    TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange, UnaryOperator, UpdateOperator,
-    VariableKind, node_id::ExtraDataCompact,
+    Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, ClassType,
+    FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
+    MethodDefinitionKind, NumericLiteralKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
+    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
+    UnaryOperator, UpdateOperator, VariableKind, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn<'a>: Sized {
@@ -36,7 +36,9 @@ impl_clone_in_trivial!(ImportPhase);
 impl_clone_in_trivial!(SourceType);
 impl_clone_in_trivial!(MethodDefinitionKind);
 impl_clone_in_trivial!(Accessibility);
+impl_clone_in_trivial!(ClassType);
 impl_clone_in_trivial!(VariableKind);
+impl_clone_in_trivial!(FunctionType);
 impl_clone_in_trivial!(FormalParameterKind);
 impl_clone_in_trivial!(PropertyKind);
 impl_clone_in_trivial!(NumericLiteralKind);

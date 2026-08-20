@@ -54,6 +54,17 @@ pub enum Accessibility {
     Protected,
 }
 
+/// Class form.
+///
+/// `ClassDeclaration` for `class Foo {}`. `ClassExpression` for
+/// `const x = class {}`.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum ClassType {
+    ClassDeclaration,
+    ClassExpression,
+}
+
 /// Binary operators.
 ///
 /// ## Example
@@ -203,6 +214,17 @@ impl VariableKind {
     }
 }
 
+/// Form of a function node.
+///
+/// `FunctionDeclaration` for `function foo() {}`.
+/// `FunctionExpression` for `const x = function () {}`.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum FunctionType {
+    FunctionDeclaration,
+    FunctionExpression,
+}
+
 /// Which grammar production the parameter list came from.
 ///
 /// Constrains which binding forms are legal and whether duplicates are
@@ -281,12 +303,14 @@ pub enum ImportPhase {
 impl_extra_data_compact!(
     MethodDefinitionKind,
     Accessibility,
+    ClassType,
     BinaryOperator,
     LogicalOperator,
     UnaryOperator,
     UpdateOperator,
     AssignmentOperator,
     VariableKind,
+    FunctionType,
     FormalParameterKind,
     PropertyKind,
     NumericLiteralKind,
@@ -334,7 +358,7 @@ pub struct Program {
     hashbang: Option<Hashbang>,
 }
 
-#[ast(repr, group(Decl))]
+#[ast(repr, nested)]
 pub enum Stmt {
     BlockStatement(BlockStatement),
     BreakStatement(BreakStatement),
@@ -354,31 +378,20 @@ pub enum Stmt {
     TryStatement(TryStatement),
     WhileStatement(WhileStatement),
     WithStatement(WithStatement),
+    Declaration(Decl),
     ImportDeclaration(ImportDeclaration),
     ExportNamedDeclaration(ExportNamedDeclaration),
     ExportDefaultDeclaration(ExportDefaultDeclaration),
     ExportAllDeclaration(ExportAllDeclaration),
     TsExportAssignment(TsExportAssignment),
     TsNamespaceExportDeclaration(TsNamespaceExportDeclaration),
-
-    // =========== Decl ===========
-    VariableDeclaration(VariableDeclaration),
-    FunctionDeclaration(FunctionDeclaration),
-    ClassDeclaration(ClassDeclaration),
-    TsFunction(TsFunction),
-    TsTypeAliasDeclaration(TsTypeAliasDeclaration),
-    TsInterfaceDeclaration(TsInterfaceDeclaration),
-    TsEnumDeclaration(TsEnumDeclaration),
-    TsModuleDeclaration(TsModuleDeclaration),
-    TsGlobalDeclaration(TsGlobalDeclaration),
-    TsImportEqualsDeclaration(TsImportEqualsDeclaration),
 }
 
 #[ast(repr)]
 pub enum Decl {
     VariableDeclaration(VariableDeclaration),
-    FunctionDeclaration(FunctionDeclaration),
-    ClassDeclaration(ClassDeclaration),
+    Function(Function),
+    Class(Class),
     TsFunction(TsFunction),
     TsTypeAliasDeclaration(TsTypeAliasDeclaration),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
@@ -417,8 +430,8 @@ pub enum Expr {
     ArrayExpression(ArrayExpression),
     ObjectExpression(ObjectExpression),
     ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
+    Function(Function),
+    Class(Class),
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
@@ -432,35 +445,21 @@ pub enum Expr {
     JsxFragment(JsxFragment),
 }
 
-#[ast(repr, group(SimpleAssignmentTarget))]
+#[ast(repr, nested)]
 pub enum BindingPattern {
     BindingIdentifier(BindingIdentifier),
+    SimpleAssignmentTarget(SimpleAssignmentTarget),
     AssignmentPattern(AssignmentPattern),
     BindingRestElement(BindingRestElement),
     ArrayPattern(ArrayPattern),
     ObjectPattern(ObjectPattern),
-
-    // =========== SimpleAssignmentTarget ===========
-    IdentifierReference(IdentifierReference),
-    MemberExpression(MemberExpression),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
 }
 
-#[ast(repr, group(SimpleAssignmentTarget))]
+#[ast(repr, nested)]
 pub enum AssignmentTarget {
+    SimpleAssignmentTarget(SimpleAssignmentTarget),
     ArrayAssignmentTarget(ArrayPattern),
     ObjectAssignmentTarget(ObjectPattern),
-
-    // =========== SimpleAssignmentTarget ===========
-    IdentifierReference(IdentifierReference),
-    MemberExpression(MemberExpression),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
 }
 
 #[ast(repr)]
@@ -473,51 +472,14 @@ pub enum SimpleAssignmentTarget {
     TsNonNullExpression(TsNonNullExpression),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum PropertyKey {
     IdentifierName(IdentifierName),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
+    PrivateIdentifier(PrivateIdentifier),
     StringLiteral(StringLiteral),
     NumericLiteral(NumericLiteral),
     BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
+    Expr(Expr),
 }
 
 #[ast(repr)]
@@ -526,51 +488,10 @@ pub enum ModuleExportName {
     StringLiteral(StringLiteral),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum Argument {
+    Expr(Expr),
     SpreadElement(SpreadElement),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
 }
 
 #[ast(repr)]
@@ -579,115 +500,22 @@ pub enum ObjectPropertyKind {
     SpreadElement(SpreadElement),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum ForStatementInit {
     VariableDeclaration(VariableDeclaration),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
+    Expr(Expr),
 }
 
-#[ast(repr, group(AssignmentTarget))]
+#[ast(repr, nested)]
 pub enum ForStatementLeft {
     VariableDeclaration(VariableDeclaration),
-
-    // =========== AssignmentTarget ===========
-    ArrayAssignmentTarget(ArrayPattern),
-    ObjectAssignmentTarget(ObjectPattern),
-
-    // =========== SimpleAssignmentTarget ===========
-    IdentifierReference(IdentifierReference),
-    MemberExpression(MemberExpression),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
+    AssignmentTarget(AssignmentTarget),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum ArrowFunctionBody {
     FunctionBody(FunctionBody),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
+    Expr(Expr),
 }
 
 #[ast(repr)]
@@ -696,24 +524,10 @@ pub enum FormalParameterItem {
     TsParameterProperty(TsParameterProperty),
 }
 
-#[ast(repr, group(BindingPattern))]
+#[ast(repr, nested)]
 pub enum FormalParameterPattern {
+    BindingPattern(BindingPattern),
     TsThisParameter(TsThisParameter),
-
-    // =========== BindingPattern ===========
-    BindingIdentifier(BindingIdentifier),
-    AssignmentPattern(AssignmentPattern),
-    BindingRestElement(BindingRestElement),
-    ArrayPattern(ArrayPattern),
-    ObjectPattern(ObjectPattern),
-
-    // =========== SimpleAssignmentTarget ===========
-    IdentifierReference(IdentifierReference),
-    MemberExpression(MemberExpression),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
 }
 
 #[ast(repr)]
@@ -732,55 +546,13 @@ pub enum ImportDeclarationSpecifier {
     ImportNamespaceSpecifier(ImportNamespaceSpecifier),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum ExportDefaultDeclarationKind {
-    // =========== Declaration ===========
-    FunctionDeclaration(FunctionDeclaration),
-    ClassDeclaration(ClassDeclaration),
+    Expr(Expr),
+    Function(Function),
+    Class(Class),
     TsFunction(TsFunction),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
-    TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
 }
 
 /// The `super` keyword used as an expression head.
@@ -1550,7 +1322,7 @@ pub struct Decorator {
     expression: Expr,
 }
 
-/// A class declaration.
+/// A class declaration or expression.
 ///
 /// See: <https://tc39.es/ecma262/#prod-ClassDeclaration>
 ///
@@ -1568,32 +1340,8 @@ pub struct Decorator {
 /// `@dec class` populates `decorators`. `abstract class` sets `abstract`.
 /// `declare class` sets `declare`.
 #[ast]
-pub struct ClassDeclaration {
-    /// `decorator[]`
-    decorators: Vec<Decorator>,
-    /// `binding_identifier`. `None` for anonymous default exports.
-    id: Option<BindingIdentifier>,
-    /// `ts_type_parameter_declaration`. `None` when the class has no `<T, U>`
-    /// parameters.
-    type_parameters: Option<TsTypeParameterDeclaration>,
-    /// any expression. `None` when the class has no `extends` clause.
-    super_class: Option<Expr>,
-    /// `ts_type_parameter_instantiation`. `None` when `extends` has no `<T>`
-    /// arguments.
-    super_type_arguments: Option<TsTypeParameterInstantiation>,
-    /// `ts_class_implements[]`. Empty when the class has no `implements`
-    /// clause.
-    implements: Vec<TsClassImplements>,
-    /// `class_body`
-    body: ClassBody,
-    r#abstract: bool,
-    /// true for `declare class`.
-    declare: bool,
-}
-
-/// A class expression.
-#[ast]
-pub struct ClassExpression {
+pub struct Class {
+    class_type: ClassType,
     /// `decorator[]`
     decorators: Vec<Decorator>,
     /// `binding_identifier`. `None` for anonymous class expressions.
@@ -1650,8 +1398,8 @@ pub struct MethodDefinition {
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
-    /// `function_expression`
-    value: FunctionExpression,
+    /// `function`
+    value: Function,
     kind: MethodDefinitionKind,
     /// true when the key is written inside `[...]`.
     computed: bool,
@@ -1722,7 +1470,7 @@ pub struct StaticBlock {
     body: Vec<Stmt>,
 }
 
-/// A function declaration.
+/// A function declaration or expression.
 ///
 /// See: <https://tc39.es/ecma262/#prod-FunctionDeclaration>
 ///
@@ -1737,24 +1485,8 @@ pub struct StaticBlock {
 /// //                              ^^^^^^^^^^^^ body
 /// ```
 #[ast]
-pub struct FunctionDeclaration {
-    /// `binding_identifier`. `None` for anonymous default exports.
-    id: Option<BindingIdentifier>,
-    /// `ts_type_parameter_declaration`. `None` when absent.
-    type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `formal_parameters`
-    params: FormalParameters,
-    /// `ts_type_annotation`. `None` when absent.
-    return_type: Option<TsTypeAnnotation>,
-    /// `function_body`
-    body: FunctionBody,
-    generator: bool,
-    r#async: bool,
-}
-
-/// A function expression.
-#[ast]
-pub struct FunctionExpression {
+pub struct Function {
+    function_type: FunctionType,
     /// `binding_identifier`. `None` for anonymous functions.
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when absent.

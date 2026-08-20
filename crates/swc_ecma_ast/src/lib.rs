@@ -14,7 +14,6 @@ mod generated {
     mod ast_builder;
     mod ast_clone_in;
     pub(crate) mod ast_extra_compact;
-    pub(crate) mod ast_groups;
     pub mod ast_node;
     mod ast_property;
     pub(crate) mod ast_visitor;

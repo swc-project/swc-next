@@ -4,7 +4,7 @@ use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     Ast, AstWtf8, ExportAllDeclaration, ExportDefaultDeclaration, ExportDefaultDeclarationKindData,
     ExportNamedDeclaration, ExportSpecifier, ImportOrExportKind, NodeId, NodeKindData, ReferenceId,
-    SymbolId, match_expr,
+    SymbolId,
 };
 
 /// The ECMAScript export occurrences of a source text module, in source
@@ -214,17 +214,15 @@ impl<'a> ModuleRecordBuilder<'a> {
         let value = declaration.declaration(tree);
         let expression = value.is_expr(tree);
         let binding = match tree.export_default_declaration_kind_data(value) {
-            ExportDefaultDeclarationKindData::FunctionDeclaration(function) => {
+            ExportDefaultDeclarationKindData::Function(function) => {
                 function.id(tree).map(|id| id.node_id())
             }
-            ExportDefaultDeclarationKindData::ClassDeclaration(class) => {
-                class.id(tree).map(|id| id.node_id())
-            }
+            ExportDefaultDeclarationKindData::Class(class) => class.id(tree).map(|id| id.node_id()),
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(ts_interface_declaration) => {
                 Some(ts_interface_declaration.id(tree).node_id())
             }
             ExportDefaultDeclarationKindData::TsFunction(_)
-            | match_expr!(ExportDefaultDeclarationKindData) => None,
+            | ExportDefaultDeclarationKindData::Expr(_) => None,
         };
         self.exports.push(RawExportEntry {
             node: declaration.node_id(),

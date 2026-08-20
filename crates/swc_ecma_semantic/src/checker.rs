@@ -6,27 +6,27 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
     AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
-    BlockStatement, CallExpression, CatchClause, ClassBody, ClassDeclaration, ClassExpression,
-    Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
-    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, FunctionBody, FunctionDeclaration, FunctionExpression, IdentifierReference,
-    ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxOpeningElement,
-    Label, MemberExpression, NodeId, NodeKind, NodeKindData, ObjectPattern,
-    ParenthesizedExpression, PropertyDefinition, PropertyKey, ScopeId, Severity, Span, StaticBlock,
-    SwitchCase, SwitchStatement, SymbolId, TsArrayType, TsAsExpression, TsCallSignatureDeclaration,
-    TsClassImplements, TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType,
-    TsEnumBody, TsEnumDeclaration, TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType,
-    TsGlobalDeclaration, TsImportEqualsDeclaration, TsImportType, TsIndexSignature,
-    TsIndexedAccessType, TsInferType, TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage,
-    TsIntersectionType, TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType,
-    TsLiteralType, TsMappedType, TsMethodDefinition, TsMethodSignature, TsModuleBlock,
-    TsModuleDeclaration, TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression,
-    TsOptionalType, TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType,
-    TsSatisfiesExpression, TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration,
-    TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
-    TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
-    TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
-    VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith, WithStatement,
+    BlockStatement, CallExpression, CatchClause, Class, ClassBody, Decorator, Diagnostic,
+    Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
+    ExportSpecifier, ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function,
+    FunctionBody, FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind,
+    ImportSpecifier, JsxClosingElement, JsxOpeningElement, Label, MemberExpression, NodeId,
+    NodeKind, NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition,
+    PropertyKey, ScopeId, Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId,
+    TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
+    TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
+    TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
+    TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType,
+    TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType, TsLiteralType, TsMappedType,
+    TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsNamedTupleMember,
+    TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType, TsParenthesizedType,
+    TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression, TsTemplateLiteralType,
+    TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
+    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
+    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator,
+    UpdateExpression, VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
+    WithStatement,
 };
 
 use crate::{
@@ -409,24 +409,15 @@ fn super_call_validity(context: &SemanticVisitCtx<'_, '_>) -> SuperCallValidity 
     while let Some(ancestor) = ancestors.next() {
         match context.ast.node_kind(ancestor) {
             NodeKind::ArrowFunctionExpression => {}
-            NodeKind::FunctionDeclaration | NodeKind::FunctionExpression => {
+            NodeKind::Function => {
                 if let Some(parent) = ancestors.next()
                     && let NodeKindData::MethodDefinition(method) = context.ast.kind_data(parent)
                     && method.kind(context.ast)
                         == swc_next_ecma_ast::MethodDefinitionKind::Constructor
                 {
                     for class in ancestors {
-                        let has_super_class = match context.ast.kind_data(class) {
-                            NodeKindData::ClassDeclaration(class) => {
-                                Some(class.super_class(context.ast).is_some())
-                            }
-                            NodeKindData::ClassExpression(class) => {
-                                Some(class.super_class(context.ast).is_some())
-                            }
-                            _ => None,
-                        };
-                        if let Some(has_super_class) = has_super_class {
-                            return if has_super_class {
+                        if let NodeKindData::Class(class) = context.ast.kind_data(class) {
+                            return if class.super_class(context.ast).is_some() {
                                 SuperCallValidity::Valid
                             } else {
                                 SuperCallValidity::NoExtends
@@ -452,7 +443,7 @@ fn is_super_property_valid(context: &SemanticVisitCtx<'_, '_>) -> bool {
     while let Some(ancestor) = ancestors.next() {
         match context.ast.node_kind(ancestor) {
             NodeKind::ArrowFunctionExpression => {}
-            NodeKind::FunctionDeclaration | NodeKind::FunctionExpression => {
+            NodeKind::Function => {
                 if let Some(parent) = ancestors.next() {
                     match context.ast.kind_data(parent) {
                         NodeKindData::MethodDefinition(_) => return true,
@@ -488,10 +479,7 @@ fn is_at_program_level(context: &SemanticVisitCtx<'_, '_>) -> bool {
 fn is_function_boundary(kind: NodeKind) -> bool {
     matches!(
         kind,
-        NodeKind::FunctionDeclaration
-            | NodeKind::FunctionExpression
-            | NodeKind::ArrowFunctionExpression
-            | NodeKind::StaticBlock
+        NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::StaticBlock
     )
 }
 
@@ -535,10 +523,7 @@ fn is_inside_iteration(context: &SemanticVisitCtx<'_, '_>) -> bool {
 fn is_new_target_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.node_kind(ancestor) {
-            NodeKind::FunctionDeclaration
-            | NodeKind::FunctionExpression
-            | NodeKind::StaticBlock
-            | NodeKind::PropertyDefinition => {
+            NodeKind::Function | NodeKind::StaticBlock | NodeKind::PropertyDefinition => {
                 return true;
             }
             NodeKind::ArrowFunctionExpression => {}
@@ -574,8 +559,7 @@ fn find_label(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> LabelSearch {
                     };
                 }
             }
-            NodeKindData::FunctionDeclaration(_)
-            | NodeKindData::FunctionExpression(_)
+            NodeKindData::Function(_)
             | NodeKindData::ArrowFunctionExpression(_)
             | NodeKindData::StaticBlock(_) => crossed_boundary = true,
             _ => {}
@@ -614,8 +598,7 @@ fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> C
                     };
                 }
             }
-            NodeKindData::FunctionDeclaration(_)
-            | NodeKindData::FunctionExpression(_)
+            NodeKindData::Function(_)
             | NodeKindData::ArrowFunctionExpression(_)
             | NodeKindData::StaticBlock(_) => crossed_boundary = true,
             _ => {}
@@ -629,9 +612,7 @@ fn is_inside_static_block(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.node_kind(ancestor) {
             NodeKind::StaticBlock => return true,
-            NodeKind::FunctionDeclaration
-            | NodeKind::FunctionExpression
-            | NodeKind::ArrowFunctionExpression => return false,
+            NodeKind::Function | NodeKind::ArrowFunctionExpression => return false,
             _ => {}
         }
     }
@@ -643,7 +624,7 @@ fn is_inside_static_block(context: &SemanticVisitCtx<'_, '_>) -> bool {
 fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.node_kind(ancestor) {
-            NodeKind::FunctionDeclaration | NodeKind::FunctionExpression => return true,
+            NodeKind::Function => return true,
             NodeKind::PropertyDefinition | NodeKind::StaticBlock => return false,
             NodeKind::ArrowFunctionExpression | NodeKind::Program => {}
             _ => {}
@@ -665,8 +646,7 @@ fn find_formal_parameters(
                 return Some(parameters);
             }
             NodeKindData::Program(_)
-            | NodeKindData::FunctionDeclaration(_)
-            | NodeKindData::FunctionExpression(_)
+            | NodeKindData::Function(_)
             | NodeKindData::ArrowFunctionExpression(_) => {
                 return None;
             }
@@ -1110,8 +1090,7 @@ impl Checker<'_, '_> {
                                     duplicate = true;
                                 }
                             }
-                            NodeKindData::FunctionDeclaration(_)
-                            | NodeKindData::FunctionExpression(_)
+                            NodeKindData::Function(_)
                             | NodeKindData::ArrowFunctionExpression(_)
                             | NodeKindData::StaticBlock(_) => break,
                             _ => {}
@@ -1139,14 +1118,7 @@ impl Checker<'_, '_> {
                 let mut parameter = None;
                 for node in context.ancestors() {
                     match context.ast.kind_data(node) {
-                        NodeKindData::FunctionDeclaration(function) => {
-                            parameter = ecmascript::find_non_simple_parameter(
-                                context.ast,
-                                function.params(context.ast),
-                            );
-                            break;
-                        }
-                        NodeKindData::FunctionExpression(function) => {
+                        NodeKindData::Function(function) => {
                             parameter = ecmascript::find_non_simple_parameter(
                                 context.ast,
                                 function.params(context.ast),
@@ -1251,7 +1223,10 @@ impl Checker<'_, '_> {
                     }
                 }
             }
-            NodeKindData::FunctionDeclaration(function) => {
+            NodeKindData::Function(function) => {
+                if function.function_type(context.ast) != FunctionType::FunctionDeclaration {
+                    return;
+                }
                 let strict = context.state.scope.is_strict();
                 let mut through_labels = false;
                 let mut ancestors = context.ancestors();
@@ -1430,8 +1405,7 @@ impl Checker<'_, '_> {
                                     Some("Cannot use await in class static initialization block");
                                 break;
                             }
-                            NodeKind::FunctionDeclaration
-                            | NodeKind::FunctionExpression
+                            NodeKind::Function
                             | NodeKind::ArrowFunctionExpression
                             | NodeKind::Program => break,
                             _ => {}
@@ -1844,31 +1818,17 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     //   IsLabelledFunction prevents labelled functions in if/iteration/with bodies.
     // https://tc39.es/ecma262/#sec-functiondeclarations-in-ifstatement-statement-clauses (B.3.3)
     //   Bare FunctionDeclaration in if/else is allowed in non-strict code only.
-    fn visit_function_declaration(&mut self, node: FunctionDeclaration) {
+    fn visit_function(&mut self, node: Function) {
         let annex_b_if_body =
             is_annex_b_if_function(self.context.ast, self.context.current_node(), node);
         self.context
             .state
-            .enter_function_declaration(self.context.ast, node, annex_b_if_body);
+            .enter_function(self.context.ast, node, annex_b_if_body);
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
         state
             .symbols
-            .enter_function_declaration(self.context.ast, node, &state.scope);
-        node.visit_children_with(self);
-        self.context.state.symbols.exit_saved_context();
-        self.leave_node(node.node_id());
-        self.context.state.exit_scope(node.node_id());
-    }
-    fn visit_function_expression(&mut self, node: FunctionExpression) {
-        self.context
-            .state
-            .enter_function_expression(self.context.ast, node);
-        self.context.enter_node(node.node_id());
-        let state = &mut self.context.state;
-        state
-            .symbols
-            .enter_function_expression(self.context.ast, node, &state.scope);
+            .enter_function(self.context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
@@ -2349,27 +2309,13 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_decorator();
         self.leave_node(node.node_id());
     }
-    fn visit_class_declaration(&mut self, node: ClassDeclaration) {
-        self.context.state.enter_class_declaration(node);
+    fn visit_class(&mut self, node: Class) {
+        self.context.state.enter_class(self.context.ast, node);
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
         state
             .symbols
-            .enter_class_declaration(self.context.ast, node, &state.scope);
-        node.visit_children_with(self);
-        self.context.state.symbols.exit_saved_context();
-        self.context.state.exit_scope(node.node_id());
-        self.leave_node(node.node_id());
-    }
-    fn visit_class_expression(&mut self, node: ClassExpression) {
-        self.context
-            .state
-            .enter_class_expression(self.context.ast, node);
-        self.context.enter_node(node.node_id());
-        let state = &mut self.context.state;
-        state
-            .symbols
-            .enter_class_expression(self.context.ast, node, &state.scope);
+            .enter_class(self.context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
         self.context.state.exit_scope(node.node_id());
@@ -2622,11 +2568,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
 }
 
-fn is_annex_b_if_function(
-    tree: &Ast<'_>,
-    parent: Option<NodeId>,
-    function: FunctionDeclaration,
-) -> bool {
+fn is_annex_b_if_function(tree: &Ast<'_>, parent: Option<NodeId>, function: Function) -> bool {
+    if function.function_type(tree) != FunctionType::FunctionDeclaration {
+        return false;
+    }
     let Some(parent) = parent else {
         return false;
     };

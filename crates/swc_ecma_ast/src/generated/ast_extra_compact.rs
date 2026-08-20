@@ -652,17 +652,7 @@ impl<'a> ExtraDataCompact<'a> for Decorator {
         Self(unsafe { data.node_id })
     }
 }
-impl<'a> ExtraDataCompact<'a> for ClassDeclaration {
-    #[inline]
-    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(self.node_id())
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
-    }
-}
-impl<'a> ExtraDataCompact<'a> for ClassExpression {
+impl<'a> ExtraDataCompact<'a> for Class {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData::from_node_id(self.node_id())
@@ -712,17 +702,7 @@ impl<'a> ExtraDataCompact<'a> for StaticBlock {
         Self(unsafe { data.node_id })
     }
 }
-impl<'a> ExtraDataCompact<'a> for FunctionDeclaration {
-    #[inline]
-    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(self.node_id())
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
-    }
-}
-impl<'a> ExtraDataCompact<'a> for FunctionExpression {
+impl<'a> ExtraDataCompact<'a> for Function {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData::from_node_id(self.node_id())

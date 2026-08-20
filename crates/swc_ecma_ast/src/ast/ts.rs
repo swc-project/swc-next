@@ -2,7 +2,7 @@ use std::mem;
 
 use swc_next_ast_macros::ast;
 
-use super::{js::*, jsx::*};
+use super::js::*;
 use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
 
 macro_rules! impl_extra_data_compact {
@@ -137,14 +137,11 @@ pub enum TsImportTypeQualifier {
     TsQualifiedName(TsQualifiedName),
 }
 
-#[ast(repr, group(TsTypeName))]
+#[ast(repr, nested)]
 pub enum TsTypeQueryExprName {
+    TsTypeName(TsTypeName),
     ThisExpression(ThisExpression),
     TsImportType(TsImportType),
-
-    // =========== TsTypeName ===========
-    IdentifierReference(IdentifierReference),
-    TsQualifiedName(TsQualifiedName),
 }
 
 #[ast(repr)]
@@ -157,49 +154,10 @@ pub enum TsLiteral {
     UnaryExpression(UnaryExpression),
 }
 
-#[ast(repr, group(TsType))]
+#[ast(repr, nested)]
 pub enum TsTupleElement {
+    TsType(TsType),
     TsNamedTupleMember(TsNamedTupleMember),
-
-    // =========== TsType ===========
-    TsAnyKeyword(TsAnyKeyword),
-    TsUnknownKeyword(TsUnknownKeyword),
-    TsNeverKeyword(TsNeverKeyword),
-    TsVoidKeyword(TsVoidKeyword),
-    TsNullKeyword(TsNullKeyword),
-    TsUndefinedKeyword(TsUndefinedKeyword),
-    TsStringKeyword(TsStringKeyword),
-    TsNumberKeyword(TsNumberKeyword),
-    TsBigIntKeyword(TsBigIntKeyword),
-    TsBooleanKeyword(TsBooleanKeyword),
-    TsSymbolKeyword(TsSymbolKeyword),
-    TsObjectKeyword(TsObjectKeyword),
-    TsIntrinsicKeyword(TsIntrinsicKeyword),
-    TsThisType(TsThisType),
-    TsTypeReference(TsTypeReference),
-    TsTypeQuery(TsTypeQuery),
-    TsImportType(TsImportType),
-    TsLiteralType(TsLiteralType),
-    TsTemplateLiteralType(TsTemplateLiteralType),
-    TsArrayType(TsArrayType),
-    TsIndexedAccessType(TsIndexedAccessType),
-    TsTupleType(TsTupleType),
-    TsOptionalType(TsOptionalType),
-    TsRestType(TsRestType),
-    TsJsDocNullableType(TsJsDocNullableType),
-    TsJsDocNonNullableType(TsJsDocNonNullableType),
-    TsJsDocUnknownType(TsJsDocUnknownType),
-    TsUnionType(TsUnionType),
-    TsIntersectionType(TsIntersectionType),
-    TsConditionalType(TsConditionalType),
-    TsInferType(TsInferType),
-    TsTypeOperator(TsTypeOperator),
-    TsParenthesizedType(TsParenthesizedType),
-    TsFunctionType(TsFunctionType),
-    TsConstructorType(TsConstructorType),
-    TsTypePredicate(TsTypePredicate),
-    TsTypeLiteral(TsTypeLiteral),
-    TsMappedType(TsMappedType),
 }
 
 #[ast(repr)]
@@ -217,51 +175,12 @@ pub enum TsTypePredicateName {
     TsThisType(TsThisType),
 }
 
-#[ast(repr, group(Expr))]
+#[ast(repr, nested)]
 pub enum TsEnumMemberName {
     IdentifierName(IdentifierName),
-
-    // =========== Expr ===========
-    IdentifierReference(IdentifierReference),
-    ThisExpression(ThisExpression),
-    Super(Super),
-    MetaProperty(MetaProperty),
     StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
-    BooleanLiteral(BooleanLiteral),
-    NullLiteral(NullLiteral),
-    RegExpLiteral(RegExpLiteral),
     TemplateLiteral(TemplateLiteral),
-    BinaryExpression(BinaryExpression),
-    LogicalExpression(LogicalExpression),
-    UnaryExpression(UnaryExpression),
-    UpdateExpression(UpdateExpression),
-    AssignmentExpression(AssignmentExpression),
-    ConditionalExpression(ConditionalExpression),
-    SequenceExpression(SequenceExpression),
-    MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
-    ChainExpression(ChainExpression),
-    NewExpression(NewExpression),
-    TaggedTemplateExpression(TaggedTemplateExpression),
-    ArrowFunctionExpression(ArrowFunctionExpression),
-    ArrayExpression(ArrayExpression),
-    ObjectExpression(ObjectExpression),
-    ParenthesizedExpression(ParenthesizedExpression),
-    FunctionExpression(FunctionExpression),
-    ClassExpression(ClassExpression),
-    ImportExpression(ImportExpression),
-    AwaitExpression(AwaitExpression),
-    YieldExpression(YieldExpression),
-    PrivateIdentifier(PrivateIdentifier),
-    TsAsExpression(TsAsExpression),
-    TsSatisfiesExpression(TsSatisfiesExpression),
-    TsTypeAssertion(TsTypeAssertion),
-    TsNonNullExpression(TsNonNullExpression),
-    TsInstantiationExpression(TsInstantiationExpression),
-    JsxElement(JsxElement),
-    JsxFragment(JsxFragment),
+    Expr(Expr),
 }
 
 #[ast(repr)]
@@ -277,13 +196,10 @@ pub enum TsModuleBody {
     TsModuleDeclaration(TsModuleDeclaration),
 }
 
-#[ast(repr, group(TsTypeName))]
+#[ast(repr, nested)]
 pub enum TsModuleReference {
+    TsTypeName(TsTypeName),
     TsExternalModuleReference(TsExternalModuleReference),
-
-    // =========== TsTypeName ===========
-    IdentifierReference(IdentifierReference),
-    TsQualifiedName(TsQualifiedName),
 }
 
 /// A body-less TypeScript function declaration or overload signature.
