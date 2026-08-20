@@ -36,7 +36,7 @@ First run `./scripts/clone_fixtures.sh`. Review changes under `tasks/testsuite/s
 | --------- | -------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
 | Parser    | Test262, TypeScript, Babel | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance`     |
 | Codegen   | Test262, TypeScript, Babel | `parse -> print` is idempotent                       | Same as above                                  |
-| Resolver  | SWC resolver fixtures      | Name resolution text matches `swc-conformance`      | Same as above                                  |
+| Resolver  | SWC resolver fixtures      | Name resolution text matches `swc-conformance`       | Same as above                                  |
 | Transform | Babel                      | Normalized output matches Babel fixtures             | `cargo run -p testsuite --bin babel_transform` |
 | ESTree    | Test262, TypeScript        | N-API AST matches `estree-conformance`               | `pnpm --filter @swc-next/core conformance`     |
 
