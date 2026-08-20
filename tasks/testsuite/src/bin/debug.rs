@@ -1,11 +1,12 @@
 use clap::{Parser, ValueEnum};
 use testsuite::{
     cases::{
-        Case, babel::BabelTransformCase, babel_parser::BabelParserCase, test262::Test262Case,
-        typescript::TypeScriptCase,
+        Case, babel::BabelTransformCase, babel_parser::BabelParserCase,
+        swc_resolver::SwcResolverCase, test262::Test262Case, typescript::TypeScriptCase,
     },
     runner::{
-        Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner, parser::ParserRunner,
+        Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
+        parser::ParserRunner, resolver::ResolverRunner,
     },
 };
 
@@ -15,6 +16,7 @@ enum RunnerName {
     Codegen,
     #[value(name = "babel_transform")]
     BabelTransform,
+    Resolver,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -24,6 +26,8 @@ enum CaseSet {
     #[value(name = "typescript")]
     TypeScript,
     Babel,
+    #[value(name = "swc_resolver")]
+    SwcResolver,
 }
 
 #[derive(Parser)]
@@ -53,6 +57,10 @@ fn main() {
         RunnerName::BabelTransform => {
             Err("`babel_transform` runner requires `--case babel`".into())
         }
+        RunnerName::Resolver if matches!(args.case, CaseSet::SwcResolver) => {
+            run_filtered::<ResolverRunner, SwcResolverCase>(&args.filter)
+        }
+        RunnerName::Resolver => Err("`resolver` runner requires `--case swc_resolver`".into()),
     };
     println!("{:?}", res);
 }
@@ -65,6 +73,7 @@ where
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::TypeScript => run_filtered::<R, TypeScriptCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
+        CaseSet::SwcResolver => Err("parser/codegen do not run SWC resolver cases".into()),
     }
 }
 
