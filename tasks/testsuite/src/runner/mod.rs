@@ -7,6 +7,7 @@ use crate::{cases::Case, suite::TestResult};
 pub mod babel_transform;
 pub mod codegen;
 pub mod parser;
+pub mod resolver;
 
 pub trait Runner<C: Case> {
     const NAME: &'static str;
