@@ -176,7 +176,7 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
         let exported = node.exported(self.ast);
         self.write_module_export_name(local, !self.export_from);
         if !self.is_shorthand(exported, local) {
-            self.write_module_export_name(exported, false);
+            self.write_module_export_name(exported, !self.export_from);
         }
     }
 

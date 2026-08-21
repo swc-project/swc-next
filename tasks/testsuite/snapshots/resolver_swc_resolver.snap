@@ -1,6 +1,6 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 21252/21723 (97.83%)
+Positive Passed: 21256/21723 (97.85%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/21723 (0.00%)
 Failed: tasks/testsuite/fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10936/input.js - parser: Expected ',' or ']' in array, but found 'promise' at 941..948
@@ -347,14 +347,10 @@ Failed: tasks/testsuite/fixtures/test262/test/language/literals/numeric/numeric-
 Failed: tasks/testsuite/fixtures/test262/test/language/literals/string/unicode-escape-nls-err-double.js - parser: Invalid Unicode escape sequence at 1107..1111
 Failed: tasks/testsuite/fixtures/test262/test/language/literals/string/unicode-escape-nls-err-single.js - parser: Invalid Unicode escape sequence at 1104..1108
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/early-export-ill-formed-string.js - parser: An export name cannot include a unicode lone surrogate at 550..558
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/early-import-arguments.js - test262/test/language/module-code/early-import-arguments.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/early-import-eval.js - test262/test/language/module-code/early-import-eval.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/export-expname-from-as-unpaired-surrogate.js - parser: An export name cannot include a unicode lone surrogate at 521..529
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/export-expname-from-unpaired-surrogate.js - parser: An export name cannot include a unicode lone surrogate at 512..520
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/export-expname-import-unpaired-surrogate.js - parser: An export name cannot include a unicode lone surrogate at 512..520
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/export-expname-unpaired-surrogate.js - parser: An export name cannot include a unicode lone surrogate at 519..527
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/instn-named-id-name.js - test262/test/language/module-code/instn-named-id-name.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/instn-star-id-name.js - test262/test/language/module-code/instn-star-id-name.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/parse-err-semi-named-export.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'null' at 769..773
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/source-phase-import/import-source-binding-name-2_FIXTURE.js - parser: Expected module specifier, but found 'from' at 720..724
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/async-module-tla_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '0' at 160..161
