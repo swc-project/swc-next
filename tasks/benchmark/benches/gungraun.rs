@@ -13,7 +13,7 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze, name_resolver::resolver as resolve_names};
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
 const BACKBONE: &str = include_str!("../files/backbone-1.1.0.js");
@@ -88,6 +88,12 @@ fn bench_semantic_with_syntax_check(ast: Ast<'static>) {
             ..AnalyzeOptions::default()
         },
     ));
+}
+
+#[library_benchmark]
+#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
+fn bench_resolver(ast: Ast<'static>) {
+    black_box(resolve_names(&ast));
 }
 
 #[library_benchmark]
@@ -267,6 +273,8 @@ library_benchmark_group!(
     benchmarks = [bench_semantic, bench_semantic_with_syntax_check]
 );
 
+library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
+
 library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
 
 library_benchmark_group!(
@@ -279,5 +287,5 @@ main!(
         LibraryBenchmarkConfig::default().tool(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
-    library_benchmark_groups = [parser, semantic, codegen, visit]
+    library_benchmark_groups = [parser, semantic, resolver, codegen, visit]
 );
