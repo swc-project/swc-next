@@ -120,6 +120,10 @@ impl ResolverDisplayVisitor<'_, '_> {
             self.write_identifier_name(identifier, context);
         }
     }
+
+    fn is_shorthand<N: AstNode + GetSpan>(&self, name: ModuleExportName, local: N) -> bool {
+        name.span(self.ast) == local.span(self.ast)
+    }
 }
 
 impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
@@ -160,7 +164,7 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
         let local = node.local(self.ast);
         let imported = node.imported(self.ast);
         local.visit_with(self);
-        if imported.node_id() != local.node_id() {
+        if !self.is_shorthand(imported, local) {
             self.write_module_export_name(imported, false);
         }
     }
@@ -185,9 +189,35 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
         let local = node.local(self.ast);
         let exported = node.exported(self.ast);
         self.write_module_export_name(local, !self.export_from);
-        if exported.node_id() != local.node_id() {
+        if !self.is_shorthand(exported, local) {
             self.write_module_export_name(exported, false);
         }
+    }
+
+    fn visit_class(&mut self, node: Class) {
+        node.id(self.ast).visit_with(self);
+        node.decorators(self.ast).visit_with(self);
+        node.body(self.ast).visit_with(self);
+        node.super_class(self.ast).visit_with(self);
+    }
+
+    fn visit_method_definition(&mut self, node: MethodDefinition) {
+        node.key(self.ast).visit_with(self);
+        let function = node.value(self.ast);
+        function.params(self.ast).visit_with(self);
+        node.decorators(self.ast).visit_with(self);
+        function.body(self.ast).visit_with(self);
+    }
+
+    fn visit_property_definition(&mut self, node: PropertyDefinition) {
+        node.key(self.ast).visit_with(self);
+        node.value(self.ast).visit_with(self);
+        node.decorators(self.ast).visit_with(self);
+    }
+
+    fn visit_do_while_statement(&mut self, node: DoWhileStatement) {
+        node.test(self.ast).visit_with(self);
+        node.body(self.ast).visit_with(self);
     }
 
     fn visit_jsx_element_name(&mut self, node: JsxElementName) {
