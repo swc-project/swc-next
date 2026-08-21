@@ -466,6 +466,15 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         }
     }
 
+    fn visit_method_definition(&mut self, method: MethodDefinition) {
+        method.key(self.ast).visit_with(self);
+        let function = method.value(self.ast);
+        let body = function.body(self.ast);
+        self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+            child.visit_function_contents(function);
+        });
+    }
+
     fn visit_static_block(&mut self, block: StaticBlock) {
         self.with_child(ScopeKind::Block, Some(block.node_id()), |child| {
             block.body(child.ast).visit_with(child);
@@ -476,6 +485,43 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         self.with_child(ScopeKind::Block, Some(object.node_id()), |child| {
             object.visit_children_with(child);
         });
+    }
+
+    fn visit_object_property(&mut self, property: ObjectProperty) {
+        property.key(self.ast).visit_with(self);
+        let value = property.value(self.ast);
+        let ExprData::Function(function) = self.ast.expr_data(value) else {
+            value.visit_with(self);
+            return;
+        };
+
+        let body = function.body(self.ast);
+        match property.kind(self.ast) {
+            PropertyKind::Get => {
+                self.with_child(ScopeKind::Block, Some(body.node_id()), |child| {
+                    body.body(child.ast).visit_with(child);
+                });
+            }
+            PropertyKind::Set => {
+                self.with_child(ScopeKind::Fn, Some(function.node_id()), |child| {
+                    let parameters = function.params(child.ast);
+                    child.predeclare_parameters(parameters);
+                    let old_kind = child.decl_kind;
+                    child.decl_kind = DeclKind::Param;
+                    parameters.visit_with(child);
+                    child.decl_kind = old_kind;
+                    child.with_child(ScopeKind::Block, Some(body.node_id()), |body_child| {
+                        body.body(body_child.ast).visit_with(body_child);
+                    });
+                });
+            }
+            PropertyKind::Init if property.method(self.ast) => {
+                self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                    child.visit_function_contents(function);
+                });
+            }
+            PropertyKind::Init => value.visit_with(self),
+        }
     }
 
     fn visit_for_statement(&mut self, statement: ForStatement) {

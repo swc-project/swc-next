@@ -1,6 +1,6 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 22190/23491 (94.46%)
+Positive Passed: 22207/23491 (94.53%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/23491 (0.00%)
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10633/input.js - swc/crates/swc_ecma_minifier/tests/fixture/issues/10633/input.js.snap: name resolution differs
@@ -55,9 +55,6 @@ Failed: tasks/testsuite/fixtures/test262/test/annexB/language/statements/try/cat
 Failed: tasks/testsuite/fixtures/test262/test/language/asi/S7.9_A5.7_T1.js - test262/test/language/asi/S7.9_A5.7_T1.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/comments/S7.4_A2_T2.js - test262/test/language/comments/S7.4_A2_T2.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/comments/hashbang/escaped-hashbang.js - test262/test/language/comments/hashbang/escaped-hashbang.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/computed-property-names/object/accessor/setter-duplicates.js - test262/test/language/computed-property-names/object/accessor/setter-duplicates.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/computed-property-names/object/accessor/setter-super.js - test262/test/language/computed-property-names/object/accessor/setter-super.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/computed-property-names/object/accessor/setter.js - test262/test/language/computed-property-names/object/accessor/setter.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/ary-ptrn-rest-not-final-ary.js - test262/test/language/expressions/arrow-function/dstr/ary-ptrn-rest-not-final-ary.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/ary-ptrn-rest-not-final-id.js - test262/test/language/expressions/arrow-function/dstr/ary-ptrn-rest-not-final-id.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/ary-ptrn-rest-not-final-obj.js - test262/test/language/expressions/arrow-function/dstr/ary-ptrn-rest-not-final-obj.js.snap: name resolution differs
@@ -77,7 +74,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-functio
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/lexical-supercall-from-immediately-invoked-arrow.js - test262/test/language/expressions/arrow-function/lexical-supercall-from-immediately-invoked-arrow.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/rest-params-trailing-comma-early-error.js - test262/test/language/expressions/arrow-function/rest-params-trailing-comma-early-error.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/static-init-await-reference.js - test262/test/language/expressions/arrow-function/static-init-await-reference.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order-with-bindings.js - test262/test/language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order-with-bindings.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/array-elem-nested-array-invalid.js - test262/test/language/expressions/assignment/dstr/array-elem-nested-array-invalid.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/array-rest-before-element.js - test262/test/language/expressions/assignment/dstr/array-rest-before-element.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/array-rest-before-rest.js - test262/test/language/expressions/assignment/dstr/array-rest-before-rest.js.snap: name resolution differs
@@ -479,7 +475,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/dstr/m
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/dstr/meth-dflt-ary-ptrn-rest-not-final-ary.js - test262/test/language/expressions/object/dstr/meth-dflt-ary-ptrn-rest-not-final-ary.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/dstr/meth-dflt-ary-ptrn-rest-not-final-id.js - test262/test/language/expressions/object/dstr/meth-dflt-ary-ptrn-rest-not-final-id.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/dstr/meth-dflt-ary-ptrn-rest-not-final-obj.js - test262/test/language/expressions/object/dstr/meth-dflt-ary-ptrn-rest-not-final-obj.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/fn-name-accessor-set.js - test262/test/language/expressions/object/fn-name-accessor-set.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method-definition/async-await-as-identifier-reference-escaped.js - test262/test/language/expressions/object/method-definition/async-await-as-identifier-reference-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method-definition/async-await-as-label-identifier-escaped.js - test262/test/language/expressions/object/method-definition/async-await-as-label-identifier-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method-definition/async-gen-await-as-identifier-reference-escaped.js - test262/test/language/expressions/object/method-definition/async-gen-await-as-identifier-reference-escaped.js.snap: name resolution differs
@@ -494,12 +489,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method-definition/gen-yield-as-identifier-reference-escaped.js - test262/test/language/expressions/object/method-definition/gen-yield-as-identifier-reference-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method-definition/meth-dflt-params-rest.js - test262/test/language/expressions/object/method-definition/meth-dflt-params-rest.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method-definition/meth-rest-params-trailing-comma-early-error.js - test262/test/language/expressions/object/method-definition/meth-rest-params-trailing-comma-early-error.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/prop-dup-set-get-set.js - test262/test/language/expressions/object/prop-dup-set-get-set.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/prop-dup-set-set.js - test262/test/language/expressions/object/prop-dup-set-set.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/scope-setter-body-lex-distinc.js - test262/test/language/expressions/object/scope-setter-body-lex-distinc.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/scope-setter-paramsbody-var-close.js - test262/test/language/expressions/object/scope-setter-paramsbody-var-close.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/scope-setter-paramsbody-var-open.js - test262/test/language/expressions/object/scope-setter-paramsbody-var-open.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/setter-super-prop.js - test262/test/language/expressions/object/setter-super-prop.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/optional-chaining/call-expression.js - test262/test/language/expressions/optional-chaining/call-expression.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/optional-chaining/iteration-statement-do.js - test262/test/language/expressions/optional-chaining/iteration-statement-do.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/optional-chaining/static-semantics-simple-assignment.js - test262/test/language/expressions/optional-chaining/static-semantics-simple-assignment.js.snap: name resolution differs
@@ -556,7 +545,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/expressions/super/prop-ex
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/super/prop-expr-cls-val-from-arrow.js - test262/test/language/expressions/super/prop-expr-cls-val-from-arrow.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/super/prop-expr-cls-val-from-eval.js - test262/test/language/expressions/super/prop-expr-cls-val-from-eval.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/super/prop-expr-cls-val.js - test262/test/language/expressions/super/prop-expr-cls-val.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue.js - test262/test/language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/implements.js - test262/test/language/future-reserved-words/implements.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/interface-strict-escaped.js - test262/test/language/future-reserved-words/interface-strict-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/interface.js - test262/test/language/future-reserved-words/interface.js.snap: name resolution differs
@@ -877,9 +865,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/punctuators/S7.7_A2_T2.js
 Failed: tasks/testsuite/fixtures/test262/test/language/punctuators/S7.7_A2_T3.js - test262/test/language/punctuators/S7.7_A2_T3.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/punctuators/S7.7_A2_T4.js - test262/test/language/punctuators/S7.7_A2_T4.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/punctuators/S7.7_A2_T5.js - test262/test/language/punctuators/S7.7_A2_T5.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/reserved-words/ident-name-global-property-accessor.js - test262/test/language/reserved-words/ident-name-global-property-accessor.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/reserved-words/ident-name-keyword-accessor.js - test262/test/language/reserved-words/ident-name-keyword-accessor.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/reserved-words/ident-name-reserved-word-literal-accessor.js - test262/test/language/reserved-words/ident-name-reserved-word-literal-accessor.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/rest-parameters/position-invalid.js - test262/test/language/rest-parameters/position-invalid.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/rest-parameters/with-new-target.js - test262/test/language/rest-parameters/with-new-target.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/async-function/await-as-identifier-reference-escaped.js - test262/test/language/statements/async-function/await-as-identifier-reference-escaped.js.snap: name resolution differs
@@ -1158,7 +1143,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/statements/do-while/S12.6
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/do-while/S12.6.1_A2.js - test262/test/language/statements/do-while/S12.6.1_A2.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/do-while/let-array-with-newline.js - test262/test/language/statements/do-while/let-array-with-newline.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-decl-dstr-array-elem-nested-array-invalid.js - test262/test/language/statements/for-await-of/async-func-decl-dstr-array-elem-nested-array-invalid.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-decl-dstr-array-elem-put-prop-ref-user-err.js - test262/test/language/statements/for-await-of/async-func-decl-dstr-array-elem-put-prop-ref-user-err.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-dstr-const-ary-ptrn-rest-not-final-ary.js - test262/test/language/statements/for-await-of/async-func-dstr-const-ary-ptrn-rest-not-final-ary.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-dstr-const-ary-ptrn-rest-not-final-id.js - test262/test/language/statements/for-await-of/async-func-dstr-const-ary-ptrn-rest-not-final-id.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-dstr-const-ary-ptrn-rest-not-final-obj.js - test262/test/language/statements/for-await-of/async-func-dstr-const-ary-ptrn-rest-not-final-obj.js.snap: name resolution differs
@@ -1177,7 +1161,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/a
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-dstr-var-async-ary-ptrn-rest-not-final-ary.js - test262/test/language/statements/for-await-of/async-func-dstr-var-async-ary-ptrn-rest-not-final-ary.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-dstr-var-async-ary-ptrn-rest-not-final-id.js - test262/test/language/statements/for-await-of/async-func-dstr-var-async-ary-ptrn-rest-not-final-id.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-func-dstr-var-async-ary-ptrn-rest-not-final-obj.js - test262/test/language/statements/for-await-of/async-func-dstr-var-async-ary-ptrn-rest-not-final-obj.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-gen-decl-dstr-array-elem-put-prop-ref-user-err.js - test262/test/language/statements/for-await-of/async-gen-decl-dstr-array-elem-put-prop-ref-user-err.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-const-ary-ptrn-rest-not-final-ary.js - test262/test/language/statements/for-await-of/async-gen-dstr-const-ary-ptrn-rest-not-final-ary.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-const-ary-ptrn-rest-not-final-id.js - test262/test/language/statements/for-await-of/async-gen-dstr-const-ary-ptrn-rest-not-final-id.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-const-ary-ptrn-rest-not-final-obj.js - test262/test/language/statements/for-await-of/async-gen-dstr-const-ary-ptrn-rest-not-final-obj.js.snap: name resolution differs
