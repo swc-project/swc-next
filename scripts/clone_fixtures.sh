@@ -55,5 +55,5 @@ prepare_fixture "tc39/test262" "tasks/testsuite/fixtures/test262" "d1d583db95a52
 prepare_fixture "microsoft/TypeScript" "tasks/testsuite/fixtures/typescript" "637d5746b70257028fb95aad32ddec6b26ab0a14" "typescript"
 prepare_fixture "babel/babel" "tasks/testsuite/fixtures/babel" "1554d587b31460f135adf65812d199f963a34e61" "babel"
 prepare_fixture "oxc-project/estree-conformance" "tasks/testsuite/fixtures/estree-conformance" "079d13881372c0316b0e0b6552fe5f0ae5528d24" "estree-conformance"
-prepare_fixture "swc-project/swc" "fixtures/swc" "e4f588ee8744a1a4e3323dfc0f5e1f2f98afb67f" "swc"
+prepare_fixture "swc-project/swc" "tasks/testsuite/fixtures/swc" "e4f588ee8744a1a4e3323dfc0f5e1f2f98afb67f" "swc"
 prepare_fixture "CPunisher/swc-conformance" "tasks/testsuite/fixtures/swc-conformance" "930ec84c8b34cbe582f627aae7b1626b49db122f" "swc-conformance"

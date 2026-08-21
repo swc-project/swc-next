@@ -66,7 +66,7 @@ impl SwcResolverCase {
         };
         let fixture_root = match suite.to_str() {
             Some("test262") => workspace_root.join("tasks/testsuite/fixtures/test262"),
-            Some("swc") => workspace_root.join("fixtures/swc"),
+            Some("swc") => workspace_root.join("tasks/testsuite/fixtures/swc"),
             _ => panic!("unknown resolver oracle suite: {}", suite.display()),
         };
         let relative_snapshot = components.as_path();
