@@ -475,6 +475,16 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         });
     }
 
+    fn visit_property_definition(&mut self, property: PropertyDefinition) {
+        // Legacy class fields do not traverse member decorators or type
+        // annotations. Only computed keys and initializers participate in
+        // value name resolution.
+        if property.computed(self.ast) {
+            property.key(self.ast).visit_with(self);
+        }
+        property.value(self.ast).visit_with(self);
+    }
+
     fn visit_static_block(&mut self, block: StaticBlock) {
         self.with_child(ScopeKind::Block, Some(block.node_id()), |child| {
             block.body(child.ast).visit_with(child);

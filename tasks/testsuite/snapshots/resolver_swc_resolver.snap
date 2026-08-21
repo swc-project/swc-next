@@ -1,6 +1,6 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 22207/23491 (94.53%)
+Positive Passed: 22209/23491 (94.54%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/23491 (0.00%)
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10633/input.js - swc/crates/swc_ecma_minifier/tests/fixture/issues/10633/input.js.snap: name resolution differs
@@ -910,8 +910,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/cpn-clas
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/cpn-class-decl-fields-computed-property-name-from-await-expression.js - test262/test/language/statements/class/cpn-class-decl-fields-computed-property-name-from-await-expression.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/cpn-class-decl-fields-methods-computed-property-name-from-await-expression.js - test262/test/language/statements/class/cpn-class-decl-fields-methods-computed-property-name-from-await-expression.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js - test262/test/language/statements/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-member-expr-decorator-member-expr.js - test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-member-expr-decorator-member-expr.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference.js - test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js - test262/test/language/statements/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-decorator-member-expr.js - test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-decorator-member-expr.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js - test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js.snap: name resolution differs
