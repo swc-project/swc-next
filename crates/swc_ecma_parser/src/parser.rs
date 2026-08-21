@@ -797,14 +797,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
-        if self.source_type == SourceType::Unambiguous {
-            self.source_type = if self.has_module_syntax {
-                SourceType::Module
-            } else {
-                SourceType::Script
-            };
-            self.ast.set_source_metadata(self.source_type, self.lang);
-        }
+        self.resolve_unambiguous_source_type();
         if self.source_type == SourceType::Module {
             for index in 0..self.lexer.module_mode_errors.len() {
                 self.diagnostics.push(Diagnostic {
@@ -847,6 +840,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     pub fn parse_expression(mut self) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
         self.context = self.source_type.into();
+        self.statement_context = self.source_type.into();
         if self.allow_return_outside_function {
             self.context.insert(Context::RETURN);
         }
@@ -857,6 +851,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         match expr {
             Some(expr) if self.diagnostics.is_empty() => {
+                self.resolve_unambiguous_source_type();
                 if !self.preserve_parens {
                     strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
                 }
@@ -868,6 +863,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Ok(self.ast)
             }
             _ => Err(self.diagnostics),
+        }
+    }
+
+    fn resolve_unambiguous_source_type(&mut self) {
+        if self.source_type != SourceType::Unambiguous {
+            return;
+        }
+        self.source_type = if self.has_module_syntax {
+            SourceType::Module
+        } else {
+            SourceType::Script
+        };
+        self.ast.set_source_metadata(self.source_type, self.lang);
+    }
+
+    fn enter_module_context(&mut self) {
+        if self.statement_context == StatementContext::ModuleItem
+            && self.context.contains(Context::CAN_BE_MODULE)
+        {
+            self.context.insert(Context::AWAIT);
+            self.has_module_syntax = true;
         }
     }
 
@@ -1273,6 +1289,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_export_decorated(&mut self, decorators: TypedSubRange<Decorator>) -> Option<Stmt> {
+        self.enter_module_context();
         let export_start = self.current_token.span.start;
         self.advance()?;
         let is_default = self.eat(TokenTag::Default)?;
@@ -1413,6 +1430,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if matches!(next.tag, TokenTag::LeftParen | TokenTag::Dot) {
             return self.parse_expression_statement();
         }
+        self.enter_module_context();
         self.parse_import_declaration()
     }
 
@@ -3700,6 +3718,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_export_declaration(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Export);
+        self.enter_module_context();
         let start = self.current_token.span.start;
         self.advance()?;
         if self.lang.is_typescript() {
@@ -12046,6 +12065,36 @@ mod tests {
             ast.expr_data(ast.root_expression()),
             swc_next_ecma_ast::ExprData::BinaryExpression(_)
         ));
+
+        let allocator = Allocator::default();
+        let parser = Parser::init(
+            &allocator,
+            "await value",
+            Options {
+                source_type: SourceType::Unambiguous,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        );
+        let ast = parser.parse_expression().unwrap();
+        assert_eq!(ast.source_type(), SourceType::Module);
+        assert!(matches!(
+            ast.expr_data(ast.root_expression()),
+            swc_next_ecma_ast::ExprData::AwaitExpression(_)
+        ));
+
+        let allocator = Allocator::default();
+        let parser = Parser::init(
+            &allocator,
+            "value",
+            Options {
+                source_type: SourceType::Unambiguous,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        );
+        let ast = parser.parse_expression().unwrap();
+        assert_eq!(ast.source_type(), SourceType::Script);
     }
 
     #[test]
@@ -12150,8 +12199,8 @@ mod tests {
         assert_unambiguous_source_type("const value = import.meta.url;", SourceType::Module);
         assert_unambiguous_source_type("import('value');", SourceType::Script);
         assert_unambiguous_source_type("import value = require('value');", SourceType::Module);
-        assert_unambiguous_source_type("import Value = Namespace.Value;", SourceType::Script);
-        assert_unambiguous_source_type("export as namespace Foo", SourceType::Script);
+        assert_unambiguous_source_type("import Value = Namespace.Value;", SourceType::Module);
+        assert_unambiguous_source_type("export as namespace Foo", SourceType::Module);
         assert_unambiguous_source_type("await value;", SourceType::Module);
         assert_unambiguous_source_type("await;", SourceType::Script);
         assert_unambiguous_source_type("await! + value;", SourceType::Module);
