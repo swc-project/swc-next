@@ -1,6 +1,6 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 20297/20355 (99.72%)
+Positive Passed: 20303/20355 (99.74%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/20355 (0.00%)
 Failed: tasks/testsuite/fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10936/input.js - parser: Expected ',' or ']' in array, but found 'promise' at 941..948
@@ -12,9 +12,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/expressions/dynamic-impor
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/dynamic-import/import-fulfilled-member-of-errored-cycle-b_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'Promise' at 199..206
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/dynamic-import/import-fulfilled-member-of-errored-cycle-c_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'Promise' at 199..206
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/dynamic-import/import-fulfilled-member-of-errored-cycle-x_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'Promise' at 199..206
-Failed: tasks/testsuite/fixtures/test262/test/language/function-code/block-decl-onlystrict.js - test262/test/language/function-code/block-decl-onlystrict.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/function-code/switch-case-decl-onlystrict.js - test262/test/language/function-code/switch-case-decl-onlystrict.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/function-code/switch-dflt-decl-onlystrict.js - test262/test/language/function-code/switch-dflt-decl-onlystrict.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/implements.js - test262/test/language/future-reserved-words/implements.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/interface.js - test262/test/language/future-reserved-words/interface.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/package.js - test262/test/language/future-reserved-words/package.js.snap: name resolution differs
@@ -22,9 +19,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/pri
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/protected.js - test262/test/language/future-reserved-words/protected.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/public.js - test262/test/language/future-reserved-words/public.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/static.js - test262/test/language/future-reserved-words/static.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/global-code/block-decl-strict.js - test262/test/language/global-code/block-decl-strict.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/global-code/switch-case-decl-strict.js - test262/test/language/global-code/switch-case-decl-strict.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/global-code/switch-dflt-decl-strict.js - test262/test/language/global-code/switch-dflt-decl-strict.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/import/import-attributes/json-idempotency.js - test262/test/language/import/import-attributes/json-idempotency.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/import/import-defer/errors/get-other-while-dep-evaluating-async/dep-1-tla_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'Promise' at 241..248
 Failed: tasks/testsuite/fixtures/test262/test/language/import/import-defer/errors/get-other-while-evaluating-async/dep-1-tla_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'Promise' at 241..248

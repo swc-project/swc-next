@@ -80,7 +80,7 @@ impl SwcResolverCase {
             .expect("resolver source should be inside the workspace")
             .to_path_buf();
         let name = oracle_relative.display().to_string().replace('\\', "/");
-        let code = read_to_string(&path).unwrap_or_else(|error| {
+        let mut code = read_to_string(&path).unwrap_or_else(|error| {
             panic!("failed to read resolver source {}: {error}", path.display())
         });
         let expected = read_to_string(&oracle_path).unwrap_or_else(|error| {
@@ -95,12 +95,19 @@ impl SwcResolverCase {
         } else {
             Lang::from_path(&path.to_string_lossy())
         };
-        let source_type = if suite == "test262" && parse_meta(&code).is_some_and(|meta| meta.module)
-        {
+        let meta = if suite == "test262" {
+            parse_meta(&code)
+        } else {
+            None
+        };
+        let source_type = if meta.as_ref().is_some_and(|meta| meta.module) {
             SourceType::Module
         } else {
             SourceType::Unambiguous
         };
+        if meta.is_some_and(|meta| meta.only_strict && !meta.module) {
+            code = format!("\"use strict\";\n{code}");
+        }
 
         Self {
             path,

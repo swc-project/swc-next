@@ -23,7 +23,7 @@ pub struct Test262Case {
 pub(super) struct Meta {
     negative: Option<MetaNegative>,
     pub(super) module: bool,
-    only_strict: bool,
+    pub(super) only_strict: bool,
     no_strict: bool,
     raw: bool,
 }
