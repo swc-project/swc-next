@@ -8,7 +8,7 @@ use swc_next_ecma_ast::*;
 
 use super::{
     scope::{DeclKind, ScopeKind},
-    utils::{find_binding_ids, find_parameter_ids},
+    utils::{Binding, find_binding_ids, find_parameter_ids},
 };
 
 /// Resolve every value identifier in `ast` using the legacy resolver's
@@ -205,12 +205,12 @@ impl<'ast> Resolver<'ast> {
         None
     }
 
-    fn modify(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
-        if self.node_scopes[identifier.node_id().index()].is_some() {
+    fn modify_binding(&mut self, binding: Binding, kind: DeclKind) {
+        if self.node_scopes[binding.node_id.index()].is_some() {
             return;
         }
 
-        let name = self.name(identifier.name(self.ast));
+        let name = self.name(binding.name);
         if self.in_type {
             self.scopes[self.current].declared_types.insert(name);
         } else {
@@ -218,14 +218,32 @@ impl<'ast> Resolver<'ast> {
                 .declared_symbols
                 .insert(name, kind);
         }
-        self.mark_current(identifier.node_id());
+        self.mark_current(binding.node_id);
+    }
+
+    fn modify(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
+        self.modify_binding(
+            Binding {
+                node_id: identifier.node_id(),
+                name: identifier.name(self.ast),
+            },
+            kind,
+        );
+    }
+
+    fn predeclare_pattern(&mut self, pattern: BindingPattern, kind: DeclKind) {
+        let mut bindings = std::vec::Vec::new();
+        find_binding_ids(self.ast, pattern, &mut bindings);
+        for binding in bindings {
+            self.modify_binding(binding, kind);
+        }
     }
 
     fn predeclare_parameters(&mut self, parameters: FormalParameters) {
-        let mut identifiers = std::vec::Vec::new();
-        find_parameter_ids(self.ast, parameters, &mut identifiers);
-        for identifier in identifiers {
-            self.modify(identifier, DeclKind::Param);
+        let mut bindings = std::vec::Vec::new();
+        find_parameter_ids(self.ast, parameters, &mut bindings);
+        for binding in bindings {
+            self.modify_binding(binding, DeclKind::Param);
         }
     }
 
@@ -364,7 +382,10 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         let body = catch.body(self.ast);
         self.with_child(ScopeKind::Fn, Some(catch.node_id()), |child| {
             child.mark_current(body.node_id());
-            catch.param(child.ast).visit_with(child);
+            if let Some(param) = catch.param(child.ast) {
+                child.predeclare_pattern(param, DeclKind::Lexical);
+                param.visit_with(child);
+            }
             body.body(child.ast).visit_with(child);
         });
     }
@@ -497,6 +518,10 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_variable_declaration(&mut self, declaration: VariableDeclaration) {
         let old_kind = self.decl_kind;
         self.decl_kind = declaration.kind(self.ast).into();
+        for id in declaration.declarators(self.ast).iter() {
+            let declarator = self.ast.get_node_in_sub_range(id);
+            self.predeclare_pattern(declarator.id(self.ast), self.decl_kind);
+        }
         declaration.declarators(self.ast).visit_with(self);
         self.decl_kind = old_kind;
     }
@@ -574,8 +599,8 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
         }
     }
 
-    fn add_binding(&mut self, identifier: BindingIdentifier) {
-        let name = self.resolver.name(identifier.name(self.resolver.ast));
+    fn add_binding(&mut self, binding: Binding) {
+        let name = self.resolver.name(binding.name);
         if self.in_catch_body {
             if self.resolver.mark_for_ref_inner(name, true).is_some()
                 && self.catch_param_decls.contains(name)
@@ -587,7 +612,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
         {
             return;
         }
-        self.resolver.modify(identifier, self.kind);
+        self.resolver.modify_binding(binding, self.kind);
     }
 
     fn add_pattern(&mut self, pattern: BindingPattern) {
@@ -696,7 +721,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
         self.catch_param_decls.extend(
             params
                 .into_iter()
-                .map(|id| self.resolver.name(id.name(self.resolver.ast))),
+                .map(|binding| self.resolver.name(binding.name)),
         );
 
         self.in_catch_body = true;
