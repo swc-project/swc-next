@@ -559,6 +559,14 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         });
     }
 
+    fn visit_do_while_statement(&mut self, statement: DoWhileStatement) {
+        // Preserve the legacy AST traversal order. Scope allocation is
+        // observable through the resolver's scope ids even though the body is
+        // evaluated before the test at runtime.
+        statement.test(self.ast).visit_with(self);
+        statement.body(self.ast).visit_with(self);
+    }
+
     fn visit_switch_statement(&mut self, statement: SwitchStatement) {
         statement.discriminant(self.ast).visit_with(self);
         self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
