@@ -1,9 +1,6 @@
 use oxc_index::{Idx, IndexVec};
 use rustc_hash::FxHashSet;
-use swc_next_allocator::{
-    Allocator, hash_map::HashMap as ArenaHashMap, hash_set::HashSet as ArenaHashSet,
-    vec::Vec as ArenaVec,
-};
+use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::*;
 
 use super::{
@@ -31,9 +28,7 @@ pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver<'ast> {
         unresolved_scope_id,
         label_scope_id,
         current: top_level_scope_id,
-        in_type: false,
         is_module: false,
-        in_ts_module: false,
         decl_kind: DeclKind::Lexical,
         strict_mode: false,
     };
@@ -90,7 +85,6 @@ struct Scope<'ast> {
     parent: Option<ScopeId>,
     kind: ScopeKind,
     declared_symbols: ArenaHashMap<'ast, &'ast [u8], DeclKind>,
-    declared_types: ArenaHashSet<'ast, &'ast [u8]>,
 }
 
 impl<'ast> Scope<'ast> {
@@ -99,7 +93,6 @@ impl<'ast> Scope<'ast> {
             parent,
             kind,
             declared_symbols: ArenaHashMap::new_in(allocator),
-            declared_types: ArenaHashSet::new_in(allocator),
         }
     }
 }
@@ -115,9 +108,7 @@ struct Resolver<'ast> {
     unresolved_scope_id: ScopeId,
     label_scope_id: ScopeId,
     current: ScopeId,
-    in_type: bool,
     is_module: bool,
-    in_ts_module: bool,
     decl_kind: DeclKind,
     strict_mode: bool,
 }
@@ -144,9 +135,7 @@ impl<'ast> Resolver<'ast> {
         F: FnOnce(&mut Self),
     {
         let scope = self.current;
-        let in_type = self.in_type;
         let is_module = self.is_module;
-        let in_ts_module = self.in_ts_module;
         let decl_kind = self.decl_kind;
         let strict_mode = self.strict_mode;
 
@@ -160,9 +149,7 @@ impl<'ast> Resolver<'ast> {
         op(self);
 
         self.current = scope;
-        self.in_type = in_type;
         self.is_module = is_module;
-        self.in_ts_module = in_ts_module;
         self.decl_kind = decl_kind;
         self.strict_mode = strict_mode;
     }
@@ -210,13 +197,9 @@ impl<'ast> Resolver<'ast> {
         }
 
         let name = self.name(identifier.name(self.ast));
-        if self.in_type {
-            self.scopes[self.current].declared_types.insert(name);
-        } else {
-            self.scopes[self.current]
-                .declared_symbols
-                .insert(name, kind);
-        }
+        self.scopes[self.current]
+            .declared_symbols
+            .insert(name, kind);
         self.mark_current(identifier.node_id());
     }
 
@@ -661,8 +644,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 class.body(self.ast).visit_with(self);
                 self.strict_mode = old_strict_mode;
             }
-            ExportDefaultDeclarationKindData::TsFunction(_)
-            | ExportDefaultDeclarationKindData::TsInterfaceDeclaration(_) => {}
+            _ => {}
         }
     }
 
@@ -828,9 +810,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
                 }
                 class.visit_with(self);
             }
-            ExportDefaultDeclarationKindData::Expr(_)
-            | ExportDefaultDeclarationKindData::TsFunction(_)
-            | ExportDefaultDeclarationKindData::TsInterfaceDeclaration(_) => {}
+            _ => {}
         }
     }
 
