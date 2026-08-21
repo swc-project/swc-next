@@ -9,7 +9,7 @@ use swc_next_ecma_semantic::name_resolution::{NameResolution, resolver};
 
 use crate::{
     cases::{Case, swc_resolver::SwcResolverCase},
-    runner::{Runner, parse_case_with_recovery},
+    runner::{Runner, parse_case},
     suite::TestResult,
 };
 
@@ -41,9 +41,7 @@ impl Runner<SwcResolverCase> for ResolverRunner {
 
 fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     let allocator = Allocator::new();
-    // The resolver oracle is generated for every program accepted by the
-    // experimental parser, including programs with recoverable early errors.
-    let ast = parse_case_with_recovery(&allocator, case);
+    let ast = parse_case(&allocator, case)?;
     let resolution = resolver(&ast);
     let actual = resolver_snapshot(&ast, &resolution);
 

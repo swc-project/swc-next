@@ -26,13 +26,6 @@ fn parse_case<'a, C: Case>(allocator: &'a Allocator, case: &'a C) -> Result<Ast<
     parse(allocator, source, source_type, lang)
 }
 
-fn parse_case_with_recovery<'a, C: Case>(allocator: &'a Allocator, case: &'a C) -> Ast<'a> {
-    let source = case.code();
-    let source_type = case.source_type();
-    let lang = case.lang();
-    parse_with_recovery(allocator, source, source_type, lang)
-}
-
 fn parse<'a>(
     allocator: &'a Allocator,
     source: &'a str,
@@ -58,24 +51,4 @@ fn parse<'a>(
     }
 
     Ok(result.ast)
-}
-
-fn parse_with_recovery<'a>(
-    allocator: &'a Allocator,
-    source: &'a str,
-    source_type: SourceType,
-    lang: Lang,
-) -> Ast<'a> {
-    Parser::init(
-        allocator,
-        source,
-        Options {
-            source_type,
-            lang,
-            ..Options::default()
-        },
-        NoTokenParserConfig,
-    )
-    .parse()
-    .ast
 }
