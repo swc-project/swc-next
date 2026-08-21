@@ -50,6 +50,30 @@ function writeVersion(version) {
 
   for (const manifestPath of npmManifestPaths()) {
     const manifest = readManifest(manifestPath);
+    if (manifest.napi) {
+      const bindingLoaderPath = path.join(
+        repositoryRoot,
+        path.dirname(manifestPath),
+        "src-js/binding.js"
+      );
+      const bindingLoader = fs.readFileSync(bindingLoaderPath, "utf8");
+      const updatedBindingLoader = bindingLoader
+        .replaceAll(
+          `bindingPackageVersion !== '${manifest.version}'`,
+          `bindingPackageVersion !== '${version}'`
+        )
+        .replaceAll(
+          `expected ${manifest.version} but got`,
+          `expected ${version} but got`
+        );
+      if (updatedBindingLoader === bindingLoader) {
+        fail(`binding loader does not contain version ${manifest.version}`);
+      }
+      fs.writeFileSync(
+        bindingLoaderPath,
+        updatedBindingLoader
+      );
+    }
     manifest.version = version;
     fs.writeFileSync(
       path.join(repositoryRoot, manifestPath),
