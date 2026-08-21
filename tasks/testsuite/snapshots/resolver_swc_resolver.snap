@@ -1,28 +1,15 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 21488/21977 (97.77%)
+Positive Passed: 21252/21723 (97.83%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/21977 (0.00%)
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10936/input.js - parser: Expected ',' or ']' in array, but found 'promise' at 941..948
+Panicked: 0/21723 (0.00%)
+Failed: tasks/testsuite/fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10936/input.js - parser: Expected ',' or ']' in array, but found 'promise' at 941..948
 Failed: tasks/testsuite/fixtures/test262/test/language/asi/S7.9_A6.2_T5.js - parser: Expected ';' after for-loop condition, but found ')' at 507..508
 Failed: tasks/testsuite/fixtures/test262/test/language/asi/S7.9_A6.2_T6.js - parser: Expected ';' after for-loop condition, but found ')' at 509..510
 Failed: tasks/testsuite/fixtures/test262/test/language/asi/S7.9_A6.2_T8.js - parser: Expected ';' after for-loop condition, but found ')' at 516..517
 Failed: tasks/testsuite/fixtures/test262/test/language/asi/S7.9_A6.2_T9.js - parser: Expected ';' after for-loop condition, but found ')' at 497..498
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-interface-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-interface-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-let-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-let-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-package-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-package-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-private-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-private-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-protected-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-protected-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-public-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-public-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-static-escaped.js - test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-static-escaped.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/block-scope/syntax/redeclaration/function-name-redeclaration-attempt-with-function.js - test262/test/language/block-scope/syntax/redeclaration/function-name-redeclaration-attempt-with-function.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/arrow-function/static-init-await-reference.js - parser: Unexpected token ')' at 423..424
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-interface-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-interface-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-let-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-let-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-package-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-package-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-private-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-private-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-protected-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-protected-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-public-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-public-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-static-escaped.js - test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-static-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/async-arrow-function/await-as-binding-identifier-escaped.js - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 1031..1041
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/async-arrow-function/await-as-identifier-reference-escaped.js - parser: Keywords cannot contain escape characters at 1039..1049
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/async-arrow-function/await-as-label-identifier-escaped.js - parser: Keywords cannot contain escape characters at 1021..1031
@@ -279,17 +266,19 @@ Failed: tasks/testsuite/fixtures/test262/test/language/expressions/object/method
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/invalid-legacy-octal-escape-sequence-8.js - parser: Bad escape sequence in untagged template literal at 723..725
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/invalid-legacy-octal-escape-sequence-9.js - parser: Bad escape sequence in untagged template literal at 723..725
 Failed: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/unicode-escape-nls-err.js - parser: Bad escape sequence in untagged template literal at 1167..1177
+Failed: tasks/testsuite/fixtures/test262/test/language/function-code/block-decl-onlystrict.js - test262/test/language/function-code/block-decl-onlystrict.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/function-code/switch-case-decl-onlystrict.js - test262/test/language/function-code/switch-case-decl-onlystrict.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/function-code/switch-dflt-decl-onlystrict.js - test262/test/language/function-code/switch-dflt-decl-onlystrict.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/implements.js - test262/test/language/future-reserved-words/implements.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/interface-strict-escaped.js - test262/test/language/future-reserved-words/interface-strict-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/interface.js - test262/test/language/future-reserved-words/interface.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/let-strict-escaped.js - test262/test/language/future-reserved-words/let-strict-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/package-strict-escaped.js - test262/test/language/future-reserved-words/package-strict-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/package.js - test262/test/language/future-reserved-words/package.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/private-strict-escaped.js - test262/test/language/future-reserved-words/private-strict-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/private.js - test262/test/language/future-reserved-words/private.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/protected.js - test262/test/language/future-reserved-words/protected.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/public.js - test262/test/language/future-reserved-words/public.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/static.js - test262/test/language/future-reserved-words/static.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/global-code/block-decl-strict.js - test262/test/language/global-code/block-decl-strict.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/global-code/switch-case-decl-strict.js - test262/test/language/global-code/switch-case-decl-strict.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/global-code/switch-dflt-decl-strict.js - test262/test/language/global-code/switch-dflt-decl-strict.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/identifier-resolution/static-init-invalid-await.js - parser: Unexpected token ';' at 682..683
 Failed: tasks/testsuite/fixtures/test262/test/language/identifiers/start-zwj-escaped.js - parser: Invalid character at start of identifier at 322..324
 Failed: tasks/testsuite/fixtures/test262/test/language/identifiers/start-zwnj-escaped.js - parser: Invalid character at start of identifier at 326..328
@@ -357,9 +346,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/literals/numeric/numeric-
 Failed: tasks/testsuite/fixtures/test262/test/language/literals/numeric/numeric-separators/numeric-separator-literal-oil-od-nsl-od-err.js - parser: Numeric separator cannot appear at the end of a numeric literal at 665..669
 Failed: tasks/testsuite/fixtures/test262/test/language/literals/string/unicode-escape-nls-err-double.js - parser: Invalid Unicode escape sequence at 1107..1111
 Failed: tasks/testsuite/fixtures/test262/test/language/literals/string/unicode-escape-nls-err-single.js - parser: Invalid Unicode escape sequence at 1104..1108
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/comment-multi-line-html-close.js - parser: Unexpected token '>' at 370..371
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/comment-single-line-html-close.js - parser: Unexpected token '>' at 366..367
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/comment-single-line-html-open.js - parser: Unexpected token '<' at 363..364
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/early-export-ill-formed-string.js - parser: An export name cannot include a unicode lone surrogate at 550..558
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/early-import-arguments.js - test262/test/language/module-code/early-import-arguments.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/early-import-eval.js - test262/test/language/module-code/early-import-eval.js.snap: name resolution differs
@@ -380,15 +366,12 @@ Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-awa
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/module-import-rejection_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '42' at 157..159
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/module-import-resolution_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '1' at 133..134
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/module-import-unwrapped_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '1' at 133..134
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/new-await.js - parser: 'await' is reserved in an async/module context and cannot be used as an identifier at 349..354
-Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/no-operand.js - parser: Unexpected token ';' at 320..321
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/pending-async-dep-from-cycle_cycle-leaf_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '1' at 240..241
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/pending-async-dep-from-cycle_cycle-root_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '1' at 240..241
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/rejection-order_b_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'p1' at 296..298
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/tla_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '0' at 145..146
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/unobservable-global-async-evaluation-count-reset-b_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found 'pB' at 254..256
 Failed: tasks/testsuite/fixtures/test262/test/language/module-code/top-level-await/unobservable-global-async-evaluation-count-reset-c_FIXTURE.js - parser: Expected a semicolon or an implicit semicolon after a statement, but found '1' at 134..135
-Failed: tasks/testsuite/fixtures/test262/test/language/reserved-words/await-module.js - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 354..359
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/async-function/await-as-binding-identifier-escaped.js - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 864..874
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/async-function/await-as-identifier-reference-escaped.js - parser: Keywords cannot contain escape characters at 872..882
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/async-function/await-as-label-identifier-escaped.js - parser: Keywords cannot contain escape characters at 854..864
@@ -415,7 +398,6 @@ Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/async-me
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/async-method/await-as-binding-identifier-escaped.js - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 942..952
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/async-method/await-as-identifier-reference-escaped.js - parser: Keywords cannot contain escape characters at 950..960
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/async-method/await-as-label-identifier-escaped.js - parser: Keywords cannot contain escape characters at 932..942
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/class-name-ident-await-module.js - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 475..480
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/elements/async-gen-private-method-static/await-as-binding-identifier-escaped.js - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 1074..1084
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/elements/async-gen-private-method-static/await-as-identifier-reference-escaped.js - parser: Keywords cannot contain escape characters at 1082..1092
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/class/elements/async-gen-private-method-static/await-as-label-identifier-escaped.js - parser: Keywords cannot contain escape characters at 1064..1074
@@ -479,8 +461,8 @@ Failed: tasks/testsuite/fixtures/test262/test/language/statements/labeled/decl-a
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/labeled/decl-async-generator.js - parser: Async functions can only be declared at the top level or inside a block at 551..551
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/labeled/let-array-with-newline.js - parser: Lexical declaration cannot appear in a single-statement context at 597..613
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/labeled/value-yield-non-strict-escaped.js - test262/test/language/statements/labeled/value-yield-non-strict-escaped.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/labeled/value-yield-strict-escaped.js - test262/test/language/statements/labeled/value-yield-strict-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/let/syntax/escaped-let.js - test262/test/language/statements/let/syntax/escaped-let.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/statements/switch/syntax/redeclaration/function-name-redeclaration-attempt-with-function.js - test262/test/language/statements/switch/syntax/redeclaration/function-name-redeclaration-attempt-with-function.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/using/syntax/using-invalid-assignment-statement-body-for-of.js - test262/test/language/statements/using/syntax/using-invalid-assignment-statement-body-for-of.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/using/syntax/using-invalid-switchstatement-caseclause.js - parser: Using declaration cannot appear in the bare case statement. at 819..834
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/using/syntax/using-invalid-switchstatement-defaultclause.js - parser: Using declaration cannot appear in the bare case statement. at 820..835
