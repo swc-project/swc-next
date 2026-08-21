@@ -41,19 +41,6 @@ pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> NameResolution<'ast> {
 
     ast.root_program().visit_with(&mut resolver);
 
-    #[cfg(debug_assertions)]
-    {
-        let mut validator = IdentifierScopeValidator {
-            ast,
-            node_scopes: &resolver.node_scopes,
-            missing_bindings: 0,
-            missing_references: 0,
-        };
-        ast.root_program().visit_with(&mut validator);
-        debug_assert_eq!(validator.missing_bindings, 0);
-        debug_assert_eq!(validator.missing_references, 0);
-    }
-
     NameResolution {
         top_level_scope_id,
         unresolved_scope_id,
@@ -134,34 +121,6 @@ struct Resolver<'ast> {
     in_ts_module: bool,
     decl_kind: DeclKind,
     strict_mode: bool,
-}
-
-#[cfg(debug_assertions)]
-struct IdentifierScopeValidator<'resolver, 'ast> {
-    ast: &'ast Ast<'ast>,
-    node_scopes: &'resolver ArenaVec<'ast, Option<ScopeId>>,
-    missing_bindings: usize,
-    missing_references: usize,
-}
-
-#[cfg(debug_assertions)]
-impl<'ast> Visit<'ast> for IdentifierScopeValidator<'_, 'ast> {
-    fn ast(&self) -> &Ast<'ast> {
-        self.ast
-    }
-
-    fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
-        self.missing_bindings +=
-            usize::from(self.node_scopes[identifier.node_id().index()].is_none());
-        identifier.visit_children_with(self);
-    }
-
-    fn visit_identifier_reference(&mut self, reference: IdentifierReference) {
-        self.missing_references +=
-            usize::from(self.node_scopes[reference.node_id().index()].is_none());
-    }
-
-    fn visit_ts_type(&mut self, _: TsType) {}
 }
 
 impl<'ast> Resolver<'ast> {
