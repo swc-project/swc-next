@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::{
-    cases::{Case, fixtures},
+    cases::{Case, fixtures, test262::parse_meta},
     util::workspace_root,
 };
 
@@ -19,6 +19,7 @@ pub struct SwcResolverCase {
     code: String,
     expected: String,
     lang: Lang,
+    source_type: SourceType,
 }
 
 impl SwcResolverCase {
@@ -94,6 +95,12 @@ impl SwcResolverCase {
         } else {
             Lang::from_path(&path.to_string_lossy())
         };
+        let source_type = if suite == "test262" && parse_meta(&code).is_some_and(|meta| meta.module)
+        {
+            SourceType::Module
+        } else {
+            SourceType::Unambiguous
+        };
 
         Self {
             path,
@@ -102,6 +109,7 @@ impl SwcResolverCase {
             code,
             expected,
             lang,
+            source_type,
         }
     }
 }
@@ -130,7 +138,7 @@ impl Case for SwcResolverCase {
     }
 
     fn source_type(&self) -> SourceType {
-        SourceType::Unambiguous
+        self.source_type
     }
 
     fn lang(&self) -> Lang {

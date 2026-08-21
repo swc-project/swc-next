@@ -57,13 +57,13 @@ fn resolver_snapshot(ast: &Ast<'_>, resolution: &NameResolution<'_>) -> String {
     writeln!(
         output,
         "Top level: ScopeId({})",
-        context_for_scope(resolution, resolution.top_level_scope_id())
+        resolution.top_level_scope_id().raw()
     )
     .unwrap();
     writeln!(
         output,
         "Unresolved: ScopeId({})",
-        context_for_scope(resolution, resolution.unresolved_scope_id())
+        resolution.unresolved_scope_id().raw()
     )
     .unwrap();
     ast.root_program().visit_with(&mut ResolverDisplayVisitor {
@@ -73,18 +73,6 @@ fn resolver_snapshot(ast: &Ast<'_>, resolution: &NameResolution<'_>) -> String {
         export_from: false,
     });
     output
-}
-
-fn context_for_scope(resolution: &NameResolution<'_>, scope: ScopeId) -> u32 {
-    if scope == resolution.top_level_scope_id() {
-        2
-    } else if scope == resolution.unresolved_scope_id() {
-        1
-    } else if scope == resolution.label_scope_id() {
-        u32::MAX
-    } else {
-        scope.raw() - 1
-    }
 }
 
 struct ResolverDisplayVisitor<'a, 'ast> {
@@ -97,7 +85,7 @@ struct ResolverDisplayVisitor<'a, 'ast> {
 impl ResolverDisplayVisitor<'_, '_> {
     fn write_identifier<N: AstNode>(&mut self, node: N, name: AstUtf8) {
         let name = self.ast.get_utf8(name);
-        let context = context_for_scope(self.resolution, self.resolution.node_scope(node));
+        let context = self.resolution.node_scope(node).raw();
         writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 
@@ -111,9 +99,9 @@ impl ResolverDisplayVisitor<'_, '_> {
             self.ast.module_export_name_data(name)
         {
             let context = if resolved {
-                context_for_scope(self.resolution, self.resolution.node_scope(identifier))
+                self.resolution.node_scope(identifier).raw()
             } else {
-                context_for_scope(self.resolution, self.resolution.unresolved_scope_id())
+                self.resolution.unresolved_scope_id().raw()
             };
             self.write_identifier_name(identifier, context);
         }

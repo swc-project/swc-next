@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, BindingPattern, Expr, FormalParameters, PropertyKey, Visit, VisitWith,
+    Ast, BindingIdentifier, BindingPattern, Expr, PropertyKey, Visit, VisitWith,
 };
 
 struct DestructuringFinder<'found, 'ast> {
@@ -13,14 +13,6 @@ pub fn find_binding_ids<'ast>(
     found: &mut Vec<BindingIdentifier>,
 ) {
     pattern.visit_with(&mut DestructuringFinder { ast, found });
-}
-
-pub fn find_parameter_ids<'ast>(
-    ast: &'ast Ast<'ast>,
-    parameters: FormalParameters,
-    found: &mut Vec<BindingIdentifier>,
-) {
-    parameters.visit_with(&mut DestructuringFinder { ast, found });
 }
 
 impl<'ast> Visit<'ast> for DestructuringFinder<'_, 'ast> {
