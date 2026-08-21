@@ -20,7 +20,7 @@ mod checker;
 mod context;
 mod ecmascript;
 mod module_record;
-pub mod name_resolution;
+pub mod name_resolver;
 pub mod scope;
 
 pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};

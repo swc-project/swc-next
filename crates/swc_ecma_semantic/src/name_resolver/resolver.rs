@@ -13,7 +13,7 @@ use super::{
 
 /// Resolve every value identifier in `ast` using the legacy resolver's
 /// hoist-then-resolve algorithm.
-pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> NameResolution<'ast> {
+pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver<'ast> {
     let allocator = ast.allocator();
     let mut scopes = IndexVec::new();
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None, allocator));
@@ -40,7 +40,7 @@ pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> NameResolution<'ast> {
 
     ast.root_program().visit_with(&mut resolver);
 
-    NameResolution {
+    JsNameResolver {
         top_level_scope_id,
         unresolved_scope_id,
         label_scope_id,
@@ -54,14 +54,14 @@ pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> NameResolution<'ast> {
 /// gives every binding, reference, and label a stable [`NodeId`], so the same
 /// information is kept in a side table indexed by that id.
 #[derive(Debug)]
-pub struct NameResolution<'ast> {
+pub struct JsNameResolver<'ast> {
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
     label_scope_id: ScopeId,
     node_scopes: ArenaVec<'ast, Option<ScopeId>>,
 }
 
-impl NameResolution<'_> {
+impl JsNameResolver<'_> {
     /// Returns the resolved scope for an identifier-like node. Nodes that were
     /// not visited as bindings or references use the unresolved scope.
     #[inline]

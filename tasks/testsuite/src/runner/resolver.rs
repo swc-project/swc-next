@@ -5,7 +5,7 @@ use std::{
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::*;
-use swc_next_ecma_semantic::name_resolution::{NameResolution, resolver};
+use swc_next_ecma_semantic::name_resolver::{JsNameResolver, resolver};
 
 use crate::{
     cases::{Case, swc_resolver::SwcResolverCase},
@@ -42,8 +42,8 @@ impl Runner<SwcResolverCase> for ResolverRunner {
 fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     let allocator = Allocator::new();
     let ast = parse_case(&allocator, case)?;
-    let resolution = resolver(&ast);
-    let actual = resolver_snapshot(&ast, &resolution);
+    let resolver = resolver(&ast);
+    let actual = resolver_snapshot(&ast, &resolver);
 
     if actual == case.expected() {
         Ok(())
@@ -52,23 +52,23 @@ fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     }
 }
 
-fn resolver_snapshot(ast: &Ast<'_>, resolution: &NameResolution<'_>) -> String {
+fn resolver_snapshot(ast: &Ast<'_>, resolver: &JsNameResolver<'_>) -> String {
     let mut output = String::new();
     writeln!(
         output,
         "Top level: ScopeId({})",
-        resolution.top_level_scope_id().raw()
+        resolver.top_level_scope_id().raw()
     )
     .unwrap();
     writeln!(
         output,
         "Unresolved: ScopeId({})",
-        resolution.unresolved_scope_id().raw()
+        resolver.unresolved_scope_id().raw()
     )
     .unwrap();
     ast.root_program().visit_with(&mut ResolverDisplayVisitor {
         ast,
-        resolution,
+        resolver,
         output: &mut output,
         export_from: false,
     });
@@ -77,7 +77,7 @@ fn resolver_snapshot(ast: &Ast<'_>, resolution: &NameResolution<'_>) -> String {
 
 struct ResolverDisplayVisitor<'a, 'ast> {
     ast: &'a Ast<'ast>,
-    resolution: &'a NameResolution<'ast>,
+    resolver: &'a JsNameResolver<'ast>,
     output: &'a mut String,
     export_from: bool,
 }
@@ -85,7 +85,7 @@ struct ResolverDisplayVisitor<'a, 'ast> {
 impl ResolverDisplayVisitor<'_, '_> {
     fn write_identifier<N: AstNode>(&mut self, node: N, name: AstUtf8) {
         let name = self.ast.get_utf8(name);
-        let context = self.resolution.node_scope(node).raw();
+        let context = self.resolver.node_scope(node).raw();
         writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 
@@ -99,9 +99,9 @@ impl ResolverDisplayVisitor<'_, '_> {
             self.ast.module_export_name_data(name)
         {
             let context = if resolved {
-                self.resolution.node_scope(identifier).raw()
+                self.resolver.node_scope(identifier).raw()
             } else {
-                self.resolution.unresolved_scope_id().raw()
+                self.resolver.unresolved_scope_id().raw()
             };
             self.write_identifier_name(identifier, context);
         }
