@@ -1,14 +1,13 @@
 parser * babel
 ========================
 Positive Passed: 2230/2238 (99.64%)
-Negative Passed: 1600/1743 (91.80%)
+Negative Passed: 1601/1743 (91.85%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js - core/opts/allowAwaitOutsideFunction-false: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-class-func/input.js - core/scope/dupl-bind-class-func: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-array-pattern-2/input.js - es2015/arrow-functions/inner-parens-array-pattern-2: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-array-pattern-3/input.js - es2015/arrow-functions/inner-parens-array-pattern-3: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-object-pattern-member/input.js - es2015/arrow-functions/inner-parens-object-pattern-member: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-object-pattern/input.js - es2015/arrow-functions/inner-parens-object-pattern: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/no-for-in-init-concise-binary-in/input.js - es2015/arrow-functions/no-for-in-init-concise-binary-in: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/class-methods/disallow-super-call-after-new/input.js - es2015/class-methods/disallow-super-call-after-new: expected a parse or early error, but pipeline succeeded

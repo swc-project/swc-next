@@ -8994,12 +8994,67 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
             }
             AssignmentTargetData::ArrayAssignmentTarget(pattern) => {
-                Some(BindingPattern::ArrayPattern(pattern))
+                let pattern = BindingPattern::ArrayPattern(pattern);
+                if context == PatternContext::Binding {
+                    self.assignment_pattern_to_binding_pattern(pattern)
+                } else {
+                    Some(pattern)
+                }
             }
             AssignmentTargetData::ObjectAssignmentTarget(pattern) => {
-                Some(BindingPattern::ObjectPattern(pattern))
+                let pattern = BindingPattern::ObjectPattern(pattern);
+                if context == PatternContext::Binding {
+                    self.assignment_pattern_to_binding_pattern(pattern)
+                } else {
+                    Some(pattern)
+                }
             }
         }
+    }
+
+    /// Revisit a pattern that was already converted under assignment-target
+    /// rules before cover grammar established that it is a binding pattern.
+    fn assignment_pattern_to_binding_pattern(
+        &mut self,
+        pattern: BindingPattern,
+    ) -> Option<BindingPattern> {
+        match self.ast.binding_pattern_data(pattern) {
+            BindingPatternData::BindingIdentifier(_) => {}
+            BindingPatternData::SimpleAssignmentTarget(target) => {
+                return self.assignment_target_to_pattern(
+                    AssignmentTarget::SimpleAssignmentTarget(target),
+                    PatternContext::Binding,
+                );
+            }
+            BindingPatternData::AssignmentPattern(assignment) => {
+                self.assignment_pattern_to_binding_pattern(assignment.left(&self.ast))?;
+            }
+            BindingPatternData::BindingRestElement(rest) => {
+                self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+            }
+            BindingPatternData::ArrayPattern(array) => {
+                let elements = array.elements(&self.ast);
+                for index in 0..elements.len() {
+                    if let Some(element) = elements.get_node(&self.ast, index).unwrap() {
+                        self.assignment_pattern_to_binding_pattern(element)?;
+                    }
+                }
+                if let Some(rest) = array.rest(&self.ast) {
+                    self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+                }
+            }
+            BindingPatternData::ObjectPattern(object) => {
+                let properties = object.properties(&self.ast);
+                for index in 0..properties.len() {
+                    let property = properties.get_node(&self.ast, index).unwrap();
+                    self.assignment_pattern_to_binding_pattern(property.value(&self.ast))?;
+                }
+                if let Some(rest) = object.rest(&self.ast) {
+                    self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+                }
+            }
+        }
+        Some(pattern)
     }
 
     fn is_destructuring_pattern(&self, pattern: BindingPattern) -> bool {
