@@ -310,7 +310,11 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         match self.ast.jsx_element_name_data(name) {
             JsxElementNameData::JsxIdentifier(identifier) => {
                 let name = self.name(identifier.name(self.ast));
-                let scope = self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id);
+                let scope = if name.first().is_some_and(u8::is_ascii_lowercase) {
+                    self.unresolved_scope_id
+                } else {
+                    self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id)
+                };
                 self.record_scope(identifier.node_id(), scope);
             }
             JsxElementNameData::JsxMemberExpression(member) => {
@@ -904,4 +908,102 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
     fn visit_static_block(&mut self, _: StaticBlock) {}
 
     fn visit_assignment_target(&mut self, _: AssignmentTarget) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
+
+    use super::*;
+
+    #[test]
+    fn jsx_names() {
+        let allocator = Allocator::new();
+        let parse = Parser::init(
+            &allocator,
+            "const div = Component; const Div = Component; const ns = Component; <div />; <Div />; <ns.Component />;",
+            Options {
+                lang: Lang::Jsx,
+                source_type: SourceType::Script,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let ast = parse.ast;
+        let resolver = resolver(&ast);
+        let mut assertions = JsxNameAssertions {
+            ast: &ast,
+            resolver: &resolver,
+            saw_intrinsic: false,
+            saw_component: false,
+            saw_member_root: false,
+        };
+        ast.root_program().visit_with(&mut assertions);
+
+        assert!(assertions.saw_intrinsic);
+        assert!(assertions.saw_component);
+        assert!(assertions.saw_member_root);
+    }
+
+    struct JsxNameAssertions<'a, 'ast> {
+        ast: &'a Ast<'ast>,
+        resolver: &'a JsNameResolver<'ast>,
+        saw_intrinsic: bool,
+        saw_component: bool,
+        saw_member_root: bool,
+    }
+
+    impl<'ast> Visit<'ast> for JsxNameAssertions<'_, 'ast> {
+        fn ast(&self) -> &Ast<'ast> {
+            self.ast
+        }
+
+        fn visit_jsx_element_name(&mut self, name: JsxElementName) {
+            match self.ast.jsx_element_name_data(name) {
+                JsxElementNameData::JsxIdentifier(identifier) => {
+                    let name = self.ast.get_utf8(identifier.name(self.ast)).as_bytes();
+                    if name == b"div" {
+                        assert_eq!(
+                            self.resolver.node_scope(identifier),
+                            self.resolver.unresolved_scope_id()
+                        );
+                        self.saw_intrinsic = true;
+                    } else if name == b"Div" {
+                        assert_eq!(
+                            self.resolver.node_scope(identifier),
+                            self.resolver.top_level_scope_id()
+                        );
+                        self.saw_component = true;
+                    }
+                }
+                JsxElementNameData::JsxMemberExpression(member) => {
+                    member.object(self.ast).visit_with(self);
+                }
+                JsxElementNameData::JsxNamespacedName(_) => {}
+            }
+        }
+
+        fn visit_jsx_member_expression_object(&mut self, object: JsxMemberExpressionObject) {
+            match self.ast.jsx_member_expression_object_data(object) {
+                JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
+                    assert_eq!(
+                        self.ast.get_utf8(identifier.name(self.ast)).as_bytes(),
+                        b"ns"
+                    );
+                    assert_eq!(
+                        self.resolver.node_scope(identifier),
+                        self.resolver.top_level_scope_id()
+                    );
+                    self.saw_member_root = true;
+                }
+                JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
+                    member.object(self.ast).visit_with(self);
+                }
+            }
+        }
+    }
 }
