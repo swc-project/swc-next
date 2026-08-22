@@ -23,9 +23,16 @@ For a fresh checkout, clone the fixtures with:
 ./scripts/clone_fixtures.sh
 ```
 
+Run this script serially across worktrees that share a Git common directory;
+concurrent invocations are unsupported.
+
 The fixture repositories are local inputs and are not part of this workspace.
 Updating them can legitimately change case counts and snapshots, so review the
 fixture revisions together with any resulting snapshot changes.
+
+Fixture directories are generated, read-only inputs. Do not edit them directly;
+update their pinned revisions in `scripts/clone_fixtures.sh` and regenerate them
+instead.
 
 ## Parser and codegen conformance
 
