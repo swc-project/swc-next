@@ -1,4 +1,8 @@
-# Function to clone a repository in the background
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Clone a fixture repository at its pinned commit.
 clone_repo() {
     local repo="$1"
     local path="$2"
@@ -6,21 +10,12 @@ clone_repo() {
     local name="$4"
 
     echo "Starting clone of $name..."
-    (
-        # Create the directory structure if it doesn't exist
-        mkdir -p "$(dirname "$path")"
 
-        # Clone the repository with minimal progress output
-        git clone --quiet --no-progress --single-branch --depth 1 \
-            "https://github.com/$repo.git" "$path"
+    mkdir -p "$(dirname "$path")"
+    git clone --quiet --no-progress --depth 1 --revision="$ref" \
+        "https://github.com/$repo.git" "$path"
 
-        # Checkout the specific commit
-        cd "$path"
-        git fetch --quiet --depth 1 origin "$ref"
-        git checkout --quiet "$ref"
-
-        echo "✓ Completed clone of $name"
-    )
+    echo "✓ Completed clone of $name"
 }
 
 clone_repo "tc39/test262" "tasks/testsuite/fixtures/test262" "d1d583db95a521218f3eb8341a887fd63eda8ff1" "test262"
