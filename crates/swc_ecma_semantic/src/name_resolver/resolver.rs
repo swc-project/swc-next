@@ -8,7 +8,7 @@ use swc_next_ecma_ast::*;
 
 use super::{
     scope::{DeclKind, ScopeKind},
-    utils::find_binding_ids,
+    utils::for_each_binding_id,
 };
 
 /// Resolve every value identifier in `ast` using the legacy resolver's
@@ -320,7 +320,6 @@ impl<'ast> Resolver<'ast> {
 
     fn visit_function_contents(&mut self, function: Function) {
         let parameters = function.params(self.ast);
-        let mut identifiers = std::vec::Vec::new();
         for id in parameters.items(self.ast).iter() {
             let item = self.ast.get_node_in_sub_range(id);
             let FormalParameterItemData::FormalParameter(parameter) =
@@ -334,13 +333,14 @@ impl<'ast> Resolver<'ast> {
             else {
                 continue;
             };
-            find_binding_ids(self.ast, pattern, &mut identifiers);
-        }
-        for identifier in identifiers {
-            let name = self.name(identifier.name(self.ast));
-            self.scopes[self.current]
-                .declared_symbols
-                .insert(name, DeclKind::Param);
+            let ast = self.ast;
+            let current = self.current;
+            for_each_binding_id(ast, pattern, |identifier| {
+                let name = ast.get_utf8(identifier.name(ast)).as_bytes();
+                self.scopes[current]
+                    .declared_symbols
+                    .insert(name, DeclKind::Param);
+            });
         }
         let old_kind = self.decl_kind;
         self.decl_kind = DeclKind::Param;
@@ -495,7 +495,6 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_arrow_function_expression(&mut self, arrow: ArrowFunctionExpression) {
         self.with_child(ScopeOwner::ArrowFunctionExpression(arrow), |child| {
             let parameters = arrow.params(child.ast);
-            let mut identifiers = std::vec::Vec::new();
             for id in parameters.items(child.ast).iter() {
                 let item = child.ast.get_node_in_sub_range(id);
                 let FormalParameterItemData::FormalParameter(parameter) =
@@ -509,13 +508,14 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 else {
                     continue;
                 };
-                find_binding_ids(child.ast, pattern, &mut identifiers);
-            }
-            for identifier in identifiers {
-                let name = child.name(identifier.name(child.ast));
-                child.scopes[child.current]
-                    .declared_symbols
-                    .insert(name, DeclKind::Param);
+                let ast = child.ast;
+                let current = child.current;
+                for_each_binding_id(ast, pattern, |identifier| {
+                    let name = ast.get_utf8(identifier.name(ast)).as_bytes();
+                    child.scopes[current]
+                        .declared_symbols
+                        .insert(name, DeclKind::Param);
+                });
             }
             let old_kind = child.decl_kind;
             child.decl_kind = DeclKind::Param;
@@ -617,7 +617,6 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             PropertyKind::Set => {
                 self.with_child(ScopeOwner::Function(function), |child| {
                     let parameters = function.params(child.ast);
-                    let mut identifiers = std::vec::Vec::new();
                     for id in parameters.items(child.ast).iter() {
                         let item = child.ast.get_node_in_sub_range(id);
                         let FormalParameterItemData::FormalParameter(parameter) =
@@ -631,13 +630,14 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                         else {
                             continue;
                         };
-                        find_binding_ids(child.ast, pattern, &mut identifiers);
-                    }
-                    for identifier in identifiers {
-                        let name = child.name(identifier.name(child.ast));
-                        child.scopes[child.current]
-                            .declared_symbols
-                            .insert(name, DeclKind::Param);
+                        let ast = child.ast;
+                        let current = child.current;
+                        for_each_binding_id(ast, pattern, |identifier| {
+                            let name = ast.get_utf8(identifier.name(ast)).as_bytes();
+                            child.scopes[current]
+                                .declared_symbols
+                                .insert(name, DeclKind::Param);
+                        });
                     }
                     let old_kind = child.decl_kind;
                     child.decl_kind = DeclKind::Param;
@@ -949,16 +949,14 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
         self.excluded_from_catch.clear();
         let old_in_catch_body = self.in_catch_body;
 
-        let mut params = std::vec::Vec::new();
-        if let Some(param) = catch.param(self.resolver.ast) {
-            find_binding_ids(self.resolver.ast, param, &mut params);
-        }
         let original_params = self.catch_param_decls.clone();
-        self.catch_param_decls.extend(
-            params
-                .into_iter()
-                .map(|id| self.resolver.name(id.name(self.resolver.ast))),
-        );
+        if let Some(param) = catch.param(self.resolver.ast) {
+            let ast = self.resolver.ast;
+            for_each_binding_id(ast, param, |identifier| {
+                let name = ast.get_utf8(identifier.name(ast)).as_bytes();
+                self.catch_param_decls.insert(name);
+            });
+        }
 
         self.in_catch_body = true;
         catch.body(self.resolver.ast).visit_with(self);

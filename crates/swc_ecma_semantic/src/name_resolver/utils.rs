@@ -2,26 +2,26 @@ use swc_next_ecma_ast::{
     Ast, BindingIdentifier, BindingPattern, Expr, PropertyKey, Visit, VisitWith,
 };
 
-struct DestructuringFinder<'found, 'ast> {
+struct BindingIdVisitor<'op, 'ast, F> {
     ast: &'ast Ast<'ast>,
-    found: &'found mut Vec<BindingIdentifier>,
+    op: &'op mut F,
 }
 
-pub fn find_binding_ids<'ast>(
+pub fn for_each_binding_id<'ast>(
     ast: &'ast Ast<'ast>,
     pattern: BindingPattern,
-    found: &mut Vec<BindingIdentifier>,
+    mut op: impl FnMut(BindingIdentifier),
 ) {
-    pattern.visit_with(&mut DestructuringFinder { ast, found });
+    pattern.visit_with(&mut BindingIdVisitor { ast, op: &mut op });
 }
 
-impl<'ast> Visit<'ast> for DestructuringFinder<'_, 'ast> {
+impl<'ast, F: FnMut(BindingIdentifier)> Visit<'ast> for BindingIdVisitor<'_, 'ast, F> {
     fn ast(&self) -> &Ast<'ast> {
         self.ast
     }
 
     fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
-        self.found.push(identifier);
+        (self.op)(identifier);
     }
 
     /// Initializers and computed expressions do not introduce bindings.
