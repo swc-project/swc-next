@@ -5,7 +5,7 @@ use std::{
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::*;
-use swc_next_ecma_semantic::name_resolver::{JsNameResolver, resolver};
+use swc_next_ecma_semantic::name_resolver::{JsNameResolver, SymbolNode, resolver};
 
 use crate::{
     cases::{Case, swc_resolver::SwcResolverCase},
@@ -83,9 +83,9 @@ struct ResolverDisplayVisitor<'a, 'ast> {
 }
 
 impl ResolverDisplayVisitor<'_, '_> {
-    fn write_identifier<N: AstNode>(&mut self, node: N, name: AstUtf8) {
+    fn write_identifier(&mut self, node: SymbolNode, name: AstUtf8) {
         let name = self.ast.get_utf8(name);
-        let context = self.resolver.node_scope(node).raw();
+        let context = self.resolver.symbol_scope(node).raw();
         writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 
@@ -99,7 +99,9 @@ impl ResolverDisplayVisitor<'_, '_> {
             self.ast.module_export_name_data(name)
         {
             let context = if resolved {
-                self.resolver.node_scope(identifier).raw()
+                self.resolver
+                    .symbol_scope(SymbolNode::ModuleExportName(identifier))
+                    .raw()
             } else {
                 self.resolver.unresolved_scope_id().raw()
             };
@@ -118,11 +120,11 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
     }
 
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
-        self.write_identifier(node, node.name(self.ast));
+        self.write_identifier(SymbolNode::IdentifierReference(node), node.name(self.ast));
     }
 
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
-        self.write_identifier(node, node.name(self.ast));
+        self.write_identifier(SymbolNode::BindingIdentifier(node), node.name(self.ast));
         node.visit_children_with(self);
     }
 
@@ -131,7 +133,7 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
     }
 
     fn visit_label_identifier(&mut self, node: LabelIdentifier) {
-        self.write_identifier(node, node.name(self.ast));
+        self.write_identifier(SymbolNode::LabelIdentifier(node), node.name(self.ast));
     }
 
     fn visit_private_identifier(&mut self, node: PrivateIdentifier) {
@@ -209,7 +211,10 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
     fn visit_jsx_element_name(&mut self, node: JsxElementName) {
         match self.ast.jsx_element_name_data(node) {
             JsxElementNameData::JsxIdentifier(identifier) => {
-                self.write_identifier(identifier, identifier.name(self.ast));
+                self.write_identifier(
+                    SymbolNode::JsxIdentifier(identifier),
+                    identifier.name(self.ast),
+                );
             }
             JsxElementNameData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self);
@@ -221,7 +226,10 @@ impl<'ast> Visit<'ast> for ResolverDisplayVisitor<'_, 'ast> {
     fn visit_jsx_member_expression_object(&mut self, node: JsxMemberExpressionObject) {
         match self.ast.jsx_member_expression_object_data(node) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
-                self.write_identifier(identifier, identifier.name(self.ast));
+                self.write_identifier(
+                    SymbolNode::JsxIdentifier(identifier),
+                    identifier.name(self.ast),
+                );
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self);
