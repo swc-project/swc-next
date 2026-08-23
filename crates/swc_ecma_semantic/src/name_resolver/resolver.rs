@@ -100,6 +100,50 @@ impl<'ast> Scope<'ast> {
     }
 }
 
+/// AST nodes that can own a scope created by the name resolver.
+///
+/// Keep this list closed so `with_child` cannot accidentally attach a scope to
+/// an arbitrary AST node. `ImplicitBlockStatement` is used for the implicit
+/// scope around a loop body, which may be any statement rather than only a
+/// block statement.
+enum ScopeOwner {
+    ImplicitBlockStatement(Stmt),
+    BlockStatement(BlockStatement),
+    CatchClause(CatchClause),
+    Function(Function),
+    FunctionBody(FunctionBody),
+    SetterBody(FunctionBody),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    Class(Class),
+    StaticBlock(StaticBlock),
+    ObjectExpression(ObjectExpression),
+    ForStatement(ForStatement),
+    ForInStatement(ForInStatement),
+    ForOfStatement(ForOfStatement),
+    SwitchStatement(SwitchStatement),
+}
+
+impl ScopeOwner {
+    fn into_parts(self) -> (ScopeKind, NodeId) {
+        match self {
+            Self::ImplicitBlockStatement(node) => (ScopeKind::Block, node.node_id()),
+            Self::BlockStatement(node) => (ScopeKind::Block, node.node_id()),
+            Self::CatchClause(node) => (ScopeKind::Fn, node.node_id()),
+            Self::Function(node) => (ScopeKind::Fn, node.node_id()),
+            Self::FunctionBody(node) => (ScopeKind::Fn, node.node_id()),
+            Self::SetterBody(node) => (ScopeKind::Block, node.node_id()),
+            Self::ArrowFunctionExpression(node) => (ScopeKind::Fn, node.node_id()),
+            Self::Class(node) => (ScopeKind::Fn, node.node_id()),
+            Self::StaticBlock(node) => (ScopeKind::Block, node.node_id()),
+            Self::ObjectExpression(node) => (ScopeKind::Block, node.node_id()),
+            Self::ForStatement(node) => (ScopeKind::Block, node.node_id()),
+            Self::ForInStatement(node) => (ScopeKind::Block, node.node_id()),
+            Self::ForOfStatement(node) => (ScopeKind::Block, node.node_id()),
+            Self::SwitchStatement(node) => (ScopeKind::Block, node.node_id()),
+        }
+    }
+}
+
 /// The resolver has the same two phases as the legacy implementation:
 /// declarations visible in a scope are hoisted first, then references are
 /// resolved while walking the source in order.
@@ -133,7 +177,7 @@ impl<'ast> Resolver<'ast> {
         None
     }
 
-    fn with_child<F>(&mut self, kind: ScopeKind, owner: Option<NodeId>, op: F)
+    fn with_child<F>(&mut self, owner: ScopeOwner, op: F)
     where
         F: FnOnce(&mut Self),
     {
@@ -142,11 +186,10 @@ impl<'ast> Resolver<'ast> {
         let decl_kind = self.decl_kind;
         let strict_mode = self.strict_mode;
 
+        let (kind, owner) = owner.into_parts();
         let child_scope = self.scopes.push(Scope::new(kind, Some(scope)));
         self.current = child_scope;
-        if let Some(owner) = owner {
-            self.set_scope_once(owner, child_scope);
-        }
+        self.set_scope_once(owner, child_scope);
         op(self);
 
         self.current = scope;
@@ -254,7 +297,7 @@ impl<'ast> Resolver<'ast> {
     }
 
     fn visit_stmt_within_child_scope(&mut self, statement: Stmt) {
-        self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
+        self.with_child(ScopeOwner::ImplicitBlockStatement(statement), |child| {
             if let StmtData::BlockStatement(block) = child.ast.stmt_data(statement) {
                 child.set_scope_once(block.node_id(), child.current);
                 block.body(child.ast).visit_with(child);
@@ -347,14 +390,14 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_block_statement(&mut self, block: BlockStatement) {
-        self.with_child(ScopeKind::Block, Some(block.node_id()), |child| {
+        self.with_child(ScopeOwner::BlockStatement(block), |child| {
             block.body(child.ast).visit_with(child);
         });
     }
 
     fn visit_catch_clause(&mut self, catch: CatchClause) {
         let body = catch.body(self.ast);
-        self.with_child(ScopeKind::Fn, Some(catch.node_id()), |child| {
+        self.with_child(ScopeOwner::CatchClause(catch), |child| {
             child.set_scope_once(body.node_id(), child.current);
             catch.param(child.ast).visit_with(child);
             body.body(child.ast).visit_with(child);
@@ -365,22 +408,22 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         match function.function_type(self.ast) {
             FunctionType::FunctionDeclaration => {
                 let body = function.body(self.ast);
-                self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                self.with_child(ScopeOwner::FunctionBody(body), |child| {
                     child.visit_function_contents(function);
                 });
             }
             FunctionType::FunctionExpression => {
                 if let Some(identifier) = function.id(self.ast) {
-                    self.with_child(ScopeKind::Fn, Some(function.node_id()), |name_scope| {
+                    self.with_child(ScopeOwner::Function(function), |name_scope| {
                         name_scope.declare(identifier, DeclKind::Function);
                         let body = function.body(name_scope.ast);
-                        name_scope.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                        name_scope.with_child(ScopeOwner::FunctionBody(body), |child| {
                             child.visit_function_contents(function);
                         });
                     });
                 } else {
                     let body = function.body(self.ast);
-                    self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                    self.with_child(ScopeOwner::FunctionBody(body), |child| {
                         child.visit_function_contents(function);
                     });
                 }
@@ -389,7 +432,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_arrow_function_expression(&mut self, arrow: ArrowFunctionExpression) {
-        self.with_child(ScopeKind::Fn, Some(arrow.node_id()), |child| {
+        self.with_child(ScopeOwner::ArrowFunctionExpression(arrow), |child| {
             let parameters = arrow.params(child.ast);
             let mut identifiers = std::vec::Vec::new();
             for id in parameters.items(child.ast).iter() {
@@ -439,7 +482,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 if let Some(identifier) = class.id(self.ast) {
                     self.declare(identifier, DeclKind::Lexical);
                 }
-                self.with_child(ScopeKind::Fn, Some(class.node_id()), |child| {
+                self.with_child(ScopeOwner::Class(class), |child| {
                     let old_strict_mode = child.strict_mode;
                     child.strict_mode = true;
                     class.decorators(child.ast).visit_with(child);
@@ -450,7 +493,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             }
             ClassType::ClassExpression => {
                 class.super_class(self.ast).visit_with(self);
-                self.with_child(ScopeKind::Fn, Some(class.node_id()), |child| {
+                self.with_child(ScopeOwner::Class(class), |child| {
                     if let Some(identifier) = class.id(child.ast) {
                         child.declare(identifier, DeclKind::Lexical);
                     }
@@ -470,7 +513,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         method.key(self.ast).visit_with(self);
         let function = method.value(self.ast);
         let body = function.body(self.ast);
-        self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+        self.with_child(ScopeOwner::FunctionBody(body), |child| {
             child.visit_function_contents(function);
         });
     }
@@ -484,13 +527,13 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_static_block(&mut self, block: StaticBlock) {
-        self.with_child(ScopeKind::Block, Some(block.node_id()), |child| {
+        self.with_child(ScopeOwner::StaticBlock(block), |child| {
             block.body(child.ast).visit_with(child);
         });
     }
 
     fn visit_object_expression(&mut self, object: ObjectExpression) {
-        self.with_child(ScopeKind::Block, Some(object.node_id()), |child| {
+        self.with_child(ScopeOwner::ObjectExpression(object), |child| {
             object.visit_children_with(child);
         });
     }
@@ -506,12 +549,12 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         let body = function.body(self.ast);
         match property.kind(self.ast) {
             PropertyKind::Get => {
-                self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                self.with_child(ScopeOwner::FunctionBody(body), |child| {
                     child.visit_function_contents(function);
                 });
             }
             PropertyKind::Set => {
-                self.with_child(ScopeKind::Fn, Some(function.node_id()), |child| {
+                self.with_child(ScopeOwner::Function(function), |child| {
                     let parameters = function.params(child.ast);
                     let mut identifiers = std::vec::Vec::new();
                     for id in parameters.items(child.ast).iter() {
@@ -539,7 +582,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                     child.decl_kind = DeclKind::Param;
                     parameters.visit_with(child);
                     child.decl_kind = old_kind;
-                    child.with_child(ScopeKind::Block, Some(body.node_id()), |body_child| {
+                    child.with_child(ScopeOwner::SetterBody(body), |body_child| {
                         let old_strict_mode = body_child.strict_mode;
                         if !body_child.strict_mode {
                             body_child.strict_mode =
@@ -551,7 +594,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 });
             }
             PropertyKind::Init if property.method(self.ast) => {
-                self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                self.with_child(ScopeOwner::FunctionBody(body), |child| {
                     child.visit_function_contents(function);
                 });
             }
@@ -560,7 +603,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_for_statement(&mut self, statement: ForStatement) {
-        self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
+        self.with_child(ScopeOwner::ForStatement(statement), |child| {
             statement.init(child.ast).visit_with(child);
             statement.test(child.ast).visit_with(child);
             statement.update(child.ast).visit_with(child);
@@ -569,7 +612,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_for_in_statement(&mut self, statement: ForInStatement) {
-        self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
+        self.with_child(ScopeOwner::ForInStatement(statement), |child| {
             statement.left(child.ast).visit_with(child);
             statement.right(child.ast).visit_with(child);
             child.visit_stmt_within_child_scope(statement.body(child.ast));
@@ -577,7 +620,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_for_of_statement(&mut self, statement: ForOfStatement) {
-        self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
+        self.with_child(ScopeOwner::ForOfStatement(statement), |child| {
             statement.left(child.ast).visit_with(child);
             statement.right(child.ast).visit_with(child);
             child.visit_stmt_within_child_scope(statement.body(child.ast));
@@ -594,7 +637,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
     fn visit_switch_statement(&mut self, statement: SwitchStatement) {
         statement.discriminant(self.ast).visit_with(self);
-        self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
+        self.with_child(ScopeOwner::SwitchStatement(statement), |child| {
             statement.cases(child.ast).visit_with(child);
         });
     }
@@ -644,7 +687,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             ExportDefaultDeclarationKindData::Function(function) => {
                 if function.id(self.ast).is_some() {
                     let body = function.body(self.ast);
-                    self.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
+                    self.with_child(ScopeOwner::FunctionBody(body), |child| {
                         child.visit_function_contents(function);
                     });
                 } else {
