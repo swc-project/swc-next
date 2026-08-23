@@ -1,3 +1,5 @@
+use std::hash::BuildHasher;
+
 use oxc_index::{Idx, IndexVec};
 use rustc_hash::FxHashSet;
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
@@ -162,10 +164,21 @@ impl<'ast> Resolver<'ast> {
     }
 
     fn scope_of_name(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<ScopeId> {
+        // Every scope uses the same stateless FxBuildHasher, so reuse the hash
+        // instead of hashing the identifier again for each ancestor scope.
+        let hash = self.scopes[self.current]
+            .declared_symbols
+            .hasher()
+            .hash_one(name);
         let mut scope = Some(self.current);
         while let Some(scope_id) = scope {
             let current = &self.scopes[scope_id];
-            if current.declared_symbols.contains_key(name) {
+            if current
+                .declared_symbols
+                .raw_entry()
+                .from_hash(hash, |candidate| *candidate == name)
+                .is_some()
+            {
                 return if (name == b"undefined" || name == b"NaN" || name == b"Infinity")
                     && scope_id == self.top_level_scope_id
                     && !self.is_module
