@@ -144,7 +144,7 @@ impl<'ast> Resolver<'ast> {
             .push(Scope::new(kind, Some(scope), self.ast.allocator()));
         self.current = child_scope;
         if let Some(owner) = owner {
-            self.record_scope(owner, child_scope);
+            self.set_scope_once(owner, child_scope);
         }
         op(self);
 
@@ -154,22 +154,14 @@ impl<'ast> Resolver<'ast> {
         self.strict_mode = strict_mode;
     }
 
-    fn record_scope(&mut self, node: NodeId, scope: ScopeId) {
+    fn set_scope_once(&mut self, node: NodeId, scope: ScopeId) {
         let slot = &mut self.node_scopes[node.index()];
         if slot.is_none() {
             *slot = Some(scope);
         }
     }
 
-    fn mark_current(&mut self, node: NodeId) {
-        self.record_scope(node, self.current);
-    }
-
-    fn mark_for_ref(&self, name: &[u8]) -> Option<ScopeId> {
-        self.mark_for_ref_inner(name, false)
-    }
-
-    fn mark_for_ref_inner(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<ScopeId> {
+    fn scope_of_name(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<ScopeId> {
         let mut scope = Some(self.current);
         while let Some(scope_id) = scope {
             let current = &self.scopes[scope_id];
@@ -191,7 +183,7 @@ impl<'ast> Resolver<'ast> {
         None
     }
 
-    fn modify(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
+    fn declare(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
         if self.node_scopes[identifier.node_id().index()].is_some() {
             return;
         }
@@ -200,7 +192,7 @@ impl<'ast> Resolver<'ast> {
         self.scopes[self.current]
             .declared_symbols
             .insert(name, kind);
-        self.mark_current(identifier.node_id());
+        self.set_scope_once(identifier.node_id(), self.current);
     }
 
     fn has_use_strict(&self, directives: TypedSubRange<Directive>) -> bool {
@@ -240,7 +232,7 @@ impl<'ast> Resolver<'ast> {
         self.decl_kind = old_kind;
 
         let body = function.body(self.ast);
-        self.mark_current(body.node_id());
+        self.set_scope_once(body.node_id(), self.current);
         let old_strict_mode = self.strict_mode;
         if !self.strict_mode {
             self.strict_mode = self.has_use_strict(body.directives(self.ast));
@@ -252,7 +244,7 @@ impl<'ast> Resolver<'ast> {
     fn visit_stmt_within_child_scope(&mut self, statement: Stmt) {
         self.with_child(ScopeKind::Block, Some(statement.node_id()), |child| {
             if let StmtData::BlockStatement(block) = child.ast.stmt_data(statement) {
-                child.mark_current(block.node_id());
+                child.set_scope_once(block.node_id(), child.current);
                 block.body(child.ast).visit_with(child);
             } else {
                 statement.visit_with(child);
@@ -267,7 +259,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_program(&mut self, program: Program) {
-        self.mark_current(program.node_id());
+        self.set_scope_once(program.node_id(), self.current);
         self.is_module = self.ast.is_module();
         self.strict_mode = self.is_module || self.has_use_strict(program.directives(self.ast));
         program.body(self.ast).visit_with(self);
@@ -294,16 +286,18 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             return;
         }
         let name = self.name(reference.name(self.ast));
-        let scope = self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id);
-        self.record_scope(reference.node_id(), scope);
+        let scope = self
+            .scope_of_name(name, true)
+            .unwrap_or(self.unresolved_scope_id);
+        self.set_scope_once(reference.node_id(), scope);
     }
 
     fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
-        self.modify(identifier, self.decl_kind);
+        self.declare(identifier, self.decl_kind);
     }
 
     fn visit_label_identifier(&mut self, label: LabelIdentifier) {
-        self.record_scope(label.node_id(), self.label_scope_id);
+        self.set_scope_once(label.node_id(), self.label_scope_id);
     }
 
     fn visit_jsx_element_name(&mut self, name: JsxElementName) {
@@ -313,9 +307,10 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 let scope = if name.first().is_some_and(u8::is_ascii_lowercase) {
                     self.unresolved_scope_id
                 } else {
-                    self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id)
+                    self.scope_of_name(name, false)
+                        .unwrap_or(self.unresolved_scope_id)
                 };
-                self.record_scope(identifier.node_id(), scope);
+                self.set_scope_once(identifier.node_id(), scope);
             }
             JsxElementNameData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self);
@@ -328,8 +323,10 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         match self.ast.jsx_member_expression_object_data(object) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
                 let name = self.name(identifier.name(self.ast));
-                let scope = self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id);
-                self.record_scope(identifier.node_id(), scope);
+                let scope = self
+                    .scope_of_name(name, false)
+                    .unwrap_or(self.unresolved_scope_id);
+                self.set_scope_once(identifier.node_id(), scope);
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self);
@@ -346,7 +343,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_catch_clause(&mut self, catch: CatchClause) {
         let body = catch.body(self.ast);
         self.with_child(ScopeKind::Fn, Some(catch.node_id()), |child| {
-            child.mark_current(body.node_id());
+            child.set_scope_once(body.node_id(), child.current);
             catch.param(child.ast).visit_with(child);
             body.body(child.ast).visit_with(child);
         });
@@ -363,7 +360,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             FunctionType::FunctionExpression => {
                 if let Some(identifier) = function.id(self.ast) {
                     self.with_child(ScopeKind::Fn, Some(function.node_id()), |name_scope| {
-                        name_scope.modify(identifier, DeclKind::Function);
+                        name_scope.declare(identifier, DeclKind::Function);
                         let body = function.body(name_scope.ast);
                         name_scope.with_child(ScopeKind::Fn, Some(body.node_id()), |child| {
                             child.visit_function_contents(function);
@@ -411,7 +408,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
             match child.ast.arrow_function_body_data(arrow.body(child.ast)) {
                 ArrowFunctionBodyData::FunctionBody(body) => {
-                    child.mark_current(body.node_id());
+                    child.set_scope_once(body.node_id(), child.current);
                     let old_strict_mode = child.strict_mode;
                     if !child.strict_mode {
                         child.strict_mode = child.has_use_strict(body.directives(child.ast));
@@ -428,7 +425,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         match class.class_type(self.ast) {
             ClassType::ClassDeclaration => {
                 if let Some(identifier) = class.id(self.ast) {
-                    self.modify(identifier, DeclKind::Lexical);
+                    self.declare(identifier, DeclKind::Lexical);
                 }
                 self.with_child(ScopeKind::Fn, Some(class.node_id()), |child| {
                     let old_strict_mode = child.strict_mode;
@@ -443,7 +440,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 class.super_class(self.ast).visit_with(self);
                 self.with_child(ScopeKind::Fn, Some(class.node_id()), |child| {
                     if let Some(identifier) = class.id(child.ast) {
-                        child.modify(identifier, DeclKind::Lexical);
+                        child.declare(identifier, DeclKind::Lexical);
                     }
                     let old_strict_mode = child.strict_mode;
                     child.strict_mode = true;
@@ -607,15 +604,15 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_import_specifier(&mut self, specifier: ImportSpecifier) {
-        self.modify(specifier.local(self.ast), DeclKind::Lexical);
+        self.declare(specifier.local(self.ast), DeclKind::Lexical);
     }
 
     fn visit_import_default_specifier(&mut self, specifier: ImportDefaultSpecifier) {
-        self.modify(specifier.local(self.ast), DeclKind::Lexical);
+        self.declare(specifier.local(self.ast), DeclKind::Lexical);
     }
 
     fn visit_import_namespace_specifier(&mut self, specifier: ImportNamespaceSpecifier) {
-        self.modify(specifier.local(self.ast), DeclKind::Lexical);
+        self.declare(specifier.local(self.ast), DeclKind::Lexical);
     }
 
     fn visit_export_named_declaration(&mut self, declaration: ExportNamedDeclaration) {
@@ -660,8 +657,10 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             self.ast.module_export_name_data(local)
         {
             let name = self.name(identifier.name(self.ast));
-            let scope = self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id);
-            self.record_scope(identifier.node_id(), scope);
+            let scope = self
+                .scope_of_name(name, true)
+                .unwrap_or(self.unresolved_scope_id);
+            self.set_scope_once(identifier.node_id(), scope);
         }
         let exported = specifier.exported(self.ast);
         if exported.span(self.ast) != local.span(self.ast)
@@ -669,8 +668,10 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 self.ast.module_export_name_data(exported)
         {
             let name = self.name(identifier.name(self.ast));
-            let scope = self.mark_for_ref(name).unwrap_or(self.unresolved_scope_id);
-            self.record_scope(identifier.node_id(), scope);
+            let scope = self
+                .scope_of_name(name, false)
+                .unwrap_or(self.unresolved_scope_id);
+            self.set_scope_once(identifier.node_id(), scope);
         }
     }
 
@@ -704,7 +705,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
     fn add_binding(&mut self, identifier: BindingIdentifier) {
         let name = self.resolver.name(identifier.name(self.resolver.ast));
         if self.in_catch_body {
-            if self.resolver.mark_for_ref_inner(name, true).is_some()
+            if self.resolver.scope_of_name(name, true).is_some()
                 && self.catch_param_decls.contains(name)
             {
                 return;
@@ -714,7 +715,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
         {
             return;
         }
-        self.resolver.modify(identifier, self.kind);
+        self.resolver.declare(identifier, self.kind);
     }
 }
 
@@ -786,7 +787,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
                 return;
             }
         }
-        self.resolver.modify(identifier, DeclKind::Function);
+        self.resolver.declare(identifier, DeclKind::Function);
     }
 
     fn visit_class(&mut self, class: Class) {
@@ -794,7 +795,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
             return;
         }
         if let Some(identifier) = class.id(self.resolver.ast) {
-            self.resolver.modify(identifier, DeclKind::Lexical);
+            self.resolver.declare(identifier, DeclKind::Lexical);
         }
     }
 
@@ -806,13 +807,13 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
         {
             ExportDefaultDeclarationKindData::Function(function) => {
                 if let Some(identifier) = function.id(self.resolver.ast) {
-                    self.resolver.modify(identifier, DeclKind::Var);
+                    self.resolver.declare(identifier, DeclKind::Var);
                 }
                 function.visit_with(self);
             }
             ExportDefaultDeclarationKindData::Class(class) => {
                 if let Some(identifier) = class.id(self.resolver.ast) {
-                    self.resolver.modify(identifier, DeclKind::Lexical);
+                    self.resolver.declare(identifier, DeclKind::Lexical);
                 }
                 class.visit_with(self);
             }
@@ -869,17 +870,17 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
 
     fn visit_import_specifier(&mut self, specifier: ImportSpecifier) {
         self.resolver
-            .modify(specifier.local(self.resolver.ast), DeclKind::Lexical);
+            .declare(specifier.local(self.resolver.ast), DeclKind::Lexical);
     }
 
     fn visit_import_default_specifier(&mut self, specifier: ImportDefaultSpecifier) {
         self.resolver
-            .modify(specifier.local(self.resolver.ast), DeclKind::Lexical);
+            .declare(specifier.local(self.resolver.ast), DeclKind::Lexical);
     }
 
     fn visit_import_namespace_specifier(&mut self, specifier: ImportNamespaceSpecifier) {
         self.resolver
-            .modify(specifier.local(self.resolver.ast), DeclKind::Lexical);
+            .declare(specifier.local(self.resolver.ast), DeclKind::Lexical);
     }
 
     fn visit_switch_statement(&mut self, statement: SwitchStatement) {
