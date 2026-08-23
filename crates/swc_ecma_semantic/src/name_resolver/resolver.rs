@@ -457,6 +457,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_method_definition(&mut self, method: MethodDefinition) {
+        method.decorators(self.ast).visit_with(self);
         method.key(self.ast).visit_with(self);
         let function = method.value(self.ast);
         let body = function.body(self.ast);
@@ -466,6 +467,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_property_definition(&mut self, property: PropertyDefinition) {
+        property.decorators(self.ast).visit_with(self);
         if property.computed(self.ast) {
             property.key(self.ast).visit_with(self);
         }
@@ -947,6 +949,54 @@ mod tests {
         assert!(assertions.saw_intrinsic);
         assert!(assertions.saw_component);
         assert!(assertions.saw_member_root);
+    }
+
+    #[test]
+    fn class_member_decorators() {
+        let allocator = Allocator::new();
+        let parse = Parser::init(
+            &allocator,
+            "const dec = () => {}; class C { @dec method() {} @(() => dec) field; }",
+            Options::default(),
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        let ast = parse.ast;
+        let resolver = resolver(&ast);
+        let mut assertions = DecoratorAssertions {
+            ast: &ast,
+            resolver: &resolver,
+            references: 0,
+        };
+        ast.root_program().visit_with(&mut assertions);
+
+        assert_eq!(assertions.references, 2);
+    }
+
+    struct DecoratorAssertions<'a, 'ast> {
+        ast: &'a Ast<'ast>,
+        resolver: &'a JsNameResolver<'ast>,
+        references: usize,
+    }
+
+    impl<'ast> Visit<'ast> for DecoratorAssertions<'_, 'ast> {
+        fn ast(&self) -> &Ast<'ast> {
+            self.ast
+        }
+
+        fn visit_identifier_reference(&mut self, reference: IdentifierReference) {
+            assert_eq!(
+                self.ast.get_utf8(reference.name(self.ast)).as_bytes(),
+                b"dec"
+            );
+            assert_eq!(
+                self.resolver.node_scope(reference),
+                self.resolver.top_level_scope_id()
+            );
+            self.references += 1;
+        }
     }
 
     struct JsxNameAssertions<'a, 'ast> {
