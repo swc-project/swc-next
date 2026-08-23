@@ -3282,10 +3282,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         {
             import_kind = ImportOrExportKind::Type;
             self.advance()?;
-        } else if self.current_token.tag == TokenTag::Source
-            && next.tag.is_identifier_like()
-            && next.tag != TokenTag::From
-        {
+        } else if self.current_token.tag == TokenTag::Source && self.is_source_phase_import(next) {
             phase = Some(ImportPhase::Source);
             self.advance()?;
         } else if self.current_token.tag == TokenTag::Defer && next.tag == TokenTag::Star {
@@ -3348,6 +3345,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
         true
+    }
+
+    fn is_source_phase_import(&mut self, after_source: Token) -> bool {
+        if !after_source.tag.is_identifier_like() {
+            return false;
+        }
+        if after_source.tag != TokenTag::From {
+            return true;
+        }
+
+        let mut peek = self.begin_peek();
+        let after_from = (|| {
+            peek.next()?;
+            peek.next()
+        })();
+        peek.end();
+        after_from.is_some_and(|token| token.tag == TokenTag::From)
     }
 
     fn parse_side_effect_import(&mut self, start: u32, phase: Option<ImportPhase>) -> Option<Stmt> {
