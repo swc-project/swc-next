@@ -405,7 +405,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         }
         let name = self.name(reference.name(self.ast));
         let scope = self
-            .scope_of_name(name, true)
+            .scope_of_name(name, false)
             .unwrap_or(self.unresolved_scope_id);
         self.set_symbol_scope_once(SymbolNode::IdentifierReference(reference), scope);
     }
@@ -776,7 +776,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         {
             let name = self.name(identifier.name(self.ast));
             let scope = self
-                .scope_of_name(name, true)
+                .scope_of_name(name, false)
                 .unwrap_or(self.unresolved_scope_id);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
