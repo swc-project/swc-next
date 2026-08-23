@@ -237,7 +237,6 @@ impl<'ast> Resolver<'ast> {
         F: FnOnce(&mut Self),
     {
         let scope = self.current;
-        let is_module = self.is_module;
         let decl_kind = self.decl_kind;
         let strict_mode = self.strict_mode;
 
@@ -248,7 +247,6 @@ impl<'ast> Resolver<'ast> {
         op(self);
 
         self.current = scope;
-        self.is_module = is_module;
         self.decl_kind = decl_kind;
         self.strict_mode = strict_mode;
     }
