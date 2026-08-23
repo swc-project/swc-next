@@ -2828,6 +2828,7 @@ version = "0.1.2"
 dependencies = [
  "bitflags",
  "clap",
+ "hashbrown 0.17.1",
  "oxc_index",
  "rustc-hash",
  "swc_next_allocator",

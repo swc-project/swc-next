@@ -1,8 +1,9 @@
 use std::hash::BuildHasher;
 
+use hashbrown::HashMap;
 use oxc_index::{Idx, IndexVec};
-use rustc_hash::FxHashSet;
-use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
+use rustc_hash::{FxBuildHasher, FxHashSet};
+use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::*;
 
 use super::{
@@ -15,8 +16,8 @@ use super::{
 pub fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver<'ast> {
     let allocator = ast.allocator();
     let mut scopes = IndexVec::new();
-    let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None, allocator));
-    let top_level_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None, allocator));
+    let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
+    let top_level_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
     let label_scope_id = ScopeId::from_usize(ScopeId::MAX);
 
     let mut node_scopes = ArenaVec::with_capacity_in(ast.node_count(), allocator);
@@ -86,15 +87,15 @@ impl JsNameResolver<'_> {
 struct Scope<'ast> {
     parent: Option<ScopeId>,
     kind: ScopeKind,
-    declared_symbols: ArenaHashMap<'ast, &'ast [u8], DeclKind>,
+    declared_symbols: HashMap<&'ast [u8], DeclKind, FxBuildHasher>,
 }
 
 impl<'ast> Scope<'ast> {
-    fn new(kind: ScopeKind, parent: Option<ScopeId>, allocator: &'ast Allocator) -> Self {
+    fn new(kind: ScopeKind, parent: Option<ScopeId>) -> Self {
         Self {
             parent,
             kind,
-            declared_symbols: ArenaHashMap::new_in(allocator),
+            declared_symbols: HashMap::with_hasher(FxBuildHasher),
         }
     }
 }
@@ -141,9 +142,7 @@ impl<'ast> Resolver<'ast> {
         let decl_kind = self.decl_kind;
         let strict_mode = self.strict_mode;
 
-        let child_scope = self
-            .scopes
-            .push(Scope::new(kind, Some(scope), self.ast.allocator()));
+        let child_scope = self.scopes.push(Scope::new(kind, Some(scope)));
         self.current = child_scope;
         if let Some(owner) = owner {
             self.set_scope_once(owner, child_scope);
