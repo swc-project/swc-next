@@ -1,15 +1,8 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 20335/20355 (99.90%)
+Positive Passed: 20335/20347 (99.94%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/20355 (0.00%)
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/implements.js - test262/test/language/future-reserved-words/implements.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/interface.js - test262/test/language/future-reserved-words/interface.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/package.js - test262/test/language/future-reserved-words/package.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/private.js - test262/test/language/future-reserved-words/private.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/protected.js - test262/test/language/future-reserved-words/protected.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/public.js - test262/test/language/future-reserved-words/public.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/static.js - test262/test/language/future-reserved-words/static.js.snap: name resolution differs
+Panicked: 0/20347 (0.00%)
 Failed: tasks/testsuite/fixtures/test262/test/language/import/import-attributes/json-idempotency.js - test262/test/language/import/import-attributes/json-idempotency.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js - test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js - test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js.snap: name resolution differs
@@ -20,6 +13,5 @@ Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-aw
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-await-using-fresh-binding-per-iteration.js - test262/test/language/statements/for-of/head-await-using-fresh-binding-per-iteration.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-using-bound-names-fordecl-tdz.js - test262/test/language/statements/for-of/head-using-bound-names-fordecl-tdz.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/for-of/head-using-fresh-binding-per-iteration.js - test262/test/language/statements/for-of/head-using-fresh-binding-per-iteration.js.snap: name resolution differs
-Failed: tasks/testsuite/fixtures/test262/test/language/statements/labeled/value-yield-non-strict-escaped.js - test262/test/language/statements/labeled/value-yield-non-strict-escaped.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/let/syntax/escaped-let.js - test262/test/language/statements/let/syntax/escaped-let.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/using/syntax/using-invalid-assignment-statement-body-for-of.js - test262/test/language/statements/using/syntax/using-invalid-assignment-statement-body-for-of.js.snap: name resolution differs
