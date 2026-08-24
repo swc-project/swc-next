@@ -300,7 +300,8 @@ impl<'ast> Resolver<'ast> {
     }
 
     fn declare(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
-        if self.node_scopes[identifier.node_id().index()].is_some() {
+        let node_index = identifier.node_id().index();
+        if self.node_scopes[node_index].is_some() {
             return;
         }
 
@@ -308,7 +309,7 @@ impl<'ast> Resolver<'ast> {
         self.scopes[self.current]
             .declared_symbols
             .insert(name, kind);
-        self.set_symbol_scope_once(SymbolNode::BindingIdentifier(identifier), self.current);
+        self.node_scopes[node_index] = Some(self.current);
     }
 
     fn has_use_strict(&self, directives: TypedSubRange<Directive>) -> bool {
