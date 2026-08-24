@@ -1764,7 +1764,8 @@ impl<'a> Printer<'a> {
     fn print_expr(&mut self, expr: Expr, level: Precedence) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
         let is_at_export_default_start = self.js.len() == self.export_default_start;
-        self.print_comments_before(expr.span(self.ast).start, false, true);
+        let expr_start = expr.span(self.ast).start;
+        self.print_comments_before(expr_start, false, true);
         if is_at_stmt_start {
             self.stmt_start = self.js.len();
         }
@@ -1778,36 +1779,36 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                self.add_source_mapping_for_name(expr_start, name);
                 self.print_identifier(name);
                 if wrap {
                     self.print(")");
                 }
             }
             ExprData::ThisExpression(_) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print("this");
             }
             ExprData::Super(_) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print("super");
             }
             ExprData::MetaProperty(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print_identifier(self.ast.get_utf8(e.meta(self.ast).name(self.ast)));
                 self.print(".");
                 self.print_identifier(self.ast.get_utf8(e.property(self.ast).name(self.ast)));
             }
             ExprData::StringLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print_quoted(self.ast.get_wtf8(e.value(self.ast)), true)
             }
             ExprData::NumericLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print_number_expr(e, level)
             }
             ExprData::BigIntLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 let raw = self.ast.get_utf8(e.raw(self.ast));
                 for byte in raw.bytes() {
                     if byte != b'_' {
@@ -1817,11 +1818,11 @@ impl<'a> Printer<'a> {
                 self.print("n");
             }
             ExprData::BooleanLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print(if e.value(self.ast) { "true" } else { "false" });
             }
             ExprData::NullLiteral(_) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print("null");
             }
             ExprData::RegExpLiteral(e) => {
@@ -1838,7 +1839,7 @@ impl<'a> Printer<'a> {
                 {
                     self.print(" ");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print("/");
                 self.print_bytes(self.ast.get_utf8(e.pattern(self.ast)));
                 self.print("/");
@@ -1957,7 +1958,7 @@ impl<'a> Printer<'a> {
             ExprData::ImportExpression(e) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 if e.sync(self.ast) {
                     self.print("import.sync(");
                 } else if e.phase(self.ast) == Some(ImportPhase::Source) {
@@ -2014,7 +2015,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print("await");
                 self.print_space();
                 self.print_expr(e.argument(self.ast), Precedence::Prefix);
@@ -2027,7 +2028,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print("yield");
                 if e.delegate(self.ast) {
                     self.print("*");
@@ -2042,7 +2043,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::PrivateIdentifier(e) => {
                 let name = self.ast.get_utf8(e.name(self.ast));
-                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                self.add_source_mapping_for_name(expr_start, name);
                 self.print("#");
                 self.print_identifier(name);
             }
@@ -2075,7 +2076,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping(expr_start);
                 self.print_ts_type_assertion_prefix(e.type_annotation(self.ast));
                 self.print_expr(e.expression(self.ast), Precedence::Prefix);
                 if wrap {
