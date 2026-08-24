@@ -5,6 +5,7 @@ input.*
 profile.json
 local
 tasks/testsuite/fixtures
+tasks/testsuite/outputs
 
 node_modules
 *.node

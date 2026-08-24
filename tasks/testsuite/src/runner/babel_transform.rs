@@ -1,4 +1,8 @@
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::{
+    fs, io,
+    panic::{AssertUnwindSafe, catch_unwind},
+    path::PathBuf,
+};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Severity};
@@ -11,9 +15,24 @@ use crate::{
     cases::{Case, babel::BabelTransformCase},
     runner::Runner,
     suite::TestResult,
+    util::crate_root,
 };
 
 pub struct BabelTransformRunner;
+
+impl BabelTransformRunner {
+    pub fn output_root() -> PathBuf {
+        crate_root().join("outputs/babel_transform")
+    }
+
+    pub fn clear_output_root() -> io::Result<()> {
+        let output_root = Self::output_root();
+        if output_root.exists() {
+            fs::remove_dir_all(output_root)?;
+        }
+        Ok(())
+    }
+}
 
 impl Runner<BabelTransformCase> for BabelTransformRunner {
     const NAME: &'static str = "babel_transform";
@@ -49,6 +68,7 @@ impl Runner<BabelTransformCase> for BabelTransformRunner {
 fn run_case(case: &BabelTransformCase) -> Result<(), String> {
     let actual = transform_input(case)?;
     let expected = normalize_expected_output(case)?;
+    write_comparison_outputs(case, &actual, &expected)?;
     if actual == expected {
         Ok(())
     } else {
@@ -57,6 +77,30 @@ fn run_case(case: &BabelTransformCase) -> Result<(), String> {
             case.name
         ))
     }
+}
+
+fn write_comparison_outputs(
+    case: &BabelTransformCase,
+    actual: &str,
+    expected: &str,
+) -> Result<(), String> {
+    let relative_path = case
+        .output_path
+        .strip_prefix(crate_root())
+        .map_err(|error| format!("output path: {error}"))?;
+    let output_root = BabelTransformRunner::output_root();
+
+    for (kind, output) in [("actual", actual), ("expected", expected)] {
+        let output_path = output_root.join(kind).join(relative_path);
+        let parent = output_path
+            .parent()
+            .ok_or_else(|| format!("output path has no parent: {}", output_path.display()))?;
+        fs::create_dir_all(parent)
+            .and_then(|()| fs::write(&output_path, output))
+            .map_err(|error| format!("write {}: {error}", output_path.display()))?;
+    }
+
+    Ok(())
 }
 
 fn transform_input(case: &BabelTransformCase) -> Result<String, String> {

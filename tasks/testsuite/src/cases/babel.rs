@@ -41,6 +41,7 @@ const OUTPUT_FILE_NAMES: &[&str] = &[
 pub struct BabelTransformCase {
     pub package_name: String,
     pub path: PathBuf,
+    pub output_path: PathBuf,
     pub name: String,
     pub input: String,
     pub output: String,
@@ -111,10 +112,11 @@ impl BabelTransformCase {
                     .to_string_lossy()
                     .replace('\\', "/");
                 let input = read_to_string(&paths.input)?;
-                let output = read_to_string(paths.output)?;
+                let output = read_to_string(&paths.output)?;
                 Ok(Self {
                     package_name: paths.package_name,
                     path: paths.input,
+                    output_path: paths.output,
                     name,
                     input,
                     output,

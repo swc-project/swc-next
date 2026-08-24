@@ -1,4 +1,9 @@
-use std::{collections::BTreeMap, fmt::Write as _, fs};
+use std::{
+    collections::BTreeMap,
+    fmt::Write as _,
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 use rayon::prelude::*;
 use testsuite::{
@@ -9,8 +14,10 @@ use testsuite::{
 };
 
 const SNAPSHOT_FILE: &str = "babel_transform.snap";
+const DIFFERENCE_REPORT_FILE: &str = "differences.md";
 
 fn main() {
+    BabelTransformRunner::clear_output_root().unwrap();
     let cases = BabelTransformCase::read();
     let (runnable, skipped): (Vec<_>, Vec<_>) = cases
         .into_iter()
@@ -24,6 +31,92 @@ fn main() {
 
     fs::write(&snapshot_path, snapshot).unwrap();
     println!("Updated {}", snapshot_path.display());
+
+    let output_root = BabelTransformRunner::output_root();
+    let difference_report = DifferenceReport::render(&runnable, &results, &output_root).unwrap();
+    let difference_report_path = output_root.join(DIFFERENCE_REPORT_FILE);
+    fs::write(&difference_report_path, difference_report).unwrap();
+
+    println!("Wrote comparison outputs to {}", output_root.display());
+    println!(
+        "Wrote difference summary to {}",
+        difference_report_path.display()
+    );
+    println!(
+        "Compare with: diff -ru {} {}",
+        output_root.join("expected").display(),
+        output_root.join("actual").display()
+    );
+}
+
+struct DifferenceReport;
+
+impl DifferenceReport {
+    fn render(
+        cases: &[BabelTransformCase],
+        results: &[(String, TestResult)],
+        output_root: &Path,
+    ) -> io::Result<String> {
+        let mut differences = String::new();
+        let mut other_failures = String::new();
+        let mut difference_count = 0;
+        let mut other_failure_count = 0;
+
+        for (case, (_, result)) in cases.iter().zip(results) {
+            match result {
+                TestResult::Failed { path, error, .. } => {
+                    let expected_path = comparison_output_path(output_root, "expected", case);
+                    let actual_path = comparison_output_path(output_root, "actual", case);
+                    if expected_path.is_file() && actual_path.is_file() {
+                        difference_count += 1;
+                        let expected = fs::read_to_string(expected_path)?;
+                        let actual = fs::read_to_string(actual_path)?;
+                        writeln!(differences, "## {}\n", path.display()).unwrap();
+                        writeln!(differences, "### Expected\n").unwrap();
+                        write_indented(&mut differences, &expected);
+                        writeln!(differences, "\n### Actual\n").unwrap();
+                        write_indented(&mut differences, &actual);
+                        differences.push('\n');
+                    } else {
+                        other_failure_count += 1;
+                        writeln!(other_failures, "- `{}`: {error}", path.display()).unwrap();
+                    }
+                }
+                TestResult::Panic { path, .. } => {
+                    other_failure_count += 1;
+                    writeln!(other_failures, "- `{}`: panicked", path.display()).unwrap();
+                }
+                TestResult::Passed { .. } => {}
+            }
+        }
+
+        let mut report = format!(
+            "# Babel transform differences\n\nOutput differences: {difference_count}\n\nOther failures: {other_failure_count}\n"
+        );
+        if !other_failures.is_empty() {
+            report.push_str("\n## Other failures\n\n");
+            report.push_str(&other_failures);
+        }
+        if !differences.is_empty() {
+            report.push('\n');
+            report.push_str(&differences);
+        }
+        Ok(report)
+    }
+}
+
+fn comparison_output_path(output_root: &Path, kind: &str, case: &BabelTransformCase) -> PathBuf {
+    output_root.join(kind).join(
+        case.output_path
+            .strip_prefix(crate_root())
+            .expect("Babel output path should be inside the testsuite root"),
+    )
+}
+
+fn write_indented(output: &mut String, source: &str) {
+    for line in source.split('\n') {
+        writeln!(output, "    {line}").unwrap();
+    }
 }
 
 // Snapshot rendering
