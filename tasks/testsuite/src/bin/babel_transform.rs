@@ -35,6 +35,7 @@ fn main() {
     let output_root = BabelTransformRunner::output_root();
     let difference_report = DifferenceReport::render(&runnable, &results, &output_root).unwrap();
     let difference_report_path = output_root.join(DIFFERENCE_REPORT_FILE);
+    fs::create_dir_all(&output_root).unwrap();
     fs::write(&difference_report_path, difference_report).unwrap();
 
     println!("Wrote comparison outputs to {}", output_root.display());
