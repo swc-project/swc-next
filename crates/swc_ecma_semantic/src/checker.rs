@@ -348,19 +348,18 @@ fn is_private_name_declared(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> 
 
 /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
 fn match_strict_reserved(name: &[u8]) -> Option<&'static str> {
-    match name.len() {
-        3 => check(name, "let"),
-        5 => check(name, "yield"),
-        6 => check(name, "static").or_else(|| check(name, "public")),
-        7 => check(name, "private").or_else(|| check(name, "package")),
-        9 => check(name, "protected").or_else(|| check(name, "interface")),
-        10 => check(name, "implements"),
+    match name {
+        b"let" => Some("let"),
+        b"yield" => Some("yield"),
+        b"static" => Some("static"),
+        b"public" => Some("public"),
+        b"private" => Some("private"),
+        b"package" => Some("package"),
+        b"protected" => Some("protected"),
+        b"interface" => Some("interface"),
+        b"implements" => Some("implements"),
         _ => None,
     }
-}
-
-fn check(name: &[u8], keyword: &'static str) -> Option<&'static str> {
-    (name == keyword.as_bytes()).then_some(keyword)
 }
 
 fn is_eval_or_arguments(name: &[u8]) -> bool {
