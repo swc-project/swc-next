@@ -1,8 +1,9 @@
 resolver * swc_resolver
 ========================
-Positive Passed: 20335/20347 (99.94%)
+Positive Passed: 20334/20347 (99.94%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/20347 (0.00%)
+Failed: tasks/testsuite/fixtures/test262/test/language/expressions/dynamic-import/import-attributes/2nd-param-await-ident.js - test262/test/language/expressions/dynamic-import/import-attributes/2nd-param-await-ident.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/import/import-attributes/json-idempotency.js - test262/test/language/import/import-attributes/json-idempotency.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js - test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js - test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js.snap: name resolution differs

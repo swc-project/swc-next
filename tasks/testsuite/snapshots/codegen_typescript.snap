@@ -1,6 +1,5 @@
 codegen * typescript
 ========================
-Positive Passed: 13155/13156 (99.99%)
+Positive Passed: 13156/13156 (100.00%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13156 (0.00%)
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.2.ts - parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 107..112

@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2234/2238 (99.82%)
+Positive Passed: 2235/2238 (99.87%)
 Negative Passed: 1601/1743 (91.85%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -97,7 +97,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/inv
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/function/pattern-optional-parameters-arrow/input.ts - typescript/function/pattern-optional-parameters-arrow: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/function/pattern-optional-parameters/input.ts - typescript/function/pattern-optional-parameters: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/equals-in-script/input.ts - typescript/import/equals-in-script: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/equals-in-unambiguous/input.ts - typescript/import/equals-in-unambiguous: expected source type Script, but parser produced Module
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/equals-require-in-script/input.ts - typescript/import/equals-require-in-script: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type/input.ts - typescript/import/export-import-type: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/type-equals/input.ts - typescript/import/type-equals: expected a parse or early error, but pipeline succeeded

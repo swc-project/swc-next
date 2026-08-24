@@ -1,6 +1,6 @@
 parser * typescript
 ========================
-Positive Passed: 13048/13156 (99.18%)
+Positive Passed: 13049/13156 (99.19%)
 Negative Passed: 1553/2981 (52.10%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
@@ -1046,7 +1046,6 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/multipleExpo
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/multipleExportDefault5.ts - multipleExportDefault5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/multipleExportDefault6.ts - multipleExportDefault6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/rewriteRelativeImportExtensions/emit.ts - main.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwait.2.ts - topLevelAwait.2.ts: parser: 'await' is reserved in an async/module context and cannot be used as a binding identifier at 107..112
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwaitNonModule.ts - topLevelAwaitNonModule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/topLevelModuleDeclarationAndFile.ts - foo_2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/chained2.ts - /d.ts: expected a parse or early error, but pipeline succeeded
