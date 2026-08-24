@@ -417,8 +417,19 @@ pub struct AnalyzeOptions {
 /// When [`AnalyzeOptions::build_module_record`] is disabled, the returned
 /// module record is empty.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
+    if options.check_syntax {
+        analyze_inner::<true>(ast, options.build_module_record)
+    } else {
+        analyze_inner::<false>(ast, options.build_module_record)
+    }
+}
+
+fn analyze_inner<'a, const CHECK_SYNTAX: bool>(
+    ast: &Ast<'a>,
+    build_module_record: bool,
+) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = Checker::new(ast, options.check_syntax, options.build_module_record);
+    let mut visitor = Checker::<CHECK_SYNTAX>::new(ast, build_module_record);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {

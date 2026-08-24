@@ -36,10 +36,9 @@ use crate::{
     scope::ScopeKind,
 };
 
-pub struct Checker<'traverse, 'a> {
+pub struct Checker<'traverse, 'a, const CHECK_SYNTAX: bool> {
     checks: CheckerState<'a>,
     context: SemanticVisitCtx<'traverse, 'a>,
-    check_syntax: bool,
     in_ts_module_name: bool,
 }
 
@@ -49,12 +48,11 @@ struct CheckerState<'a> {
     diagnostics: Vec<Diagnostic<'a>>,
 }
 
-impl<'traverse, 'a> Checker<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
+impl<'traverse, 'a, const CHECK_SYNTAX: bool> Checker<'traverse, 'a, CHECK_SYNTAX> {
+    pub fn new(ast: &'traverse Ast<'a>, build_module_record: bool) -> Self {
         Self {
             checks: CheckerState::new(),
             context: SemanticVisitCtx::new(ast, SemanticContext::init(ast, build_module_record)),
-            check_syntax,
             in_ts_module_name: false,
         }
     }
@@ -713,7 +711,7 @@ impl Default for ReportOptions<'_> {
     }
 }
 
-impl Checker<'_, '_> {
+impl<const CHECK_SYNTAX: bool> Checker<'_, '_, CHECK_SYNTAX> {
     fn check(&mut self, node: NodeId) {
         let checks = &mut self.checks;
         let context = &mut self.context;
@@ -1541,7 +1539,7 @@ impl Checker<'_, '_> {
     }
 }
 
-impl<'a> Visit<'a> for Checker<'_, 'a> {
+impl<'a, const CHECK_SYNTAX: bool> Visit<'a> for Checker<'_, 'a, CHECK_SYNTAX> {
     fn ast(&self) -> &Ast<'a> {
         self.context.ast
     }
@@ -1551,7 +1549,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
 
     fn leave_node(&mut self, node: NodeId) {
-        if self.check_syntax {
+        if CHECK_SYNTAX {
             self.check(node);
         }
         self.context.leave_node(node);
