@@ -1390,13 +1390,12 @@ impl<'a> SymbolTracker<'a> {
     }
 
     fn sync_scope_maps(&mut self, count: usize) {
-        self.scope_maps.reserve(count - self.scope_maps.len());
-        while self.scope_maps.len() < count {
+        debug_assert_eq!(self.scope_maps.len(), self.hoisting_variables.len());
+        let additional = count - self.scope_maps.len();
+        self.scope_maps.reserve(additional);
+        self.hoisting_variables.reserve(additional);
+        for _ in 0..additional {
             self.scope_maps.push(ScopeMap::new_in(self.allocator));
-        }
-        self.hoisting_variables
-            .reserve(count - self.hoisting_variables.len());
-        while self.hoisting_variables.len() < count {
             self.hoisting_variables
                 .push(ScopeMap::new_in(self.allocator));
         }
