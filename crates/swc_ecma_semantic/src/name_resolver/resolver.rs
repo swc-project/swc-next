@@ -299,6 +299,7 @@ impl<'ast> Resolver<'ast> {
         None
     }
 
+    #[inline]
     fn declare(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
         let node_index = identifier.node_id().index();
         if self.node_scopes[node_index].is_some() {
