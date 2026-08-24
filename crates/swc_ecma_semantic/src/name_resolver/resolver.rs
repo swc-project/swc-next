@@ -334,12 +334,8 @@ impl<'ast> Resolver<'ast> {
                 continue;
             };
             let ast = self.ast;
-            let current = self.current;
             for_each_binding_id(ast, pattern, |identifier| {
-                let name = ast.get_utf8(identifier.name(ast)).as_bytes();
-                self.scopes[current]
-                    .declared_symbols
-                    .insert(name, DeclKind::Param);
+                self.declare(identifier, DeclKind::Param);
             });
         }
         let old_kind = self.decl_kind;
@@ -509,12 +505,8 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                     continue;
                 };
                 let ast = child.ast;
-                let current = child.current;
                 for_each_binding_id(ast, pattern, |identifier| {
-                    let name = ast.get_utf8(identifier.name(ast)).as_bytes();
-                    child.scopes[current]
-                        .declared_symbols
-                        .insert(name, DeclKind::Param);
+                    child.declare(identifier, DeclKind::Param);
                 });
             }
             let old_kind = child.decl_kind;
@@ -631,12 +623,8 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                             continue;
                         };
                         let ast = child.ast;
-                        let current = child.current;
                         for_each_binding_id(ast, pattern, |identifier| {
-                            let name = ast.get_utf8(identifier.name(ast)).as_bytes();
-                            child.scopes[current]
-                                .declared_symbols
-                                .insert(name, DeclKind::Param);
+                            child.declare(identifier, DeclKind::Param);
                         });
                     }
                     let old_kind = child.decl_kind;
