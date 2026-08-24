@@ -1108,7 +1108,6 @@ impl<'a> SymbolTracker<'a> {
         scope: &ScopeTracker<'a>,
         flags: ReferenceFlags,
     ) {
-        self.sync_scope_maps_from(scope);
         self.add_reference(
             tree,
             identifier.name(tree),
@@ -1146,7 +1145,6 @@ impl<'a> SymbolTracker<'a> {
         let Some(local) = specifier.local(tree).as_identifier_name(tree) else {
             return;
         };
-        self.sync_scope_maps_from(scope);
         self.add_reference(
             tree,
             local.name(tree),
@@ -1234,7 +1232,6 @@ impl<'a> SymbolTracker<'a> {
         element: JsxOpeningElement,
         scope: &ScopeTracker<'a>,
     ) {
-        self.sync_scope_maps_from(scope);
         // The leftmost capitalized JSX identifier is a JS binding
         // reference. Lowercase tags are intrinsic element names; the
         // rest of a member chain is property syntax.
@@ -1247,7 +1244,6 @@ impl<'a> SymbolTracker<'a> {
         element: JsxClosingElement,
         scope: &ScopeTracker<'a>,
     ) {
-        self.sync_scope_maps_from(scope);
         self.add_jsx_reference(tree, element.name(tree), scope.current);
     }
 
