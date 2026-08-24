@@ -666,10 +666,9 @@ impl<'a> Printer<'a> {
     #[inline]
     fn print_space_before_identifier(&mut self) {
         if self.prev_reg_exp_end == self.js.len()
-            || self
-                .js
-                .last()
-                .is_some_and(|&last| is_ident_continue_ascii(last) || last == b'\\' || last >= 0x80)
+            || self.js.last().is_some_and(|&last| {
+                is_ascii_identifier_continue(last) || last == b'\\' || last >= 0x80
+            })
         {
             self.print(" ");
         }
@@ -4793,8 +4792,8 @@ impl Printer<'_> {
         let Some((&first, rest)) = bytes.split_first() else {
             return false;
         };
-        if is_ident_start_ascii(first) {
-            if rest.iter().all(|&byte| is_ident_continue_ascii(byte)) {
+        if is_ascii_identifier_start(first) {
+            if rest.iter().all(|&byte| is_ascii_identifier_continue(byte)) {
                 return true;
             }
             if bytes.is_ascii() {
@@ -4813,6 +4812,16 @@ impl Printer<'_> {
             ModuleExportNameData::StringLiteral(s) => ast.get_wtf8(s.value(ast)),
         }
     }
+}
+
+#[inline(always)]
+fn is_ascii_identifier_start(byte: u8) -> bool {
+    (byte | 0x20).wrapping_sub(b'a') < 26 || matches!(byte, b'_' | b'$')
+}
+
+#[inline(always)]
+fn is_ascii_identifier_continue(byte: u8) -> bool {
+    is_ascii_identifier_start(byte) || byte.wrapping_sub(b'0') < 10
 }
 
 fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
