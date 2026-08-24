@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use arrayvec::ArrayVec;
+use memchr::{memchr, memchr3};
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
@@ -471,28 +472,22 @@ impl<'a> Printer<'a> {
         // Re-indent multi-line comments to match the surrounding statement.
         self.print("/*");
         let mut start = 0;
-        while start < value.len() {
-            let mut end = start;
-            let mut newline_width = 0;
-            while end < value.len() {
-                newline_width = match value[end] {
-                    b'\n' => 1,
-                    b'\r' => usize::from(value.get(end + 1) == Some(&b'\n')) + 1,
-                    0xe2 if value.get(end + 1) == Some(&0x80)
-                        && matches!(value.get(end + 2), Some(0xa8 | 0xa9)) =>
-                    {
-                        3
-                    }
-                    _ => 0,
-                };
-                if newline_width != 0 {
-                    break;
+        let mut search = 0;
+        while let Some(relative) = memchr3(b'\n', b'\r', 0xe2, &value[search..]) {
+            let end = search + relative;
+            let newline_width = match value[end] {
+                b'\n' => 1,
+                b'\r' => usize::from(value.get(end + 1) == Some(&b'\n')) + 1,
+                0xe2 if value.get(end + 1) == Some(&0x80)
+                    && matches!(value.get(end + 2), Some(0xa8 | 0xa9)) =>
+                {
+                    3
                 }
-                end += 1;
-            }
-            if newline_width == 0 {
-                break;
-            }
+                _ => {
+                    search = end + 1;
+                    continue;
+                }
+            };
             self.print_comment_text(&value[start..end]);
             self.print("\n");
             self.print_indent();
@@ -510,6 +505,7 @@ impl<'a> Printer<'a> {
             {
                 self.print(" ");
             }
+            search = start;
         }
         self.print_comment_text(&value[start..]);
         self.print("*/");
@@ -518,15 +514,18 @@ impl<'a> Printer<'a> {
     fn print_comment_text(&mut self, text: &[u8]) {
         // Avoid generating a comment containing the sequence "</script".
         let mut start = 0;
-        for index in 0..text.len().saturating_sub(7) {
-            if text[index] == b'<'
-                && text[index + 1] == b'/'
-                && text[index + 2..index + 8].eq_ignore_ascii_case(b"script")
+        let mut search = 0;
+        while let Some(relative) = memchr(b'<', &text[search..]) {
+            let index = search + relative;
+            if text
+                .get(index + 1..index + 8)
+                .is_some_and(|tail| tail[0] == b'/' && tail[1..].eq_ignore_ascii_case(b"script"))
             {
                 self.print_bytes(&text[start..index + 1]);
                 self.print("\\");
                 start = index + 1;
             }
+            search = index + 1;
         }
         self.print_bytes(&text[start..]);
     }
