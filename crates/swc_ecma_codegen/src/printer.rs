@@ -340,6 +340,28 @@ impl<'a> Printer<'a> {
     }
 
     #[inline]
+    fn add_source_mapping_for_node(&mut self, node: impl AstNode) {
+        if self.options.source_map_path.is_some() {
+            self.builder.add_source_mapping(
+                self.ast.span(node.node_id()).start,
+                &[],
+                self.js.as_slice(),
+            );
+        }
+    }
+
+    #[inline]
+    fn add_source_mapping_for_node_name(&mut self, node: impl AstNode, original_name: &'a str) {
+        if self.options.source_map_path.is_some() {
+            self.builder.add_source_mapping(
+                self.ast.span(node.node_id()).start,
+                original_name.as_bytes(),
+                self.js.as_slice(),
+            );
+        }
+    }
+
+    #[inline]
     fn print(&mut self, text: &str) {
         self.js.extend_from_slice_copy(text.as_bytes());
     }
@@ -1778,36 +1800,36 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                self.add_source_mapping_for_node_name(expr, name);
                 self.print_identifier(name);
                 if wrap {
                     self.print(")");
                 }
             }
             ExprData::ThisExpression(_) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print("this");
             }
             ExprData::Super(_) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print("super");
             }
             ExprData::MetaProperty(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print_identifier(self.ast.get_utf8(e.meta(self.ast).name(self.ast)));
                 self.print(".");
                 self.print_identifier(self.ast.get_utf8(e.property(self.ast).name(self.ast)));
             }
             ExprData::StringLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print_quoted(self.ast.get_wtf8(e.value(self.ast)), true)
             }
             ExprData::NumericLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print_number_expr(e, level)
             }
             ExprData::BigIntLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 let raw = self.ast.get_utf8(e.raw(self.ast));
                 for byte in raw.bytes() {
                     if byte != b'_' {
@@ -1817,11 +1839,11 @@ impl<'a> Printer<'a> {
                 self.print("n");
             }
             ExprData::BooleanLiteral(e) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print(if e.value(self.ast) { "true" } else { "false" });
             }
             ExprData::NullLiteral(_) => {
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print("null");
             }
             ExprData::RegExpLiteral(e) => {
@@ -1838,7 +1860,7 @@ impl<'a> Printer<'a> {
                 {
                     self.print(" ");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print("/");
                 self.print_bytes(self.ast.get_utf8(e.pattern(self.ast)));
                 self.print("/");
@@ -1957,7 +1979,7 @@ impl<'a> Printer<'a> {
             ExprData::ImportExpression(e) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 if e.sync(self.ast) {
                     self.print("import.sync(");
                 } else if e.phase(self.ast) == Some(ImportPhase::Source) {
@@ -2014,7 +2036,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print("await");
                 self.print_space();
                 self.print_expr(e.argument(self.ast), Precedence::Prefix);
@@ -2027,7 +2049,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print("yield");
                 if e.delegate(self.ast) {
                     self.print("*");
@@ -2042,7 +2064,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::PrivateIdentifier(e) => {
                 let name = self.ast.get_utf8(e.name(self.ast));
-                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                self.add_source_mapping_for_node_name(expr, name);
                 self.print("#");
                 self.print_identifier(name);
             }
@@ -2075,7 +2097,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping(expr.span(self.ast).start);
+                self.add_source_mapping_for_node(expr);
                 self.print_ts_type_assertion_prefix(e.type_annotation(self.ast));
                 self.print_expr(e.expression(self.ast), Precedence::Prefix);
                 if wrap {
