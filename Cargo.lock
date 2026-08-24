@@ -2806,6 +2806,7 @@ version = "0.1.2"
 dependencies = [
  "arrayvec",
  "clap",
+ "memchr",
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
