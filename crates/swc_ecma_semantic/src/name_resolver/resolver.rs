@@ -394,14 +394,15 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_identifier_reference(&mut self, reference: IdentifierReference) {
-        if self.node_scopes[reference.node_id().index()].is_some() {
+        let node_index = reference.node_id().index();
+        if self.node_scopes[node_index].is_some() {
             return;
         }
         let name = self.name(reference.name(self.ast));
         let scope = self
             .scope_of_name(name, false)
             .unwrap_or(self.unresolved_scope_id);
-        self.set_symbol_scope_once(SymbolNode::IdentifierReference(reference), scope);
+        self.node_scopes[node_index] = Some(scope);
     }
 
     fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
