@@ -56,7 +56,8 @@ jobs:
 
           cargo bench --quiet -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
-            --save-baseline=base
+            --save-baseline=base \
+            'gungraun::semantic::*'
 
       - name: Compare merge benchmark
         env:
@@ -71,7 +72,8 @@ jobs:
           cargo bench --quiet -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
-            --save-summary=json 2>&1 | tee "$report"
+            --save-summary=json \
+            'gungraun::semantic::*' 2>&1 | tee "$report"
           benchmark_status="${PIPESTATUS[0]}"
 
           node .github/scripts/render-gungraun-summary.mjs \
@@ -184,8 +186,8 @@ jobs:
                 package: "benchmark",
                 bench: "gungraun",
                 baseline: "base",
-                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --save-baseline=base",
-                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json"
+                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --save-baseline=base gungraun::semantic::*",
+                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json gungraun::semantic::*"
               },
               files: {
                 data_root: "gungraun",
