@@ -407,6 +407,11 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
+        if self.decl_kind == DeclKind::Param
+            && self.node_scopes[identifier.node_id().index()].is_some()
+        {
+            return;
+        }
         self.declare(identifier, self.decl_kind);
     }
 
