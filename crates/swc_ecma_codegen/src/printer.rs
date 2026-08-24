@@ -2254,20 +2254,24 @@ impl<'a> Printer<'a> {
         self.need_space_before_dot = usize::MAX;
         let property = e.property(self.ast);
         let property_data = self.ast.property_key_data(property);
-        let property_text: Option<&Wtf8> = match property_data {
+        let (identifier_text, property_text): (Option<&str>, Option<&Wtf8>) = match property_data {
             PropertyKeyData::IdentifierName(identifier) => {
-                Some(Wtf8::from_str(self.ast.get_utf8(identifier.name(self.ast))))
+                let name = self.ast.get_utf8(identifier.name(self.ast));
+                (Some(name), Some(Wtf8::from_str(name)))
             }
             PropertyKeyData::StringLiteral(string) => {
-                Some(self.ast.get_wtf8(string.value(self.ast)))
+                (None, Some(self.ast.get_wtf8(string.value(self.ast))))
             }
-            _ => None,
+            _ => (None, None),
         };
         let force_computed = !computed
-            && property_text.is_some_and(|name| {
-                name.as_str()
-                    .is_none_or(|name| !self.can_print_identifier(name))
-            });
+            && match identifier_text {
+                Some(name) => !self.can_print_identifier(name),
+                None => property_text.is_some_and(|name| {
+                    name.as_str()
+                        .is_none_or(|name| !self.can_print_identifier(name))
+                }),
+            };
         if optional {
             self.print("?.");
         }
@@ -2294,8 +2298,8 @@ impl<'a> Printer<'a> {
                 self.print(".");
             }
             self.add_source_mapping(property.span(self.ast).start);
-            if let PropertyKeyData::IdentifierName(identifier) = property_data {
-                self.print_identifier(self.ast.get_utf8(identifier.name(self.ast)));
+            if matches!(property_data, PropertyKeyData::IdentifierName(_)) {
+                self.print_identifier(identifier_text.unwrap());
             } else {
                 self.print_property_key_plain_data(property, property_data);
             }
