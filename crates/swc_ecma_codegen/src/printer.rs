@@ -2218,12 +2218,15 @@ impl<'a> Printer<'a> {
 
     fn print_member(&mut self, e: MemberExpression) {
         let object = e.object(self.ast);
+        let object_data = self.ast.expr_data(object);
+        let computed = e.computed(self.ast);
+        let optional = e.optional(self.ast);
         // `let[0]` is ambiguous at the start of a statement because it can
         // begin a lexical declaration. A static member such as `let.foo`
         // doesn't have this ambiguity.
-        let wrap_object = e.computed(self.ast)
+        let wrap_object = computed
             && matches!(
-                self.ast.expr_data(object),
+                object_data,
                 ExprData::IdentifierReference(identifier)
                     if self.ast.get_utf8(identifier.name(self.ast)) == "let"
             );
@@ -2232,7 +2235,7 @@ impl<'a> Printer<'a> {
         }
         self.print_expr(
             object,
-            if matches!(self.ast.expr_data(object), ExprData::NewExpression(_)) {
+            if matches!(object_data, ExprData::NewExpression(_)) {
                 Precedence::New
             } else {
                 Precedence::Call
@@ -2253,15 +2256,15 @@ impl<'a> Printer<'a> {
             }
             _ => None,
         };
-        let force_computed = !e.computed(self.ast)
+        let force_computed = !computed
             && property_text.is_some_and(|name| {
                 name.as_str()
                     .is_none_or(|name| !self.can_print_identifier(name))
             });
-        if e.optional(self.ast) {
+        if optional {
             self.print("?.");
         }
-        if e.computed(self.ast) || force_computed {
+        if computed || force_computed {
             self.print("[");
             if force_computed {
                 self.add_source_mapping(property.span(self.ast).start);
@@ -2275,7 +2278,7 @@ impl<'a> Printer<'a> {
             }
             self.print("]");
         } else {
-            if !e.optional(self.ast) {
+            if !optional {
                 if need_space_before_dot {
                     // "1.toString" is a syntax error, so print
                     // "1 .toString" instead.
