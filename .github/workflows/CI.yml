@@ -20,6 +20,24 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
+  generated-ast:
+    name: Generated AST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+        with:
+          components: rustfmt
+      - name: Regenerate AST files
+        run: cargo run --locked -p ast_tools
+      - name: Check generated AST files
+        run: |
+          git status --short --untracked-files=all
+          git diff --exit-code
+          if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+            exit 1
+          fi
+
   cargo-clippy:
     name: Cargo clippy
     runs-on: ubuntu-latest
