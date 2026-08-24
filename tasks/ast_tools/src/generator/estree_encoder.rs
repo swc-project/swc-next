@@ -1,0 +1,844 @@
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+};
+
+use convert_case::{Case, Casing};
+
+use crate::{
+    output::RawOutput,
+    schema::{AstStruct, AstType, Schema, TypeId},
+    util::{InlineStorageMode, calculate_inline_layout},
+};
+
+use super::estree_decoder::minify;
+
+const CORE_PRETTY_OUTPUT_PATH: &str = "napi/core/src-js/encode.pretty.js";
+const CORE_MINIFIED_OUTPUT_PATH: &str = "napi/core/src-js/encode.js";
+const CODEGEN_PRETTY_OUTPUT_PATH: &str = "napi/codegen/src-js/encode.pretty.js";
+const CODEGEN_MINIFIED_OUTPUT_PATH: &str = "napi/codegen/src-js/encode.js";
+
+pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawOutput) {
+    let mut output = String::new();
+    output.push_str(PREAMBLE);
+
+    for (kind, ty) in schema
+        .types
+        .iter()
+        .filter_map(|ty| match ty {
+            AstType::Struct(ast) => Some(ast),
+            _ => None,
+        })
+        .enumerate()
+    {
+        write_struct_encoder(&mut output, kind, ty, schema);
+    }
+
+    for ty in &schema.types {
+        if let AstType::Enum(ast) = ty {
+            write_enum_encoder(&mut output, ast.type_id, &ast.name, schema);
+        }
+    }
+
+    output.push_str(POSTAMBLE);
+    let minified = minify(&output);
+    (
+        RawOutput {
+            path: CORE_PRETTY_OUTPUT_PATH.into(),
+            content: output.as_bytes().to_vec(),
+        },
+        RawOutput {
+            path: CORE_MINIFIED_OUTPUT_PATH.into(),
+            content: minified.as_bytes().to_vec(),
+        },
+        RawOutput {
+            path: CODEGEN_PRETTY_OUTPUT_PATH.into(),
+            content: output.into_bytes(),
+        },
+        RawOutput {
+            path: CODEGEN_MINIFIED_OUTPUT_PATH.into(),
+            content: minified.into_bytes(),
+        },
+    )
+}
+
+fn write_struct_encoder(output: &mut String, kind: usize, ast: &AstStruct, schema: &Schema) {
+    let name = &ast.name;
+    writeln!(output, "  function enc{name}(n) {{").unwrap();
+    if name.starts_with("Ts") {
+        output.push_str("    isTs = true;\n");
+    }
+    write_special_prelude(output, name);
+
+    let layout = calculate_inline_layout(ast, schema);
+    let mut extra_offset = 0usize;
+    let mut fields = Vec::with_capacity(ast.fields.len());
+
+    for (field_index, field) in ast.fields.iter().enumerate() {
+        let ty = &schema.types[field.type_id];
+        let source = field_source(name, &field.name);
+        let source = if field.attrs.estree_skip {
+            "0".into()
+        } else {
+            source
+        };
+        let value = encode_expression(name, &field.name, ty, schema, &source);
+        let local = format!("v_{field_index}");
+        writeln!(output, "    const {local} = {value};").unwrap();
+
+        let location = if let Some((_, byte_offset, _)) = layout.as_ref().and_then(|layout| {
+            layout
+                .fields
+                .iter()
+                .find(|(index, _, _)| *index == field_index)
+        }) {
+            FieldLocation::Payload(*byte_offset)
+        } else {
+            let offset = extra_offset;
+            extra_offset += 1;
+            FieldLocation::Extra(offset)
+        };
+        fields.push((ty, local, location));
+    }
+
+    if extra_offset != 0 {
+        writeln!(output, "    const extraId = allocExtra({extra_offset});").unwrap();
+    }
+    let (start, end) = span_expression(name);
+    writeln!(
+        output,
+        "    const index = allocNode({kind}, {start}, {end});"
+    )
+    .unwrap();
+    if layout
+        .as_ref()
+        .is_none_or(|layout| layout.mode == InlineStorageMode::Partial)
+    {
+        output.push_str("    setPayloadU32(index, 12, extraId);\n");
+    }
+    for (ty, local, location) in fields {
+        write_value(output, ty, schema, &local, location);
+    }
+    output.push_str("    return index;\n  }\n\n");
+}
+
+#[derive(Clone, Copy)]
+enum FieldLocation {
+    Payload(usize),
+    Extra(usize),
+}
+
+fn write_value(
+    output: &mut String,
+    ty: &AstType,
+    schema: &Schema,
+    value: &str,
+    location: FieldLocation,
+) {
+    let setter = |kind: &str, byte_offset: usize, component: &str| match location {
+        FieldLocation::Payload(offset) => {
+            format!(
+                "setPayload{kind}(index, {}, {component});",
+                offset + byte_offset
+            )
+        }
+        FieldLocation::Extra(offset) => {
+            format!("setExtra{kind}(extraId + {offset}, {byte_offset}, {component});")
+        }
+    };
+
+    match ty {
+        AstType::Struct(_) | AstType::Enum(_) => {
+            writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
+        }
+        AstType::Vec(_) => {
+            writeln!(
+                output,
+                "    {}",
+                setter("U32", 0, &format!("{value}.start"))
+            )
+            .unwrap();
+            writeln!(output, "    {}", setter("U32", 4, &format!("{value}.end"))).unwrap();
+        }
+        AstType::Option(option) => match &schema.types[option.inner_type_id] {
+            AstType::Struct(_) | AstType::Enum(_) => {
+                writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
+            }
+            AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
+                writeln!(
+                    output,
+                    "    {}",
+                    setter("U32", 0, &format!("{value}.start"))
+                )
+                .unwrap();
+                writeln!(output, "    {}", setter("U32", 4, &format!("{value}.end"))).unwrap();
+            }
+            AstType::Primitive(primitive) if primitive.name == "Span" => {
+                writeln!(output, "    {}", setter("U32", 0, &format!("{value}[0]"))).unwrap();
+                writeln!(output, "    {}", setter("U32", 4, &format!("{value}[1]"))).unwrap();
+            }
+            AstType::Primitive(primitive) => {
+                let kind = primitive_setter(primitive.name, schema);
+                writeln!(output, "    {}", setter(kind, 0, value)).unwrap();
+            }
+            inner => panic!("unsupported optional encoder type: {}", inner.name()),
+        },
+        AstType::Primitive(primitive) => match primitive.name {
+            "AstUtf8" | "AstWtf8" | "Span" => {
+                let (start, end) = if primitive.name == "Span" {
+                    (format!("{value}[0]"), format!("{value}[1]"))
+                } else {
+                    (format!("{value}.start"), format!("{value}.end"))
+                };
+                writeln!(output, "    {}", setter("U32", 0, &start)).unwrap();
+                writeln!(output, "    {}", setter("U32", 4, &end)).unwrap();
+            }
+            name => {
+                let kind = primitive_setter(name, schema);
+                writeln!(output, "    {}", setter(kind, 0, value)).unwrap();
+            }
+        },
+    }
+}
+
+fn primitive_setter<'a>(name: &str, schema: &'a Schema) -> &'a str {
+    match name {
+        "bool" | "u8" => "U8",
+        "i8" => "I8",
+        "u16" => "U16",
+        "i16" => "I16",
+        "u32" | "ScopeId" | "SymbolId" => "U32",
+        "i32" => "I32",
+        "f64" => "F64",
+        name if schema.repr_sizes.contains_key(name)
+            || matches!(
+                name,
+                "SourceType"
+                    | "ImportPhase"
+                    | "MethodDefinitionKind"
+                    | "Accessibility"
+                    | "ClassType"
+                    | "BinaryOperator"
+                    | "LogicalOperator"
+                    | "UnaryOperator"
+                    | "UpdateOperator"
+                    | "AssignmentOperator"
+                    | "VariableKind"
+                    | "FunctionType"
+                    | "FormalParameterKind"
+                    | "PropertyKind"
+                    | "NumericLiteralKind"
+                    | "ImportOrExportKind"
+                    | "TsTypeOperatorKind"
+                    | "TsMethodSignatureKind"
+                    | "TsModuleDeclarationKind"
+                    | "TsMappedTypeModifier"
+            ) =>
+        {
+            "U8"
+        }
+        _ => panic!("unsupported primitive encoder type: {name}"),
+    }
+}
+
+fn encode_expression(
+    node: &str,
+    field: &str,
+    ty: &AstType,
+    schema: &Schema,
+    source: &str,
+) -> String {
+    match ty {
+        AstType::Struct(ast) => child_expression(node, field, &ast.name, source),
+        AstType::Enum(ast) => child_expression(node, field, &ast.name, source),
+        AstType::Vec(vec) => {
+            let inner = &schema.types[vec.inner_type_id];
+            let (inner, holes) = match inner {
+                AstType::Option(option) => (&schema.types[option.inner_type_id], true),
+                inner => (inner, false),
+            };
+            let encoder = encoder_name(inner);
+            format!("encArray({source}, {encoder}, {holes})")
+        }
+        AstType::Option(option) => match &schema.types[option.inner_type_id] {
+            AstType::Struct(ast) => format!(
+                "{source} == null ? NULL : {}",
+                child_expression(node, field, &ast.name, source)
+            ),
+            AstType::Enum(ast) => format!(
+                "{source} == null ? NULL : {}",
+                child_expression(node, field, &ast.name, source)
+            ),
+            AstType::Primitive(primitive) if primitive.name == "ImportPhase" => {
+                format!("{source} == null ? 0xff : enumValue(\"ImportPhase\", {source})")
+            }
+            AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
+                "0".into()
+            }
+            AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
+                format!("{source} == null ? {{ start: NULL, end: 0 }} : encStr({source})")
+            }
+            AstType::Primitive(primitive) if primitive.name == "Span" => {
+                format!("{source} == null ? [0, 0] : [asStart({source}), asEnd({source})]")
+            }
+            inner => panic!("unsupported optional encoder type: {}", inner.name()),
+        },
+        AstType::Primitive(primitive) => match primitive.name {
+            "AstUtf8" | "AstWtf8" => format!("encStr({source})"),
+            "bool" => format!("{source} ? 1 : 0"),
+            "Span" => format!("[asStart({source}), asEnd({source})]"),
+            "ScopeId" | "SymbolId" => "0".into(),
+            name if schema.repr_sizes.contains_key(name)
+                || matches!(
+                    name,
+                    "SourceType"
+                        | "ImportPhase"
+                        | "MethodDefinitionKind"
+                        | "Accessibility"
+                        | "ClassType"
+                        | "BinaryOperator"
+                        | "LogicalOperator"
+                        | "UnaryOperator"
+                        | "UpdateOperator"
+                        | "AssignmentOperator"
+                        | "VariableKind"
+                        | "FunctionType"
+                        | "FormalParameterKind"
+                        | "PropertyKind"
+                        | "NumericLiteralKind"
+                        | "ImportOrExportKind"
+                        | "TsTypeOperatorKind"
+                        | "TsMethodSignatureKind"
+                        | "TsModuleDeclarationKind"
+                        | "TsMappedTypeModifier"
+                ) =>
+            {
+                format!("enumValue(\"{name}\", {source})")
+            }
+            _ => format!("{source} ?? 0"),
+        },
+    }
+}
+
+fn encoder_name(ty: &AstType) -> String {
+    match ty {
+        AstType::Struct(ast) => format!("enc{}", ast.name),
+        AstType::Enum(ast) => format!("enc{}", ast.name),
+        _ => panic!("array items must be AST nodes"),
+    }
+}
+
+fn child_expression(node: &str, field: &str, target: &str, source: &str) -> String {
+    let default = || format!("enc{target}({source})");
+    match (node, field) {
+        (
+            "MemberExpression"
+            | "MethodDefinition"
+            | "TsMethodDefinition"
+            | "PropertyDefinition"
+            | "ObjectProperty"
+            | "BindingProperty"
+            | "TsPropertySignature"
+            | "TsMethodSignature",
+            "key" | "property",
+        ) => format!("n.computed ? encExpr({source}) : enc{target}({source})"),
+        _ => default(),
+    }
+}
+
+fn field_source(node: &str, field: &str) -> String {
+    let raw = field.strip_prefix("r#").unwrap_or(field);
+    let js = if node == "VariableDeclaration" && raw == "declarators" {
+        "declarations".into()
+    } else if node == "TsEnumDeclaration" && raw == "is_const" {
+        "const".into()
+    } else {
+        raw.to_case(Case::Camel)
+    };
+
+    match (node, raw) {
+        ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => "_directives".into(),
+        ("Program" | "FunctionBody" | "TsModuleBlock", "body") => "_body".into(),
+        ("FormalParameter", "pattern") => "n".into(),
+        ("FormalParameters", "items") => "_items".into(),
+        ("FormalParameters", "rest") => "_rest".into(),
+        ("FormalParameters", "kind") => "0".into(),
+        ("ArrayPattern", "elements") => "_elements".into(),
+        ("ArrayPattern", "rest") => "_rest".into(),
+        ("ObjectPattern", "properties") => "_properties".into(),
+        ("ObjectPattern", "rest") => "_rest".into(),
+        ("Function", "function_type") => {
+            "n.type === \"FunctionExpression\" ? \"FunctionExpression\" : \"FunctionDeclaration\""
+                .into()
+        }
+        ("Class", "class_type") => {
+            "n.type === \"ClassExpression\" ? \"ClassExpression\" : \"ClassDeclaration\""
+                .into()
+        }
+        ("Directive", "value") => "n.directive".into(),
+        ("NumericLiteral", "kind") => "numericKind(_numericRaw)".into(),
+        ("NumericLiteral", "raw") => "_numericRaw".into(),
+        ("BigIntLiteral", "raw") => {
+            "typeof n.value === \"bigint\" ? String(n.value) : (n.bigint ?? String(n.raw ?? \"0\").replace(/n$/, \"\"))".into()
+        }
+        ("RegExpLiteral", "pattern") => "n.regex?.pattern ?? n.value?.source ?? \"\"".into(),
+        ("RegExpLiteral", "flags") => "n.regex?.flags ?? n.value?.flags ?? \"\"".into(),
+        ("TemplateElement", "cooked") => "n.value?.cooked ?? \"\"".into(),
+        ("TemplateElement", "raw") => "n.value?.raw ?? \"\"".into(),
+        ("TemplateElement", "is_cooked_undefined") => "n.value?.cooked == null".into(),
+        ("PropertyDefinition", "accessor") => {
+            "n.type === \"AccessorProperty\" || n.type === \"TSAbstractAccessorProperty\"".into()
+        }
+        ("PropertyDefinition" | "MethodDefinition" | "TsMethodDefinition", "abstract") => {
+            "n.type.startsWith(\"TSAbstract\")".into()
+        }
+        ("BindingProperty", "shorthand") => "n.shorthand".into(),
+        ("JsxText", "value") => "n.value ?? n.raw ?? \"\"".into(),
+        ("TsMappedType", "optional") => "n.optional === false ? null : n.optional".into(),
+        _ => format!("n.{js}"),
+    }
+}
+
+fn span_expression(node: &str) -> (&'static str, &'static str) {
+    if node == "FormalParameters" {
+        ("_start", "_end")
+    } else {
+        ("asStart(n)", "asEnd(n)")
+    }
+}
+
+fn write_special_prelude(output: &mut String, name: &str) {
+    match name {
+        "Program" | "FunctionBody" | "TsModuleBlock" => output.push_str(
+            r#"    const _directives = [];
+    const _body = [];
+    for (const statement of n.body ?? []) {
+      (statement?.type === "ExpressionStatement" && statement.directive != null
+        ? _directives
+        : _body).push(statement);
+    }
+"#,
+        ),
+        "FormalParameters" => output.push_str(
+            r#"    const _items = [];
+    let _rest = null;
+    for (const parameter of n ?? []) {
+      if (parameter?.type === "RestElement") _rest = parameter;
+      else _items.push(parameter);
+    }
+    const _start = n?.length ? asStart(n[0]) : 0;
+    const _end = n?.length ? asEnd(n[n.length - 1]) : 0;
+"#,
+        ),
+        "ArrayPattern" => output.push_str(
+            r#"    const _elements = [];
+    let _rest = null;
+    for (const element of n.elements ?? []) {
+      if (element?.type === "RestElement") _rest = element;
+      else _elements.push(element);
+    }
+"#,
+        ),
+        "ObjectPattern" => output.push_str(
+            r#"    const _properties = [];
+    let _rest = null;
+    for (const property of n.properties ?? []) {
+      if (property?.type === "RestElement") _rest = property;
+      else _properties.push(property);
+    }
+"#,
+        ),
+        "NumericLiteral" => {
+            output.push_str("    const _numericRaw = n.raw == null ? null : numericRaw(n);\n")
+        }
+        _ => {}
+    }
+}
+
+fn write_enum_encoder(output: &mut String, type_id: TypeId, name: &str, schema: &Schema) {
+    let mut concrete = Vec::new();
+    collect_concrete(type_id, schema, &mut HashSet::new(), &mut concrete);
+    let mut groups: HashMap<String, Vec<String>> = HashMap::new();
+    let mut order = Vec::new();
+    for concrete_name in concrete {
+        for estree in accepted_estree_types(&concrete_name, schema) {
+            if !groups.contains_key(&estree) {
+                order.push(estree.clone());
+            }
+            let values = groups.entry(estree).or_default();
+            if !values.contains(&concrete_name) {
+                values.push(concrete_name.clone());
+            }
+        }
+    }
+
+    writeln!(output, "  function enc{name}(n) {{").unwrap();
+    if name == "FormalParameterPattern" {
+        output.push_str(
+            "    if (n.type === \"Identifier\" && n.name === \"this\") return encTsThisParameter(n);\n",
+        );
+    }
+    output.push_str("    switch (n.type) {\n");
+    for estree in order {
+        let candidates = &groups[&estree];
+        writeln!(output, "      case \"{estree}\":").unwrap();
+        write_dispatch(output, &estree, candidates);
+    }
+    output.push_str(
+        "      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);\n    }\n  }\n\n",
+    );
+}
+
+fn write_dispatch(output: &mut String, estree: &str, candidates: &[String]) {
+    if estree == "Literal" {
+        let has = |name: &str| candidates.iter().any(|candidate| candidate == name);
+        if has("RegExpLiteral") {
+            output.push_str(
+                "        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);\n",
+            );
+        }
+        if has("BigIntLiteral") {
+            output.push_str(
+                "        if (n.bigint != null || typeof n.value === \"bigint\") return encBigIntLiteral(n);\n",
+            );
+        }
+        if has("StringLiteral") {
+            output.push_str(
+                "        if (typeof n.value === \"string\") return encStringLiteral(n);\n",
+            );
+        }
+        if has("NumericLiteral") {
+            output.push_str(
+                "        if (typeof n.value === \"number\") return encNumericLiteral(n);\n",
+            );
+        }
+        if has("BooleanLiteral") {
+            output.push_str(
+                "        if (typeof n.value === \"boolean\") return encBooleanLiteral(n);\n",
+            );
+        }
+        if has("NullLiteral") {
+            output.push_str("        return encNullLiteral(n);\n");
+            return;
+        }
+    }
+
+    if matches!(estree, "MethodDefinition" | "TSAbstractMethodDefinition")
+        && candidates
+            .iter()
+            .any(|candidate| candidate == "TsMethodDefinition")
+    {
+        output.push_str(
+            "        if (n.type === \"TSAbstractMethodDefinition\" || n.value?.type === \"TSEmptyBodyFunctionExpression\") return encTsMethodDefinition(n);\n",
+        );
+    }
+    if estree == "TSModuleDeclaration"
+        && candidates
+            .iter()
+            .any(|candidate| candidate == "TsGlobalDeclaration")
+    {
+        output.push_str(
+            "        if (n.global || n.kind === \"global\") return encTsGlobalDeclaration(n);\n",
+        );
+    }
+    if let Some(candidate) = candidates.first() {
+        writeln!(output, "        return enc{candidate}(n);").unwrap();
+    } else {
+        output.push_str("        break;\n");
+    }
+}
+
+fn collect_concrete(
+    type_id: TypeId,
+    schema: &Schema,
+    seen: &mut HashSet<TypeId>,
+    output: &mut Vec<String>,
+) {
+    match &schema.types[type_id] {
+        AstType::Struct(ast) => output.push(ast.name.clone()),
+        AstType::Enum(ast) => {
+            if !seen.insert(type_id) {
+                return;
+            }
+            for variant in &ast.variants {
+                if let Some(type_id) = variant.type_id {
+                    collect_concrete(type_id, schema, seen, output);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn accepted_estree_types(name: &str, schema: &Schema) -> Vec<String> {
+    match name {
+        "FunctionBody" => vec!["BlockStatement".into()],
+        "TsModuleBlock" => vec!["TSModuleBlock".into()],
+        "FormalParameter" => {
+            let ast = schema.types.iter().find_map(|ty| match ty {
+                AstType::Struct(ast) if ast.name == name => Some(ast),
+                _ => None,
+            });
+            let Some(ast) = ast else {
+                return Vec::new();
+            };
+            let mut concrete = Vec::new();
+            collect_concrete(
+                ast.fields[0].type_id,
+                schema,
+                &mut HashSet::new(),
+                &mut concrete,
+            );
+            let mut result = Vec::new();
+            for concrete in concrete {
+                for ty in accepted_estree_types(&concrete, schema) {
+                    if !result.contains(&ty) {
+                        result.push(ty);
+                    }
+                }
+            }
+            result
+        }
+        "Directive" => vec!["ExpressionStatement".into()],
+        "StringLiteral" | "NumericLiteral" | "BigIntLiteral" | "BooleanLiteral" | "NullLiteral"
+        | "RegExpLiteral" => vec!["Literal".into()],
+        "BindingProperty" | "ObjectProperty" => vec!["Property".into()],
+        "Function" => vec!["FunctionDeclaration".into(), "FunctionExpression".into()],
+        "TsFunction" => vec![
+            "TSDeclareFunction".into(),
+            "TSEmptyBodyFunctionExpression".into(),
+        ],
+        "Class" => vec!["ClassDeclaration".into(), "ClassExpression".into()],
+        "TsMethodDefinition" => vec![
+            "MethodDefinition".into(),
+            "TSAbstractMethodDefinition".into(),
+        ],
+        "PropertyDefinition" => vec![
+            "PropertyDefinition".into(),
+            "AccessorProperty".into(),
+            "TSAbstractPropertyDefinition".into(),
+            "TSAbstractAccessorProperty".into(),
+        ],
+        "TsGlobalDeclaration" => vec!["TSModuleDeclaration".into()],
+        "TsThisParameter" => vec!["Identifier".into()],
+        _ => vec![estree_type(name)],
+    }
+}
+
+fn estree_type(name: &str) -> String {
+    match name {
+        "BindingRestElement" => "RestElement".into(),
+        "ObjectProperty" => "Property".into(),
+        "IdentifierReference" | "BindingIdentifier" | "IdentifierName" | "LabelIdentifier" => {
+            "Identifier".into()
+        }
+        "TsBigIntKeyword" => "TSBigIntKeyword".into(),
+        "TsJsDocNullableType" => "TSJSDocNullableType".into(),
+        "TsJsDocNonNullableType" => "TSJSDocNonNullableType".into(),
+        "TsJsDocUnknownType" => "TSJSDocUnknownType".into(),
+        _ if name.starts_with("Jsx") => format!("JSX{}", &name[3..]),
+        _ if name.starts_with("Ts") => format!("TS{}", &name[2..]),
+        _ => name.into(),
+    }
+}
+
+const PREAMBLE: &str = r#"// generated by tasks/ast_tools, do not edit
+
+const NULL = 0xffffffff;
+const HEADER_SIZE = 36;
+
+const ENUMS = Object.freeze({
+  SourceType: ["module", "script", "commonjs", "unambiguous"],
+  MethodDefinitionKind: ["constructor", "method", "get", "set"],
+  Accessibility: [null, "public", "private", "protected"],
+  ClassType: ["ClassDeclaration", "ClassExpression"],
+  BinaryOperator: ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"],
+  LogicalOperator: ["&&", "||", "??"],
+  UnaryOperator: ["-", "+", "!", "~", "typeof", "void", "delete"],
+  UpdateOperator: ["++", "--"],
+  AssignmentOperator: ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="],
+  VariableKind: ["var", "let", "const", "using", "await using"],
+  FunctionType: ["FunctionDeclaration", "FunctionExpression"],
+  FormalParameterKind: ["formal", "unique", "arrow", "signature"],
+  PropertyKind: ["init", "get", "set"],
+  NumericLiteralKind: ["decimal", "hex", "octal", "binary"],
+  ImportOrExportKind: ["value", "type"],
+  ImportPhase: ["source", "defer"],
+  TsTypeOperatorKind: ["keyof", "unique", "readonly"],
+  TsMethodSignatureKind: ["method", "get", "set"],
+  TsModuleDeclarationKind: ["namespace", "module"],
+  TsMappedTypeModifier: [null, true, "+", "-"],
+});
+
+function encode(program) {
+  let nodeCapacity = 512;
+  let spans = new Uint32Array(nodeCapacity * 2);
+  let kinds = new Uint8Array(nodeCapacity);
+  let payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
+  let payload = new DataView(payloadBuffer);
+  let nodeCount = 0;
+
+  let extraCapacity = 512;
+  let extraBuffer = new ArrayBuffer(extraCapacity * 8);
+  let extra = new DataView(extraBuffer);
+  let extraCount = 0;
+
+  let poolCapacity = 4096;
+  let pool = new Uint8Array(poolCapacity);
+  let poolLength = 0;
+  const strings = new Map();
+  let isTs = false;
+
+  const enumValue = (name, value) => {
+    const index = ENUMS[name]?.indexOf(value);
+    return index == null || index < 0 ? 0 : index;
+  };
+  const asStart = n => n && typeof n.start === "number" ? n.start >>> 0 : 0;
+  const asEnd = n => n && typeof n.end === "number" ? n.end >>> 0 : 0;
+
+  function ensureNodes() {
+    if (nodeCount < nodeCapacity) return;
+    nodeCapacity *= 2;
+    const nextSpans = new Uint32Array(nodeCapacity * 2);
+    nextSpans.set(spans); spans = nextSpans;
+    const nextKinds = new Uint8Array(nodeCapacity);
+    nextKinds.set(kinds); kinds = nextKinds;
+    const nextPayload = new ArrayBuffer(nodeCapacity * 16);
+    new Uint8Array(nextPayload).set(new Uint8Array(payloadBuffer));
+    payloadBuffer = nextPayload; payload = new DataView(payloadBuffer);
+  }
+  function allocNode(kind, start, end) {
+    ensureNodes();
+    const index = nodeCount++;
+    spans[index * 2] = start >>> 0;
+    spans[index * 2 + 1] = end >>> 0;
+    kinds[index] = kind;
+    return index;
+  }
+  function allocExtra(count) {
+    const start = extraCount;
+    extraCount += count;
+    if (extraCount > extraCapacity) {
+      do extraCapacity *= 2; while (extraCount > extraCapacity);
+      const next = new ArrayBuffer(extraCapacity * 8);
+      new Uint8Array(next).set(new Uint8Array(extraBuffer));
+      extraBuffer = next; extra = new DataView(extraBuffer);
+    }
+    return start;
+  }
+  function setPayloadU8(i, o, v) { payload.setUint8(i * 16 + o, v); }
+  function setPayloadI8(i, o, v) { payload.setInt8(i * 16 + o, v); }
+  function setPayloadU16(i, o, v) { payload.setUint16(i * 16 + o, v, true); }
+  function setPayloadI16(i, o, v) { payload.setInt16(i * 16 + o, v, true); }
+  function setPayloadU32(i, o, v) { payload.setUint32(i * 16 + o, v, true); }
+  function setPayloadI32(i, o, v) { payload.setInt32(i * 16 + o, v, true); }
+  function setPayloadF64(i, o, v) { payload.setFloat64(i * 16 + o, v, true); }
+  function setExtraU8(i, o, v) { extra.setUint8(i * 8 + o, v); }
+  function setExtraI8(i, o, v) { extra.setInt8(i * 8 + o, v); }
+  function setExtraU16(i, o, v) { extra.setUint16(i * 8 + o, v, true); }
+  function setExtraI16(i, o, v) { extra.setInt16(i * 8 + o, v, true); }
+  function setExtraU32(i, o, v) { extra.setUint32(i * 8 + o, v, true); }
+  function setExtraI32(i, o, v) { extra.setInt32(i * 8 + o, v, true); }
+  function setExtraF64(i, o, v) { extra.setFloat64(i * 8 + o, v, true); }
+
+  function encArray(values, encoder, holes) {
+    if (!values?.length) return { start: 0, end: 0 };
+    const ids = new Uint32Array(values.length);
+    for (let index = 0; index < values.length; index++) {
+      const value = values[index];
+      ids[index] = holes && value == null ? NULL : encoder(value);
+    }
+    const start = allocExtra(ids.length);
+    for (let index = 0; index < ids.length; index++) {
+      setExtraU32(start + index, 0, ids[index]);
+    }
+    return { start, end: start + ids.length };
+  }
+
+  function encStr(value) {
+    if (value == null || value === "") return { start: 0, end: 0 };
+    value = String(value);
+    const previous = strings.get(value);
+    if (previous !== undefined) return previous;
+    const required = poolLength + value.length * 3;
+    if (required > poolCapacity) {
+      do poolCapacity *= 2; while (required > poolCapacity);
+      const next = new Uint8Array(poolCapacity);
+      next.set(pool); pool = next;
+    }
+    const start = poolLength;
+    for (let index = 0; index < value.length; index++) {
+      let code = value.charCodeAt(index);
+      if (code < 0x80) pool[poolLength++] = code;
+      else if (code < 0x800) {
+        pool[poolLength++] = 0xc0 | (code >> 6);
+        pool[poolLength++] = 0x80 | (code & 0x3f);
+      } else if (code >= 0xd800 && code <= 0xdbff && index + 1 < value.length &&
+                 value.charCodeAt(index + 1) >= 0xdc00 && value.charCodeAt(index + 1) <= 0xdfff) {
+        code = 0x10000 + ((code - 0xd800) << 10) + value.charCodeAt(++index) - 0xdc00;
+        pool[poolLength++] = 0xf0 | (code >> 18);
+        pool[poolLength++] = 0x80 | ((code >> 12) & 0x3f);
+        pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
+        pool[poolLength++] = 0x80 | (code & 0x3f);
+      } else {
+        pool[poolLength++] = 0xe0 | (code >> 12);
+        pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
+        pool[poolLength++] = 0x80 | (code & 0x3f);
+      }
+    }
+    const result = { start, end: poolLength };
+    strings.set(value, result);
+    return result;
+  }
+
+  function numericKind(raw) {
+    if (typeof raw !== "string" || raw.length < 2 || raw.charCodeAt(0) !== 48) return "decimal";
+    const prefix = raw[1].toLowerCase();
+    return prefix === "x" ? "hex" : prefix === "o" ? "octal" : prefix === "b" ? "binary" : "decimal";
+  }
+  function numericRaw(node) {
+    if (typeof node.raw !== "string") return String(node.value);
+    const normalized = node.raw.includes("_") ? node.raw.replaceAll("_", "") : node.raw;
+    const kind = numericKind(normalized);
+    const value = kind === "octal" && normalized[1]?.toLowerCase() !== "o"
+      ? parseInt(normalized.slice(1), 8)
+      : +normalized;
+    return Object.is(value, node.value) ? node.raw : String(node.value);
+  }
+
+"#;
+
+const POSTAMBLE: &str = r#"  const root = encProgram(program);
+  const kindsLength = (nodeCount + 3) & ~3;
+  const poolPadded = (poolLength + 3) & ~3;
+  const spansOffset = HEADER_SIZE;
+  const kindsOffset = spansOffset + nodeCount * 8;
+  const payloadOffset = kindsOffset + kindsLength;
+  const extraOffset = payloadOffset + nodeCount * 16;
+  const stringsOffset = extraOffset + extraCount * 8;
+  const buffer = new ArrayBuffer(stringsOffset + poolPadded);
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+
+  view.setUint32(0, nodeCount, true);
+  view.setUint32(4, extraCount, true);
+  view.setUint32(8, poolLength, true);
+  view.setUint32(12, 0, true);
+  view.setUint32(16, 0, true);
+  view.setUint32(20, 0, true);
+  view.setUint32(24, 0, true);
+  view.setUint32(28, root, true);
+  const sourceType = enumValue("SourceType", program.sourceType);
+  view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), true);
+
+  bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
+  bytes.set(kinds.subarray(0, nodeCount), kindsOffset);
+  bytes.set(new Uint8Array(payloadBuffer, 0, nodeCount * 16), payloadOffset);
+  bytes.set(new Uint8Array(extraBuffer, 0, extraCount * 8), extraOffset);
+  bytes.set(pool.subarray(0, poolLength), stringsOffset);
+
+  return new Uint8Array(buffer);
+}
+
+export { encode };
+"#;

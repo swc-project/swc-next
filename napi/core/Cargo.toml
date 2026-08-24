@@ -12,10 +12,10 @@ version               = "0.1.3"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi                 = { workspace = true }
-napi-derive          = { workspace = true }
-swc_next_ecma_ast    = { workspace = true }
-swc_next_napi        = { workspace = true }
+napi              = { workspace = true }
+napi-derive       = { workspace = true }
+swc_next_ecma_ast = { workspace = true }
+swc_next_napi     = { workspace = true, features = ["codegen", "parser"] }
 
 [build-dependencies]
 napi-build = { workspace = true }

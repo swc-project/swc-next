@@ -241,6 +241,15 @@ importers:
         specifier: 'catalog:'
         version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
 
+  napi/codegen:
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
   napi/core:
     devDependencies:
       '@babel/parser':

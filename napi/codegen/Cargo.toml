@@ -1,0 +1,20 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_codegen_napi"
+repository.workspace  = true
+version               = "0.1.2"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi          = { workspace = true }
+napi-derive   = { workspace = true }
+swc_next_napi = { workspace = true, features = ["codegen"] }
+
+[build-dependencies]
+napi-build = { workspace = true }

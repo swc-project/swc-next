@@ -107,7 +107,7 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
     if was_negative { -n } else { n }
 }
 
-struct Printer<'a> {
+pub struct Printer<'a> {
     allocator: &'a Allocator,
     ast: &'a Ast<'a>,
     options: Options,
@@ -154,66 +154,7 @@ enum TsTypeParameterConstraintContext {
 }
 
 pub fn print<'a>(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options) -> PrintResult<'a> {
-    let root = tree.root_program();
-    let wants_map = options.source_map_path.is_some();
-    let comments = tree.comments();
-    let line_offset_tables = if wants_map {
-        generate_line_offset_tables(allocator, tree.source().as_bytes())
-    } else {
-        ArenaVec::new_in(allocator)
-    };
-    let mut p = Printer {
-        allocator,
-        ast: tree,
-        options,
-        js: ArenaVec::with_capacity_in(tree.source().len(), allocator),
-        comments,
-        expr_visitor_stack: ArenaVec::new_in(allocator),
-        builder: make_chunk_builder(allocator, line_offset_tables),
-        next_comment: 0,
-        indent: 0,
-        print_next_indent_as_space: false,
-        needs_semicolon: false,
-        stmt_start: usize::MAX,
-        export_default_start: usize::MAX,
-        arrow_expr_start: usize::MAX,
-        for_of_init_start: usize::MAX,
-        prev_op_end: usize::MAX,
-        prev_op: None,
-        need_space_before_dot: usize::MAX,
-        prev_reg_exp_end: usize::MAX,
-        forbid_in: false,
-        int_to_bytes_buffer: [0; 64],
-    };
-
-    p.print_program(root);
-    let Printer {
-        options,
-        js,
-        builder,
-        ..
-    } = p;
-    let map = if wants_map {
-        let path = options.source_map_path.as_deref().unwrap();
-        let path = path.as_os_str().as_encoded_bytes();
-        let chunk = builder.generate_chunk(js.as_slice());
-        Some(chunk.finalize(allocator, tree.source().as_bytes(), path))
-    } else {
-        None
-    };
-
-    let code = str::from_utf8(js.into_bump_slice()).expect("generated code must be valid UTF-8");
-    let legal_comments = comments
-        .iter()
-        .filter(|comment| is_legal_comment(tree, **comment))
-        .copied()
-        .collect();
-
-    PrintResult {
-        code,
-        legal_comments,
-        map,
-    }
+    Printer::init(allocator, tree, options).generate()
 }
 
 impl BinaryExprVisitor {
@@ -320,6 +261,71 @@ impl BinaryExprVisitor {
 }
 
 impl<'a> Printer<'a> {
+    pub fn init(allocator: &'a Allocator, ast: &'a Ast<'a>, options: Options) -> Self {
+        let line_offset_tables = if options.source_map_path.is_some() {
+            generate_line_offset_tables(allocator, ast.source().as_bytes())
+        } else {
+            ArenaVec::new_in(allocator)
+        };
+        Self {
+            allocator,
+            ast,
+            options,
+            js: ArenaVec::with_capacity_in(ast.source().len(), allocator),
+            comments: ast.comments(),
+            expr_visitor_stack: ArenaVec::new_in(allocator),
+            builder: make_chunk_builder(allocator, line_offset_tables),
+            next_comment: 0,
+            indent: 0,
+            print_next_indent_as_space: false,
+            needs_semicolon: false,
+            stmt_start: usize::MAX,
+            export_default_start: usize::MAX,
+            arrow_expr_start: usize::MAX,
+            for_of_init_start: usize::MAX,
+            prev_op_end: usize::MAX,
+            prev_op: None,
+            need_space_before_dot: usize::MAX,
+            prev_reg_exp_end: usize::MAX,
+            forbid_in: false,
+            int_to_bytes_buffer: [0; 64],
+        }
+    }
+
+    pub fn generate(mut self) -> PrintResult<'a> {
+        self.print_program(self.ast.root_program());
+        let Self {
+            allocator,
+            ast,
+            options,
+            js,
+            comments,
+            builder,
+            ..
+        } = self;
+        let map = if let Some(path) = options.source_map_path.as_deref() {
+            let path = path.as_os_str().as_encoded_bytes();
+            let chunk = builder.generate_chunk(js.as_slice());
+            Some(chunk.finalize(allocator, ast.source().as_bytes(), path))
+        } else {
+            None
+        };
+
+        let code =
+            str::from_utf8(js.into_bump_slice()).expect("generated code must be valid UTF-8");
+        let legal_comments = comments
+            .iter()
+            .filter(|comment| is_legal_comment(ast, **comment))
+            .copied()
+            .collect();
+
+        PrintResult {
+            code,
+            legal_comments,
+            map,
+        }
+    }
+
     #[inline]
     fn add_source_mapping(&mut self, original_offset: u32) {
         if self.options.source_map_path.is_some() {

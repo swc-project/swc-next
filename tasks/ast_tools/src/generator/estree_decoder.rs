@@ -65,7 +65,7 @@ pub fn estree_decoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
     )
 }
 
-fn minify(source: &str) -> String {
+pub(super) fn minify(source: &str) -> String {
     GLOBALS.set(&Globals::new(), || {
         let source_map = Lrc::new(SourceMap::default());
         let source_file = source_map.new_source_file(

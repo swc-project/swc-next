@@ -22,11 +22,17 @@
 //! All multi-byte integers are little-endian, independent of the host target.
 
 use std::{
+    fmt,
     mem::{offset_of, size_of},
     slice,
 };
 
-use crate::{Ast, Comment, CommentKind, CommentPosition, ExtraData, NodeKind, NodePayload, Span};
+use swc_next_allocator::Allocator;
+
+use crate::{
+    Ast, Comment, CommentKind, CommentPosition, ExtraData, Lang, NodeId, NodeKind, NodePayload,
+    SourceType, Span,
+};
 
 const HEADER_SIZE: usize = 36;
 const SPAN_SIZE: usize = 8;
@@ -183,6 +189,137 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
     required
 }
 
+/// Error returned when a JavaScript-encoded AST buffer is malformed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DeserializeError(&'static str);
+
+impl fmt::Display for DeserializeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl std::error::Error for DeserializeError {}
+
+/// Decode a source-less AST produced by the generated JavaScript encoder.
+pub fn deserialize_from<'a>(
+    buf: &[u8],
+    allocator: &'a Allocator,
+) -> Result<Ast<'a>, DeserializeError> {
+    if buf.len() < HEADER_SIZE {
+        return Err(DeserializeError("AST buffer is shorter than its header"));
+    }
+
+    let node_count = read_u32(buf, 0) as usize;
+    let extra_count = read_u32(buf, 4) as usize;
+    let string_pool_len = read_u32(buf, 8) as usize;
+    let source_len = read_u32(buf, 12);
+    let comment_count = read_u32(buf, 16) as usize;
+    let attached_comment_count = read_u32(buf, 20);
+    let diagnostic_count = read_u32(buf, 24);
+    let program_index = read_u32(buf, 28) as usize;
+    let flags = read_u32(buf, 32);
+
+    if source_len != 0 {
+        return Err(DeserializeError(
+            "JavaScript-encoded ASTs cannot reference source text",
+        ));
+    }
+    if comment_count != 0 || attached_comment_count != 0 || diagnostic_count != 0 {
+        return Err(DeserializeError("unsupported AST buffer sections"));
+    }
+
+    let spans = HEADER_SIZE;
+    let kinds = checked_section_end(spans, node_count, SPAN_SIZE)?;
+    let payloads = align_to_four(checked_section_end(kinds, node_count, NODE_KIND_SIZE)?);
+    let extra = checked_section_end(payloads, node_count, NODE_PAYLOAD_SIZE)?;
+    let strings = checked_section_end(extra, extra_count, EXTRA_DATA_SIZE)?;
+    let comments = checked_add(strings, align_to_four(string_pool_len))?;
+    let end = checked_section_end(comments, comment_count, COMMENT_SIZE)?;
+    if end != buf.len() {
+        return Err(DeserializeError(
+            "AST buffer length does not match its header",
+        ));
+    }
+    if node_count == 0 || program_index >= node_count {
+        return Err(DeserializeError("AST buffer has an invalid program index"));
+    }
+
+    let mut tree = Ast::new("", allocator);
+    tree.reserve(node_count, extra_count);
+
+    for index in 0..node_count {
+        let span_offset = spans + index * SPAN_SIZE;
+        let start = read_u32(buf, span_offset);
+        let end = read_u32(buf, span_offset + 4);
+        if start > end {
+            return Err(DeserializeError("AST node span is reversed"));
+        }
+
+        let kind = buf[kinds + index];
+        if kind >= NodeKind::COUNT {
+            return Err(DeserializeError("AST buffer contains an unknown node kind"));
+        }
+        // SAFETY: Generated node kinds are contiguous and `kind` is below COUNT.
+        let kind = unsafe { std::mem::transmute::<u8, NodeKind>(kind) };
+
+        let payload_offset = payloads + index * NODE_PAYLOAD_SIZE;
+        let payload = u128::from_le_bytes(
+            buf[payload_offset..payload_offset + NODE_PAYLOAD_SIZE]
+                .try_into()
+                .unwrap(),
+        );
+        tree.add_node(Span::new(start, end), kind, NodePayload(payload));
+    }
+
+    if tree.node_kind(NodeId::from_usize(program_index)) != NodeKind::Program {
+        return Err(DeserializeError("AST root is not a Program"));
+    }
+    tree.root = Some(NodeId::from_usize(program_index));
+
+    for index in 0..extra_count {
+        tree.extra_data.push(ExtraData {
+            other: read_u64(buf, extra + index * EXTRA_DATA_SIZE),
+        });
+    }
+    tree.strings
+        .extra
+        .extend_from_slice(&buf[strings..strings + string_pool_len]);
+
+    let source_type = match (flags >> FLAG_SOURCE_TYPE_SHIFT) & 3 {
+        0 => SourceType::Module,
+        1 => SourceType::Script,
+        2 => SourceType::CommonJs,
+        _ => SourceType::Unambiguous,
+    };
+    tree.set_source_metadata(
+        source_type,
+        if flags & FLAG_TS == 0 {
+            Lang::Js
+        } else {
+            Lang::Ts
+        },
+    );
+
+    Ok(tree)
+}
+
+#[inline]
+fn checked_section_end(start: usize, count: usize, size: usize) -> Result<usize, DeserializeError> {
+    checked_add(
+        start,
+        count
+            .checked_mul(size)
+            .ok_or(DeserializeError("AST buffer section length overflow"))?,
+    )
+}
+
+#[inline]
+fn checked_add(left: usize, right: usize) -> Result<usize, DeserializeError> {
+    left.checked_add(right)
+        .ok_or(DeserializeError("AST buffer section offset overflow"))
+}
+
 #[inline]
 const fn align_to_four(len: usize) -> usize {
     (len + 3) & !3
@@ -254,4 +391,14 @@ mod tests {
     fn u32_at(buffer: &[u8], offset: usize) -> u32 {
         u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap())
     }
+}
+
+#[inline]
+fn read_u32(buf: &[u8], pos: usize) -> u32 {
+    u32::from_le_bytes(buf[pos..pos + size_of::<u32>()].try_into().unwrap())
+}
+
+#[inline]
+fn read_u64(buf: &[u8], pos: usize) -> u64 {
+    u64::from_le_bytes(buf[pos..pos + size_of::<u64>()].try_into().unwrap())
 }

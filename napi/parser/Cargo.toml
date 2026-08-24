@@ -15,7 +15,7 @@ crate-type = ["cdylib"]
 napi                 = { workspace = true }
 napi-derive          = { workspace = true }
 swc_next_ecma_ast    = { workspace = true }
-swc_next_napi        = { workspace = true }
+swc_next_napi        = { workspace = true, features = ["parser"] }
 
 [build-dependencies]
 napi-build = { workspace = true }

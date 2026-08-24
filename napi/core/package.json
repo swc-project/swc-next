@@ -20,6 +20,7 @@
     "src-js/binding.d.ts",
     "src-js/binding.js",
     "src-js/decode.js",
+    "src-js/encode.js",
     "src-js/index.d.ts",
     "src-js/index.js"
   ],
@@ -29,7 +30,8 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "conformance": "pnpm build --release && node ./test/estree-conformance.ts"
+    "conformance": "pnpm build --release && node ./test/estree-conformance.ts",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",

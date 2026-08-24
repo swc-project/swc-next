@@ -181,6 +181,7 @@ pub enum NodeKind {
     JsxSpreadChild,
 }
 impl NodeKind {
+    pub const COUNT: u8 = 174u8;
     #[inline]
     pub const fn is_stmt(self) -> bool {
         matches!(

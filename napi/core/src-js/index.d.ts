@@ -1,4 +1,8 @@
-import type { ParserOptions } from "./binding.js";
+import type {
+  CodegenOptions,
+  CodegenOutput,
+  ParserOptions,
+} from "./binding.js";
 
 export * from "./binding.js";
 
@@ -18,3 +22,8 @@ export declare function parseSync(
   source: string,
   options?: ParserOptions | undefined | null,
 ): ParseResult;
+
+export declare function printSync(
+  program: any,
+  options?: CodegenOptions | undefined | null,
+): CodegenOutput;

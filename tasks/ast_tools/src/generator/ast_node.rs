@@ -16,6 +16,11 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
     let mut node_kind_variants = TokenStream::new();
     let mut node_kind_enum_checks = TokenStream::new();
     let mut node_kind_data_variants = TokenStream::new();
+    let node_kind_count = schema
+        .types
+        .iter()
+        .filter(|ty| matches!(ty, AstType::Struct(_)))
+        .count() as u8;
 
     for ty in &schema.types {
         match ty {
@@ -52,6 +57,8 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
             }
 
             impl NodeKind {
+                pub const COUNT: u8 = #node_kind_count;
+
                 #node_kind_enum_checks
             }
 

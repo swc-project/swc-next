@@ -3,6 +3,7 @@ use crate::{
     generator::{
         ast_builder::ast_builder, ast_extra_compact::ast_extra_compact, ast_node::ast_node,
         ast_property::ast_property, ast_visitor::ast_visitor, estree_decoder::estree_decoder,
+        estree_encoder::estree_encoder,
     },
     parse::parse_files,
 };
@@ -53,4 +54,15 @@ fn main() {
     core_estree_decoder_minified.write_to_file().unwrap();
     parser_estree_decoder_pretty.write_to_file().unwrap();
     parser_estree_decoder_minified.write_to_file().unwrap();
+
+    let (
+        core_estree_encoder_pretty,
+        core_estree_encoder_minified,
+        codegen_estree_encoder_pretty,
+        codegen_estree_encoder_minified,
+    ) = estree_encoder(&schema);
+    core_estree_encoder_pretty.write_to_file().unwrap();
+    core_estree_encoder_minified.write_to_file().unwrap();
+    codegen_estree_encoder_pretty.write_to_file().unwrap();
+    codegen_estree_encoder_minified.write_to_file().unwrap();
 }

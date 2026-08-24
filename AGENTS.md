@@ -22,7 +22,7 @@ Run from the workspace root.
 | ------------------------ | -------------------------------------------------------------------- |
 | Install                  | `pnpm install`                                                       |
 | Build all N-API packages | `pnpm build [--release]`                                             |
-| Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser> build [--release]` |
+| Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build [--release]` |
 | Test                     | `pnpm test`                                                          |
 | Test parser package      | `pnpm --filter @swc-next/parser test`                                |
 
