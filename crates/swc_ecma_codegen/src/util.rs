@@ -23,6 +23,14 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, as
     out.push(quote);
     let mut i = 0;
     while i < value.len() {
+        let start = i;
+        while i < value.len() && can_copy_quoted_ascii_byte(value, i, quote) {
+            i += 1;
+        }
+        if i != start {
+            out.extend_from_slice(&value[start..i]);
+            continue;
+        }
         let (cp, size) = next_wtf8_code_point(value, i);
         i += size;
         match cp {
@@ -93,6 +101,23 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, as
         }
     }
     out.push(quote);
+}
+
+#[inline(always)]
+fn can_copy_quoted_ascii_byte(value: &[u8], i: usize, quote: u8) -> bool {
+    let byte = value[i];
+    if byte > 0x7e || byte == quote {
+        return false;
+    }
+    match byte {
+        0 | 7 | 8 | 11 | 12 | 13 | 27 | b'\\' => false,
+        b'\n' => quote == b'`',
+        b'$' if quote == b'`' => value.get(i + 1) != Some(&b'{'),
+        b'/' if i > 0 && value[i - 1] == b'<' => !value
+            .get(i + 1..i + 7)
+            .is_some_and(|tail| tail.eq_ignore_ascii_case(b"script")),
+        _ => true,
+    }
 }
 
 fn next_wtf8_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
