@@ -24,7 +24,7 @@
 use std::{
     fmt,
     mem::{offset_of, size_of},
-    slice,
+    ptr, slice,
 };
 
 use swc_next_allocator::Allocator;
@@ -206,6 +206,7 @@ pub fn deserialize_from<'a>(
     buf: &[u8],
     allocator: &'a Allocator,
 ) -> Result<Ast<'a>, DeserializeError> {
+    // ====================== Header ======================
     if buf.len() < HEADER_SIZE {
         return Err(DeserializeError("AST buffer is shorter than its header"));
     }
@@ -229,6 +230,7 @@ pub fn deserialize_from<'a>(
         return Err(DeserializeError("unsupported AST buffer sections"));
     }
 
+    // ================== Section Offsets ==================
     let spans = HEADER_SIZE;
     let kinds = checked_section_end(spans, node_count, SPAN_SIZE)?;
     let payloads = align_to_four(checked_section_end(kinds, node_count, NODE_KIND_SIZE)?);
@@ -245,47 +247,61 @@ pub fn deserialize_from<'a>(
         return Err(DeserializeError("AST buffer has an invalid program index"));
     }
 
+    // ============== Spans / Kinds / Payloads ==============
+    let kind_bytes = &buf[kinds..kinds + node_count];
+    if kind_bytes.iter().any(|&kind| kind >= NodeKind::COUNT) {
+        return Err(DeserializeError("AST buffer contains an unknown node kind"));
+    }
+    if kind_bytes[program_index] != NodeKind::Program as u8 {
+        return Err(DeserializeError("AST root is not a Program"));
+    }
+
     let mut tree = Ast::new("", allocator);
     tree.reserve(node_count, extra_count);
 
-    for index in 0..node_count {
-        let span_offset = spans + index * SPAN_SIZE;
-        let start = read_u32(buf, span_offset);
-        let end = read_u32(buf, span_offset + 4);
-        if start > end {
-            return Err(DeserializeError("AST node span is reversed"));
-        }
-
-        let kind = buf[kinds + index];
-        if kind >= NodeKind::COUNT {
-            return Err(DeserializeError("AST buffer contains an unknown node kind"));
-        }
-        // SAFETY: Generated node kinds are contiguous and `kind` is below COUNT.
-        let kind = unsafe { std::mem::transmute::<u8, NodeKind>(kind) };
-
-        let payload_offset = payloads + index * NODE_PAYLOAD_SIZE;
-        let payload = u128::from_le_bytes(
-            buf[payload_offset..payload_offset + NODE_PAYLOAD_SIZE]
-                .try_into()
-                .unwrap(),
+    // SAFETY: `reserve` allocated each destination for `node_count` elements.
+    // The section bounds were checked above, all node-kind bytes are valid
+    // discriminants, and the compile-time assertions guarantee matching
+    // little-endian layouts.
+    unsafe {
+        ptr::copy_nonoverlapping(
+            buf.as_ptr().add(spans),
+            tree.nodes.span.as_ptr().cast::<u8>(),
+            node_count * SPAN_SIZE,
         );
-        tree.add_node(Span::new(start, end), kind, NodePayload(payload));
-    }
-
-    if tree.node_kind(NodeId::from_usize(program_index)) != NodeKind::Program {
-        return Err(DeserializeError("AST root is not a Program"));
+        ptr::copy_nonoverlapping(
+            kind_bytes.as_ptr(),
+            tree.nodes.kind.as_ptr().cast::<u8>(),
+            node_count * NODE_KIND_SIZE,
+        );
+        ptr::copy_nonoverlapping(
+            buf.as_ptr().add(payloads),
+            tree.nodes.data.as_ptr().cast::<u8>(),
+            node_count * NODE_PAYLOAD_SIZE,
+        );
+        tree.nodes.len = node_count as u32;
     }
     tree.root = Some(NodeId::from_usize(program_index));
 
-    for index in 0..extra_count {
-        tree.extra_data.push(ExtraData {
-            other: read_u64(buf, extra + index * EXTRA_DATA_SIZE),
-        });
+    // =================== Extra Data ====================
+    // SAFETY: `reserve` allocated space for `extra_count` entries, the source
+    // section has the checked byte length, and all bit patterns are valid for
+    // `ExtraData`.
+    unsafe {
+        ptr::copy_nonoverlapping(
+            buf.as_ptr().add(extra),
+            tree.extra_data.as_mut_ptr().cast::<u8>(),
+            extra_count * EXTRA_DATA_SIZE,
+        );
+        tree.extra_data.set_len(extra_count);
     }
+
+    // =================== String Pool ====================
     tree.strings
         .extra
-        .extend_from_slice(&buf[strings..strings + string_pool_len]);
+        .extend_from_slice_copy(&buf[strings..strings + string_pool_len]);
 
+    // ================= Source Metadata =================
     let source_type = match (flags >> FLAG_SOURCE_TYPE_SHIFT) & 3 {
         0 => SourceType::Module,
         1 => SourceType::Script,
@@ -396,9 +412,4 @@ mod tests {
 #[inline]
 fn read_u32(buf: &[u8], pos: usize) -> u32 {
     u32::from_le_bytes(buf[pos..pos + size_of::<u32>()].try_into().unwrap())
-}
-
-#[inline]
-fn read_u64(buf: &[u8], pos: usize) -> u64 {
-    u64::from_le_bytes(buf[pos..pos + size_of::<u64>()].try_into().unwrap())
 }
