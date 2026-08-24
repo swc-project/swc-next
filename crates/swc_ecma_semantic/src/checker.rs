@@ -1167,7 +1167,10 @@ impl Checker<'_, '_> {
                         .get_node(context.ast, index)
                         .expect("class child exists")
                         .node_id();
-                    if let NodeKindData::MethodDefinition(method) = context.ast.kind_data(child)
+                    // TypeScript permits constructor overload declarations and leaves duplicate
+                    // implementation diagnostics to its type checker.
+                    if !context.ast.is_ts()
+                        && let NodeKindData::MethodDefinition(method) = context.ast.kind_data(child)
                         && method.kind(context.ast)
                             == swc_next_ecma_ast::MethodDefinitionKind::Constructor
                     {
@@ -1187,6 +1190,11 @@ impl Checker<'_, '_> {
                             first_constructor = Some(method.key(context.ast).node_id());
                         }
                     }
+                    // Body-less TypeScript methods are erased overload signatures. They do not
+                    // introduce runtime private names and must not conflict with the implementation.
+                    if context.ast.node_kind(child) == NodeKind::TsMethodDefinition {
+                        continue;
+                    }
                     let Some(name) = private_element_name(context.ast, child) else {
                         continue;
                     };
@@ -1196,6 +1204,9 @@ impl Checker<'_, '_> {
                             .get_node(context.ast, previous_index)
                             .expect("class child exists")
                             .node_id();
+                        if context.ast.node_kind(previous) == NodeKind::TsMethodDefinition {
+                            continue;
+                        }
                         let Some(previous_name) = private_element_name(context.ast, previous)
                         else {
                             continue;
@@ -2987,6 +2998,11 @@ impl<'a> CheckerState<'a> {
         node: NodeId,
         context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
+        // TypeScript declarations can merge across the type and value namespaces. Duplicate
+        // exports are therefore checker diagnostics rather than parser-level early errors.
+        if context.ast.is_ts() {
+            return;
+        }
         // Exports inside a TS namespace are namespace-scoped, not module-scoped.
         if !context.ast.is_module() || context.state.in_ts_namespace() {
             return;
