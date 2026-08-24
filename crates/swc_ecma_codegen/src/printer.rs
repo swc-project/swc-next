@@ -107,7 +107,7 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
     if was_negative { -n } else { n }
 }
 
-pub struct Printer<'a> {
+struct Printer<'a> {
     allocator: &'a Allocator,
     ast: &'a Ast<'a>,
     options: Options,
@@ -261,7 +261,7 @@ impl BinaryExprVisitor {
 }
 
 impl<'a> Printer<'a> {
-    pub fn init(allocator: &'a Allocator, ast: &'a Ast<'a>, options: Options) -> Self {
+    fn init(allocator: &'a Allocator, ast: &'a Ast<'a>, options: Options) -> Self {
         let line_offset_tables = if options.source_map_path.is_some() {
             generate_line_offset_tables(allocator, ast.source().as_bytes())
         } else {
@@ -292,7 +292,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    pub fn generate(mut self) -> PrintResult<'a> {
+    fn generate(mut self) -> PrintResult<'a> {
         self.print_program(self.ast.root_program());
         let Self {
             allocator,

@@ -256,6 +256,7 @@ pub fn deserialize_from<'a>(
         return Err(DeserializeError("AST root is not a Program"));
     }
 
+    // TODO: Use `sourceMap.source` when optional source-map generation is enabled.
     let mut tree = Ast::new("", allocator);
     tree.reserve(node_count, extra_count);
 

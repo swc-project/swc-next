@@ -10,5 +10,5 @@ mod sourcemap;
 mod util;
 
 pub use printer::print;
-pub use printer::{NumberFormat, Options, PrintResult, Printer};
+pub use printer::{NumberFormat, Options, PrintResult};
 pub use sourcemap::SourceMap;
