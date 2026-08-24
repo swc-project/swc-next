@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 453/4069 (11.13%)
-Failed: 50/4069 (1.23%)
+Passed: 454/4069 (11.16%)
+Failed: 49/4069 (1.20%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 425/560 (75.89%)
-Failed: 43/560 (7.68%)
+Passed: 426/560 (76.07%)
+Failed: 42/560 (7.50%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -65,7 +65,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpre
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/UnaryExpression/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/WithStatement/input.js - semantic: 'with' statements are not allowed in strict mode at 0..13
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/cast-need-parentheses/input.js - babel-generator/test/fixtures/typescript/cast-need-parentheses: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/class-abstract/input.js - semantic: Duplicate export of 'default' at 157..193
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses-createParenthesizedExpression/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses-createParenthesizedExpression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies/input.js - babel-generator/test/fixtures/typescript/satisfies: transformed output differs from output.js
