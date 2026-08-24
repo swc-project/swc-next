@@ -2169,14 +2169,15 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let op = e.operator(self.ast).as_str();
+        let operator = e.operator(self.ast);
+        let op = operator.as_str();
         if op.as_bytes()[0].is_ascii_alphabetic() {
             self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
             self.print(" ");
         } else {
-            let operator_code = OperatorCode::Unary(e.operator(self.ast));
+            let operator_code = OperatorCode::Unary(operator);
             self.print_space_before_operator(operator_code);
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
@@ -2194,9 +2195,11 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let op = e.operator(self.ast).as_str();
-        let operator_code = OperatorCode::Update(e.operator(self.ast), e.prefix(self.ast));
-        if e.prefix(self.ast) {
+        let operator = e.operator(self.ast);
+        let prefix = e.prefix(self.ast);
+        let op = operator.as_str();
+        let operator_code = OperatorCode::Update(operator, prefix);
+        if prefix {
             self.print_space_before_operator(operator_code);
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
