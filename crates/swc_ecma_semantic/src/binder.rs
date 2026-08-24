@@ -1426,12 +1426,13 @@ impl<'a> SymbolTracker<'a> {
         let node_count = tree.node_count();
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
         node_references.resize(node_count, None);
-        for (index, reference) in self.references.iter().enumerate() {
-            node_references[reference.node.index()] = Some(reference_id(index));
-        }
+
+        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
+        use_ranges.resize(symbol_count, Range::default());
 
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
+            node_references[reference.node.index()] = Some(reference_id(reference_index));
             let name = tree.get_utf8(reference.name).as_bytes();
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
@@ -1462,6 +1463,9 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
             self.references[reference_index].symbol = resolved;
+            if let Some(symbol) = resolved {
+                use_ranges[symbol.index()].len += 1;
+            }
             if reference.flags.space == ReferenceSpace::Any
                 && resolved.is_some_and(|symbol| {
                     let flags = self.symbols[symbol.index()].flags;
@@ -1497,15 +1501,8 @@ impl<'a> SymbolTracker<'a> {
             }
         }
 
-        // Use index: count, prefix-sum, fill. `len` doubles as the write
-        // cursor during the fill.
-        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
-        use_ranges.resize(symbol_count, Range::default());
-        for reference in &self.references {
-            if let Some(symbol) = reference.symbol {
-                use_ranges[symbol.index()].len += 1;
-            }
-        }
+        // Use index: prefix-sum and fill. Resolution counted uses above;
+        // `len` now doubles as the write cursor during the fill.
         let mut use_offset = 0u32;
         for range in &mut use_ranges {
             range.start = use_offset;
