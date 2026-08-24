@@ -1,5 +1,7 @@
+use napi_derive::napi;
 use swc_next_ecma_codegen::Options as AstCodegenOptions;
 
+#[napi(object)]
 #[derive(Default)]
 pub struct CodegenOptions {
     pub ascii_only: Option<bool>,

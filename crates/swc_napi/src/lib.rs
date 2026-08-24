@@ -4,6 +4,6 @@ mod codegen;
 mod parser;
 
 #[cfg(feature = "codegen")]
-pub use codegen::{CodegenOptions, print_from_buffer};
+pub use codegen::{CodegenOptions, CodegenOutput, print_from_buffer};
 #[cfg(feature = "parser")]
 pub use parser::{CommentMode, Lang, ParserOptions, SourceType, parse_to_buffer};

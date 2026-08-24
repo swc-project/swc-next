@@ -16,11 +16,11 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 codegen = ["dep:swc_next_ecma_codegen"]
-parser = ["dep:napi", "dep:napi-derive", "dep:swc_next_ecma_parser"]
+parser = ["dep:swc_next_ecma_parser"]
 
 [dependencies]
-napi                 = { workspace = true, optional = true }
-napi-derive          = { workspace = true, optional = true }
+napi                 = { workspace = true }
+napi-derive          = { workspace = true }
 swc_next_allocator   = { workspace = true }
 swc_next_ecma_ast    = { workspace = true }
 swc_next_ecma_codegen = { workspace = true, optional = true }
