@@ -91,6 +91,7 @@ fn bench_semantic_with_syntax_check(ast: Ast<'static>) {
 }
 
 #[library_benchmark]
+// Temporary task-owned marker used to collect an unchanged resolver profile in CI.
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 fn bench_resolver(ast: Ast<'static>) {
     black_box(resolve_names(&ast));
