@@ -266,7 +266,7 @@ impl<'ast> Resolver<'ast> {
         self.set_scope_once(owner.node_id(), scope);
     }
 
-    fn scope_of_name(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<ScopeId> {
+    fn scope_of_name<const STOP_AT_FN_SCOPE: bool>(&self, name: &[u8]) -> Option<ScopeId> {
         // Every scope uses the same stateless FxBuildHasher, so reuse the hash
         // instead of hashing the identifier again for each ancestor scope.
         let hash = self.scopes[self.current]
@@ -291,7 +291,7 @@ impl<'ast> Resolver<'ast> {
                     Some(scope_id)
                 };
             }
-            if current.kind == ScopeKind::Fn && stop_at_fn_scope {
+            if STOP_AT_FN_SCOPE && current.kind == ScopeKind::Fn {
                 return None;
             }
             scope = current.parent;
@@ -403,7 +403,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         }
         let name = self.name(reference.name(self.ast));
         let scope = self
-            .scope_of_name(name, false)
+            .scope_of_name::<false>(name)
             .unwrap_or(self.unresolved_scope_id);
         self.set_symbol_scope_once(SymbolNode::IdentifierReference(reference), scope);
     }
@@ -423,7 +423,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 let scope = if name.first().is_some_and(u8::is_ascii_lowercase) {
                     self.unresolved_scope_id
                 } else {
-                    self.scope_of_name(name, false)
+                    self.scope_of_name::<false>(name)
                         .unwrap_or(self.unresolved_scope_id)
                 };
                 self.set_symbol_scope_once(SymbolNode::JsxIdentifier(identifier), scope);
@@ -440,7 +440,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
                 let name = self.name(identifier.name(self.ast));
                 let scope = self
-                    .scope_of_name(name, false)
+                    .scope_of_name::<false>(name)
                     .unwrap_or(self.unresolved_scope_id);
                 self.set_symbol_scope_once(SymbolNode::JsxIdentifier(identifier), scope);
             }
@@ -774,7 +774,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         {
             let name = self.name(identifier.name(self.ast));
             let scope = self
-                .scope_of_name(name, false)
+                .scope_of_name::<false>(name)
                 .unwrap_or(self.unresolved_scope_id);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
@@ -785,7 +785,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         {
             let name = self.name(identifier.name(self.ast));
             let scope = self
-                .scope_of_name(name, false)
+                .scope_of_name::<false>(name)
                 .unwrap_or(self.unresolved_scope_id);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
@@ -821,7 +821,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
     fn add_binding(&mut self, identifier: BindingIdentifier) {
         let name = self.resolver.name(identifier.name(self.resolver.ast));
         if self.in_catch_body {
-            if self.resolver.scope_of_name(name, true).is_some()
+            if self.resolver.scope_of_name::<true>(name).is_some()
                 && self.catch_param_decls.contains(name)
             {
                 return;
