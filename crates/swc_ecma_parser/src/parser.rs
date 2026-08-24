@@ -1175,7 +1175,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.scratch_statements.append(statement);
                     return Some(false);
                 }
-                let statement = self.parse_statement(self.statement_context)?;
+                let statement = if terminator.is_none() {
+                    self.parse_program_statement(self.statement_context)?
+                } else {
+                    self.parse_statement(self.statement_context)?
+                };
                 if terminator.is_none() && self.statement_has_module_syntax(statement) {
                     self.has_module_syntax = true;
                 }
@@ -1221,14 +1225,53 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    fn statement_requires_module_item_context(&self, statement: Stmt) -> bool {
+        match self.ast.stmt_data(statement) {
+            StmtData::ImportDeclaration(_)
+            | StmtData::ExportNamedDeclaration(_)
+            | StmtData::ExportDefaultDeclaration(_)
+            | StmtData::ExportAllDeclaration(_)
+            | StmtData::TsExportAssignment(_)
+            | StmtData::TsNamespaceExportDeclaration(_) => true,
+            StmtData::Declaration(declaration) => matches!(
+                self.ast.decl_data(declaration),
+                DeclData::TsImportEqualsDeclaration(_)
+            ),
+            _ => false,
+        }
+    }
+
     fn is_at_body_end(&self, terminator: Option<TokenTag>) -> bool {
         self.current_token.tag == TokenTag::Eof
             || terminator.is_some_and(|tag| self.current_token.tag == tag)
     }
 
     fn parse_statement(&mut self, statement_context: StatementContext) -> Option<Stmt> {
+        self.parse_statement_with_options(statement_context, false)
+    }
+
+    fn parse_program_statement(&mut self, statement_context: StatementContext) -> Option<Stmt> {
+        self.parse_statement_with_options(statement_context, true)
+    }
+
+    fn parse_statement_with_options(
+        &mut self,
+        statement_context: StatementContext,
+        is_program_body_item: bool,
+    ) -> Option<Stmt> {
         let statement_context = mem::replace(&mut self.statement_context, statement_context);
         let result = self.parse_statement_inner();
+        if let Some(statement) = result
+            && !is_program_body_item
+            && self.statement_context != StatementContext::ModuleItem
+            && self.statement_requires_module_item_context(statement)
+        {
+            self.report(
+                statement.span(&self.ast),
+                "Import and export declarations may only appear at the top level of a module",
+                ReportOptions::default(),
+            );
+        }
         self.statement_context = statement_context;
         result
     }
