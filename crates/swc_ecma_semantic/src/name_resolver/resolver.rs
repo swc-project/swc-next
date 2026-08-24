@@ -1,6 +1,6 @@
 use std::hash::BuildHasher;
 
-use hashbrown::HashMap;
+use hashbrown::{HashMap, hash_map::RawEntryMut};
 use oxc_index::{Idx, IndexVec};
 use rustc_hash::{FxBuildHasher, FxHashSet};
 use swc_next_allocator::vec::Vec as ArenaVec;
@@ -100,6 +100,7 @@ struct Scope<'ast> {
     parent: Option<ScopeId>,
     kind: ScopeKind,
     declared_symbols: HashMap<&'ast [u8], DeclKind, FxBuildHasher>,
+    resolved_symbols: HashMap<&'ast [u8], ScopeId, FxBuildHasher>,
 }
 
 impl<'ast> Scope<'ast> {
@@ -108,6 +109,7 @@ impl<'ast> Scope<'ast> {
             parent,
             kind,
             declared_symbols: HashMap::with_hasher(FxBuildHasher),
+            resolved_symbols: HashMap::with_hasher(FxBuildHasher),
         }
     }
 }
@@ -299,15 +301,47 @@ impl<'ast> Resolver<'ast> {
         None
     }
 
+    fn resolve_name(&mut self, name: &'ast [u8]) -> ScopeId {
+        let current_scope = self.current;
+        let hash = self.scopes[current_scope]
+            .resolved_symbols
+            .hasher()
+            .hash_one(name);
+        if let Some((_, scope)) = self.scopes[current_scope]
+            .resolved_symbols
+            .raw_entry()
+            .from_hash(hash, |candidate| *candidate == name)
+        {
+            return *scope;
+        }
+
+        let scope = self
+            .scope_of_name(name, false)
+            .unwrap_or(self.unresolved_scope_id);
+        match self.scopes[current_scope]
+            .resolved_symbols
+            .raw_entry_mut()
+            .from_hash(hash, |candidate| *candidate == name)
+        {
+            RawEntryMut::Occupied(entry) => *entry.into_mut() = scope,
+            RawEntryMut::Vacant(entry) => {
+                entry.insert_hashed_nocheck(hash, name, scope);
+            }
+        }
+        scope
+    }
+
     fn declare(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
         if self.node_scopes[identifier.node_id().index()].is_some() {
             return;
         }
 
         let name = self.name(identifier.name(self.ast));
-        self.scopes[self.current]
-            .declared_symbols
-            .insert(name, kind);
+        let scope = &mut self.scopes[self.current];
+        scope.declared_symbols.insert(name, kind);
+        if !scope.resolved_symbols.is_empty() {
+            scope.resolved_symbols.remove(name);
+        }
         self.set_symbol_scope_once(SymbolNode::BindingIdentifier(identifier), self.current);
     }
 
@@ -402,9 +436,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             return;
         }
         let name = self.name(reference.name(self.ast));
-        let scope = self
-            .scope_of_name(name, false)
-            .unwrap_or(self.unresolved_scope_id);
+        let scope = self.resolve_name(name);
         self.set_symbol_scope_once(SymbolNode::IdentifierReference(reference), scope);
     }
 
@@ -423,8 +455,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 let scope = if name.first().is_some_and(u8::is_ascii_lowercase) {
                     self.unresolved_scope_id
                 } else {
-                    self.scope_of_name(name, false)
-                        .unwrap_or(self.unresolved_scope_id)
+                    self.resolve_name(name)
                 };
                 self.set_symbol_scope_once(SymbolNode::JsxIdentifier(identifier), scope);
             }
@@ -439,9 +470,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         match self.ast.jsx_member_expression_object_data(object) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
                 let name = self.name(identifier.name(self.ast));
-                let scope = self
-                    .scope_of_name(name, false)
-                    .unwrap_or(self.unresolved_scope_id);
+                let scope = self.resolve_name(name);
                 self.set_symbol_scope_once(SymbolNode::JsxIdentifier(identifier), scope);
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
@@ -773,9 +802,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             self.ast.module_export_name_data(local)
         {
             let name = self.name(identifier.name(self.ast));
-            let scope = self
-                .scope_of_name(name, false)
-                .unwrap_or(self.unresolved_scope_id);
+            let scope = self.resolve_name(name);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
         let exported = specifier.exported(self.ast);
@@ -784,9 +811,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                 self.ast.module_export_name_data(exported)
         {
             let name = self.name(identifier.name(self.ast));
-            let scope = self
-                .scope_of_name(name, false)
-                .unwrap_or(self.unresolved_scope_id);
+            let scope = self.resolve_name(name);
             self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
         }
     }
