@@ -171,7 +171,7 @@ function encode(program) {
         : _body).push(statement);
     }
     const v_0 = encArray(_directives, encDirective, false);
-    const v_1 = encArray(_body, encStmt, false);
+    const v_1 = encArray(_body, encNode, false);
     const v_2 = n.hashbang == null ? NULL : encHashbang(n.hashbang);
     const extraId = allocExtra(1);
     const index = allocNode(0, asStart(n), asEnd(n));
@@ -249,7 +249,7 @@ function encode(program) {
 
   function encTemplateLiteral(n) {
     const v_0 = encArray(n.quasis, encTemplateElement, false);
-    const v_1 = encArray(n.expressions, encExpr, false);
+    const v_1 = encArray(n.expressions, encNode, false);
     const index = allocNode(9, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -328,7 +328,7 @@ function encode(program) {
     const v_0 = encArray(n.decorators, encDecorator, false);
     const v_1 = encBindingPattern(n.left);
     const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_3 = encExpr(n.right);
+    const v_3 = encNode(n.right);
     const v_4 = n.optional ? 1 : 0;
     const extraId = allocExtra(2);
     const index = allocNode(16, asStart(n), asEnd(n));
@@ -409,7 +409,7 @@ function encode(program) {
   }
 
   function encBindingProperty(n) {
-    const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
     const v_1 = encBindingPattern(n.value);
     const v_2 = n.shorthand ? 1 : 0;
     const v_3 = n.computed ? 1 : 0;
@@ -422,8 +422,8 @@ function encode(program) {
   }
 
   function encBinaryExpression(n) {
-    const v_0 = encExpr(n.left);
-    const v_1 = encExpr(n.right);
+    const v_0 = encNode(n.left);
+    const v_1 = encNode(n.right);
     const v_2 = enumValue("BinaryOperator", n.operator);
     const index = allocNode(21, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -433,8 +433,8 @@ function encode(program) {
   }
 
   function encLogicalExpression(n) {
-    const v_0 = encExpr(n.left);
-    const v_1 = encExpr(n.right);
+    const v_0 = encNode(n.left);
+    const v_1 = encNode(n.right);
     const v_2 = enumValue("LogicalOperator", n.operator);
     const index = allocNode(22, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -444,9 +444,9 @@ function encode(program) {
   }
 
   function encConditionalExpression(n) {
-    const v_0 = encExpr(n.test);
-    const v_1 = encExpr(n.consequent);
-    const v_2 = encExpr(n.alternate);
+    const v_0 = encNode(n.test);
+    const v_1 = encNode(n.consequent);
+    const v_2 = encNode(n.alternate);
     const index = allocNode(23, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -455,7 +455,7 @@ function encode(program) {
   }
 
   function encUnaryExpression(n) {
-    const v_0 = encExpr(n.argument);
+    const v_0 = encNode(n.argument);
     const v_1 = enumValue("UnaryOperator", n.operator);
     const index = allocNode(24, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -464,7 +464,7 @@ function encode(program) {
   }
 
   function encUpdateExpression(n) {
-    const v_0 = encSimpleAssignmentTarget(n.argument);
+    const v_0 = encNode(n.argument);
     const v_1 = enumValue("UpdateOperator", n.operator);
     const v_2 = n.prefix ? 1 : 0;
     const index = allocNode(25, asStart(n), asEnd(n));
@@ -475,8 +475,8 @@ function encode(program) {
   }
 
   function encAssignmentExpression(n) {
-    const v_0 = encAssignmentTarget(n.left);
-    const v_1 = encExpr(n.right);
+    const v_0 = encNode(n.left);
+    const v_1 = encNode(n.right);
     const v_2 = enumValue("AssignmentOperator", n.operator);
     const index = allocNode(26, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -499,7 +499,7 @@ function encode(program) {
 
   function encVariableDeclarator(n) {
     const v_0 = encBindingPattern(n.id);
-    const v_1 = n.init == null ? NULL : encExpr(n.init);
+    const v_1 = n.init == null ? NULL : encNode(n.init);
     const v_2 = n.definite ? 1 : 0;
     const index = allocNode(28, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -509,9 +509,9 @@ function encode(program) {
   }
 
   function encIfStatement(n) {
-    const v_0 = encExpr(n.test);
-    const v_1 = encStmt(n.consequent);
-    const v_2 = n.alternate == null ? NULL : encStmt(n.alternate);
+    const v_0 = encNode(n.test);
+    const v_1 = encNode(n.consequent);
+    const v_2 = n.alternate == null ? NULL : encNode(n.alternate);
     const index = allocNode(29, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -520,7 +520,7 @@ function encode(program) {
   }
 
   function encSwitchStatement(n) {
-    const v_0 = encExpr(n.discriminant);
+    const v_0 = encNode(n.discriminant);
     const v_1 = encArray(n.cases, encSwitchCase, false);
     const index = allocNode(30, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
@@ -530,8 +530,8 @@ function encode(program) {
   }
 
   function encSwitchCase(n) {
-    const v_0 = n.test == null ? NULL : encExpr(n.test);
-    const v_1 = encArray(n.consequent, encStmt, false);
+    const v_0 = n.test == null ? NULL : encNode(n.test);
+    const v_1 = encArray(n.consequent, encNode, false);
     const index = allocNode(31, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 0, v_1.start);
@@ -540,10 +540,10 @@ function encode(program) {
   }
 
   function encForStatement(n) {
-    const v_0 = n.init == null ? NULL : encForStatementInit(n.init);
-    const v_1 = n.test == null ? NULL : encExpr(n.test);
-    const v_2 = n.update == null ? NULL : encExpr(n.update);
-    const v_3 = encStmt(n.body);
+    const v_0 = n.init == null ? NULL : encNode(n.init);
+    const v_1 = n.test == null ? NULL : encNode(n.test);
+    const v_2 = n.update == null ? NULL : encNode(n.update);
+    const v_3 = encNode(n.body);
     const index = allocNode(32, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -553,9 +553,9 @@ function encode(program) {
   }
 
   function encForInStatement(n) {
-    const v_0 = encForStatementLeft(n.left);
-    const v_1 = encExpr(n.right);
-    const v_2 = encStmt(n.body);
+    const v_0 = encNode(n.left);
+    const v_1 = encNode(n.right);
+    const v_2 = encNode(n.body);
     const index = allocNode(33, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -564,9 +564,9 @@ function encode(program) {
   }
 
   function encForOfStatement(n) {
-    const v_0 = encForStatementLeft(n.left);
-    const v_1 = encExpr(n.right);
-    const v_2 = encStmt(n.body);
+    const v_0 = encNode(n.left);
+    const v_1 = encNode(n.right);
+    const v_2 = encNode(n.body);
     const v_3 = n.await ? 1 : 0;
     const index = allocNode(34, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -612,7 +612,7 @@ function encode(program) {
 
   function encLabeledStatement(n) {
     const v_0 = encLabelIdentifier(n.label);
-    const v_1 = encStmt(n.body);
+    const v_1 = encNode(n.body);
     const index = allocNode(39, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -620,21 +620,21 @@ function encode(program) {
   }
 
   function encExpressionStatement(n) {
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(40, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encReturnStatement(n) {
-    const v_0 = n.argument == null ? NULL : encExpr(n.argument);
+    const v_0 = n.argument == null ? NULL : encNode(n.argument);
     const index = allocNode(41, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encThrowStatement(n) {
-    const v_0 = encExpr(n.argument);
+    const v_0 = encNode(n.argument);
     const index = allocNode(42, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -661,7 +661,7 @@ function encode(program) {
   }
 
   function encDecorator(n) {
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(46, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -672,7 +672,7 @@ function encode(program) {
     const v_1 = encArray(n.decorators, encDecorator, false);
     const v_2 = n.id == null ? NULL : encBindingIdentifier(n.id);
     const v_3 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_4 = n.superClass == null ? NULL : encExpr(n.superClass);
+    const v_4 = n.superClass == null ? NULL : encNode(n.superClass);
     const v_5 = n.superTypeArguments == null ? NULL : encTsTypeParameterInstantiation(n.superTypeArguments);
     const v_6 = encArray(n.implements, encTsClassImplements, false);
     const v_7 = encClassBody(n.body);
@@ -697,7 +697,7 @@ function encode(program) {
   }
 
   function encClassBody(n) {
-    const v_0 = encArray(n.body, encClassElement, false);
+    const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(48, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -706,7 +706,7 @@ function encode(program) {
 
   function encMethodDefinition(n) {
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
+    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
     const v_2 = encFunction(n.value);
     const v_3 = enumValue("MethodDefinitionKind", n.kind);
     const v_4 = n.computed ? 1 : 0;
@@ -734,9 +734,9 @@ function encode(program) {
 
   function encPropertyDefinition(n) {
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
+    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
     const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_3 = n.value == null ? NULL : encExpr(n.value);
+    const v_3 = n.value == null ? NULL : encNode(n.value);
     const v_4 = n.computed ? 1 : 0;
     const v_5 = n.static ? 1 : 0;
     const v_6 = n.type === "AccessorProperty" || n.type === "TSAbstractAccessorProperty" ? 1 : 0;
@@ -769,7 +769,7 @@ function encode(program) {
   }
 
   function encStaticBlock(n) {
-    const v_0 = encArray(n.body, encStmt, false);
+    const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(51, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -808,7 +808,7 @@ function encode(program) {
         : _body).push(statement);
     }
     const v_0 = encArray(_directives, encDirective, false);
-    const v_1 = encArray(_body, encStmt, false);
+    const v_1 = encArray(_body, encNode, false);
     const index = allocNode(53, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -818,7 +818,7 @@ function encode(program) {
   }
 
   function encBlockStatement(n) {
-    const v_0 = encArray(n.body, encStmt, false);
+    const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(54, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -826,8 +826,8 @@ function encode(program) {
   }
 
   function encWhileStatement(n) {
-    const v_0 = encExpr(n.test);
-    const v_1 = encStmt(n.body);
+    const v_0 = encNode(n.test);
+    const v_1 = encNode(n.body);
     const index = allocNode(55, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -835,8 +835,8 @@ function encode(program) {
   }
 
   function encDoWhileStatement(n) {
-    const v_0 = encStmt(n.body);
-    const v_1 = encExpr(n.test);
+    const v_0 = encNode(n.body);
+    const v_1 = encNode(n.test);
     const index = allocNode(56, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -844,8 +844,8 @@ function encode(program) {
   }
 
   function encWithStatement(n) {
-    const v_0 = encExpr(n.object);
-    const v_1 = encStmt(n.body);
+    const v_0 = encNode(n.object);
+    const v_1 = encNode(n.body);
     const index = allocNode(57, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -880,7 +880,7 @@ function encode(program) {
   }
 
   function encArrayExpression(n) {
-    const v_0 = encArray(n.elements, encArgument, true);
+    const v_0 = encArray(n.elements, encNode, true);
     const index = allocNode(60, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -888,7 +888,7 @@ function encode(program) {
   }
 
   function encObjectExpression(n) {
-    const v_0 = encArray(n.properties, encObjectPropertyKind, false);
+    const v_0 = encArray(n.properties, encNode, false);
     const index = allocNode(61, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -896,15 +896,15 @@ function encode(program) {
   }
 
   function encSpreadElement(n) {
-    const v_0 = encExpr(n.argument);
+    const v_0 = encNode(n.argument);
     const index = allocNode(62, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encObjectProperty(n) {
-    const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
-    const v_1 = encExpr(n.value);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_1 = encNode(n.value);
     const v_2 = enumValue("PropertyKind", n.kind);
     const v_3 = n.method ? 1 : 0;
     const v_4 = n.shorthand ? 1 : 0;
@@ -920,7 +920,7 @@ function encode(program) {
   }
 
   function encParenthesizedExpression(n) {
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(64, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -946,7 +946,7 @@ function encode(program) {
   }
 
   function encSequenceExpression(n) {
-    const v_0 = encArray(n.expressions, encExpr, false);
+    const v_0 = encArray(n.expressions, encNode, false);
     const index = allocNode(66, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -954,8 +954,8 @@ function encode(program) {
   }
 
   function encMemberExpression(n) {
-    const v_0 = encExpr(n.object);
-    const v_1 = n.computed ? encExpr(n.property) : encPropertyKey(n.property);
+    const v_0 = encNode(n.object);
+    const v_1 = n.computed ? encNode(n.property) : encPropertyKey(n.property);
     const v_2 = n.computed ? 1 : 0;
     const v_3 = n.optional ? 1 : 0;
     const index = allocNode(67, asStart(n), asEnd(n));
@@ -967,9 +967,9 @@ function encode(program) {
   }
 
   function encCallExpression(n) {
-    const v_0 = encExpr(n.callee);
+    const v_0 = encNode(n.callee);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const v_2 = encArray(n.arguments, encArgument, false);
+    const v_2 = encArray(n.arguments, encNode, false);
     const v_3 = n.optional ? 1 : 0;
     const extraId = allocExtra(1);
     const index = allocNode(68, asStart(n), asEnd(n));
@@ -983,14 +983,14 @@ function encode(program) {
   }
 
   function encChainExpression(n) {
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(69, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encTaggedTemplateExpression(n) {
-    const v_0 = encExpr(n.tag);
+    const v_0 = encNode(n.tag);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const v_2 = encTemplateLiteral(n.quasi);
     const index = allocNode(70, asStart(n), asEnd(n));
@@ -1001,9 +1001,9 @@ function encode(program) {
   }
 
   function encNewExpression(n) {
-    const v_0 = encExpr(n.callee);
+    const v_0 = encNode(n.callee);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const v_2 = encArray(n.arguments, encArgument, false);
+    const v_2 = encArray(n.arguments, encNode, false);
     const index = allocNode(71, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 12, v_1);
@@ -1013,14 +1013,14 @@ function encode(program) {
   }
 
   function encAwaitExpression(n) {
-    const v_0 = encExpr(n.argument);
+    const v_0 = encNode(n.argument);
     const index = allocNode(72, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encYieldExpression(n) {
-    const v_0 = n.argument == null ? NULL : encExpr(n.argument);
+    const v_0 = n.argument == null ? NULL : encNode(n.argument);
     const v_1 = n.delegate ? 1 : 0;
     const index = allocNode(73, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1038,8 +1038,8 @@ function encode(program) {
   }
 
   function encImportExpression(n) {
-    const v_0 = encExpr(n.source);
-    const v_1 = n.options == null ? NULL : encExpr(n.options);
+    const v_0 = encNode(n.source);
+    const v_1 = n.options == null ? NULL : encNode(n.options);
     const v_2 = n.phase == null ? 0xff : enumValue("ImportPhase", n.phase);
     const v_3 = 0 ? 1 : 0;
     const extraId = allocExtra(1);
@@ -1053,7 +1053,7 @@ function encode(program) {
   }
 
   function encImportDeclaration(n) {
-    const v_0 = encArray(n.specifiers, encImportDeclarationSpecifier, false);
+    const v_0 = encArray(n.specifiers, encNode, false);
     const v_1 = encStringLiteral(n.source);
     const v_2 = encArray(n.attributes, encImportAttribute, false);
     const v_3 = n.phase == null ? 0xff : enumValue("ImportPhase", n.phase);
@@ -1106,7 +1106,7 @@ function encode(program) {
   }
 
   function encExportNamedDeclaration(n) {
-    const v_0 = n.declaration == null ? NULL : encDecl(n.declaration);
+    const v_0 = n.declaration == null ? NULL : encNode(n.declaration);
     const v_1 = encArray(n.specifiers, encExportSpecifier, false);
     const v_2 = n.source == null ? NULL : encStringLiteral(n.source);
     const v_3 = encArray(n.attributes, encImportAttribute, false);
@@ -1125,7 +1125,7 @@ function encode(program) {
   }
 
   function encExportDefaultDeclaration(n) {
-    const v_0 = encExportDefaultDeclarationKind(n.declaration);
+    const v_0 = encNode(n.declaration);
     const index = allocNode(82, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1191,7 +1191,7 @@ function encode(program) {
   function encTsMethodDefinition(n) {
     isTs = true;
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
+    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
     const v_2 = encTsFunction(n.value);
     const v_3 = enumValue("MethodDefinitionKind", n.kind);
     const v_4 = n.computed ? 1 : 0;
@@ -1219,7 +1219,7 @@ function encode(program) {
 
   function encTsTypeAnnotation(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.typeAnnotation);
     const index = allocNode(88, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1311,7 +1311,7 @@ function encode(program) {
 
   function encTsTypeReference(n) {
     isTs = true;
-    const v_0 = encTsTypeName(n.typeName);
+    const v_0 = encNode(n.typeName);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const index = allocNode(103, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1321,7 +1321,7 @@ function encode(program) {
 
   function encTsQualifiedName(n) {
     isTs = true;
-    const v_0 = encTsQualifiedNameLeft(n.left);
+    const v_0 = encNode(n.left);
     const v_1 = encIdentifierName(n.right);
     const index = allocNode(104, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1331,7 +1331,7 @@ function encode(program) {
 
   function encTsTypeQuery(n) {
     isTs = true;
-    const v_0 = encTsTypeQueryExprName(n.exprName);
+    const v_0 = encNode(n.exprName);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const index = allocNode(105, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1342,7 +1342,7 @@ function encode(program) {
   function encTsImportType(n) {
     isTs = true;
     const v_0 = encStringLiteral(n.source);
-    const v_1 = n.options == null ? NULL : encExpr(n.options);
+    const v_1 = n.options == null ? NULL : encNode(n.options);
     const v_2 = n.qualifier == null ? NULL : encTsImportTypeQualifier(n.qualifier);
     const v_3 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const index = allocNode(106, asStart(n), asEnd(n));
@@ -1356,8 +1356,8 @@ function encode(program) {
   function encTsTypeParameter(n) {
     isTs = true;
     const v_0 = encBindingIdentifier(n.name);
-    const v_1 = n.constraint == null ? NULL : encTsType(n.constraint);
-    const v_2 = n.default == null ? NULL : encTsType(n.default);
+    const v_1 = n.constraint == null ? NULL : encNode(n.constraint);
+    const v_2 = n.default == null ? NULL : encNode(n.default);
     const v_3 = n.in ? 1 : 0;
     const v_4 = n.out ? 1 : 0;
     const v_5 = n.const ? 1 : 0;
@@ -1382,7 +1382,7 @@ function encode(program) {
 
   function encTsTypeParameterInstantiation(n) {
     isTs = true;
-    const v_0 = encArray(n.params, encTsType, false);
+    const v_0 = encArray(n.params, encNode, false);
     const index = allocNode(109, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1400,7 +1400,7 @@ function encode(program) {
   function encTsTemplateLiteralType(n) {
     isTs = true;
     const v_0 = encArray(n.quasis, encTemplateElement, false);
-    const v_1 = encArray(n.types, encTsType, false);
+    const v_1 = encArray(n.types, encNode, false);
     const index = allocNode(111, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1411,7 +1411,7 @@ function encode(program) {
 
   function encTsArrayType(n) {
     isTs = true;
-    const v_0 = encTsType(n.elementType);
+    const v_0 = encNode(n.elementType);
     const index = allocNode(112, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1419,8 +1419,8 @@ function encode(program) {
 
   function encTsIndexedAccessType(n) {
     isTs = true;
-    const v_0 = encTsType(n.objectType);
-    const v_1 = encTsType(n.indexType);
+    const v_0 = encNode(n.objectType);
+    const v_1 = encNode(n.indexType);
     const index = allocNode(113, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1429,7 +1429,7 @@ function encode(program) {
 
   function encTsTupleType(n) {
     isTs = true;
-    const v_0 = encArray(n.elementTypes, encTsTupleElement, false);
+    const v_0 = encArray(n.elementTypes, encNode, false);
     const index = allocNode(114, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1439,7 +1439,7 @@ function encode(program) {
   function encTsNamedTupleMember(n) {
     isTs = true;
     const v_0 = encIdentifierName(n.label);
-    const v_1 = encTsType(n.elementType);
+    const v_1 = encNode(n.elementType);
     const v_2 = n.optional ? 1 : 0;
     const index = allocNode(115, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1450,7 +1450,7 @@ function encode(program) {
 
   function encTsOptionalType(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.typeAnnotation);
     const index = allocNode(116, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1458,7 +1458,7 @@ function encode(program) {
 
   function encTsRestType(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.typeAnnotation);
     const index = allocNode(117, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1466,7 +1466,7 @@ function encode(program) {
 
   function encTsJsDocNullableType(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.typeAnnotation);
     const v_1 = n.postfix ? 1 : 0;
     const index = allocNode(118, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1476,7 +1476,7 @@ function encode(program) {
 
   function encTsJsDocNonNullableType(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.typeAnnotation);
     const v_1 = n.postfix ? 1 : 0;
     const index = allocNode(119, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1492,7 +1492,7 @@ function encode(program) {
 
   function encTsUnionType(n) {
     isTs = true;
-    const v_0 = encArray(n.types, encTsType, false);
+    const v_0 = encArray(n.types, encNode, false);
     const index = allocNode(121, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1501,7 +1501,7 @@ function encode(program) {
 
   function encTsIntersectionType(n) {
     isTs = true;
-    const v_0 = encArray(n.types, encTsType, false);
+    const v_0 = encArray(n.types, encNode, false);
     const index = allocNode(122, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1510,10 +1510,10 @@ function encode(program) {
 
   function encTsConditionalType(n) {
     isTs = true;
-    const v_0 = encTsType(n.checkType);
-    const v_1 = encTsType(n.extendsType);
-    const v_2 = encTsType(n.trueType);
-    const v_3 = encTsType(n.falseType);
+    const v_0 = encNode(n.checkType);
+    const v_1 = encNode(n.extendsType);
+    const v_2 = encNode(n.trueType);
+    const v_3 = encNode(n.falseType);
     const index = allocNode(123, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1533,7 +1533,7 @@ function encode(program) {
   function encTsTypeOperator(n) {
     isTs = true;
     const v_0 = enumValue("TsTypeOperatorKind", n.operator);
-    const v_1 = encTsType(n.typeAnnotation);
+    const v_1 = encNode(n.typeAnnotation);
     const index = allocNode(125, asStart(n), asEnd(n));
     setPayloadU8(index, 4, v_0);
     setPayloadU32(index, 0, v_1);
@@ -1542,7 +1542,7 @@ function encode(program) {
 
   function encTsParenthesizedType(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.typeAnnotation);
     const index = allocNode(126, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1588,7 +1588,7 @@ function encode(program) {
 
   function encTsTypeLiteral(n) {
     isTs = true;
-    const v_0 = encArray(n.members, encTsTypeElement, false);
+    const v_0 = encArray(n.members, encNode, false);
     const index = allocNode(130, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1598,9 +1598,9 @@ function encode(program) {
   function encTsMappedType(n) {
     isTs = true;
     const v_0 = encBindingIdentifier(n.key);
-    const v_1 = encTsType(n.constraint);
-    const v_2 = n.nameType == null ? NULL : encTsType(n.nameType);
-    const v_3 = n.typeAnnotation == null ? NULL : encTsType(n.typeAnnotation);
+    const v_1 = encNode(n.constraint);
+    const v_2 = n.nameType == null ? NULL : encNode(n.nameType);
+    const v_3 = n.typeAnnotation == null ? NULL : encNode(n.typeAnnotation);
     const v_4 = enumValue("TsMappedTypeModifier", n.optional === false ? null : n.optional);
     const v_5 = enumValue("TsMappedTypeModifier", n.readonly);
     const extraId = allocExtra(2);
@@ -1617,7 +1617,7 @@ function encode(program) {
 
   function encTsPropertySignature(n) {
     isTs = true;
-    const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
     const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
     const v_2 = n.computed ? 1 : 0;
     const v_3 = n.optional ? 1 : 0;
@@ -1633,7 +1633,7 @@ function encode(program) {
 
   function encTsMethodSignature(n) {
     isTs = true;
-    const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
     const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
     const v_2 = encFormalParameters(n.params);
     const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
@@ -1696,7 +1696,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encBindingIdentifier(n.id);
     const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_2 = encTsType(n.typeAnnotation);
+    const v_2 = encNode(n.typeAnnotation);
     const v_3 = n.declare ? 1 : 0;
     const index = allocNode(137, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1727,7 +1727,7 @@ function encode(program) {
 
   function encTsInterfaceBody(n) {
     isTs = true;
-    const v_0 = encArray(n.body, encTsTypeElement, false);
+    const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(139, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1736,7 +1736,7 @@ function encode(program) {
 
   function encTsInterfaceHeritage(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const index = allocNode(140, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1746,7 +1746,7 @@ function encode(program) {
 
   function encTsClassImplements(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const index = allocNode(141, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1780,7 +1780,7 @@ function encode(program) {
   function encTsEnumMember(n) {
     isTs = true;
     const v_0 = encTsEnumMemberName(n.id);
-    const v_1 = n.initializer == null ? NULL : encExpr(n.initializer);
+    const v_1 = n.initializer == null ? NULL : encNode(n.initializer);
     const v_2 = n.computed ? 1 : 0;
     const index = allocNode(144, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1813,7 +1813,7 @@ function encode(program) {
         : _body).push(statement);
     }
     const v_0 = encArray(_directives, encDirective, false);
-    const v_1 = encArray(_body, encStmt, false);
+    const v_1 = encArray(_body, encNode, false);
     const index = allocNode(146, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -1861,8 +1861,8 @@ function encode(program) {
 
   function encTsAsExpression(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
-    const v_1 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.expression);
+    const v_1 = encNode(n.typeAnnotation);
     const index = allocNode(150, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1871,8 +1871,8 @@ function encode(program) {
 
   function encTsSatisfiesExpression(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
-    const v_1 = encTsType(n.typeAnnotation);
+    const v_0 = encNode(n.expression);
+    const v_1 = encNode(n.typeAnnotation);
     const index = allocNode(151, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1881,8 +1881,8 @@ function encode(program) {
 
   function encTsTypeAssertion(n) {
     isTs = true;
-    const v_0 = encTsType(n.typeAnnotation);
-    const v_1 = encExpr(n.expression);
+    const v_0 = encNode(n.typeAnnotation);
+    const v_1 = encNode(n.expression);
     const index = allocNode(152, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1891,7 +1891,7 @@ function encode(program) {
 
   function encTsNonNullExpression(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(153, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1899,7 +1899,7 @@ function encode(program) {
 
   function encTsInstantiationExpression(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const v_1 = encTsTypeParameterInstantiation(n.typeArguments);
     const index = allocNode(154, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1909,7 +1909,7 @@ function encode(program) {
 
   function encTsExportAssignment(n) {
     isTs = true;
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(155, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1926,7 +1926,7 @@ function encode(program) {
   function encTsImportEqualsDeclaration(n) {
     isTs = true;
     const v_0 = encBindingIdentifier(n.id);
-    const v_1 = encTsModuleReference(n.moduleReference);
+    const v_1 = encNode(n.moduleReference);
     const v_2 = enumValue("ImportOrExportKind", n.importKind);
     const index = allocNode(157, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -1945,7 +1945,7 @@ function encode(program) {
 
   function encJsxElement(n) {
     const v_0 = encJsxOpeningElement(n.openingElement);
-    const v_1 = encArray(n.children, encJsxChild, false);
+    const v_1 = encArray(n.children, encNode, false);
     const v_2 = n.closingElement == null ? NULL : encJsxClosingElement(n.closingElement);
     const index = allocNode(159, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
@@ -1956,9 +1956,9 @@ function encode(program) {
   }
 
   function encJsxOpeningElement(n) {
-    const v_0 = encJsxElementName(n.name);
+    const v_0 = encNode(n.name);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const v_2 = encArray(n.attributes, encJsxAttributeItem, false);
+    const v_2 = encArray(n.attributes, encNode, false);
     const v_3 = n.selfClosing ? 1 : 0;
     const extraId = allocExtra(1);
     const index = allocNode(160, asStart(n), asEnd(n));
@@ -1972,7 +1972,7 @@ function encode(program) {
   }
 
   function encJsxClosingElement(n) {
-    const v_0 = encJsxElementName(n.name);
+    const v_0 = encNode(n.name);
     const index = allocNode(161, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -1980,7 +1980,7 @@ function encode(program) {
 
   function encJsxFragment(n) {
     const v_0 = encJsxOpeningFragment(n.openingFragment);
-    const v_1 = encArray(n.children, encJsxChild, false);
+    const v_1 = encArray(n.children, encNode, false);
     const v_2 = encJsxClosingFragment(n.closingFragment);
     const index = allocNode(162, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
@@ -2018,7 +2018,7 @@ function encode(program) {
   }
 
   function encJsxMemberExpression(n) {
-    const v_0 = encJsxMemberExpressionObject(n.object);
+    const v_0 = encNode(n.object);
     const v_1 = encJsxIdentifier(n.property);
     const index = allocNode(167, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -2027,7 +2027,7 @@ function encode(program) {
   }
 
   function encJsxAttribute(n) {
-    const v_0 = encJsxAttributeName(n.name);
+    const v_0 = encNode(n.name);
     const v_1 = n.value == null ? NULL : encJsxAttributeValue(n.value);
     const index = allocNode(168, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -2036,14 +2036,14 @@ function encode(program) {
   }
 
   function encJsxSpreadAttribute(n) {
-    const v_0 = encExpr(n.argument);
+    const v_0 = encNode(n.argument);
     const index = allocNode(169, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encJsxExpressionContainer(n) {
-    const v_0 = encJsxExpression(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(170, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
@@ -2063,13 +2063,13 @@ function encode(program) {
   }
 
   function encJsxSpreadChild(n) {
-    const v_0 = encExpr(n.expression);
+    const v_0 = encNode(n.expression);
     const index = allocNode(173, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
-  function encStmt(n) {
+  function encNode(n) {
     switch (n.type) {
       case "BlockStatement":
         return encBlockStatement(n);
@@ -2144,43 +2144,6 @@ function encode(program) {
         return encTsExportAssignment(n);
       case "TSNamespaceExportDeclaration":
         return encTsNamespaceExportDeclaration(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encDecl(n) {
-    switch (n.type) {
-      case "VariableDeclaration":
-        return encVariableDeclaration(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "TSDeclareFunction":
-        return encTsFunction(n);
-      case "TSEmptyBodyFunctionExpression":
-        return encTsFunction(n);
-      case "TSTypeAliasDeclaration":
-        return encTsTypeAliasDeclaration(n);
-      case "TSInterfaceDeclaration":
-        return encTsInterfaceDeclaration(n);
-      case "TSEnumDeclaration":
-        return encTsEnumDeclaration(n);
-      case "TSModuleDeclaration":
-        if (n.global || n.kind === "global") return encTsGlobalDeclaration(n);
-        return encTsModuleDeclaration(n);
-      case "TSImportEqualsDeclaration":
-        return encTsImportEqualsDeclaration(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encExpr(n) {
-    switch (n.type) {
       case "Identifier":
         return encIdentifierReference(n);
       case "ThisExpression":
@@ -2230,14 +2193,6 @@ function encode(program) {
         return encObjectExpression(n);
       case "ParenthesizedExpression":
         return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
       case "ImportExpression":
         return encImportExpression(n);
       case "AwaitExpression":
@@ -2260,24 +2215,6 @@ function encode(program) {
         return encJsxElement(n);
       case "JSXFragment":
         return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encBindingPattern(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encBindingIdentifier(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
       case "AssignmentPattern":
         return encAssignmentPattern(n);
       case "RestElement":
@@ -2286,47 +2223,155 @@ function encode(program) {
         return encArrayPattern(n);
       case "ObjectPattern":
         return encObjectPattern(n);
+      case "SpreadElement":
+        return encSpreadElement(n);
+      case "Property":
+        return encObjectProperty(n);
+      case "TSParameterProperty":
+        return encTsParameterProperty(n);
+      case "MethodDefinition":
+        if (n.type === "TSAbstractMethodDefinition" || n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
+        return encMethodDefinition(n);
+      case "PropertyDefinition":
+        return encPropertyDefinition(n);
+      case "AccessorProperty":
+        return encPropertyDefinition(n);
+      case "TSAbstractPropertyDefinition":
+        return encPropertyDefinition(n);
+      case "TSAbstractAccessorProperty":
+        return encPropertyDefinition(n);
+      case "StaticBlock":
+        return encStaticBlock(n);
+      case "TSAbstractMethodDefinition":
+        if (n.type === "TSAbstractMethodDefinition" || n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
+        return encTsMethodDefinition(n);
+      case "TSIndexSignature":
+        return encTsIndexSignature(n);
+      case "ImportSpecifier":
+        return encImportSpecifier(n);
+      case "ImportDefaultSpecifier":
+        return encImportDefaultSpecifier(n);
+      case "ImportNamespaceSpecifier":
+        return encImportNamespaceSpecifier(n);
+      case "TSAnyKeyword":
+        return encTsAnyKeyword(n);
+      case "TSUnknownKeyword":
+        return encTsUnknownKeyword(n);
+      case "TSNeverKeyword":
+        return encTsNeverKeyword(n);
+      case "TSVoidKeyword":
+        return encTsVoidKeyword(n);
+      case "TSNullKeyword":
+        return encTsNullKeyword(n);
+      case "TSUndefinedKeyword":
+        return encTsUndefinedKeyword(n);
+      case "TSStringKeyword":
+        return encTsStringKeyword(n);
+      case "TSNumberKeyword":
+        return encTsNumberKeyword(n);
+      case "TSBigIntKeyword":
+        return encTsBigIntKeyword(n);
+      case "TSBooleanKeyword":
+        return encTsBooleanKeyword(n);
+      case "TSSymbolKeyword":
+        return encTsSymbolKeyword(n);
+      case "TSObjectKeyword":
+        return encTsObjectKeyword(n);
+      case "TSIntrinsicKeyword":
+        return encTsIntrinsicKeyword(n);
+      case "TSThisType":
+        return encTsThisType(n);
+      case "TSTypeReference":
+        return encTsTypeReference(n);
+      case "TSTypeQuery":
+        return encTsTypeQuery(n);
+      case "TSImportType":
+        return encTsImportType(n);
+      case "TSLiteralType":
+        return encTsLiteralType(n);
+      case "TSTemplateLiteralType":
+        return encTsTemplateLiteralType(n);
+      case "TSArrayType":
+        return encTsArrayType(n);
+      case "TSIndexedAccessType":
+        return encTsIndexedAccessType(n);
+      case "TSTupleType":
+        return encTsTupleType(n);
+      case "TSOptionalType":
+        return encTsOptionalType(n);
+      case "TSRestType":
+        return encTsRestType(n);
+      case "TSJSDocNullableType":
+        return encTsJsDocNullableType(n);
+      case "TSJSDocNonNullableType":
+        return encTsJsDocNonNullableType(n);
+      case "TSJSDocUnknownType":
+        return encTsJsDocUnknownType(n);
+      case "TSUnionType":
+        return encTsUnionType(n);
+      case "TSIntersectionType":
+        return encTsIntersectionType(n);
+      case "TSConditionalType":
+        return encTsConditionalType(n);
+      case "TSInferType":
+        return encTsInferType(n);
+      case "TSTypeOperator":
+        return encTsTypeOperator(n);
+      case "TSParenthesizedType":
+        return encTsParenthesizedType(n);
+      case "TSFunctionType":
+        return encTsFunctionType(n);
+      case "TSConstructorType":
+        return encTsConstructorType(n);
+      case "TSTypePredicate":
+        return encTsTypePredicate(n);
+      case "TSTypeLiteral":
+        return encTsTypeLiteral(n);
+      case "TSMappedType":
+        return encTsMappedType(n);
+      case "TSQualifiedName":
+        return encTsQualifiedName(n);
+      case "TSNamedTupleMember":
+        return encTsNamedTupleMember(n);
+      case "TSPropertySignature":
+        return encTsPropertySignature(n);
+      case "TSMethodSignature":
+        return encTsMethodSignature(n);
+      case "TSCallSignatureDeclaration":
+        return encTsCallSignatureDeclaration(n);
+      case "TSConstructSignatureDeclaration":
+        return encTsConstructSignatureDeclaration(n);
+      case "TSModuleBlock":
+        return encTsModuleBlock(n);
+      case "TSExternalModuleReference":
+        return encTsExternalModuleReference(n);
+      case "JSXIdentifier":
+        return encJsxIdentifier(n);
+      case "JSXNamespacedName":
+        return encJsxNamespacedName(n);
+      case "JSXMemberExpression":
+        return encJsxMemberExpression(n);
+      case "JSXAttribute":
+        return encJsxAttribute(n);
+      case "JSXSpreadAttribute":
+        return encJsxSpreadAttribute(n);
+      case "JSXExpressionContainer":
+        return encJsxExpressionContainer(n);
+      case "JSXEmptyExpression":
+        return encJsxEmptyExpression(n);
+      case "JSXText":
+        return encJsxText(n);
+      case "JSXSpreadChild":
+        return encJsxSpreadChild(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
 
-  function encAssignmentTarget(n) {
+  function encBindingPattern(n) {
     switch (n.type) {
       case "Identifier":
-        return encIdentifierReference(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
-      case "ObjectPattern":
-        return encObjectPattern(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encSimpleAssignmentTarget(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+        return encBindingIdentifier(n);
+      default: return encNode(n);
     }
   }
 
@@ -2334,84 +2379,7 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierName(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -2422,215 +2390,7 @@ function encode(program) {
       case "Literal":
         if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encArgument(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      case "SpreadElement":
-        return encSpreadElement(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encObjectPropertyKind(n) {
-    switch (n.type) {
-      case "Property":
-        return encObjectProperty(n);
-      case "SpreadElement":
-        return encSpreadElement(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encForStatementInit(n) {
-    switch (n.type) {
-      case "VariableDeclaration":
-        return encVariableDeclaration(n);
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encForStatementLeft(n) {
-    switch (n.type) {
-      case "VariableDeclaration":
-        return encVariableDeclaration(n);
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
-      case "ObjectPattern":
-        return encObjectPattern(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -2638,86 +2398,7 @@ function encode(program) {
     switch (n.type) {
       case "BlockStatement":
         return encFunctionBody(n);
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -2743,9 +2424,7 @@ function encode(program) {
         return encFormalParameter(n);
       case "ObjectPattern":
         return encFormalParameter(n);
-      case "TSParameterProperty":
-        return encTsParameterProperty(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -2754,256 +2433,7 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encBindingIdentifier(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "AssignmentPattern":
-        return encAssignmentPattern(n);
-      case "RestElement":
-        return encBindingRestElement(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
-      case "ObjectPattern":
-        return encObjectPattern(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encClassElement(n) {
-    switch (n.type) {
-      case "MethodDefinition":
-        if (n.type === "TSAbstractMethodDefinition" || n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
-        return encMethodDefinition(n);
-      case "PropertyDefinition":
-        return encPropertyDefinition(n);
-      case "AccessorProperty":
-        return encPropertyDefinition(n);
-      case "TSAbstractPropertyDefinition":
-        return encPropertyDefinition(n);
-      case "TSAbstractAccessorProperty":
-        return encPropertyDefinition(n);
-      case "StaticBlock":
-        return encStaticBlock(n);
-      case "TSAbstractMethodDefinition":
-        if (n.type === "TSAbstractMethodDefinition" || n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
-        return encTsMethodDefinition(n);
-      case "TSIndexSignature":
-        return encTsIndexSignature(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encImportDeclarationSpecifier(n) {
-    switch (n.type) {
-      case "ImportSpecifier":
-        return encImportSpecifier(n);
-      case "ImportDefaultSpecifier":
-        return encImportDefaultSpecifier(n);
-      case "ImportNamespaceSpecifier":
-        return encImportNamespaceSpecifier(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encExportDefaultDeclarationKind(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      case "TSDeclareFunction":
-        return encTsFunction(n);
-      case "TSEmptyBodyFunctionExpression":
-        return encTsFunction(n);
-      case "TSInterfaceDeclaration":
-        return encTsInterfaceDeclaration(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsType(n) {
-    switch (n.type) {
-      case "TSAnyKeyword":
-        return encTsAnyKeyword(n);
-      case "TSUnknownKeyword":
-        return encTsUnknownKeyword(n);
-      case "TSNeverKeyword":
-        return encTsNeverKeyword(n);
-      case "TSVoidKeyword":
-        return encTsVoidKeyword(n);
-      case "TSNullKeyword":
-        return encTsNullKeyword(n);
-      case "TSUndefinedKeyword":
-        return encTsUndefinedKeyword(n);
-      case "TSStringKeyword":
-        return encTsStringKeyword(n);
-      case "TSNumberKeyword":
-        return encTsNumberKeyword(n);
-      case "TSBigIntKeyword":
-        return encTsBigIntKeyword(n);
-      case "TSBooleanKeyword":
-        return encTsBooleanKeyword(n);
-      case "TSSymbolKeyword":
-        return encTsSymbolKeyword(n);
-      case "TSObjectKeyword":
-        return encTsObjectKeyword(n);
-      case "TSIntrinsicKeyword":
-        return encTsIntrinsicKeyword(n);
-      case "TSThisType":
-        return encTsThisType(n);
-      case "TSTypeReference":
-        return encTsTypeReference(n);
-      case "TSTypeQuery":
-        return encTsTypeQuery(n);
-      case "TSImportType":
-        return encTsImportType(n);
-      case "TSLiteralType":
-        return encTsLiteralType(n);
-      case "TSTemplateLiteralType":
-        return encTsTemplateLiteralType(n);
-      case "TSArrayType":
-        return encTsArrayType(n);
-      case "TSIndexedAccessType":
-        return encTsIndexedAccessType(n);
-      case "TSTupleType":
-        return encTsTupleType(n);
-      case "TSOptionalType":
-        return encTsOptionalType(n);
-      case "TSRestType":
-        return encTsRestType(n);
-      case "TSJSDocNullableType":
-        return encTsJsDocNullableType(n);
-      case "TSJSDocNonNullableType":
-        return encTsJsDocNonNullableType(n);
-      case "TSJSDocUnknownType":
-        return encTsJsDocUnknownType(n);
-      case "TSUnionType":
-        return encTsUnionType(n);
-      case "TSIntersectionType":
-        return encTsIntersectionType(n);
-      case "TSConditionalType":
-        return encTsConditionalType(n);
-      case "TSInferType":
-        return encTsInferType(n);
-      case "TSTypeOperator":
-        return encTsTypeOperator(n);
-      case "TSParenthesizedType":
-        return encTsParenthesizedType(n);
-      case "TSFunctionType":
-        return encTsFunctionType(n);
-      case "TSConstructorType":
-        return encTsConstructorType(n);
-      case "TSTypePredicate":
-        return encTsTypePredicate(n);
-      case "TSTypeLiteral":
-        return encTsTypeLiteral(n);
-      case "TSMappedType":
-        return encTsMappedType(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsTypeName(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "TSQualifiedName":
-        return encTsQualifiedName(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsQualifiedNameLeft(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "TSQualifiedName":
-        return encTsQualifiedName(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -3011,23 +2441,7 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierName(n);
-      case "TSQualifiedName":
-        return encTsQualifiedName(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsTypeQueryExprName(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "TSQualifiedName":
-        return encTsQualifiedName(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "TSImportType":
-        return encTsImportType(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -3039,111 +2453,7 @@ function encode(program) {
         if (typeof n.value === "number") return encNumericLiteral(n);
         if (typeof n.value === "boolean") return encBooleanLiteral(n);
         return encStringLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsTupleElement(n) {
-    switch (n.type) {
-      case "TSAnyKeyword":
-        return encTsAnyKeyword(n);
-      case "TSUnknownKeyword":
-        return encTsUnknownKeyword(n);
-      case "TSNeverKeyword":
-        return encTsNeverKeyword(n);
-      case "TSVoidKeyword":
-        return encTsVoidKeyword(n);
-      case "TSNullKeyword":
-        return encTsNullKeyword(n);
-      case "TSUndefinedKeyword":
-        return encTsUndefinedKeyword(n);
-      case "TSStringKeyword":
-        return encTsStringKeyword(n);
-      case "TSNumberKeyword":
-        return encTsNumberKeyword(n);
-      case "TSBigIntKeyword":
-        return encTsBigIntKeyword(n);
-      case "TSBooleanKeyword":
-        return encTsBooleanKeyword(n);
-      case "TSSymbolKeyword":
-        return encTsSymbolKeyword(n);
-      case "TSObjectKeyword":
-        return encTsObjectKeyword(n);
-      case "TSIntrinsicKeyword":
-        return encTsIntrinsicKeyword(n);
-      case "TSThisType":
-        return encTsThisType(n);
-      case "TSTypeReference":
-        return encTsTypeReference(n);
-      case "TSTypeQuery":
-        return encTsTypeQuery(n);
-      case "TSImportType":
-        return encTsImportType(n);
-      case "TSLiteralType":
-        return encTsLiteralType(n);
-      case "TSTemplateLiteralType":
-        return encTsTemplateLiteralType(n);
-      case "TSArrayType":
-        return encTsArrayType(n);
-      case "TSIndexedAccessType":
-        return encTsIndexedAccessType(n);
-      case "TSTupleType":
-        return encTsTupleType(n);
-      case "TSOptionalType":
-        return encTsOptionalType(n);
-      case "TSRestType":
-        return encTsRestType(n);
-      case "TSJSDocNullableType":
-        return encTsJsDocNullableType(n);
-      case "TSJSDocNonNullableType":
-        return encTsJsDocNonNullableType(n);
-      case "TSJSDocUnknownType":
-        return encTsJsDocUnknownType(n);
-      case "TSUnionType":
-        return encTsUnionType(n);
-      case "TSIntersectionType":
-        return encTsIntersectionType(n);
-      case "TSConditionalType":
-        return encTsConditionalType(n);
-      case "TSInferType":
-        return encTsInferType(n);
-      case "TSTypeOperator":
-        return encTsTypeOperator(n);
-      case "TSParenthesizedType":
-        return encTsParenthesizedType(n);
-      case "TSFunctionType":
-        return encTsFunctionType(n);
-      case "TSConstructorType":
-        return encTsConstructorType(n);
-      case "TSTypePredicate":
-        return encTsTypePredicate(n);
-      case "TSTypeLiteral":
-        return encTsTypeLiteral(n);
-      case "TSMappedType":
-        return encTsMappedType(n);
-      case "TSNamedTupleMember":
-        return encTsNamedTupleMember(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsTypeElement(n) {
-    switch (n.type) {
-      case "TSPropertySignature":
-        return encTsPropertySignature(n);
-      case "TSMethodSignature":
-        return encTsMethodSignature(n);
-      case "TSCallSignatureDeclaration":
-        return encTsCallSignatureDeclaration(n);
-      case "TSConstructSignatureDeclaration":
-        return encTsConstructSignatureDeclaration(n);
-      case "TSIndexSignature":
-        return encTsIndexSignature(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -3151,9 +2461,7 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierName(n);
-      case "TSThisType":
-        return encTsThisType(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -3161,84 +2469,7 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierName(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -3249,73 +2480,15 @@ function encode(program) {
       case "Literal":
         if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
-      case "TSQualifiedName":
-        return encTsQualifiedName(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
   function encTsModuleBody(n) {
     switch (n.type) {
-      case "TSModuleBlock":
-        return encTsModuleBlock(n);
       case "TSModuleDeclaration":
         return encTsModuleDeclaration(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encTsModuleReference(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "TSQualifiedName":
-        return encTsQualifiedName(n);
-      case "TSExternalModuleReference":
-        return encTsExternalModuleReference(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encJsxElementName(n) {
-    switch (n.type) {
-      case "JSXIdentifier":
-        return encJsxIdentifier(n);
-      case "JSXNamespacedName":
-        return encJsxNamespacedName(n);
-      case "JSXMemberExpression":
-        return encJsxMemberExpression(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encJsxMemberExpressionObject(n) {
-    switch (n.type) {
-      case "JSXIdentifier":
-        return encJsxIdentifier(n);
-      case "JSXMemberExpression":
-        return encJsxMemberExpression(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encJsxAttributeName(n) {
-    switch (n.type) {
-      case "JSXIdentifier":
-        return encJsxIdentifier(n);
-      case "JSXNamespacedName":
-        return encJsxNamespacedName(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encJsxAttributeItem(n) {
-    switch (n.type) {
-      case "JSXAttribute":
-        return encJsxAttribute(n);
-      case "JSXSpreadAttribute":
-        return encJsxSpreadAttribute(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 
@@ -3324,116 +2497,7 @@ function encode(program) {
       case "Literal":
         if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
-      case "JSXExpressionContainer":
-        return encJsxExpressionContainer(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encJsxExpression(n) {
-    switch (n.type) {
-      case "Identifier":
-        return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
-      case "Literal":
-        if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
-        if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
-        if (typeof n.value === "string") return encStringLiteral(n);
-        if (typeof n.value === "number") return encNumericLiteral(n);
-        if (typeof n.value === "boolean") return encBooleanLiteral(n);
-        return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
-      case "CallExpression":
-        return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
-      case "ObjectExpression":
-        return encObjectExpression(n);
-      case "ParenthesizedExpression":
-        return encParenthesizedExpression(n);
-      case "FunctionDeclaration":
-        return encFunction(n);
-      case "FunctionExpression":
-        return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      case "JSXEmptyExpression":
-        return encJsxEmptyExpression(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
-    }
-  }
-
-  function encJsxChild(n) {
-    switch (n.type) {
-      case "JSXText":
-        return encJsxText(n);
-      case "JSXExpressionContainer":
-        return encJsxExpressionContainer(n);
-      case "JSXSpreadChild":
-        return encJsxSpreadChild(n);
-      case "JSXElement":
-        return encJsxElement(n);
-      case "JSXFragment":
-        return encJsxFragment(n);
-      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
+      default: return encNode(n);
     }
   }
 

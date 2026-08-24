@@ -21,6 +21,7 @@ const CODEGEN_MINIFIED_OUTPUT_PATH: &str = "napi/codegen/src-js/encode.js";
 pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawOutput) {
     let mut output = String::new();
     output.push_str(PREAMBLE);
+    let dispatch = EncoderDispatch::new(schema);
 
     for (kind, ty) in schema
         .types
@@ -31,14 +32,11 @@ pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
         })
         .enumerate()
     {
-        write_struct_encoder(&mut output, kind, ty, schema);
+        write_struct_encoder(&mut output, kind, ty, schema, &dispatch);
     }
 
-    for ty in &schema.types {
-        if let AstType::Enum(ast) = ty {
-            write_enum_encoder(&mut output, ast.type_id, &ast.name, schema);
-        }
-    }
+    write_node_encoder(&mut output, &dispatch.global);
+    write_contextual_encoders(&mut output, &dispatch);
 
     output.push_str(POSTAMBLE);
     let minified = minify(&output);
@@ -62,7 +60,13 @@ pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
     )
 }
 
-fn write_struct_encoder(output: &mut String, kind: usize, ast: &AstStruct, schema: &Schema) {
+fn write_struct_encoder(
+    output: &mut String,
+    kind: usize,
+    ast: &AstStruct,
+    schema: &Schema,
+    dispatch: &EncoderDispatch,
+) {
     let name = &ast.name;
     writeln!(output, "  function enc{name}(n) {{").unwrap();
     if name.starts_with("Ts") {
@@ -82,7 +86,7 @@ fn write_struct_encoder(output: &mut String, kind: usize, ast: &AstStruct, schem
         } else {
             source
         };
-        let value = encode_expression(name, &field.name, ty, schema, &source);
+        let value = encode_expression(name, &field.name, ty, schema, dispatch, &source);
         let local = format!("v_{field_index}");
         writeln!(output, "    const {local} = {value};").unwrap();
 
@@ -246,28 +250,31 @@ fn encode_expression(
     field: &str,
     ty: &AstType,
     schema: &Schema,
+    dispatch: &EncoderDispatch,
     source: &str,
 ) -> String {
     match ty {
-        AstType::Struct(ast) => child_expression(node, field, &ast.name, source),
-        AstType::Enum(ast) => child_expression(node, field, &ast.name, source),
+        AstType::Struct(ast) => child_expression(node, field, &format!("enc{}", ast.name), source),
+        AstType::Enum(ast) => {
+            child_expression(node, field, &dispatch.encoder_name(&ast.name), source)
+        }
         AstType::Vec(vec) => {
             let inner = &schema.types[vec.inner_type_id];
             let (inner, holes) = match inner {
                 AstType::Option(option) => (&schema.types[option.inner_type_id], true),
                 inner => (inner, false),
             };
-            let encoder = encoder_name(inner);
+            let encoder = encoder_name(inner, dispatch);
             format!("encArray({source}, {encoder}, {holes})")
         }
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(ast) => format!(
                 "{source} == null ? NULL : {}",
-                child_expression(node, field, &ast.name, source)
+                child_expression(node, field, &format!("enc{}", ast.name), source)
             ),
             AstType::Enum(ast) => format!(
                 "{source} == null ? NULL : {}",
-                child_expression(node, field, &ast.name, source)
+                child_expression(node, field, &dispatch.encoder_name(&ast.name), source,)
             ),
             AstType::Primitive(primitive) if primitive.name == "ImportPhase" => {
                 format!("{source} == null ? 0xff : enumValue(\"ImportPhase\", {source})")
@@ -320,16 +327,16 @@ fn encode_expression(
     }
 }
 
-fn encoder_name(ty: &AstType) -> String {
+fn encoder_name(ty: &AstType, dispatch: &EncoderDispatch) -> String {
     match ty {
         AstType::Struct(ast) => format!("enc{}", ast.name),
-        AstType::Enum(ast) => format!("enc{}", ast.name),
+        AstType::Enum(ast) => dispatch.encoder_name(&ast.name),
         _ => panic!("array items must be AST nodes"),
     }
 }
 
-fn child_expression(node: &str, field: &str, target: &str, source: &str) -> String {
-    let default = || format!("enc{target}({source})");
+fn child_expression(node: &str, field: &str, encoder: &str, source: &str) -> String {
+    let default = || format!("{encoder}({source})");
     match (node, field) {
         (
             "MemberExpression"
@@ -341,7 +348,7 @@ fn child_expression(node: &str, field: &str, target: &str, source: &str) -> Stri
             | "TsPropertySignature"
             | "TsMethodSignature",
             "key" | "property",
-        ) => format!("n.computed ? encExpr({source}) : enc{target}({source})"),
+        ) => format!("n.computed ? encNode({source}) : {encoder}({source})"),
         _ => default(),
     }
 }
@@ -455,38 +462,159 @@ fn write_special_prelude(output: &mut String, name: &str) {
     }
 }
 
-fn write_enum_encoder(output: &mut String, type_id: TypeId, name: &str, schema: &Schema) {
-    let mut concrete = Vec::new();
-    collect_concrete(type_id, schema, &mut HashSet::new(), &mut concrete);
-    let mut groups: HashMap<String, Vec<String>> = HashMap::new();
-    let mut order = Vec::new();
-    for concrete_name in concrete {
-        for estree in accepted_estree_types(&concrete_name, schema) {
-            if !groups.contains_key(&estree) {
-                order.push(estree.clone());
+struct Dispatch {
+    order: Vec<String>,
+    groups: HashMap<String, Vec<String>>,
+}
+
+impl Dispatch {
+    fn new(type_id: TypeId, schema: &Schema) -> Self {
+        let mut concrete = Vec::new();
+        collect_concrete(type_id, schema, &mut HashSet::new(), &mut concrete);
+        Self::from_concrete(concrete, schema)
+    }
+
+    fn from_concrete(concrete: Vec<String>, schema: &Schema) -> Self {
+        let mut groups: HashMap<String, Vec<String>> = HashMap::new();
+        let mut order = Vec::new();
+        for concrete_name in concrete {
+            for estree in accepted_estree_types(&concrete_name, schema) {
+                if !groups.contains_key(&estree) {
+                    order.push(estree.clone());
+                }
+                let values = groups.entry(estree).or_default();
+                if !values.contains(&concrete_name) {
+                    values.push(concrete_name.clone());
+                }
             }
-            let values = groups.entry(estree).or_default();
-            if !values.contains(&concrete_name) {
-                values.push(concrete_name.clone());
+        }
+        Self { order, groups }
+    }
+}
+
+struct EncoderDispatch {
+    global: Dispatch,
+    enums: Vec<(String, Dispatch)>,
+    contextual: HashSet<String>,
+}
+
+impl EncoderDispatch {
+    fn new(schema: &Schema) -> Self {
+        let enums = schema
+            .types
+            .iter()
+            .filter_map(|ty| match ty {
+                AstType::Enum(ast) => Some((ast.name.clone(), Dispatch::new(ast.type_id, schema))),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        let mut order = Vec::new();
+        let mut choices: HashMap<String, Vec<(Vec<String>, usize)>> = HashMap::new();
+        for (_, dispatch) in &enums {
+            for estree in &dispatch.order {
+                let candidates = &dispatch.groups[estree];
+                let entries = choices.entry(estree.clone()).or_insert_with(|| {
+                    order.push(estree.clone());
+                    Vec::new()
+                });
+                if let Some((_, count)) = entries
+                    .iter_mut()
+                    .find(|(existing, _)| same_dispatch(estree, existing, candidates))
+                {
+                    *count += 1;
+                } else {
+                    entries.push((candidates.clone(), 1));
+                }
             }
+        }
+
+        let groups = choices
+            .into_iter()
+            .map(|(estree, entries)| {
+                let mut selected: Option<(Vec<String>, usize)> = None;
+                for (candidates, count) in entries {
+                    if selected
+                        .as_ref()
+                        .is_none_or(|(_, selected_count)| count > *selected_count)
+                    {
+                        selected = Some((candidates, count));
+                    }
+                }
+                (estree, selected.unwrap().0)
+            })
+            .collect();
+        let global = Dispatch { order, groups };
+
+        let contextual = enums
+            .iter()
+            .filter(|(name, dispatch)| {
+                name == "FormalParameterPattern"
+                    || dispatch.groups.iter().any(|(estree, candidates)| {
+                        !same_dispatch(estree, &global.groups[estree], candidates)
+                    })
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        Self {
+            global,
+            enums,
+            contextual,
         }
     }
 
-    writeln!(output, "  function enc{name}(n) {{").unwrap();
-    if name == "FormalParameterPattern" {
-        output.push_str(
-            "    if (n.type === \"Identifier\" && n.name === \"this\") return encTsThisParameter(n);\n",
-        );
+    fn encoder_name(&self, name: &str) -> String {
+        if self.contextual.contains(name) {
+            format!("enc{name}")
+        } else {
+            "encNode".into()
+        }
     }
-    output.push_str("    switch (n.type) {\n");
-    for estree in order {
-        let candidates = &groups[&estree];
+}
+
+fn write_node_encoder(output: &mut String, dispatch: &Dispatch) {
+    output.push_str("  function encNode(n) {\n    switch (n.type) {\n");
+    for estree in &dispatch.order {
         writeln!(output, "      case \"{estree}\":").unwrap();
-        write_dispatch(output, &estree, candidates);
+        write_dispatch(output, estree, &dispatch.groups[estree]);
     }
     output.push_str(
         "      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);\n    }\n  }\n\n",
     );
+}
+
+fn write_contextual_encoders(output: &mut String, dispatch: &EncoderDispatch) {
+    for (name, current) in &dispatch.enums {
+        if !dispatch.contextual.contains(name) {
+            continue;
+        }
+
+        writeln!(output, "  function enc{name}(n) {{").unwrap();
+        if name == "FormalParameterPattern" {
+            output.push_str(
+                "    if (n.type === \"Identifier\" && n.name === \"this\") return encTsThisParameter(n);\n",
+            );
+        }
+        output.push_str("    switch (n.type) {\n");
+        for estree in &current.order {
+            let candidates = &current.groups[estree];
+            if same_dispatch(estree, &dispatch.global.groups[estree], candidates) {
+                continue;
+            }
+            writeln!(output, "      case \"{estree}\":").unwrap();
+            write_dispatch(output, estree, candidates);
+        }
+        output.push_str("      default: return encNode(n);\n    }\n  }\n\n");
+    }
+}
+
+fn same_dispatch(estree: &str, left: &[String], right: &[String]) -> bool {
+    let mut left_output = String::new();
+    let mut right_output = String::new();
+    write_dispatch(&mut left_output, estree, left);
+    write_dispatch(&mut right_output, estree, right);
+    left_output == right_output
 }
 
 fn write_dispatch(output: &mut String, estree: &str, candidates: &[String]) {
