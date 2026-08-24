@@ -312,6 +312,37 @@ impl<'ast> Resolver<'ast> {
         self.node_scopes[node_index] = Some(self.current);
     }
 
+    fn predeclare_parameters(&mut self, parameters: FormalParameters) {
+        for id in parameters.items(self.ast).iter() {
+            let item = self.ast.get_node_in_sub_range(id);
+            let pattern = match self.ast.formal_parameter_item_data(item) {
+                FormalParameterItemData::FormalParameter(parameter) => {
+                    let FormalParameterPatternData::BindingPattern(pattern) = self
+                        .ast
+                        .formal_parameter_pattern_data(parameter.pattern(self.ast))
+                    else {
+                        continue;
+                    };
+                    pattern
+                }
+                FormalParameterItemData::TsParameterProperty(property) => {
+                    property.parameter(self.ast)
+                }
+            };
+            let ast = self.ast;
+            for_each_binding_id(ast, pattern, |identifier| {
+                self.declare(identifier, DeclKind::Param);
+            });
+        }
+
+        if let Some(rest) = parameters.rest(self.ast) {
+            let ast = self.ast;
+            for_each_binding_id(ast, rest.argument(ast), |identifier| {
+                self.declare(identifier, DeclKind::Param);
+            });
+        }
+    }
+
     fn has_use_strict(&self, directives: TypedSubRange<Directive>) -> bool {
         directives.iter().any(|id| {
             let directive = self.ast.get_node_in_sub_range(id);
@@ -321,24 +352,7 @@ impl<'ast> Resolver<'ast> {
 
     fn visit_function_contents(&mut self, function: Function) {
         let parameters = function.params(self.ast);
-        for id in parameters.items(self.ast).iter() {
-            let item = self.ast.get_node_in_sub_range(id);
-            let FormalParameterItemData::FormalParameter(parameter) =
-                self.ast.formal_parameter_item_data(item)
-            else {
-                continue;
-            };
-            let FormalParameterPatternData::BindingPattern(pattern) = self
-                .ast
-                .formal_parameter_pattern_data(parameter.pattern(self.ast))
-            else {
-                continue;
-            };
-            let ast = self.ast;
-            for_each_binding_id(ast, pattern, |identifier| {
-                self.declare(identifier, DeclKind::Param);
-            });
-        }
+        self.predeclare_parameters(parameters);
         let old_kind = self.decl_kind;
         self.decl_kind = DeclKind::Param;
         parameters.visit_with(self);
@@ -407,7 +421,9 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
-        self.declare(identifier, self.decl_kind);
+        if self.decl_kind != DeclKind::Param {
+            self.declare(identifier, self.decl_kind);
+        }
     }
 
     fn visit_label_identifier(&mut self, label: LabelIdentifier) {
@@ -493,24 +509,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_arrow_function_expression(&mut self, arrow: ArrowFunctionExpression) {
         self.with_child(ScopeOwner::ArrowFunctionExpression(arrow), |child| {
             let parameters = arrow.params(child.ast);
-            for id in parameters.items(child.ast).iter() {
-                let item = child.ast.get_node_in_sub_range(id);
-                let FormalParameterItemData::FormalParameter(parameter) =
-                    child.ast.formal_parameter_item_data(item)
-                else {
-                    continue;
-                };
-                let FormalParameterPatternData::BindingPattern(pattern) = child
-                    .ast
-                    .formal_parameter_pattern_data(parameter.pattern(child.ast))
-                else {
-                    continue;
-                };
-                let ast = child.ast;
-                for_each_binding_id(ast, pattern, |identifier| {
-                    child.declare(identifier, DeclKind::Param);
-                });
-            }
+            child.predeclare_parameters(parameters);
             let old_kind = child.decl_kind;
             child.decl_kind = DeclKind::Param;
             parameters.visit_with(child);
@@ -611,24 +610,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             PropertyKind::Set => {
                 self.with_child(ScopeOwner::Function(function), |child| {
                     let parameters = function.params(child.ast);
-                    for id in parameters.items(child.ast).iter() {
-                        let item = child.ast.get_node_in_sub_range(id);
-                        let FormalParameterItemData::FormalParameter(parameter) =
-                            child.ast.formal_parameter_item_data(item)
-                        else {
-                            continue;
-                        };
-                        let FormalParameterPatternData::BindingPattern(pattern) = child
-                            .ast
-                            .formal_parameter_pattern_data(parameter.pattern(child.ast))
-                        else {
-                            continue;
-                        };
-                        let ast = child.ast;
-                        for_each_binding_id(ast, pattern, |identifier| {
-                            child.declare(identifier, DeclKind::Param);
-                        });
-                    }
+                    child.predeclare_parameters(parameters);
                     let old_kind = child.decl_kind;
                     child.decl_kind = DeclKind::Param;
                     parameters.visit_with(child);
