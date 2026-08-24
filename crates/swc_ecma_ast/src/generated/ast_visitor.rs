@@ -1443,78 +1443,118 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().stmt_data(self) {
-            StmtData::BlockStatement(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BlockStatement => {
+                let it = BlockStatement(self.0);
                 <BlockStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::BreakStatement(it) => {
+            NodeKind::BreakStatement => {
+                let it = BreakStatement(self.0);
                 <BreakStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ContinueStatement(it) => {
+            NodeKind::ContinueStatement => {
+                let it = ContinueStatement(self.0);
                 <ContinueStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::DebuggerStatement(it) => {
+            NodeKind::DebuggerStatement => {
+                let it = DebuggerStatement(self.0);
                 <DebuggerStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::DoWhileStatement(it) => {
+            NodeKind::DoWhileStatement => {
+                let it = DoWhileStatement(self.0);
                 <DoWhileStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::EmptyStatement(it) => {
+            NodeKind::EmptyStatement => {
+                let it = EmptyStatement(self.0);
                 <EmptyStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ExpressionStatement(it) => {
+            NodeKind::ExpressionStatement => {
+                let it = ExpressionStatement(self.0);
                 <ExpressionStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ForInStatement(it) => {
+            NodeKind::ForInStatement => {
+                let it = ForInStatement(self.0);
                 <ForInStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ForOfStatement(it) => {
+            NodeKind::ForOfStatement => {
+                let it = ForOfStatement(self.0);
                 <ForOfStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ForStatement(it) => {
+            NodeKind::ForStatement => {
+                let it = ForStatement(self.0);
                 <ForStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::IfStatement(it) => <IfStatement as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::LabeledStatement(it) => {
+            NodeKind::IfStatement => {
+                let it = IfStatement(self.0);
+                <IfStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::LabeledStatement => {
+                let it = LabeledStatement(self.0);
                 <LabeledStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ReturnStatement(it) => {
+            NodeKind::ReturnStatement => {
+                let it = ReturnStatement(self.0);
                 <ReturnStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::SwitchStatement(it) => {
+            NodeKind::SwitchStatement => {
+                let it = SwitchStatement(self.0);
                 <SwitchStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ThrowStatement(it) => {
+            NodeKind::ThrowStatement => {
+                let it = ThrowStatement(self.0);
                 <ThrowStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::TryStatement(it) => {
+            NodeKind::TryStatement => {
+                let it = TryStatement(self.0);
                 <TryStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::WhileStatement(it) => {
+            NodeKind::WhileStatement => {
+                let it = WhileStatement(self.0);
                 <WhileStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::WithStatement(it) => {
+            NodeKind::WithStatement => {
+                let it = WithStatement(self.0);
                 <WithStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::Declaration(it) => <Decl as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::ImportDeclaration(it) => {
+            NodeKind::VariableDeclaration
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::TsFunction
+            | NodeKind::TsTypeAliasDeclaration
+            | NodeKind::TsInterfaceDeclaration
+            | NodeKind::TsEnumDeclaration
+            | NodeKind::TsModuleDeclaration
+            | NodeKind::TsGlobalDeclaration
+            | NodeKind::TsImportEqualsDeclaration => {
+                let it = Decl(self.0);
+                <Decl as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::ImportDeclaration => {
+                let it = ImportDeclaration(self.0);
                 <ImportDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ExportNamedDeclaration(it) => {
+            NodeKind::ExportNamedDeclaration => {
+                let it = ExportNamedDeclaration(self.0);
                 <ExportNamedDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ExportDefaultDeclaration(it) => {
+            NodeKind::ExportDefaultDeclaration => {
+                let it = ExportDefaultDeclaration(self.0);
                 <ExportDefaultDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::ExportAllDeclaration(it) => {
+            NodeKind::ExportAllDeclaration => {
+                let it = ExportAllDeclaration(self.0);
                 <ExportAllDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::TsExportAssignment(it) => {
+            NodeKind::TsExportAssignment => {
+                let it = TsExportAssignment(self.0);
                 <TsExportAssignment as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::TsNamespaceExportDeclaration(it) => {
+            NodeKind::TsNamespaceExportDeclaration => {
+                let it = TsNamespaceExportDeclaration(self.0);
                 <TsNamespaceExportDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1525,31 +1565,49 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decl {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().decl_data(self) {
-            DeclData::VariableDeclaration(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::TsFunction(it) => <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::TsTypeAliasDeclaration(it) => {
+            NodeKind::Function => {
+                let it = Function(self.0);
+                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::Class => {
+                let it = Class(self.0);
+                <Class as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::TsFunction => {
+                let it = TsFunction(self.0);
+                <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::TsTypeAliasDeclaration => {
+                let it = TsTypeAliasDeclaration(self.0);
                 <TsTypeAliasDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::TsInterfaceDeclaration(it) => {
+            NodeKind::TsInterfaceDeclaration => {
+                let it = TsInterfaceDeclaration(self.0);
                 <TsInterfaceDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::TsEnumDeclaration(it) => {
+            NodeKind::TsEnumDeclaration => {
+                let it = TsEnumDeclaration(self.0);
                 <TsEnumDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::TsModuleDeclaration(it) => {
+            NodeKind::TsModuleDeclaration => {
+                let it = TsModuleDeclaration(self.0);
                 <TsModuleDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::TsGlobalDeclaration(it) => {
+            NodeKind::TsGlobalDeclaration => {
+                let it = TsGlobalDeclaration(self.0);
                 <TsGlobalDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            DeclData::TsImportEqualsDeclaration(it) => {
+            NodeKind::TsImportEqualsDeclaration => {
+                let it = TsImportEqualsDeclaration(self.0);
                 <TsImportEqualsDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1560,115 +1618,169 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().expr_data(self) {
-            ExprData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::Super(it) => <Super as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::MetaProperty(it) => {
+            NodeKind::Super => {
+                let it = Super(self.0);
+                <Super as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::MetaProperty => {
+                let it = MetaProperty(self.0);
                 <MetaProperty as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::BooleanLiteral(it) => {
+            NodeKind::BooleanLiteral => {
+                let it = BooleanLiteral(self.0);
                 <BooleanLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::NullLiteral(it) => <NullLiteral as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::RegExpLiteral(it) => {
+            NodeKind::NullLiteral => {
+                let it = NullLiteral(self.0);
+                <NullLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::RegExpLiteral => {
+                let it = RegExpLiteral(self.0);
                 <RegExpLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::BinaryExpression(it) => {
+            NodeKind::BinaryExpression => {
+                let it = BinaryExpression(self.0);
                 <BinaryExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::LogicalExpression(it) => {
+            NodeKind::LogicalExpression => {
+                let it = LogicalExpression(self.0);
                 <LogicalExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::UnaryExpression(it) => {
+            NodeKind::UnaryExpression => {
+                let it = UnaryExpression(self.0);
                 <UnaryExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::UpdateExpression(it) => {
+            NodeKind::UpdateExpression => {
+                let it = UpdateExpression(self.0);
                 <UpdateExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::AssignmentExpression(it) => {
+            NodeKind::AssignmentExpression => {
+                let it = AssignmentExpression(self.0);
                 <AssignmentExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ConditionalExpression(it) => {
+            NodeKind::ConditionalExpression => {
+                let it = ConditionalExpression(self.0);
                 <ConditionalExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::SequenceExpression(it) => {
+            NodeKind::SequenceExpression => {
+                let it = SequenceExpression(self.0);
                 <SequenceExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::MemberExpression(it) => {
+            NodeKind::MemberExpression => {
+                let it = MemberExpression(self.0);
                 <MemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::CallExpression(it) => {
+            NodeKind::CallExpression => {
+                let it = CallExpression(self.0);
                 <CallExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ChainExpression(it) => {
+            NodeKind::ChainExpression => {
+                let it = ChainExpression(self.0);
                 <ChainExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::NewExpression(it) => {
+            NodeKind::NewExpression => {
+                let it = NewExpression(self.0);
                 <NewExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TaggedTemplateExpression(it) => {
+            NodeKind::TaggedTemplateExpression => {
+                let it = TaggedTemplateExpression(self.0);
                 <TaggedTemplateExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ArrowFunctionExpression(it) => {
+            NodeKind::ArrowFunctionExpression => {
+                let it = ArrowFunctionExpression(self.0);
                 <ArrowFunctionExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ArrayExpression(it) => {
+            NodeKind::ArrayExpression => {
+                let it = ArrayExpression(self.0);
                 <ArrayExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ObjectExpression(it) => {
+            NodeKind::ObjectExpression => {
+                let it = ObjectExpression(self.0);
                 <ObjectExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::ParenthesizedExpression(it) => {
+            NodeKind::ParenthesizedExpression => {
+                let it = ParenthesizedExpression(self.0);
                 <ParenthesizedExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::ImportExpression(it) => {
+            NodeKind::Function => {
+                let it = Function(self.0);
+                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::Class => {
+                let it = Class(self.0);
+                <Class as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::ImportExpression => {
+                let it = ImportExpression(self.0);
                 <ImportExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::AwaitExpression(it) => {
+            NodeKind::AwaitExpression => {
+                let it = AwaitExpression(self.0);
                 <AwaitExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::YieldExpression(it) => {
+            NodeKind::YieldExpression => {
+                let it = YieldExpression(self.0);
                 <YieldExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::PrivateIdentifier(it) => {
+            NodeKind::PrivateIdentifier => {
+                let it = PrivateIdentifier(self.0);
                 <PrivateIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TsAsExpression(it) => {
+            NodeKind::TsAsExpression => {
+                let it = TsAsExpression(self.0);
                 <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TsSatisfiesExpression(it) => {
+            NodeKind::TsSatisfiesExpression => {
+                let it = TsSatisfiesExpression(self.0);
                 <TsSatisfiesExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TsTypeAssertion(it) => {
+            NodeKind::TsTypeAssertion => {
+                let it = TsTypeAssertion(self.0);
                 <TsTypeAssertion as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TsNonNullExpression(it) => {
+            NodeKind::TsNonNullExpression => {
+                let it = TsNonNullExpression(self.0);
                 <TsNonNullExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::TsInstantiationExpression(it) => {
+            NodeKind::TsInstantiationExpression => {
+                let it = TsInstantiationExpression(self.0);
                 <TsInstantiationExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::JsxElement(it) => <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::JsxFragment(it) => <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
+                <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
+                <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1679,25 +1791,38 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingPattern {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().binding_pattern_data(self) {
-            BindingPatternData::BindingIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            BindingPatternData::SimpleAssignmentTarget(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                let it = SimpleAssignmentTarget(self.0);
                 <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            BindingPatternData::AssignmentPattern(it) => {
+            NodeKind::AssignmentPattern => {
+                let it = AssignmentPattern(self.0);
                 <AssignmentPattern as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            BindingPatternData::BindingRestElement(it) => {
+            NodeKind::BindingRestElement => {
+                let it = BindingRestElement(self.0);
                 <BindingRestElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            BindingPatternData::ArrayPattern(it) => {
+            NodeKind::ArrayPattern => {
+                let it = ArrayPattern(self.0);
                 <ArrayPattern as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            BindingPatternData::ObjectPattern(it) => {
+            NodeKind::ObjectPattern => {
+                let it = ObjectPattern(self.0);
                 <ObjectPattern as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1708,16 +1833,26 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentTarget {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().assignment_target_data(self) {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                let it = SimpleAssignmentTarget(self.0);
                 <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            AssignmentTargetData::ArrayAssignmentTarget(it) => {
+            NodeKind::ArrayPattern => {
+                let it = ArrayPattern(self.0);
                 <ArrayPattern as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            AssignmentTargetData::ObjectAssignmentTarget(it) => {
+            NodeKind::ObjectPattern => {
+                let it = ObjectPattern(self.0);
                 <ObjectPattern as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1728,25 +1863,33 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SimpleAssignmentTarget {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            SimpleAssignmentTargetData::MemberExpression(it) => {
+            NodeKind::MemberExpression => {
+                let it = MemberExpression(self.0);
                 <MemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            SimpleAssignmentTargetData::TsAsExpression(it) => {
+            NodeKind::TsAsExpression => {
+                let it = TsAsExpression(self.0);
                 <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => {
+            NodeKind::TsSatisfiesExpression => {
+                let it = TsSatisfiesExpression(self.0);
                 <TsSatisfiesExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            SimpleAssignmentTargetData::TsTypeAssertion(it) => {
+            NodeKind::TsTypeAssertion => {
+                let it = TsTypeAssertion(self.0);
                 <TsTypeAssertion as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            SimpleAssignmentTargetData::TsNonNullExpression(it) => {
+            NodeKind::TsNonNullExpression => {
+                let it = TsNonNullExpression(self.0);
                 <TsNonNullExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1757,23 +1900,68 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyKey {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().property_key_data(self) {
-            PropertyKeyData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropertyKeyData::PrivateIdentifier(it) => {
+            NodeKind::PrivateIdentifier => {
+                let it = PrivateIdentifier(self.0);
                 <PrivateIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropertyKeyData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropertyKeyData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropertyKeyData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropertyKeyData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1784,13 +1972,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ModuleExportName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().module_export_name_data(self) {
-            ModuleExportNameData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ModuleExportNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1801,11 +1993,56 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Argument {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().argument_data(self) {
-            ArgumentData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ArgumentData::SpreadElement(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::SpreadElement => {
+                let it = SpreadElement(self.0);
                 <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1816,13 +2053,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPropertyKind {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().object_property_kind_data(self) {
-            ObjectPropertyKindData::ObjectProperty(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ObjectProperty => {
+                let it = ObjectProperty(self.0);
                 <ObjectProperty as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ObjectPropertyKindData::SpreadElement(it) => {
+            NodeKind::SpreadElement => {
+                let it = SpreadElement(self.0);
                 <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1833,11 +2074,56 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatementInit {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().for_statement_init_data(self) {
-            ForStatementInitData::VariableDeclaration(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ForStatementInitData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1848,13 +2134,24 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatementLeft {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().for_statement_left_data(self) {
-            ForStatementLeftData::VariableDeclaration(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ForStatementLeftData::AssignmentTarget(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                let it = AssignmentTarget(self.0);
                 <AssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1865,11 +2162,56 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowFunctionBody {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().arrow_function_body_data(self) {
-            ArrowFunctionBodyData::FunctionBody(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FunctionBody => {
+                let it = FunctionBody(self.0);
                 <FunctionBody as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ArrowFunctionBodyData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1880,13 +2222,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameterItem {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().formal_parameter_item_data(self) {
-            FormalParameterItemData::FormalParameter(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FormalParameter => {
+                let it = FormalParameter(self.0);
                 <FormalParameter as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            FormalParameterItemData::TsParameterProperty(it) => {
+            NodeKind::TsParameterProperty => {
+                let it = TsParameterProperty(self.0);
                 <TsParameterProperty as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1897,13 +2243,27 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameterPattern {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::BindingPattern(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier
+            | NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::AssignmentPattern
+            | NodeKind::BindingRestElement
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                let it = BindingPattern(self.0);
                 <BindingPattern as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            FormalParameterPatternData::TsThisParameter(it) => {
+            NodeKind::TsThisParameter => {
+                let it = TsThisParameter(self.0);
                 <TsThisParameter as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1914,22 +2274,29 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().class_element_data(self) {
-            ClassElementData::MethodDefinition(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::MethodDefinition => {
+                let it = MethodDefinition(self.0);
                 <MethodDefinition as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ClassElementData::PropertyDefinition(it) => {
+            NodeKind::PropertyDefinition => {
+                let it = PropertyDefinition(self.0);
                 <PropertyDefinition as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ClassElementData::StaticBlock(it) => {
+            NodeKind::StaticBlock => {
+                let it = StaticBlock(self.0);
                 <StaticBlock as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ClassElementData::TsMethodDefinition(it) => {
+            NodeKind::TsMethodDefinition => {
+                let it = TsMethodDefinition(self.0);
                 <TsMethodDefinition as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ClassElementData::TsIndexSignature(it) => {
+            NodeKind::TsIndexSignature => {
+                let it = TsIndexSignature(self.0);
                 <TsIndexSignature as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1940,16 +2307,21 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDeclarationSpecifier 
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().import_declaration_specifier_data(self) {
-            ImportDeclarationSpecifierData::ImportSpecifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ImportSpecifier => {
+                let it = ImportSpecifier(self.0);
                 <ImportSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => {
+            NodeKind::ImportDefaultSpecifier => {
+                let it = ImportDefaultSpecifier(self.0);
                 <ImportDefaultSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => {
+            NodeKind::ImportNamespaceSpecifier => {
+                let it = ImportNamespaceSpecifier(self.0);
                 <ImportNamespaceSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1960,22 +2332,76 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclarationKin
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Expr(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::Function => {
+                let concrete = Function(self.0);
+                if concrete.function_type(visitor.ast()) == FunctionType::FunctionDeclaration {
+                    <Function as VisitWith<'a, V>>::visit_with(concrete, visitor)
+                } else {
+                    let nested = Expr(self.0);
+                    <Expr as VisitWith<'a, V>>::visit_with(nested, visitor)
+                }
+            }
+            NodeKind::Class => {
+                let concrete = Class(self.0);
+                if concrete.class_type(visitor.ast()) == ClassType::ClassDeclaration {
+                    <Class as VisitWith<'a, V>>::visit_with(concrete, visitor)
+                } else {
+                    let nested = Expr(self.0);
+                    <Expr as VisitWith<'a, V>>::visit_with(nested, visitor)
+                }
+            }
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExportDefaultDeclarationKindData::Function(it) => {
-                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ExportDefaultDeclarationKindData::Class(it) => {
-                <Class as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ExportDefaultDeclarationKindData::TsFunction(it) => {
+            NodeKind::TsFunction => {
+                let it = TsFunction(self.0);
                 <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
+            NodeKind::TsInterfaceDeclaration => {
+                let it = TsInterfaceDeclaration(self.0);
                 <TsInterfaceDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3059,117 +3485,161 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsType {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_type_data(self) {
-            TsTypeData::TsAnyKeyword(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword => {
+                let it = TsAnyKeyword(self.0);
                 <TsAnyKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsUnknownKeyword(it) => {
+            NodeKind::TsUnknownKeyword => {
+                let it = TsUnknownKeyword(self.0);
                 <TsUnknownKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsNeverKeyword(it) => {
+            NodeKind::TsNeverKeyword => {
+                let it = TsNeverKeyword(self.0);
                 <TsNeverKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsVoidKeyword(it) => {
+            NodeKind::TsVoidKeyword => {
+                let it = TsVoidKeyword(self.0);
                 <TsVoidKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsNullKeyword(it) => {
+            NodeKind::TsNullKeyword => {
+                let it = TsNullKeyword(self.0);
                 <TsNullKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsUndefinedKeyword(it) => {
+            NodeKind::TsUndefinedKeyword => {
+                let it = TsUndefinedKeyword(self.0);
                 <TsUndefinedKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsStringKeyword(it) => {
+            NodeKind::TsStringKeyword => {
+                let it = TsStringKeyword(self.0);
                 <TsStringKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsNumberKeyword(it) => {
+            NodeKind::TsNumberKeyword => {
+                let it = TsNumberKeyword(self.0);
                 <TsNumberKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsBigIntKeyword(it) => {
+            NodeKind::TsBigIntKeyword => {
+                let it = TsBigIntKeyword(self.0);
                 <TsBigIntKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsBooleanKeyword(it) => {
+            NodeKind::TsBooleanKeyword => {
+                let it = TsBooleanKeyword(self.0);
                 <TsBooleanKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsSymbolKeyword(it) => {
+            NodeKind::TsSymbolKeyword => {
+                let it = TsSymbolKeyword(self.0);
                 <TsSymbolKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsObjectKeyword(it) => {
+            NodeKind::TsObjectKeyword => {
+                let it = TsObjectKeyword(self.0);
                 <TsObjectKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsIntrinsicKeyword(it) => {
+            NodeKind::TsIntrinsicKeyword => {
+                let it = TsIntrinsicKeyword(self.0);
                 <TsIntrinsicKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsThisType(it) => <TsThisType as VisitWith<'a, V>>::visit_with(it, visitor),
-            TsTypeData::TsTypeReference(it) => {
+            NodeKind::TsThisType => {
+                let it = TsThisType(self.0);
+                <TsThisType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::TsTypeReference => {
+                let it = TsTypeReference(self.0);
                 <TsTypeReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsTypeQuery(it) => {
+            NodeKind::TsTypeQuery => {
+                let it = TsTypeQuery(self.0);
                 <TsTypeQuery as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsImportType(it) => {
+            NodeKind::TsImportType => {
+                let it = TsImportType(self.0);
                 <TsImportType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsLiteralType(it) => {
+            NodeKind::TsLiteralType => {
+                let it = TsLiteralType(self.0);
                 <TsLiteralType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsTemplateLiteralType(it) => {
+            NodeKind::TsTemplateLiteralType => {
+                let it = TsTemplateLiteralType(self.0);
                 <TsTemplateLiteralType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsArrayType(it) => {
+            NodeKind::TsArrayType => {
+                let it = TsArrayType(self.0);
                 <TsArrayType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsIndexedAccessType(it) => {
+            NodeKind::TsIndexedAccessType => {
+                let it = TsIndexedAccessType(self.0);
                 <TsIndexedAccessType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsTupleType(it) => {
+            NodeKind::TsTupleType => {
+                let it = TsTupleType(self.0);
                 <TsTupleType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsOptionalType(it) => {
+            NodeKind::TsOptionalType => {
+                let it = TsOptionalType(self.0);
                 <TsOptionalType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsRestType(it) => <TsRestType as VisitWith<'a, V>>::visit_with(it, visitor),
-            TsTypeData::TsJsDocNullableType(it) => {
+            NodeKind::TsRestType => {
+                let it = TsRestType(self.0);
+                <TsRestType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::TsJsDocNullableType => {
+                let it = TsJsDocNullableType(self.0);
                 <TsJsDocNullableType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsJsDocNonNullableType(it) => {
+            NodeKind::TsJsDocNonNullableType => {
+                let it = TsJsDocNonNullableType(self.0);
                 <TsJsDocNonNullableType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsJsDocUnknownType(it) => {
+            NodeKind::TsJsDocUnknownType => {
+                let it = TsJsDocUnknownType(self.0);
                 <TsJsDocUnknownType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsUnionType(it) => {
+            NodeKind::TsUnionType => {
+                let it = TsUnionType(self.0);
                 <TsUnionType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsIntersectionType(it) => {
+            NodeKind::TsIntersectionType => {
+                let it = TsIntersectionType(self.0);
                 <TsIntersectionType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsConditionalType(it) => {
+            NodeKind::TsConditionalType => {
+                let it = TsConditionalType(self.0);
                 <TsConditionalType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsInferType(it) => {
+            NodeKind::TsInferType => {
+                let it = TsInferType(self.0);
                 <TsInferType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsTypeOperator(it) => {
+            NodeKind::TsTypeOperator => {
+                let it = TsTypeOperator(self.0);
                 <TsTypeOperator as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsParenthesizedType(it) => {
+            NodeKind::TsParenthesizedType => {
+                let it = TsParenthesizedType(self.0);
                 <TsParenthesizedType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsFunctionType(it) => {
+            NodeKind::TsFunctionType => {
+                let it = TsFunctionType(self.0);
                 <TsFunctionType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsConstructorType(it) => {
+            NodeKind::TsConstructorType => {
+                let it = TsConstructorType(self.0);
                 <TsConstructorType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsTypePredicate(it) => {
+            NodeKind::TsTypePredicate => {
+                let it = TsTypePredicate(self.0);
                 <TsTypePredicate as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsTypeLiteral(it) => {
+            NodeKind::TsTypeLiteral => {
+                let it = TsTypeLiteral(self.0);
                 <TsTypeLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeData::TsMappedType(it) => {
+            NodeKind::TsMappedType => {
+                let it = TsMappedType(self.0);
                 <TsMappedType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3180,13 +3650,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_type_name_data(self) {
-            TsTypeNameData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeNameData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3197,22 +3671,29 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsQualifiedNameLeft {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsQualifiedNameLeftData::IdentifierName(it) => {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsQualifiedNameLeftData::BindingIdentifier(it) => {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsQualifiedNameLeftData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsQualifiedNameLeftData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3223,13 +3704,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsImportTypeQualifier {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_import_type_qualifier_data(self) {
-            TsImportTypeQualifierData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsImportTypeQualifierData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3240,16 +3725,21 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeQueryExprName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsTypeName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                let it = TsTypeName(self.0);
                 <TsTypeName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeQueryExprNameData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeQueryExprNameData::TsImportType(it) => {
+            NodeKind::TsImportType => {
+                let it = TsImportType(self.0);
                 <TsImportType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3260,25 +3750,33 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsLiteral {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_literal_data(self) {
-            TsLiteralData::StringLiteral(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsLiteralData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsLiteralData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsLiteralData::BooleanLiteral(it) => {
+            NodeKind::BooleanLiteral => {
+                let it = BooleanLiteral(self.0);
                 <BooleanLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsLiteralData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsLiteralData::UnaryExpression(it) => {
+            NodeKind::UnaryExpression => {
+                let it = UnaryExpression(self.0);
                 <UnaryExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3289,11 +3787,54 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTupleElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_tuple_element_data(self) {
-            TsTupleElementData::TsType(it) => <TsType as VisitWith<'a, V>>::visit_with(it, visitor),
-            TsTupleElementData::TsNamedTupleMember(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword
+            | NodeKind::TsUnknownKeyword
+            | NodeKind::TsNeverKeyword
+            | NodeKind::TsVoidKeyword
+            | NodeKind::TsNullKeyword
+            | NodeKind::TsUndefinedKeyword
+            | NodeKind::TsStringKeyword
+            | NodeKind::TsNumberKeyword
+            | NodeKind::TsBigIntKeyword
+            | NodeKind::TsBooleanKeyword
+            | NodeKind::TsSymbolKeyword
+            | NodeKind::TsObjectKeyword
+            | NodeKind::TsIntrinsicKeyword
+            | NodeKind::TsThisType
+            | NodeKind::TsTypeReference
+            | NodeKind::TsTypeQuery
+            | NodeKind::TsImportType
+            | NodeKind::TsLiteralType
+            | NodeKind::TsTemplateLiteralType
+            | NodeKind::TsArrayType
+            | NodeKind::TsIndexedAccessType
+            | NodeKind::TsTupleType
+            | NodeKind::TsOptionalType
+            | NodeKind::TsRestType
+            | NodeKind::TsJsDocNullableType
+            | NodeKind::TsJsDocNonNullableType
+            | NodeKind::TsJsDocUnknownType
+            | NodeKind::TsUnionType
+            | NodeKind::TsIntersectionType
+            | NodeKind::TsConditionalType
+            | NodeKind::TsInferType
+            | NodeKind::TsTypeOperator
+            | NodeKind::TsParenthesizedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsTypePredicate
+            | NodeKind::TsTypeLiteral
+            | NodeKind::TsMappedType => {
+                let it = TsType(self.0);
+                <TsType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::TsNamedTupleMember => {
+                let it = TsNamedTupleMember(self.0);
                 <TsNamedTupleMember as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3304,22 +3845,29 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_type_element_data(self) {
-            TsTypeElementData::TsPropertySignature(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsPropertySignature => {
+                let it = TsPropertySignature(self.0);
                 <TsPropertySignature as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeElementData::TsMethodSignature(it) => {
+            NodeKind::TsMethodSignature => {
+                let it = TsMethodSignature(self.0);
                 <TsMethodSignature as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeElementData::TsCallSignatureDeclaration(it) => {
+            NodeKind::TsCallSignatureDeclaration => {
+                let it = TsCallSignatureDeclaration(self.0);
                 <TsCallSignatureDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeElementData::TsConstructSignatureDeclaration(it) => {
+            NodeKind::TsConstructSignatureDeclaration => {
+                let it = TsConstructSignatureDeclaration(self.0);
                 <TsConstructSignatureDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypeElementData::TsIndexSignature(it) => {
+            NodeKind::TsIndexSignature => {
+                let it = TsIndexSignature(self.0);
                 <TsIndexSignature as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3330,13 +3878,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypePredicateName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_type_predicate_name_data(self) {
-            TsTypePredicateNameData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsTypePredicateNameData::TsThisType(it) => {
+            NodeKind::TsThisType => {
+                let it = TsThisType(self.0);
                 <TsThisType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3347,17 +3899,62 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMemberName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsEnumMemberNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsEnumMemberNameData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsEnumMemberNameData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3368,16 +3965,21 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_module_name_data(self) {
-            TsModuleNameData::BindingIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsModuleNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsModuleNameData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3388,13 +3990,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBody {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_module_body_data(self) {
-            TsModuleBodyData::TsModuleBlock(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsModuleBlock => {
+                let it = TsModuleBlock(self.0);
                 <TsModuleBlock as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsModuleBodyData::TsModuleDeclaration(it) => {
+            NodeKind::TsModuleDeclaration => {
+                let it = TsModuleDeclaration(self.0);
                 <TsModuleDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -3405,13 +4011,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleReference {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().ts_module_reference_data(self) {
-            TsModuleReferenceData::TsTypeName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                let it = TsTypeName(self.0);
                 <TsTypeName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            TsModuleReferenceData::TsExternalModuleReference(it) => {
+            NodeKind::TsExternalModuleReference => {
+                let it = TsExternalModuleReference(self.0);
                 <TsExternalModuleReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4330,16 +4940,21 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxElementName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_element_name_data(self) {
-            JsxElementNameData::JsxIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 <JsxIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxElementNameData::JsxNamespacedName(it) => {
+            NodeKind::JsxNamespacedName => {
+                let it = JsxNamespacedName(self.0);
                 <JsxNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxElementNameData::JsxMemberExpression(it) => {
+            NodeKind::JsxMemberExpression => {
+                let it = JsxMemberExpression(self.0);
                 <JsxMemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4350,13 +4965,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxMemberExpressionObject {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_member_expression_object_data(self) {
-            JsxMemberExpressionObjectData::JsxIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 <JsxIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxMemberExpressionObjectData::JsxMemberExpression(it) => {
+            NodeKind::JsxMemberExpression => {
+                let it = JsxMemberExpression(self.0);
                 <JsxMemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4367,13 +4986,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttributeName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_attribute_name_data(self) {
-            JsxAttributeNameData::JsxIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 <JsxIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxAttributeNameData::JsxNamespacedName(it) => {
+            NodeKind::JsxNamespacedName => {
+                let it = JsxNamespacedName(self.0);
                 <JsxNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4384,13 +5007,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttributeItem {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_attribute_item_data(self) {
-            JsxAttributeItemData::JsxAttribute(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxAttribute => {
+                let it = JsxAttribute(self.0);
                 <JsxAttribute as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxAttributeItemData::JsxSpreadAttribute(it) => {
+            NodeKind::JsxSpreadAttribute => {
+                let it = JsxSpreadAttribute(self.0);
                 <JsxSpreadAttribute as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4401,19 +5028,25 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttributeValue {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_attribute_value_data(self) {
-            JsxAttributeValueData::StringLiteral(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxAttributeValueData::JsxExpressionContainer(it) => {
+            NodeKind::JsxExpressionContainer => {
+                let it = JsxExpressionContainer(self.0);
                 <JsxExpressionContainer as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxAttributeValueData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxAttributeValueData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4424,11 +5057,56 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxExpression {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_expression_data(self) {
-            JsxExpressionData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
-            JsxExpressionData::JsxEmptyExpression(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::JsxEmptyExpression => {
+                let it = JsxEmptyExpression(self.0);
                 <JsxEmptyExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -4439,20 +5117,29 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxChild {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_child_data(self) {
-            JsxChildData::JsxText(it) => <JsxText as VisitWith<'a, V>>::visit_with(it, visitor),
-            JsxChildData::JsxExpressionContainer(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxText => {
+                let it = JsxText(self.0);
+                <JsxText as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::JsxExpressionContainer => {
+                let it = JsxExpressionContainer(self.0);
                 <JsxExpressionContainer as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxChildData::JsxSpreadChild(it) => {
+            NodeKind::JsxSpreadChild => {
+                let it = JsxSpreadChild(self.0);
                 <JsxSpreadChild as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxChildData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JsxChildData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -6770,107 +7457,142 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().stmt_data(self);
-        match data {
-            StmtData::BlockStatement(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BlockStatement => {
+                let it = BlockStatement(self.0);
                 <BlockStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::BlockStatement)
             }
-            StmtData::BreakStatement(it) => {
+            NodeKind::BreakStatement => {
+                let it = BreakStatement(self.0);
                 <BreakStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::BreakStatement)
             }
-            StmtData::ContinueStatement(it) => {
+            NodeKind::ContinueStatement => {
+                let it = ContinueStatement(self.0);
                 <ContinueStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ContinueStatement)
             }
-            StmtData::DebuggerStatement(it) => {
+            NodeKind::DebuggerStatement => {
+                let it = DebuggerStatement(self.0);
                 <DebuggerStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::DebuggerStatement)
             }
-            StmtData::DoWhileStatement(it) => {
+            NodeKind::DoWhileStatement => {
+                let it = DoWhileStatement(self.0);
                 <DoWhileStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::DoWhileStatement)
             }
-            StmtData::EmptyStatement(it) => {
+            NodeKind::EmptyStatement => {
+                let it = EmptyStatement(self.0);
                 <EmptyStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::EmptyStatement)
             }
-            StmtData::ExpressionStatement(it) => {
+            NodeKind::ExpressionStatement => {
+                let it = ExpressionStatement(self.0);
                 <ExpressionStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ExpressionStatement)
             }
-            StmtData::ForInStatement(it) => {
+            NodeKind::ForInStatement => {
+                let it = ForInStatement(self.0);
                 <ForInStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ForInStatement)
             }
-            StmtData::ForOfStatement(it) => {
+            NodeKind::ForOfStatement => {
+                let it = ForOfStatement(self.0);
                 <ForOfStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ForOfStatement)
             }
-            StmtData::ForStatement(it) => {
+            NodeKind::ForStatement => {
+                let it = ForStatement(self.0);
                 <ForStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ForStatement)
             }
-            StmtData::IfStatement(it) => {
+            NodeKind::IfStatement => {
+                let it = IfStatement(self.0);
                 <IfStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::IfStatement)
             }
-            StmtData::LabeledStatement(it) => {
+            NodeKind::LabeledStatement => {
+                let it = LabeledStatement(self.0);
                 <LabeledStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::LabeledStatement)
             }
-            StmtData::ReturnStatement(it) => {
+            NodeKind::ReturnStatement => {
+                let it = ReturnStatement(self.0);
                 <ReturnStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ReturnStatement)
             }
-            StmtData::SwitchStatement(it) => {
+            NodeKind::SwitchStatement => {
+                let it = SwitchStatement(self.0);
                 <SwitchStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::SwitchStatement)
             }
-            StmtData::ThrowStatement(it) => {
+            NodeKind::ThrowStatement => {
+                let it = ThrowStatement(self.0);
                 <ThrowStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ThrowStatement)
             }
-            StmtData::TryStatement(it) => {
+            NodeKind::TryStatement => {
+                let it = TryStatement(self.0);
                 <TryStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::TryStatement)
             }
-            StmtData::WhileStatement(it) => {
+            NodeKind::WhileStatement => {
+                let it = WhileStatement(self.0);
                 <WhileStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::WhileStatement)
             }
-            StmtData::WithStatement(it) => {
+            NodeKind::WithStatement => {
+                let it = WithStatement(self.0);
                 <WithStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::WithStatement)
             }
-            StmtData::Declaration(it) => {
+            NodeKind::VariableDeclaration
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::TsFunction
+            | NodeKind::TsTypeAliasDeclaration
+            | NodeKind::TsInterfaceDeclaration
+            | NodeKind::TsEnumDeclaration
+            | NodeKind::TsModuleDeclaration
+            | NodeKind::TsGlobalDeclaration
+            | NodeKind::TsImportEqualsDeclaration => {
+                let it = Decl(self.0);
                 <Decl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Stmt::Declaration)
             }
-            StmtData::ImportDeclaration(it) => {
+            NodeKind::ImportDeclaration => {
+                let it = ImportDeclaration(self.0);
                 <ImportDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ImportDeclaration)
             }
-            StmtData::ExportNamedDeclaration(it) => {
+            NodeKind::ExportNamedDeclaration => {
+                let it = ExportNamedDeclaration(self.0);
                 <ExportNamedDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ExportNamedDeclaration)
             }
-            StmtData::ExportDefaultDeclaration(it) => {
+            NodeKind::ExportDefaultDeclaration => {
+                let it = ExportDefaultDeclaration(self.0);
                 <ExportDefaultDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ExportDefaultDeclaration)
             }
-            StmtData::ExportAllDeclaration(it) => {
+            NodeKind::ExportAllDeclaration => {
+                let it = ExportAllDeclaration(self.0);
                 <ExportAllDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::ExportAllDeclaration)
             }
-            StmtData::TsExportAssignment(it) => {
+            NodeKind::TsExportAssignment => {
+                let it = TsExportAssignment(self.0);
                 <TsExportAssignment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::TsExportAssignment)
             }
-            StmtData::TsNamespaceExportDeclaration(it) => {
+            NodeKind::TsNamespaceExportDeclaration => {
+                let it = TsNamespaceExportDeclaration(self.0);
                 <TsNamespaceExportDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::TsNamespaceExportDeclaration)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -6881,46 +7603,57 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decl {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().decl_data(self);
-        match data {
-            DeclData::VariableDeclaration(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::VariableDeclaration)
             }
-            DeclData::Function(it) => {
+            NodeKind::Function => {
+                let it = Function(self.0);
                 <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Decl::Function)
             }
-            DeclData::Class(it) => {
+            NodeKind::Class => {
+                let it = Class(self.0);
                 <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Decl::Class)
             }
-            DeclData::TsFunction(it) => {
+            NodeKind::TsFunction => {
+                let it = TsFunction(self.0);
                 <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsFunction)
             }
-            DeclData::TsTypeAliasDeclaration(it) => {
+            NodeKind::TsTypeAliasDeclaration => {
+                let it = TsTypeAliasDeclaration(self.0);
                 <TsTypeAliasDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsTypeAliasDeclaration)
             }
-            DeclData::TsInterfaceDeclaration(it) => {
+            NodeKind::TsInterfaceDeclaration => {
+                let it = TsInterfaceDeclaration(self.0);
                 <TsInterfaceDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsInterfaceDeclaration)
             }
-            DeclData::TsEnumDeclaration(it) => {
+            NodeKind::TsEnumDeclaration => {
+                let it = TsEnumDeclaration(self.0);
                 <TsEnumDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsEnumDeclaration)
             }
-            DeclData::TsModuleDeclaration(it) => {
+            NodeKind::TsModuleDeclaration => {
+                let it = TsModuleDeclaration(self.0);
                 <TsModuleDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsModuleDeclaration)
             }
-            DeclData::TsGlobalDeclaration(it) => {
+            NodeKind::TsGlobalDeclaration => {
+                let it = TsGlobalDeclaration(self.0);
                 <TsGlobalDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsGlobalDeclaration)
             }
-            DeclData::TsImportEqualsDeclaration(it) => {
+            NodeKind::TsImportEqualsDeclaration => {
+                let it = TsImportEqualsDeclaration(self.0);
                 <TsImportEqualsDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Decl::TsImportEqualsDeclaration)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -6931,165 +7664,206 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().expr_data(self);
-        match data {
-            ExprData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::IdentifierReference)
             }
-            ExprData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ThisExpression)
             }
-            ExprData::Super(it) => {
+            NodeKind::Super => {
+                let it = Super(self.0);
                 <Super as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Expr::Super)
             }
-            ExprData::MetaProperty(it) => {
+            NodeKind::MetaProperty => {
+                let it = MetaProperty(self.0);
                 <MetaProperty as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::MetaProperty)
             }
-            ExprData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::StringLiteral)
             }
-            ExprData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::NumericLiteral)
             }
-            ExprData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::BigIntLiteral)
             }
-            ExprData::BooleanLiteral(it) => {
+            NodeKind::BooleanLiteral => {
+                let it = BooleanLiteral(self.0);
                 <BooleanLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::BooleanLiteral)
             }
-            ExprData::NullLiteral(it) => {
+            NodeKind::NullLiteral => {
+                let it = NullLiteral(self.0);
                 <NullLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::NullLiteral)
             }
-            ExprData::RegExpLiteral(it) => {
+            NodeKind::RegExpLiteral => {
+                let it = RegExpLiteral(self.0);
                 <RegExpLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::RegExpLiteral)
             }
-            ExprData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TemplateLiteral)
             }
-            ExprData::BinaryExpression(it) => {
+            NodeKind::BinaryExpression => {
+                let it = BinaryExpression(self.0);
                 <BinaryExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::BinaryExpression)
             }
-            ExprData::LogicalExpression(it) => {
+            NodeKind::LogicalExpression => {
+                let it = LogicalExpression(self.0);
                 <LogicalExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::LogicalExpression)
             }
-            ExprData::UnaryExpression(it) => {
+            NodeKind::UnaryExpression => {
+                let it = UnaryExpression(self.0);
                 <UnaryExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::UnaryExpression)
             }
-            ExprData::UpdateExpression(it) => {
+            NodeKind::UpdateExpression => {
+                let it = UpdateExpression(self.0);
                 <UpdateExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::UpdateExpression)
             }
-            ExprData::AssignmentExpression(it) => {
+            NodeKind::AssignmentExpression => {
+                let it = AssignmentExpression(self.0);
                 <AssignmentExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::AssignmentExpression)
             }
-            ExprData::ConditionalExpression(it) => {
+            NodeKind::ConditionalExpression => {
+                let it = ConditionalExpression(self.0);
                 <ConditionalExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ConditionalExpression)
             }
-            ExprData::SequenceExpression(it) => {
+            NodeKind::SequenceExpression => {
+                let it = SequenceExpression(self.0);
                 <SequenceExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::SequenceExpression)
             }
-            ExprData::MemberExpression(it) => {
+            NodeKind::MemberExpression => {
+                let it = MemberExpression(self.0);
                 <MemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::MemberExpression)
             }
-            ExprData::CallExpression(it) => {
+            NodeKind::CallExpression => {
+                let it = CallExpression(self.0);
                 <CallExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::CallExpression)
             }
-            ExprData::ChainExpression(it) => {
+            NodeKind::ChainExpression => {
+                let it = ChainExpression(self.0);
                 <ChainExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ChainExpression)
             }
-            ExprData::NewExpression(it) => {
+            NodeKind::NewExpression => {
+                let it = NewExpression(self.0);
                 <NewExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::NewExpression)
             }
-            ExprData::TaggedTemplateExpression(it) => {
+            NodeKind::TaggedTemplateExpression => {
+                let it = TaggedTemplateExpression(self.0);
                 <TaggedTemplateExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TaggedTemplateExpression)
             }
-            ExprData::ArrowFunctionExpression(it) => {
+            NodeKind::ArrowFunctionExpression => {
+                let it = ArrowFunctionExpression(self.0);
                 <ArrowFunctionExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ArrowFunctionExpression)
             }
-            ExprData::ArrayExpression(it) => {
+            NodeKind::ArrayExpression => {
+                let it = ArrayExpression(self.0);
                 <ArrayExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ArrayExpression)
             }
-            ExprData::ObjectExpression(it) => {
+            NodeKind::ObjectExpression => {
+                let it = ObjectExpression(self.0);
                 <ObjectExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ObjectExpression)
             }
-            ExprData::ParenthesizedExpression(it) => {
+            NodeKind::ParenthesizedExpression => {
+                let it = ParenthesizedExpression(self.0);
                 <ParenthesizedExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ParenthesizedExpression)
             }
-            ExprData::Function(it) => {
+            NodeKind::Function => {
+                let it = Function(self.0);
                 <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Expr::Function)
             }
-            ExprData::Class(it) => {
+            NodeKind::Class => {
+                let it = Class(self.0);
                 <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Expr::Class)
             }
-            ExprData::ImportExpression(it) => {
+            NodeKind::ImportExpression => {
+                let it = ImportExpression(self.0);
                 <ImportExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::ImportExpression)
             }
-            ExprData::AwaitExpression(it) => {
+            NodeKind::AwaitExpression => {
+                let it = AwaitExpression(self.0);
                 <AwaitExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::AwaitExpression)
             }
-            ExprData::YieldExpression(it) => {
+            NodeKind::YieldExpression => {
+                let it = YieldExpression(self.0);
                 <YieldExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::YieldExpression)
             }
-            ExprData::PrivateIdentifier(it) => {
+            NodeKind::PrivateIdentifier => {
+                let it = PrivateIdentifier(self.0);
                 <PrivateIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::PrivateIdentifier)
             }
-            ExprData::TsAsExpression(it) => {
+            NodeKind::TsAsExpression => {
+                let it = TsAsExpression(self.0);
                 <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TsAsExpression)
             }
-            ExprData::TsSatisfiesExpression(it) => {
+            NodeKind::TsSatisfiesExpression => {
+                let it = TsSatisfiesExpression(self.0);
                 <TsSatisfiesExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TsSatisfiesExpression)
             }
-            ExprData::TsTypeAssertion(it) => {
+            NodeKind::TsTypeAssertion => {
+                let it = TsTypeAssertion(self.0);
                 <TsTypeAssertion as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TsTypeAssertion)
             }
-            ExprData::TsNonNullExpression(it) => {
+            NodeKind::TsNonNullExpression => {
+                let it = TsNonNullExpression(self.0);
                 <TsNonNullExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TsNonNullExpression)
             }
-            ExprData::TsInstantiationExpression(it) => {
+            NodeKind::TsInstantiationExpression => {
+                let it = TsInstantiationExpression(self.0);
                 <TsInstantiationExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::TsInstantiationExpression)
             }
-            ExprData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 <JsxElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::JsxElement)
             }
-            ExprData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 <JsxFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Expr::JsxFragment)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7100,32 +7874,44 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingPattern {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().binding_pattern_data(self);
-        match data {
-            BindingPatternData::BindingIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::BindingIdentifier)
             }
-            BindingPatternData::SimpleAssignmentTarget(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                let it = SimpleAssignmentTarget(self.0);
                 <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::SimpleAssignmentTarget)
             }
-            BindingPatternData::AssignmentPattern(it) => {
+            NodeKind::AssignmentPattern => {
+                let it = AssignmentPattern(self.0);
                 <AssignmentPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::AssignmentPattern)
             }
-            BindingPatternData::BindingRestElement(it) => {
+            NodeKind::BindingRestElement => {
+                let it = BindingRestElement(self.0);
                 <BindingRestElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::BindingRestElement)
             }
-            BindingPatternData::ArrayPattern(it) => {
+            NodeKind::ArrayPattern => {
+                let it = ArrayPattern(self.0);
                 <ArrayPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::ArrayPattern)
             }
-            BindingPatternData::ObjectPattern(it) => {
+            NodeKind::ObjectPattern => {
+                let it = ObjectPattern(self.0);
                 <ObjectPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(BindingPattern::ObjectPattern)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7136,20 +7922,29 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentTarget {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().assignment_target_data(self);
-        match data {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                let it = SimpleAssignmentTarget(self.0);
                 <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(AssignmentTarget::SimpleAssignmentTarget)
             }
-            AssignmentTargetData::ArrayAssignmentTarget(it) => {
+            NodeKind::ArrayPattern => {
+                let it = ArrayPattern(self.0);
                 <ArrayPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(AssignmentTarget::ArrayAssignmentTarget)
             }
-            AssignmentTargetData::ObjectAssignmentTarget(it) => {
+            NodeKind::ObjectPattern => {
+                let it = ObjectPattern(self.0);
                 <ObjectPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(AssignmentTarget::ObjectAssignmentTarget)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7160,32 +7955,39 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SimpleAssignmentTarge
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().simple_assignment_target_data(self);
-        match data {
-            SimpleAssignmentTargetData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(SimpleAssignmentTarget::IdentifierReference)
             }
-            SimpleAssignmentTargetData::MemberExpression(it) => {
+            NodeKind::MemberExpression => {
+                let it = MemberExpression(self.0);
                 <MemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(SimpleAssignmentTarget::MemberExpression)
             }
-            SimpleAssignmentTargetData::TsAsExpression(it) => {
+            NodeKind::TsAsExpression => {
+                let it = TsAsExpression(self.0);
                 <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(SimpleAssignmentTarget::TsAsExpression)
             }
-            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => {
+            NodeKind::TsSatisfiesExpression => {
+                let it = TsSatisfiesExpression(self.0);
                 <TsSatisfiesExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(SimpleAssignmentTarget::TsSatisfiesExpression)
             }
-            SimpleAssignmentTargetData::TsTypeAssertion(it) => {
+            NodeKind::TsTypeAssertion => {
+                let it = TsTypeAssertion(self.0);
                 <TsTypeAssertion as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(SimpleAssignmentTarget::TsTypeAssertion)
             }
-            SimpleAssignmentTargetData::TsNonNullExpression(it) => {
+            NodeKind::TsNonNullExpression => {
+                let it = TsNonNullExpression(self.0);
                 <TsNonNullExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(SimpleAssignmentTarget::TsNonNullExpression)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7196,31 +7998,73 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyKey {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().property_key_data(self);
-        match data {
-            PropertyKeyData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::IdentifierName)
             }
-            PropertyKeyData::PrivateIdentifier(it) => {
+            NodeKind::PrivateIdentifier => {
+                let it = PrivateIdentifier(self.0);
                 <PrivateIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::PrivateIdentifier)
             }
-            PropertyKeyData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::StringLiteral)
             }
-            PropertyKeyData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::NumericLiteral)
             }
-            PropertyKeyData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::BigIntLiteral)
             }
-            PropertyKeyData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(PropertyKey::Expr)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7231,16 +8075,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ModuleExportName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().module_export_name_data(self);
-        match data {
-            ModuleExportNameData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ModuleExportName::IdentifierName)
             }
-            ModuleExportNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ModuleExportName::StringLiteral)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7251,15 +8098,57 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Argument {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().argument_data(self);
-        match data {
-            ArgumentData::Expr(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(Argument::Expr)
             }
-            ArgumentData::SpreadElement(it) => {
+            NodeKind::SpreadElement => {
+                let it = SpreadElement(self.0);
                 <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Argument::SpreadElement)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7270,16 +8159,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPropertyKind {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().object_property_kind_data(self);
-        match data {
-            ObjectPropertyKindData::ObjectProperty(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ObjectProperty => {
+                let it = ObjectProperty(self.0);
                 <ObjectProperty as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ObjectPropertyKind::ObjectProperty)
             }
-            ObjectPropertyKindData::SpreadElement(it) => {
+            NodeKind::SpreadElement => {
+                let it = SpreadElement(self.0);
                 <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ObjectPropertyKind::SpreadElement)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7290,16 +8182,58 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatementInit {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().for_statement_init_data(self);
-        match data {
-            ForStatementInitData::VariableDeclaration(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ForStatementInit::VariableDeclaration)
             }
-            ForStatementInitData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ForStatementInit::Expr)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7310,16 +8244,26 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatementLeft {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().for_statement_left_data(self);
-        match data {
-            ForStatementLeftData::VariableDeclaration(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ForStatementLeft::VariableDeclaration)
             }
-            ForStatementLeftData::AssignmentTarget(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                let it = AssignmentTarget(self.0);
                 <AssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ForStatementLeft::AssignmentTarget)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7330,16 +8274,58 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrowFunctionBody {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().arrow_function_body_data(self);
-        match data {
-            ArrowFunctionBodyData::FunctionBody(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FunctionBody => {
+                let it = FunctionBody(self.0);
                 <FunctionBody as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ArrowFunctionBody::FunctionBody)
             }
-            ArrowFunctionBodyData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ArrowFunctionBody::Expr)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7350,16 +8336,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameterItem {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().formal_parameter_item_data(self);
-        match data {
-            FormalParameterItemData::FormalParameter(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FormalParameter => {
+                let it = FormalParameter(self.0);
                 <FormalParameter as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(FormalParameterItem::FormalParameter)
             }
-            FormalParameterItemData::TsParameterProperty(it) => {
+            NodeKind::TsParameterProperty => {
+                let it = TsParameterProperty(self.0);
                 <TsParameterProperty as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(FormalParameterItem::TsParameterProperty)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7370,16 +8359,29 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameterPatter
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().formal_parameter_pattern_data(self);
-        match data {
-            FormalParameterPatternData::BindingPattern(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier
+            | NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::AssignmentPattern
+            | NodeKind::BindingRestElement
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                let it = BindingPattern(self.0);
                 <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(FormalParameterPattern::BindingPattern)
             }
-            FormalParameterPatternData::TsThisParameter(it) => {
+            NodeKind::TsThisParameter => {
+                let it = TsThisParameter(self.0);
                 <TsThisParameter as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(FormalParameterPattern::TsThisParameter)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7390,28 +8392,34 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassElement {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().class_element_data(self);
-        match data {
-            ClassElementData::MethodDefinition(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::MethodDefinition => {
+                let it = MethodDefinition(self.0);
                 <MethodDefinition as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ClassElement::MethodDefinition)
             }
-            ClassElementData::PropertyDefinition(it) => {
+            NodeKind::PropertyDefinition => {
+                let it = PropertyDefinition(self.0);
                 <PropertyDefinition as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ClassElement::PropertyDefinition)
             }
-            ClassElementData::StaticBlock(it) => {
+            NodeKind::StaticBlock => {
+                let it = StaticBlock(self.0);
                 <StaticBlock as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ClassElement::StaticBlock)
             }
-            ClassElementData::TsMethodDefinition(it) => {
+            NodeKind::TsMethodDefinition => {
+                let it = TsMethodDefinition(self.0);
                 <TsMethodDefinition as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ClassElement::TsMethodDefinition)
             }
-            ClassElementData::TsIndexSignature(it) => {
+            NodeKind::TsIndexSignature => {
+                let it = TsIndexSignature(self.0);
                 <TsIndexSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ClassElement::TsIndexSignature)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7422,20 +8430,24 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDeclarationSpec
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().import_declaration_specifier_data(self);
-        match data {
-            ImportDeclarationSpecifierData::ImportSpecifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ImportSpecifier => {
+                let it = ImportSpecifier(self.0);
                 <ImportSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ImportDeclarationSpecifier::ImportSpecifier)
             }
-            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => {
+            NodeKind::ImportDefaultSpecifier => {
+                let it = ImportDefaultSpecifier(self.0);
                 <ImportDefaultSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ImportDeclarationSpecifier::ImportDefaultSpecifier)
             }
-            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => {
+            NodeKind::ImportNamespaceSpecifier => {
+                let it = ImportNamespaceSpecifier(self.0);
                 <ImportNamespaceSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ImportDeclarationSpecifier::ImportNamespaceSpecifier)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -7446,28 +8458,83 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDeclarat
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().export_default_declaration_kind_data(self);
-        match data {
-            ExportDefaultDeclarationKindData::Expr(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::Function => {
+                let concrete = Function(self.0);
+                if concrete.function_type(visitor.ast()) == FunctionType::FunctionDeclaration {
+                    <Function as VisitMutWith<'a, V>>::visit_mut_with(concrete, visitor)
+                        .map(ExportDefaultDeclarationKind::Function)
+                } else {
+                    let nested = Expr(self.0);
+                    <Expr as VisitMutWith<'a, V>>::visit_mut_with(nested, visitor)
+                        .map(ExportDefaultDeclarationKind::Expr)
+                }
+            }
+            NodeKind::Class => {
+                let concrete = Class(self.0);
+                if concrete.class_type(visitor.ast()) == ClassType::ClassDeclaration {
+                    <Class as VisitMutWith<'a, V>>::visit_mut_with(concrete, visitor)
+                        .map(ExportDefaultDeclarationKind::Class)
+                } else {
+                    let nested = Expr(self.0);
+                    <Expr as VisitMutWith<'a, V>>::visit_mut_with(nested, visitor)
+                        .map(ExportDefaultDeclarationKind::Expr)
+                }
+            }
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ExportDefaultDeclarationKind::Expr)
             }
-            ExportDefaultDeclarationKindData::Function(it) => {
-                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ExportDefaultDeclarationKind::Function)
-            }
-            ExportDefaultDeclarationKindData::Class(it) => {
-                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(ExportDefaultDeclarationKind::Class)
-            }
-            ExportDefaultDeclarationKindData::TsFunction(it) => {
+            NodeKind::TsFunction => {
+                let it = TsFunction(self.0);
                 <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ExportDefaultDeclarationKind::TsFunction)
             }
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
+            NodeKind::TsInterfaceDeclaration => {
+                let it = TsInterfaceDeclaration(self.0);
                 <TsInterfaceDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(ExportDefaultDeclarationKind::TsInterfaceDeclaration)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9284,160 +10351,199 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsType {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_type_data(self);
-        match data {
-            TsTypeData::TsAnyKeyword(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword => {
+                let it = TsAnyKeyword(self.0);
                 <TsAnyKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsAnyKeyword)
             }
-            TsTypeData::TsUnknownKeyword(it) => {
+            NodeKind::TsUnknownKeyword => {
+                let it = TsUnknownKeyword(self.0);
                 <TsUnknownKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsUnknownKeyword)
             }
-            TsTypeData::TsNeverKeyword(it) => {
+            NodeKind::TsNeverKeyword => {
+                let it = TsNeverKeyword(self.0);
                 <TsNeverKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsNeverKeyword)
             }
-            TsTypeData::TsVoidKeyword(it) => {
+            NodeKind::TsVoidKeyword => {
+                let it = TsVoidKeyword(self.0);
                 <TsVoidKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsVoidKeyword)
             }
-            TsTypeData::TsNullKeyword(it) => {
+            NodeKind::TsNullKeyword => {
+                let it = TsNullKeyword(self.0);
                 <TsNullKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsNullKeyword)
             }
-            TsTypeData::TsUndefinedKeyword(it) => {
+            NodeKind::TsUndefinedKeyword => {
+                let it = TsUndefinedKeyword(self.0);
                 <TsUndefinedKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsUndefinedKeyword)
             }
-            TsTypeData::TsStringKeyword(it) => {
+            NodeKind::TsStringKeyword => {
+                let it = TsStringKeyword(self.0);
                 <TsStringKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsStringKeyword)
             }
-            TsTypeData::TsNumberKeyword(it) => {
+            NodeKind::TsNumberKeyword => {
+                let it = TsNumberKeyword(self.0);
                 <TsNumberKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsNumberKeyword)
             }
-            TsTypeData::TsBigIntKeyword(it) => {
+            NodeKind::TsBigIntKeyword => {
+                let it = TsBigIntKeyword(self.0);
                 <TsBigIntKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsBigIntKeyword)
             }
-            TsTypeData::TsBooleanKeyword(it) => {
+            NodeKind::TsBooleanKeyword => {
+                let it = TsBooleanKeyword(self.0);
                 <TsBooleanKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsBooleanKeyword)
             }
-            TsTypeData::TsSymbolKeyword(it) => {
+            NodeKind::TsSymbolKeyword => {
+                let it = TsSymbolKeyword(self.0);
                 <TsSymbolKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsSymbolKeyword)
             }
-            TsTypeData::TsObjectKeyword(it) => {
+            NodeKind::TsObjectKeyword => {
+                let it = TsObjectKeyword(self.0);
                 <TsObjectKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsObjectKeyword)
             }
-            TsTypeData::TsIntrinsicKeyword(it) => {
+            NodeKind::TsIntrinsicKeyword => {
+                let it = TsIntrinsicKeyword(self.0);
                 <TsIntrinsicKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsIntrinsicKeyword)
             }
-            TsTypeData::TsThisType(it) => {
+            NodeKind::TsThisType => {
+                let it = TsThisType(self.0);
                 <TsThisType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsThisType)
             }
-            TsTypeData::TsTypeReference(it) => {
+            NodeKind::TsTypeReference => {
+                let it = TsTypeReference(self.0);
                 <TsTypeReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTypeReference)
             }
-            TsTypeData::TsTypeQuery(it) => {
+            NodeKind::TsTypeQuery => {
+                let it = TsTypeQuery(self.0);
                 <TsTypeQuery as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTypeQuery)
             }
-            TsTypeData::TsImportType(it) => {
+            NodeKind::TsImportType => {
+                let it = TsImportType(self.0);
                 <TsImportType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsImportType)
             }
-            TsTypeData::TsLiteralType(it) => {
+            NodeKind::TsLiteralType => {
+                let it = TsLiteralType(self.0);
                 <TsLiteralType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsLiteralType)
             }
-            TsTypeData::TsTemplateLiteralType(it) => {
+            NodeKind::TsTemplateLiteralType => {
+                let it = TsTemplateLiteralType(self.0);
                 <TsTemplateLiteralType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTemplateLiteralType)
             }
-            TsTypeData::TsArrayType(it) => {
+            NodeKind::TsArrayType => {
+                let it = TsArrayType(self.0);
                 <TsArrayType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsArrayType)
             }
-            TsTypeData::TsIndexedAccessType(it) => {
+            NodeKind::TsIndexedAccessType => {
+                let it = TsIndexedAccessType(self.0);
                 <TsIndexedAccessType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsIndexedAccessType)
             }
-            TsTypeData::TsTupleType(it) => {
+            NodeKind::TsTupleType => {
+                let it = TsTupleType(self.0);
                 <TsTupleType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTupleType)
             }
-            TsTypeData::TsOptionalType(it) => {
+            NodeKind::TsOptionalType => {
+                let it = TsOptionalType(self.0);
                 <TsOptionalType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsOptionalType)
             }
-            TsTypeData::TsRestType(it) => {
+            NodeKind::TsRestType => {
+                let it = TsRestType(self.0);
                 <TsRestType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsRestType)
             }
-            TsTypeData::TsJsDocNullableType(it) => {
+            NodeKind::TsJsDocNullableType => {
+                let it = TsJsDocNullableType(self.0);
                 <TsJsDocNullableType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsJsDocNullableType)
             }
-            TsTypeData::TsJsDocNonNullableType(it) => {
+            NodeKind::TsJsDocNonNullableType => {
+                let it = TsJsDocNonNullableType(self.0);
                 <TsJsDocNonNullableType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsJsDocNonNullableType)
             }
-            TsTypeData::TsJsDocUnknownType(it) => {
+            NodeKind::TsJsDocUnknownType => {
+                let it = TsJsDocUnknownType(self.0);
                 <TsJsDocUnknownType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsJsDocUnknownType)
             }
-            TsTypeData::TsUnionType(it) => {
+            NodeKind::TsUnionType => {
+                let it = TsUnionType(self.0);
                 <TsUnionType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsUnionType)
             }
-            TsTypeData::TsIntersectionType(it) => {
+            NodeKind::TsIntersectionType => {
+                let it = TsIntersectionType(self.0);
                 <TsIntersectionType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsIntersectionType)
             }
-            TsTypeData::TsConditionalType(it) => {
+            NodeKind::TsConditionalType => {
+                let it = TsConditionalType(self.0);
                 <TsConditionalType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsConditionalType)
             }
-            TsTypeData::TsInferType(it) => {
+            NodeKind::TsInferType => {
+                let it = TsInferType(self.0);
                 <TsInferType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsInferType)
             }
-            TsTypeData::TsTypeOperator(it) => {
+            NodeKind::TsTypeOperator => {
+                let it = TsTypeOperator(self.0);
                 <TsTypeOperator as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTypeOperator)
             }
-            TsTypeData::TsParenthesizedType(it) => {
+            NodeKind::TsParenthesizedType => {
+                let it = TsParenthesizedType(self.0);
                 <TsParenthesizedType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsParenthesizedType)
             }
-            TsTypeData::TsFunctionType(it) => {
+            NodeKind::TsFunctionType => {
+                let it = TsFunctionType(self.0);
                 <TsFunctionType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsFunctionType)
             }
-            TsTypeData::TsConstructorType(it) => {
+            NodeKind::TsConstructorType => {
+                let it = TsConstructorType(self.0);
                 <TsConstructorType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsConstructorType)
             }
-            TsTypeData::TsTypePredicate(it) => {
+            NodeKind::TsTypePredicate => {
+                let it = TsTypePredicate(self.0);
                 <TsTypePredicate as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTypePredicate)
             }
-            TsTypeData::TsTypeLiteral(it) => {
+            NodeKind::TsTypeLiteral => {
+                let it = TsTypeLiteral(self.0);
                 <TsTypeLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsTypeLiteral)
             }
-            TsTypeData::TsMappedType(it) => {
+            NodeKind::TsMappedType => {
+                let it = TsMappedType(self.0);
                 <TsMappedType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsType::TsMappedType)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9448,16 +10554,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_type_name_data(self);
-        match data {
-            TsTypeNameData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeName::IdentifierReference)
             }
-            TsTypeNameData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeName::TsQualifiedName)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9468,28 +10577,34 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsQualifiedNameLeft {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_qualified_name_left_data(self);
-        match data {
-            TsQualifiedNameLeftData::IdentifierReference(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsQualifiedNameLeft::IdentifierReference)
             }
-            TsQualifiedNameLeftData::IdentifierName(it) => {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsQualifiedNameLeft::IdentifierName)
             }
-            TsQualifiedNameLeftData::BindingIdentifier(it) => {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsQualifiedNameLeft::BindingIdentifier)
             }
-            TsQualifiedNameLeftData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsQualifiedNameLeft::ThisExpression)
             }
-            TsQualifiedNameLeftData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsQualifiedNameLeft::TsQualifiedName)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9500,16 +10615,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsImportTypeQualifier
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_import_type_qualifier_data(self);
-        match data {
-            TsImportTypeQualifierData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsImportTypeQualifier::IdentifierName)
             }
-            TsImportTypeQualifierData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsImportTypeQualifier::TsQualifiedName)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9520,20 +10638,24 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeQueryExprName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_type_query_expr_name_data(self);
-        match data {
-            TsTypeQueryExprNameData::TsTypeName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                let it = TsTypeName(self.0);
                 <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeQueryExprName::TsTypeName)
             }
-            TsTypeQueryExprNameData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeQueryExprName::ThisExpression)
             }
-            TsTypeQueryExprNameData::TsImportType(it) => {
+            NodeKind::TsImportType => {
+                let it = TsImportType(self.0);
                 <TsImportType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeQueryExprName::TsImportType)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9544,32 +10666,39 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsLiteral {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_literal_data(self);
-        match data {
-            TsLiteralData::StringLiteral(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsLiteral::StringLiteral)
             }
-            TsLiteralData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsLiteral::NumericLiteral)
             }
-            TsLiteralData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsLiteral::BigIntLiteral)
             }
-            TsLiteralData::BooleanLiteral(it) => {
+            NodeKind::BooleanLiteral => {
+                let it = BooleanLiteral(self.0);
                 <BooleanLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsLiteral::BooleanLiteral)
             }
-            TsLiteralData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsLiteral::TemplateLiteral)
             }
-            TsLiteralData::UnaryExpression(it) => {
+            NodeKind::UnaryExpression => {
+                let it = UnaryExpression(self.0);
                 <UnaryExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsLiteral::UnaryExpression)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9580,16 +10709,56 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTupleElement {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_tuple_element_data(self);
-        match data {
-            TsTupleElementData::TsType(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword
+            | NodeKind::TsUnknownKeyword
+            | NodeKind::TsNeverKeyword
+            | NodeKind::TsVoidKeyword
+            | NodeKind::TsNullKeyword
+            | NodeKind::TsUndefinedKeyword
+            | NodeKind::TsStringKeyword
+            | NodeKind::TsNumberKeyword
+            | NodeKind::TsBigIntKeyword
+            | NodeKind::TsBooleanKeyword
+            | NodeKind::TsSymbolKeyword
+            | NodeKind::TsObjectKeyword
+            | NodeKind::TsIntrinsicKeyword
+            | NodeKind::TsThisType
+            | NodeKind::TsTypeReference
+            | NodeKind::TsTypeQuery
+            | NodeKind::TsImportType
+            | NodeKind::TsLiteralType
+            | NodeKind::TsTemplateLiteralType
+            | NodeKind::TsArrayType
+            | NodeKind::TsIndexedAccessType
+            | NodeKind::TsTupleType
+            | NodeKind::TsOptionalType
+            | NodeKind::TsRestType
+            | NodeKind::TsJsDocNullableType
+            | NodeKind::TsJsDocNonNullableType
+            | NodeKind::TsJsDocUnknownType
+            | NodeKind::TsUnionType
+            | NodeKind::TsIntersectionType
+            | NodeKind::TsConditionalType
+            | NodeKind::TsInferType
+            | NodeKind::TsTypeOperator
+            | NodeKind::TsParenthesizedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsTypePredicate
+            | NodeKind::TsTypeLiteral
+            | NodeKind::TsMappedType => {
+                let it = TsType(self.0);
                 <TsType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTupleElement::TsType)
             }
-            TsTupleElementData::TsNamedTupleMember(it) => {
+            NodeKind::TsNamedTupleMember => {
+                let it = TsNamedTupleMember(self.0);
                 <TsNamedTupleMember as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTupleElement::TsNamedTupleMember)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9600,30 +10769,36 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeElement {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_type_element_data(self);
-        match data {
-            TsTypeElementData::TsPropertySignature(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsPropertySignature => {
+                let it = TsPropertySignature(self.0);
                 <TsPropertySignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeElement::TsPropertySignature)
             }
-            TsTypeElementData::TsMethodSignature(it) => {
+            NodeKind::TsMethodSignature => {
+                let it = TsMethodSignature(self.0);
                 <TsMethodSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeElement::TsMethodSignature)
             }
-            TsTypeElementData::TsCallSignatureDeclaration(it) => {
+            NodeKind::TsCallSignatureDeclaration => {
+                let it = TsCallSignatureDeclaration(self.0);
                 <TsCallSignatureDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeElement::TsCallSignatureDeclaration)
             }
-            TsTypeElementData::TsConstructSignatureDeclaration(it) => {
+            NodeKind::TsConstructSignatureDeclaration => {
+                let it = TsConstructSignatureDeclaration(self.0);
                 <TsConstructSignatureDeclaration as VisitMutWith<'a, V>>::visit_mut_with(
                     it, visitor,
                 )
                 .map(TsTypeElement::TsConstructSignatureDeclaration)
             }
-            TsTypeElementData::TsIndexSignature(it) => {
+            NodeKind::TsIndexSignature => {
+                let it = TsIndexSignature(self.0);
                 <TsIndexSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypeElement::TsIndexSignature)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9634,16 +10809,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypePredicateName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_type_predicate_name_data(self);
-        match data {
-            TsTypePredicateNameData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypePredicateName::IdentifierName)
             }
-            TsTypePredicateNameData::TsThisType(it) => {
+            NodeKind::TsThisType => {
+                let it = TsThisType(self.0);
                 <TsThisType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTypePredicateName::TsThisType)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9654,24 +10832,66 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumMemberName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_enum_member_name_data(self);
-        match data {
-            TsEnumMemberNameData::IdentifierName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::IdentifierName)
             }
-            TsEnumMemberNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::StringLiteral)
             }
-            TsEnumMemberNameData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::TemplateLiteral)
             }
-            TsEnumMemberNameData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::Expr)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9682,20 +10902,24 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_module_name_data(self);
-        match data {
-            TsModuleNameData::BindingIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleName::BindingIdentifier)
             }
-            TsModuleNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleName::StringLiteral)
             }
-            TsModuleNameData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleName::TsQualifiedName)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9706,16 +10930,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleBody {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_module_body_data(self);
-        match data {
-            TsModuleBodyData::TsModuleBlock(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsModuleBlock => {
+                let it = TsModuleBlock(self.0);
                 <TsModuleBlock as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleBody::TsModuleBlock)
             }
-            TsModuleBodyData::TsModuleDeclaration(it) => {
+            NodeKind::TsModuleDeclaration => {
+                let it = TsModuleDeclaration(self.0);
                 <TsModuleDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleBody::TsModuleDeclaration)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -9726,16 +10953,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleReference {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().ts_module_reference_data(self);
-        match data {
-            TsModuleReferenceData::TsTypeName(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                let it = TsTypeName(self.0);
                 <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleReference::TsTypeName)
             }
-            TsModuleReferenceData::TsExternalModuleReference(it) => {
+            NodeKind::TsExternalModuleReference => {
+                let it = TsExternalModuleReference(self.0);
                 <TsExternalModuleReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsModuleReference::TsExternalModuleReference)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11217,20 +12447,24 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxElementName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_element_name_data(self);
-        match data {
-            JsxElementNameData::JsxIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxElementName::JsxIdentifier)
             }
-            JsxElementNameData::JsxNamespacedName(it) => {
+            NodeKind::JsxNamespacedName => {
+                let it = JsxNamespacedName(self.0);
                 <JsxNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxElementName::JsxNamespacedName)
             }
-            JsxElementNameData::JsxMemberExpression(it) => {
+            NodeKind::JsxMemberExpression => {
+                let it = JsxMemberExpression(self.0);
                 <JsxMemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxElementName::JsxMemberExpression)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11241,16 +12475,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxMemberExpressionOb
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_member_expression_object_data(self);
-        match data {
-            JsxMemberExpressionObjectData::JsxIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxMemberExpressionObject::JsxIdentifier)
             }
-            JsxMemberExpressionObjectData::JsxMemberExpression(it) => {
+            NodeKind::JsxMemberExpression => {
+                let it = JsxMemberExpression(self.0);
                 <JsxMemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxMemberExpressionObject::JsxMemberExpression)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11261,16 +12498,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttributeName {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_attribute_name_data(self);
-        match data {
-            JsxAttributeNameData::JsxIdentifier(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeName::JsxIdentifier)
             }
-            JsxAttributeNameData::JsxNamespacedName(it) => {
+            NodeKind::JsxNamespacedName => {
+                let it = JsxNamespacedName(self.0);
                 <JsxNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeName::JsxNamespacedName)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11281,16 +12521,19 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttributeItem {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_attribute_item_data(self);
-        match data {
-            JsxAttributeItemData::JsxAttribute(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxAttribute => {
+                let it = JsxAttribute(self.0);
                 <JsxAttribute as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeItem::JsxAttribute)
             }
-            JsxAttributeItemData::JsxSpreadAttribute(it) => {
+            NodeKind::JsxSpreadAttribute => {
+                let it = JsxSpreadAttribute(self.0);
                 <JsxSpreadAttribute as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeItem::JsxSpreadAttribute)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11301,24 +12544,29 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttributeValue {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_attribute_value_data(self);
-        match data {
-            JsxAttributeValueData::StringLiteral(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeValue::StringLiteral)
             }
-            JsxAttributeValueData::JsxExpressionContainer(it) => {
+            NodeKind::JsxExpressionContainer => {
+                let it = JsxExpressionContainer(self.0);
                 <JsxExpressionContainer as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeValue::JsxExpressionContainer)
             }
-            JsxAttributeValueData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 <JsxElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeValue::JsxElement)
             }
-            JsxAttributeValueData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 <JsxFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxAttributeValue::JsxFragment)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11329,15 +12577,57 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxExpression {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_expression_data(self);
-        match data {
-            JsxExpressionData::Expr(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(JsxExpression::Expr)
             }
-            JsxExpressionData::JsxEmptyExpression(it) => {
+            NodeKind::JsxEmptyExpression => {
+                let it = JsxEmptyExpression(self.0);
                 <JsxEmptyExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxExpression::JsxEmptyExpression)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -11348,27 +12638,33 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxChild {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let data = visitor.ast().jsx_child_data(self);
-        match data {
-            JsxChildData::JsxText(it) => {
+        let kind = unsafe { *visitor.ast().nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxText => {
+                let it = JsxText(self.0);
                 <JsxText as VisitMutWith<'a, V>>::visit_mut_with(it, visitor).map(JsxChild::JsxText)
             }
-            JsxChildData::JsxExpressionContainer(it) => {
+            NodeKind::JsxExpressionContainer => {
+                let it = JsxExpressionContainer(self.0);
                 <JsxExpressionContainer as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxChild::JsxExpressionContainer)
             }
-            JsxChildData::JsxSpreadChild(it) => {
+            NodeKind::JsxSpreadChild => {
+                let it = JsxSpreadChild(self.0);
                 <JsxSpreadChild as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxChild::JsxSpreadChild)
             }
-            JsxChildData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 <JsxElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxChild::JsxElement)
             }
-            JsxChildData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 <JsxFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(JsxChild::JsxFragment)
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -14661,8 +15957,10 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.stmt_data(self) {
-            StmtData::BlockStatement(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BlockStatement => {
+                let it = BlockStatement(self.0);
                 match <BlockStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14673,7 +15971,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::BreakStatement(it) => {
+            NodeKind::BreakStatement => {
+                let it = BreakStatement(self.0);
                 match <BreakStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14684,7 +15983,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ContinueStatement(it) => {
+            NodeKind::ContinueStatement => {
+                let it = ContinueStatement(self.0);
                 match <ContinueStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14696,7 +15996,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::DebuggerStatement(it) => {
+            NodeKind::DebuggerStatement => {
+                let it = DebuggerStatement(self.0);
                 match <DebuggerStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14708,7 +16009,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::DoWhileStatement(it) => {
+            NodeKind::DoWhileStatement => {
+                let it = DoWhileStatement(self.0);
                 match <DoWhileStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14720,7 +16022,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::EmptyStatement(it) => {
+            NodeKind::EmptyStatement => {
+                let it = EmptyStatement(self.0);
                 match <EmptyStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14731,7 +16034,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ExpressionStatement(it) => {
+            NodeKind::ExpressionStatement => {
+                let it = ExpressionStatement(self.0);
                 match <ExpressionStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14743,7 +16047,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ForInStatement(it) => {
+            NodeKind::ForInStatement => {
+                let it = ForInStatement(self.0);
                 match <ForInStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14754,7 +16059,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ForOfStatement(it) => {
+            NodeKind::ForOfStatement => {
+                let it = ForOfStatement(self.0);
                 match <ForOfStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14765,7 +16071,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ForStatement(it) => {
+            NodeKind::ForStatement => {
+                let it = ForStatement(self.0);
                 match <ForStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -14775,7 +16082,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::IfStatement(it) => {
+            NodeKind::IfStatement => {
+                let it = IfStatement(self.0);
                 match <IfStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -14785,7 +16093,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::LabeledStatement(it) => {
+            NodeKind::LabeledStatement => {
+                let it = LabeledStatement(self.0);
                 match <LabeledStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14797,7 +16106,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ReturnStatement(it) => {
+            NodeKind::ReturnStatement => {
+                let it = ReturnStatement(self.0);
                 match <ReturnStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14809,7 +16119,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::SwitchStatement(it) => {
+            NodeKind::SwitchStatement => {
+                let it = SwitchStatement(self.0);
                 match <SwitchStatement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14821,7 +16132,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ThrowStatement(it) => {
+            NodeKind::ThrowStatement => {
+                let it = ThrowStatement(self.0);
                 match <ThrowStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14832,7 +16144,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::TryStatement(it) => {
+            NodeKind::TryStatement => {
+                let it = TryStatement(self.0);
                 match <TryStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -14842,7 +16155,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::WhileStatement(it) => {
+            NodeKind::WhileStatement => {
+                let it = WhileStatement(self.0);
                 match <WhileStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14853,7 +16167,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::WithStatement(it) => {
+            NodeKind::WithStatement => {
+                let it = WithStatement(self.0);
                 match <WithStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -14864,7 +16179,17 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::Declaration(it) => {
+            NodeKind::VariableDeclaration
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::TsFunction
+            | NodeKind::TsTypeAliasDeclaration
+            | NodeKind::TsInterfaceDeclaration
+            | NodeKind::TsEnumDeclaration
+            | NodeKind::TsModuleDeclaration
+            | NodeKind::TsGlobalDeclaration
+            | NodeKind::TsImportEqualsDeclaration => {
+                let it = Decl(self.0);
                 match <Decl as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -14874,7 +16199,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ImportDeclaration(it) => {
+            NodeKind::ImportDeclaration => {
+                let it = ImportDeclaration(self.0);
                 match <ImportDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14886,7 +16212,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ExportNamedDeclaration(it) => {
+            NodeKind::ExportNamedDeclaration => {
+                let it = ExportNamedDeclaration(self.0);
                 match <ExportNamedDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14898,7 +16225,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ExportDefaultDeclaration(it) => {
+            NodeKind::ExportDefaultDeclaration => {
+                let it = ExportDefaultDeclaration(self.0);
                 match <ExportDefaultDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14910,7 +16238,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::ExportAllDeclaration(it) => {
+            NodeKind::ExportAllDeclaration => {
+                let it = ExportAllDeclaration(self.0);
                 match <ExportAllDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14922,7 +16251,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::TsExportAssignment(it) => {
+            NodeKind::TsExportAssignment => {
+                let it = TsExportAssignment(self.0);
                 match <TsExportAssignment as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14934,7 +16264,8 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::TsNamespaceExportDeclaration(it) => {
+            NodeKind::TsNamespaceExportDeclaration => {
+                let it = TsNamespaceExportDeclaration(self.0);
                 match <TsNamespaceExportDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14946,6 +16277,7 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -14957,8 +16289,10 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.decl_data(self) {
-            DeclData::VariableDeclaration(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 match <VariableDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -14970,7 +16304,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::Function(it) => {
+            NodeKind::Function => {
+                let it = Function(self.0);
                 match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -14980,7 +16315,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::Class(it) => {
+            NodeKind::Class => {
+                let it = Class(self.0);
                 match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -14990,7 +16326,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsFunction(it) => {
+            NodeKind::TsFunction => {
+                let it = TsFunction(self.0);
                 match <TsFunction as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15000,7 +16337,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsTypeAliasDeclaration(it) => {
+            NodeKind::TsTypeAliasDeclaration => {
+                let it = TsTypeAliasDeclaration(self.0);
                 match <TsTypeAliasDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15012,7 +16350,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsInterfaceDeclaration(it) => {
+            NodeKind::TsInterfaceDeclaration => {
+                let it = TsInterfaceDeclaration(self.0);
                 match <TsInterfaceDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15024,7 +16363,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsEnumDeclaration(it) => {
+            NodeKind::TsEnumDeclaration => {
+                let it = TsEnumDeclaration(self.0);
                 match <TsEnumDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15036,7 +16376,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsModuleDeclaration(it) => {
+            NodeKind::TsModuleDeclaration => {
+                let it = TsModuleDeclaration(self.0);
                 match <TsModuleDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15048,7 +16389,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsGlobalDeclaration(it) => {
+            NodeKind::TsGlobalDeclaration => {
+                let it = TsGlobalDeclaration(self.0);
                 match <TsGlobalDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15060,7 +16402,8 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
-            DeclData::TsImportEqualsDeclaration(it) => {
+            NodeKind::TsImportEqualsDeclaration => {
+                let it = TsImportEqualsDeclaration(self.0);
                 match <TsImportEqualsDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15072,6 +16415,7 @@ impl<'a, State> TraverseWith<'a, State> for Decl {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15083,8 +16427,10 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.expr_data(self) {
-            ExprData::IdentifierReference(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 match <IdentifierReference as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15096,7 +16442,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 match <ThisExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15107,7 +16454,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::Super(it) => {
+            NodeKind::Super => {
+                let it = Super(self.0);
                 match <Super as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15117,7 +16465,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::MetaProperty(it) => {
+            NodeKind::MetaProperty => {
+                let it = MetaProperty(self.0);
                 match <MetaProperty as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15127,7 +16476,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15138,7 +16488,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 match <NumericLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15149,7 +16500,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 match <BigIntLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15160,7 +16512,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::BooleanLiteral(it) => {
+            NodeKind::BooleanLiteral => {
+                let it = BooleanLiteral(self.0);
                 match <BooleanLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15171,7 +16524,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::NullLiteral(it) => {
+            NodeKind::NullLiteral => {
+                let it = NullLiteral(self.0);
                 match <NullLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15181,7 +16535,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::RegExpLiteral(it) => {
+            NodeKind::RegExpLiteral => {
+                let it = RegExpLiteral(self.0);
                 match <RegExpLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15192,7 +16547,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 match <TemplateLiteral as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15204,7 +16560,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::BinaryExpression(it) => {
+            NodeKind::BinaryExpression => {
+                let it = BinaryExpression(self.0);
                 match <BinaryExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15216,7 +16573,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::LogicalExpression(it) => {
+            NodeKind::LogicalExpression => {
+                let it = LogicalExpression(self.0);
                 match <LogicalExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15228,7 +16586,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::UnaryExpression(it) => {
+            NodeKind::UnaryExpression => {
+                let it = UnaryExpression(self.0);
                 match <UnaryExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15240,7 +16599,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::UpdateExpression(it) => {
+            NodeKind::UpdateExpression => {
+                let it = UpdateExpression(self.0);
                 match <UpdateExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15252,7 +16612,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::AssignmentExpression(it) => {
+            NodeKind::AssignmentExpression => {
+                let it = AssignmentExpression(self.0);
                 match <AssignmentExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15264,7 +16625,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ConditionalExpression(it) => {
+            NodeKind::ConditionalExpression => {
+                let it = ConditionalExpression(self.0);
                 match <ConditionalExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15276,7 +16638,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::SequenceExpression(it) => {
+            NodeKind::SequenceExpression => {
+                let it = SequenceExpression(self.0);
                 match <SequenceExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15288,7 +16651,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::MemberExpression(it) => {
+            NodeKind::MemberExpression => {
+                let it = MemberExpression(self.0);
                 match <MemberExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15300,7 +16664,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::CallExpression(it) => {
+            NodeKind::CallExpression => {
+                let it = CallExpression(self.0);
                 match <CallExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15311,7 +16676,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ChainExpression(it) => {
+            NodeKind::ChainExpression => {
+                let it = ChainExpression(self.0);
                 match <ChainExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15323,7 +16689,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::NewExpression(it) => {
+            NodeKind::NewExpression => {
+                let it = NewExpression(self.0);
                 match <NewExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15334,7 +16701,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TaggedTemplateExpression(it) => {
+            NodeKind::TaggedTemplateExpression => {
+                let it = TaggedTemplateExpression(self.0);
                 match <TaggedTemplateExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15346,7 +16714,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ArrowFunctionExpression(it) => {
+            NodeKind::ArrowFunctionExpression => {
+                let it = ArrowFunctionExpression(self.0);
                 match <ArrowFunctionExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15358,7 +16727,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ArrayExpression(it) => {
+            NodeKind::ArrayExpression => {
+                let it = ArrayExpression(self.0);
                 match <ArrayExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15370,7 +16740,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ObjectExpression(it) => {
+            NodeKind::ObjectExpression => {
+                let it = ObjectExpression(self.0);
                 match <ObjectExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15382,7 +16753,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ParenthesizedExpression(it) => {
+            NodeKind::ParenthesizedExpression => {
+                let it = ParenthesizedExpression(self.0);
                 match <ParenthesizedExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15394,7 +16766,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::Function(it) => {
+            NodeKind::Function => {
+                let it = Function(self.0);
                 match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15404,7 +16777,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::Class(it) => {
+            NodeKind::Class => {
+                let it = Class(self.0);
                 match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15414,7 +16788,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::ImportExpression(it) => {
+            NodeKind::ImportExpression => {
+                let it = ImportExpression(self.0);
                 match <ImportExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15426,7 +16801,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::AwaitExpression(it) => {
+            NodeKind::AwaitExpression => {
+                let it = AwaitExpression(self.0);
                 match <AwaitExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15438,7 +16814,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::YieldExpression(it) => {
+            NodeKind::YieldExpression => {
+                let it = YieldExpression(self.0);
                 match <YieldExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15450,7 +16827,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::PrivateIdentifier(it) => {
+            NodeKind::PrivateIdentifier => {
+                let it = PrivateIdentifier(self.0);
                 match <PrivateIdentifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15462,7 +16840,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TsAsExpression(it) => {
+            NodeKind::TsAsExpression => {
+                let it = TsAsExpression(self.0);
                 match <TsAsExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15473,7 +16852,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TsSatisfiesExpression(it) => {
+            NodeKind::TsSatisfiesExpression => {
+                let it = TsSatisfiesExpression(self.0);
                 match <TsSatisfiesExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15485,7 +16865,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TsTypeAssertion(it) => {
+            NodeKind::TsTypeAssertion => {
+                let it = TsTypeAssertion(self.0);
                 match <TsTypeAssertion as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15497,7 +16878,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TsNonNullExpression(it) => {
+            NodeKind::TsNonNullExpression => {
+                let it = TsNonNullExpression(self.0);
                 match <TsNonNullExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15509,7 +16891,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::TsInstantiationExpression(it) => {
+            NodeKind::TsInstantiationExpression => {
+                let it = TsInstantiationExpression(self.0);
                 match <TsInstantiationExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15521,7 +16904,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 match <JsxElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15531,7 +16915,8 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
-            ExprData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 match <JsxFragment as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15541,6 +16926,7 @@ impl<'a, State> TraverseWith<'a, State> for Expr {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15552,8 +16938,10 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.binding_pattern_data(self) {
-            BindingPatternData::BindingIdentifier(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 match <BindingIdentifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15565,7 +16953,13 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     }
                 }
             }
-            BindingPatternData::SimpleAssignmentTarget(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                let it = SimpleAssignmentTarget(self.0);
                 match <SimpleAssignmentTarget as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15577,7 +16971,8 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     }
                 }
             }
-            BindingPatternData::AssignmentPattern(it) => {
+            NodeKind::AssignmentPattern => {
+                let it = AssignmentPattern(self.0);
                 match <AssignmentPattern as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15589,7 +16984,8 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     }
                 }
             }
-            BindingPatternData::BindingRestElement(it) => {
+            NodeKind::BindingRestElement => {
+                let it = BindingRestElement(self.0);
                 match <BindingRestElement as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15601,7 +16997,8 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     }
                 }
             }
-            BindingPatternData::ArrayPattern(it) => {
+            NodeKind::ArrayPattern => {
+                let it = ArrayPattern(self.0);
                 match <ArrayPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15611,7 +17008,8 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     }
                 }
             }
-            BindingPatternData::ObjectPattern(it) => {
+            NodeKind::ObjectPattern => {
+                let it = ObjectPattern(self.0);
                 match <ObjectPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15622,6 +17020,7 @@ impl<'a, State> TraverseWith<'a, State> for BindingPattern {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15633,8 +17032,15 @@ impl<'a, State> TraverseWith<'a, State> for AssignmentTarget {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.assignment_target_data(self) {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                let it = SimpleAssignmentTarget(self.0);
                 match <SimpleAssignmentTarget as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15646,7 +17052,8 @@ impl<'a, State> TraverseWith<'a, State> for AssignmentTarget {
                     ),
                 }
             }
-            AssignmentTargetData::ArrayAssignmentTarget(it) => {
+            NodeKind::ArrayPattern => {
+                let it = ArrayPattern(self.0);
                 match <ArrayPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15656,7 +17063,8 @@ impl<'a, State> TraverseWith<'a, State> for AssignmentTarget {
                     ),
                 }
             }
-            AssignmentTargetData::ObjectAssignmentTarget(it) => {
+            NodeKind::ObjectPattern => {
+                let it = ObjectPattern(self.0);
                 match <ObjectPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15667,6 +17075,7 @@ impl<'a, State> TraverseWith<'a, State> for AssignmentTarget {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15678,8 +17087,10 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::IdentifierReference(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 match <IdentifierReference as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15691,7 +17102,8 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
                     ),
                 }
             }
-            SimpleAssignmentTargetData::MemberExpression(it) => {
+            NodeKind::MemberExpression => {
+                let it = MemberExpression(self.0);
                 match <MemberExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15703,7 +17115,8 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
                     ),
                 }
             }
-            SimpleAssignmentTargetData::TsAsExpression(it) => {
+            NodeKind::TsAsExpression => {
+                let it = TsAsExpression(self.0);
                 match <TsAsExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15714,7 +17127,8 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
                     }
                 }
             }
-            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => {
+            NodeKind::TsSatisfiesExpression => {
+                let it = TsSatisfiesExpression(self.0);
                 match <TsSatisfiesExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15726,7 +17140,8 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
                     ),
                 }
             }
-            SimpleAssignmentTargetData::TsTypeAssertion(it) => {
+            NodeKind::TsTypeAssertion => {
+                let it = TsTypeAssertion(self.0);
                 match <TsTypeAssertion as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15738,7 +17153,8 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
                     ),
                 }
             }
-            SimpleAssignmentTargetData::TsNonNullExpression(it) => {
+            NodeKind::TsNonNullExpression => {
+                let it = TsNonNullExpression(self.0);
                 match <TsNonNullExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15750,6 +17166,7 @@ impl<'a, State> TraverseWith<'a, State> for SimpleAssignmentTarget {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15761,8 +17178,10 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.property_key_data(self) {
-            PropertyKeyData::IdentifierName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15773,7 +17192,8 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     }
                 }
             }
-            PropertyKeyData::PrivateIdentifier(it) => {
+            NodeKind::PrivateIdentifier => {
+                let it = PrivateIdentifier(self.0);
                 match <PrivateIdentifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15785,7 +17205,8 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     }
                 }
             }
-            PropertyKeyData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15796,7 +17217,8 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     }
                 }
             }
-            PropertyKeyData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 match <NumericLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15807,7 +17229,8 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     }
                 }
             }
-            PropertyKeyData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 match <BigIntLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15818,7 +17241,43 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     }
                 }
             }
-            PropertyKeyData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15828,6 +17287,7 @@ impl<'a, State> TraverseWith<'a, State> for PropertyKey {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15839,8 +17299,10 @@ impl<'a, State> TraverseWith<'a, State> for ModuleExportName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.module_export_name_data(self) {
-            ModuleExportNameData::IdentifierName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15851,7 +17313,8 @@ impl<'a, State> TraverseWith<'a, State> for ModuleExportName {
                     }
                 }
             }
-            ModuleExportNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15862,6 +17325,7 @@ impl<'a, State> TraverseWith<'a, State> for ModuleExportName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15873,8 +17337,49 @@ impl<'a, State> TraverseWith<'a, State> for Argument {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.argument_data(self) {
-            ArgumentData::Expr(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15884,7 +17389,8 @@ impl<'a, State> TraverseWith<'a, State> for Argument {
                     }
                 }
             }
-            ArgumentData::SpreadElement(it) => {
+            NodeKind::SpreadElement => {
+                let it = SpreadElement(self.0);
                 match <SpreadElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15895,6 +17401,7 @@ impl<'a, State> TraverseWith<'a, State> for Argument {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15906,8 +17413,10 @@ impl<'a, State> TraverseWith<'a, State> for ObjectPropertyKind {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.object_property_kind_data(self) {
-            ObjectPropertyKindData::ObjectProperty(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ObjectProperty => {
+                let it = ObjectProperty(self.0);
                 match <ObjectProperty as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15918,7 +17427,8 @@ impl<'a, State> TraverseWith<'a, State> for ObjectPropertyKind {
                     }
                 }
             }
-            ObjectPropertyKindData::SpreadElement(it) => {
+            NodeKind::SpreadElement => {
+                let it = SpreadElement(self.0);
                 match <SpreadElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -15929,6 +17439,7 @@ impl<'a, State> TraverseWith<'a, State> for ObjectPropertyKind {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15940,8 +17451,10 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementInit {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.for_statement_init_data(self) {
-            ForStatementInitData::VariableDeclaration(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 match <VariableDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15953,7 +17466,47 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementInit {
                     }
                 }
             }
-            ForStatementInitData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -15963,6 +17516,7 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementInit {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -15974,8 +17528,10 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementLeft {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.for_statement_left_data(self) {
-            ForStatementLeftData::VariableDeclaration(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                let it = VariableDeclaration(self.0);
                 match <VariableDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15987,7 +17543,15 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementLeft {
                     }
                 }
             }
-            ForStatementLeftData::AssignmentTarget(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                let it = AssignmentTarget(self.0);
                 match <AssignmentTarget as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -15999,6 +17563,7 @@ impl<'a, State> TraverseWith<'a, State> for ForStatementLeft {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -16010,8 +17575,10 @@ impl<'a, State> TraverseWith<'a, State> for ArrowFunctionBody {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.arrow_function_body_data(self) {
-            ArrowFunctionBodyData::FunctionBody(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FunctionBody => {
+                let it = FunctionBody(self.0);
                 match <FunctionBody as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -16021,7 +17588,47 @@ impl<'a, State> TraverseWith<'a, State> for ArrowFunctionBody {
                     }
                 }
             }
-            ArrowFunctionBodyData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -16031,6 +17638,7 @@ impl<'a, State> TraverseWith<'a, State> for ArrowFunctionBody {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -16042,8 +17650,10 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterItem {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.formal_parameter_item_data(self) {
-            FormalParameterItemData::FormalParameter(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FormalParameter => {
+                let it = FormalParameter(self.0);
                 match <FormalParameter as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16055,7 +17665,8 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterItem {
                     }
                 }
             }
-            FormalParameterItemData::TsParameterProperty(it) => {
+            NodeKind::TsParameterProperty => {
+                let it = TsParameterProperty(self.0);
                 match <TsParameterProperty as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16067,6 +17678,7 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterItem {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -16078,8 +17690,20 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterPattern {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::BindingPattern(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier
+            | NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::AssignmentPattern
+            | NodeKind::BindingRestElement
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                let it = BindingPattern(self.0);
                 match <BindingPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -16090,7 +17714,8 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterPattern {
                     }
                 }
             }
-            FormalParameterPatternData::TsThisParameter(it) => {
+            NodeKind::TsThisParameter => {
+                let it = TsThisParameter(self.0);
                 match <TsThisParameter as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16102,6 +17727,7 @@ impl<'a, State> TraverseWith<'a, State> for FormalParameterPattern {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -16113,8 +17739,10 @@ impl<'a, State> TraverseWith<'a, State> for ClassElement {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.class_element_data(self) {
-            ClassElementData::MethodDefinition(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::MethodDefinition => {
+                let it = MethodDefinition(self.0);
                 match <MethodDefinition as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16126,7 +17754,8 @@ impl<'a, State> TraverseWith<'a, State> for ClassElement {
                     }
                 }
             }
-            ClassElementData::PropertyDefinition(it) => {
+            NodeKind::PropertyDefinition => {
+                let it = PropertyDefinition(self.0);
                 match <PropertyDefinition as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16138,7 +17767,8 @@ impl<'a, State> TraverseWith<'a, State> for ClassElement {
                     }
                 }
             }
-            ClassElementData::StaticBlock(it) => {
+            NodeKind::StaticBlock => {
+                let it = StaticBlock(self.0);
                 match <StaticBlock as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -16148,7 +17778,8 @@ impl<'a, State> TraverseWith<'a, State> for ClassElement {
                     }
                 }
             }
-            ClassElementData::TsMethodDefinition(it) => {
+            NodeKind::TsMethodDefinition => {
+                let it = TsMethodDefinition(self.0);
                 match <TsMethodDefinition as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16160,7 +17791,8 @@ impl<'a, State> TraverseWith<'a, State> for ClassElement {
                     }
                 }
             }
-            ClassElementData::TsIndexSignature(it) => {
+            NodeKind::TsIndexSignature => {
+                let it = TsIndexSignature(self.0);
                 match <TsIndexSignature as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16172,6 +17804,7 @@ impl<'a, State> TraverseWith<'a, State> for ClassElement {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -16183,8 +17816,10 @@ impl<'a, State> TraverseWith<'a, State> for ImportDeclarationSpecifier {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.import_declaration_specifier_data(self) {
-            ImportDeclarationSpecifierData::ImportSpecifier(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ImportSpecifier => {
+                let it = ImportSpecifier(self.0);
                 match <ImportSpecifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16196,7 +17831,8 @@ impl<'a, State> TraverseWith<'a, State> for ImportDeclarationSpecifier {
                     ),
                 }
             }
-            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => {
+            NodeKind::ImportDefaultSpecifier => {
+                let it = ImportDefaultSpecifier(self.0);
                 match <ImportDefaultSpecifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16208,7 +17844,8 @@ impl<'a, State> TraverseWith<'a, State> for ImportDeclarationSpecifier {
                     ),
                 }
             }
-            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => {
+            NodeKind::ImportNamespaceSpecifier => {
+                let it = ImportNamespaceSpecifier(self.0);
                 match <ImportNamespaceSpecifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16220,6 +17857,7 @@ impl<'a, State> TraverseWith<'a, State> for ImportDeclarationSpecifier {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -16231,8 +17869,97 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Expr(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::Function => {
+                let concrete = Function(self.0);
+                if concrete.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
+                    match <Function as TraverseWith<'a, State>>::traverse_with(
+                        concrete, traverser, ctx,
+                    ) {
+                        TraverseAction::Proceed => TraverseAction::Proceed,
+                        TraverseAction::Skip => TraverseAction::Skip,
+                        TraverseAction::Stop => TraverseAction::Stop,
+                        TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                            ExportDefaultDeclarationKind::Function(replacement),
+                        ),
+                    }
+                } else {
+                    let nested = Expr(self.0);
+                    match <Expr as TraverseWith<'a, State>>::traverse_with(nested, traverser, ctx) {
+                        TraverseAction::Proceed => TraverseAction::Proceed,
+                        TraverseAction::Skip => TraverseAction::Skip,
+                        TraverseAction::Stop => TraverseAction::Stop,
+                        TraverseAction::Replace(replacement) => {
+                            TraverseAction::Replace(ExportDefaultDeclarationKind::Expr(replacement))
+                        }
+                    }
+                }
+            }
+            NodeKind::Class => {
+                let concrete = Class(self.0);
+                if concrete.class_type(ctx.ast) == ClassType::ClassDeclaration {
+                    match <Class as TraverseWith<'a, State>>::traverse_with(
+                        concrete, traverser, ctx,
+                    ) {
+                        TraverseAction::Proceed => TraverseAction::Proceed,
+                        TraverseAction::Skip => TraverseAction::Skip,
+                        TraverseAction::Stop => TraverseAction::Stop,
+                        TraverseAction::Replace(replacement) => TraverseAction::Replace(
+                            ExportDefaultDeclarationKind::Class(replacement),
+                        ),
+                    }
+                } else {
+                    let nested = Expr(self.0);
+                    match <Expr as TraverseWith<'a, State>>::traverse_with(nested, traverser, ctx) {
+                        TraverseAction::Proceed => TraverseAction::Proceed,
+                        TraverseAction::Skip => TraverseAction::Skip,
+                        TraverseAction::Stop => TraverseAction::Stop,
+                        TraverseAction::Replace(replacement) => {
+                            TraverseAction::Replace(ExportDefaultDeclarationKind::Expr(replacement))
+                        }
+                    }
+                }
+            }
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -16242,27 +17969,8 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
                     }
                 }
             }
-            ExportDefaultDeclarationKindData::Function(it) => {
-                match <Function as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ExportDefaultDeclarationKind::Function(replacement))
-                    }
-                }
-            }
-            ExportDefaultDeclarationKindData::Class(it) => {
-                match <Class as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(ExportDefaultDeclarationKind::Class(replacement))
-                    }
-                }
-            }
-            ExportDefaultDeclarationKindData::TsFunction(it) => {
+            NodeKind::TsFunction => {
+                let it = TsFunction(self.0);
                 match <TsFunction as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -16272,7 +17980,8 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
                     ),
                 }
             }
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
+            NodeKind::TsInterfaceDeclaration => {
+                let it = TsInterfaceDeclaration(self.0);
                 match <TsInterfaceDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -16284,6 +17993,7 @@ impl<'a, State> TraverseWith<'a, State> for ExportDefaultDeclarationKind {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17230,8 +18940,10 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_type_data(self) {
-            TsTypeData::TsAnyKeyword(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword => {
+                let it = TsAnyKeyword(self.0);
                 match <TsAnyKeyword as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17241,7 +18953,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsUnknownKeyword(it) => {
+            NodeKind::TsUnknownKeyword => {
+                let it = TsUnknownKeyword(self.0);
                 match <TsUnknownKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17253,7 +18966,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsNeverKeyword(it) => {
+            NodeKind::TsNeverKeyword => {
+                let it = TsNeverKeyword(self.0);
                 match <TsNeverKeyword as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17264,7 +18978,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsVoidKeyword(it) => {
+            NodeKind::TsVoidKeyword => {
+                let it = TsVoidKeyword(self.0);
                 match <TsVoidKeyword as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17275,7 +18990,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsNullKeyword(it) => {
+            NodeKind::TsNullKeyword => {
+                let it = TsNullKeyword(self.0);
                 match <TsNullKeyword as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17286,7 +19002,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsUndefinedKeyword(it) => {
+            NodeKind::TsUndefinedKeyword => {
+                let it = TsUndefinedKeyword(self.0);
                 match <TsUndefinedKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17298,7 +19015,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsStringKeyword(it) => {
+            NodeKind::TsStringKeyword => {
+                let it = TsStringKeyword(self.0);
                 match <TsStringKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17310,7 +19028,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsNumberKeyword(it) => {
+            NodeKind::TsNumberKeyword => {
+                let it = TsNumberKeyword(self.0);
                 match <TsNumberKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17322,7 +19041,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsBigIntKeyword(it) => {
+            NodeKind::TsBigIntKeyword => {
+                let it = TsBigIntKeyword(self.0);
                 match <TsBigIntKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17334,7 +19054,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsBooleanKeyword(it) => {
+            NodeKind::TsBooleanKeyword => {
+                let it = TsBooleanKeyword(self.0);
                 match <TsBooleanKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17346,7 +19067,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsSymbolKeyword(it) => {
+            NodeKind::TsSymbolKeyword => {
+                let it = TsSymbolKeyword(self.0);
                 match <TsSymbolKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17358,7 +19080,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsObjectKeyword(it) => {
+            NodeKind::TsObjectKeyword => {
+                let it = TsObjectKeyword(self.0);
                 match <TsObjectKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17370,7 +19093,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsIntrinsicKeyword(it) => {
+            NodeKind::TsIntrinsicKeyword => {
+                let it = TsIntrinsicKeyword(self.0);
                 match <TsIntrinsicKeyword as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17382,7 +19106,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsThisType(it) => {
+            NodeKind::TsThisType => {
+                let it = TsThisType(self.0);
                 match <TsThisType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17392,7 +19117,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTypeReference(it) => {
+            NodeKind::TsTypeReference => {
+                let it = TsTypeReference(self.0);
                 match <TsTypeReference as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17404,7 +19130,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTypeQuery(it) => {
+            NodeKind::TsTypeQuery => {
+                let it = TsTypeQuery(self.0);
                 match <TsTypeQuery as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17414,7 +19141,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsImportType(it) => {
+            NodeKind::TsImportType => {
+                let it = TsImportType(self.0);
                 match <TsImportType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17424,7 +19152,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsLiteralType(it) => {
+            NodeKind::TsLiteralType => {
+                let it = TsLiteralType(self.0);
                 match <TsLiteralType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17435,7 +19164,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTemplateLiteralType(it) => {
+            NodeKind::TsTemplateLiteralType => {
+                let it = TsTemplateLiteralType(self.0);
                 match <TsTemplateLiteralType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17447,7 +19177,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsArrayType(it) => {
+            NodeKind::TsArrayType => {
+                let it = TsArrayType(self.0);
                 match <TsArrayType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17457,7 +19188,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsIndexedAccessType(it) => {
+            NodeKind::TsIndexedAccessType => {
+                let it = TsIndexedAccessType(self.0);
                 match <TsIndexedAccessType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17469,7 +19201,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTupleType(it) => {
+            NodeKind::TsTupleType => {
+                let it = TsTupleType(self.0);
                 match <TsTupleType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17479,7 +19212,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsOptionalType(it) => {
+            NodeKind::TsOptionalType => {
+                let it = TsOptionalType(self.0);
                 match <TsOptionalType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17490,7 +19224,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsRestType(it) => {
+            NodeKind::TsRestType => {
+                let it = TsRestType(self.0);
                 match <TsRestType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17500,7 +19235,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsJsDocNullableType(it) => {
+            NodeKind::TsJsDocNullableType => {
+                let it = TsJsDocNullableType(self.0);
                 match <TsJsDocNullableType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17512,7 +19248,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsJsDocNonNullableType(it) => {
+            NodeKind::TsJsDocNonNullableType => {
+                let it = TsJsDocNonNullableType(self.0);
                 match <TsJsDocNonNullableType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17524,7 +19261,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsJsDocUnknownType(it) => {
+            NodeKind::TsJsDocUnknownType => {
+                let it = TsJsDocUnknownType(self.0);
                 match <TsJsDocUnknownType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17536,7 +19274,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsUnionType(it) => {
+            NodeKind::TsUnionType => {
+                let it = TsUnionType(self.0);
                 match <TsUnionType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17546,7 +19285,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsIntersectionType(it) => {
+            NodeKind::TsIntersectionType => {
+                let it = TsIntersectionType(self.0);
                 match <TsIntersectionType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17558,7 +19298,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsConditionalType(it) => {
+            NodeKind::TsConditionalType => {
+                let it = TsConditionalType(self.0);
                 match <TsConditionalType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17570,7 +19311,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsInferType(it) => {
+            NodeKind::TsInferType => {
+                let it = TsInferType(self.0);
                 match <TsInferType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17580,7 +19322,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTypeOperator(it) => {
+            NodeKind::TsTypeOperator => {
+                let it = TsTypeOperator(self.0);
                 match <TsTypeOperator as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17591,7 +19334,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsParenthesizedType(it) => {
+            NodeKind::TsParenthesizedType => {
+                let it = TsParenthesizedType(self.0);
                 match <TsParenthesizedType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17603,7 +19347,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsFunctionType(it) => {
+            NodeKind::TsFunctionType => {
+                let it = TsFunctionType(self.0);
                 match <TsFunctionType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17614,7 +19359,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsConstructorType(it) => {
+            NodeKind::TsConstructorType => {
+                let it = TsConstructorType(self.0);
                 match <TsConstructorType as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17626,7 +19372,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTypePredicate(it) => {
+            NodeKind::TsTypePredicate => {
+                let it = TsTypePredicate(self.0);
                 match <TsTypePredicate as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17638,7 +19385,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsTypeLiteral(it) => {
+            NodeKind::TsTypeLiteral => {
+                let it = TsTypeLiteral(self.0);
                 match <TsTypeLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17649,7 +19397,8 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
-            TsTypeData::TsMappedType(it) => {
+            NodeKind::TsMappedType => {
+                let it = TsMappedType(self.0);
                 match <TsMappedType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17659,6 +19408,7 @@ impl<'a, State> TraverseWith<'a, State> for TsType {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17670,8 +19420,10 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_type_name_data(self) {
-            TsTypeNameData::IdentifierReference(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 match <IdentifierReference as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17683,7 +19435,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeName {
                     }
                 }
             }
-            TsTypeNameData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 match <TsQualifiedName as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17695,6 +19448,7 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17706,8 +19460,10 @@ impl<'a, State> TraverseWith<'a, State> for TsQualifiedNameLeft {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::IdentifierReference(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                let it = IdentifierReference(self.0);
                 match <IdentifierReference as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17719,7 +19475,8 @@ impl<'a, State> TraverseWith<'a, State> for TsQualifiedNameLeft {
                     ),
                 }
             }
-            TsQualifiedNameLeftData::IdentifierName(it) => {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17730,7 +19487,8 @@ impl<'a, State> TraverseWith<'a, State> for TsQualifiedNameLeft {
                     }
                 }
             }
-            TsQualifiedNameLeftData::BindingIdentifier(it) => {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 match <BindingIdentifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17742,7 +19500,8 @@ impl<'a, State> TraverseWith<'a, State> for TsQualifiedNameLeft {
                     }
                 }
             }
-            TsQualifiedNameLeftData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 match <ThisExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17753,7 +19512,8 @@ impl<'a, State> TraverseWith<'a, State> for TsQualifiedNameLeft {
                     }
                 }
             }
-            TsQualifiedNameLeftData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 match <TsQualifiedName as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17765,6 +19525,7 @@ impl<'a, State> TraverseWith<'a, State> for TsQualifiedNameLeft {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17776,8 +19537,10 @@ impl<'a, State> TraverseWith<'a, State> for TsImportTypeQualifier {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_import_type_qualifier_data(self) {
-            TsImportTypeQualifierData::IdentifierName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17788,7 +19551,8 @@ impl<'a, State> TraverseWith<'a, State> for TsImportTypeQualifier {
                     }
                 }
             }
-            TsImportTypeQualifierData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 match <TsQualifiedName as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17800,6 +19564,7 @@ impl<'a, State> TraverseWith<'a, State> for TsImportTypeQualifier {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17811,8 +19576,10 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeQueryExprName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsTypeName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                let it = TsTypeName(self.0);
                 match <TsTypeName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17822,7 +19589,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeQueryExprName {
                     }
                 }
             }
-            TsTypeQueryExprNameData::ThisExpression(it) => {
+            NodeKind::ThisExpression => {
+                let it = ThisExpression(self.0);
                 match <ThisExpression as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17833,7 +19601,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeQueryExprName {
                     }
                 }
             }
-            TsTypeQueryExprNameData::TsImportType(it) => {
+            NodeKind::TsImportType => {
+                let it = TsImportType(self.0);
                 match <TsImportType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17843,6 +19612,7 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeQueryExprName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17854,8 +19624,10 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_literal_data(self) {
-            TsLiteralData::StringLiteral(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17866,7 +19638,8 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
                     }
                 }
             }
-            TsLiteralData::NumericLiteral(it) => {
+            NodeKind::NumericLiteral => {
+                let it = NumericLiteral(self.0);
                 match <NumericLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17877,7 +19650,8 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
                     }
                 }
             }
-            TsLiteralData::BigIntLiteral(it) => {
+            NodeKind::BigIntLiteral => {
+                let it = BigIntLiteral(self.0);
                 match <BigIntLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17888,7 +19662,8 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
                     }
                 }
             }
-            TsLiteralData::BooleanLiteral(it) => {
+            NodeKind::BooleanLiteral => {
+                let it = BooleanLiteral(self.0);
                 match <BooleanLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -17899,7 +19674,8 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
                     }
                 }
             }
-            TsLiteralData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 match <TemplateLiteral as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17911,7 +19687,8 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
                     }
                 }
             }
-            TsLiteralData::UnaryExpression(it) => {
+            NodeKind::UnaryExpression => {
+                let it = UnaryExpression(self.0);
                 match <UnaryExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17923,6 +19700,7 @@ impl<'a, State> TraverseWith<'a, State> for TsLiteral {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17934,8 +19712,47 @@ impl<'a, State> TraverseWith<'a, State> for TsTupleElement {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsType(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword
+            | NodeKind::TsUnknownKeyword
+            | NodeKind::TsNeverKeyword
+            | NodeKind::TsVoidKeyword
+            | NodeKind::TsNullKeyword
+            | NodeKind::TsUndefinedKeyword
+            | NodeKind::TsStringKeyword
+            | NodeKind::TsNumberKeyword
+            | NodeKind::TsBigIntKeyword
+            | NodeKind::TsBooleanKeyword
+            | NodeKind::TsSymbolKeyword
+            | NodeKind::TsObjectKeyword
+            | NodeKind::TsIntrinsicKeyword
+            | NodeKind::TsThisType
+            | NodeKind::TsTypeReference
+            | NodeKind::TsTypeQuery
+            | NodeKind::TsImportType
+            | NodeKind::TsLiteralType
+            | NodeKind::TsTemplateLiteralType
+            | NodeKind::TsArrayType
+            | NodeKind::TsIndexedAccessType
+            | NodeKind::TsTupleType
+            | NodeKind::TsOptionalType
+            | NodeKind::TsRestType
+            | NodeKind::TsJsDocNullableType
+            | NodeKind::TsJsDocNonNullableType
+            | NodeKind::TsJsDocUnknownType
+            | NodeKind::TsUnionType
+            | NodeKind::TsIntersectionType
+            | NodeKind::TsConditionalType
+            | NodeKind::TsInferType
+            | NodeKind::TsTypeOperator
+            | NodeKind::TsParenthesizedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsTypePredicate
+            | NodeKind::TsTypeLiteral
+            | NodeKind::TsMappedType => {
+                let it = TsType(self.0);
                 match <TsType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -17945,7 +19762,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTupleElement {
                     }
                 }
             }
-            TsTupleElementData::TsNamedTupleMember(it) => {
+            NodeKind::TsNamedTupleMember => {
+                let it = TsNamedTupleMember(self.0);
                 match <TsNamedTupleMember as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17957,6 +19775,7 @@ impl<'a, State> TraverseWith<'a, State> for TsTupleElement {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -17968,8 +19787,10 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeElement {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_type_element_data(self) {
-            TsTypeElementData::TsPropertySignature(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsPropertySignature => {
+                let it = TsPropertySignature(self.0);
                 match <TsPropertySignature as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17981,7 +19802,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeElement {
                     }
                 }
             }
-            TsTypeElementData::TsMethodSignature(it) => {
+            NodeKind::TsMethodSignature => {
+                let it = TsMethodSignature(self.0);
                 match <TsMethodSignature as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -17993,7 +19815,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeElement {
                     }
                 }
             }
-            TsTypeElementData::TsCallSignatureDeclaration(it) => {
+            NodeKind::TsCallSignatureDeclaration => {
+                let it = TsCallSignatureDeclaration(self.0);
                 match <TsCallSignatureDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18005,7 +19828,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeElement {
                     ),
                 }
             }
-            TsTypeElementData::TsConstructSignatureDeclaration(it) => {
+            NodeKind::TsConstructSignatureDeclaration => {
+                let it = TsConstructSignatureDeclaration(self.0);
                 match <TsConstructSignatureDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18017,7 +19841,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeElement {
                     ),
                 }
             }
-            TsTypeElementData::TsIndexSignature(it) => {
+            NodeKind::TsIndexSignature => {
+                let it = TsIndexSignature(self.0);
                 match <TsIndexSignature as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18029,6 +19854,7 @@ impl<'a, State> TraverseWith<'a, State> for TsTypeElement {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -18040,8 +19866,10 @@ impl<'a, State> TraverseWith<'a, State> for TsTypePredicateName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_type_predicate_name_data(self) {
-            TsTypePredicateNameData::IdentifierName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -18052,7 +19880,8 @@ impl<'a, State> TraverseWith<'a, State> for TsTypePredicateName {
                     }
                 }
             }
-            TsTypePredicateNameData::TsThisType(it) => {
+            NodeKind::TsThisType => {
+                let it = TsThisType(self.0);
                 match <TsThisType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -18062,6 +19891,7 @@ impl<'a, State> TraverseWith<'a, State> for TsTypePredicateName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -18073,8 +19903,10 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::IdentifierName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                let it = IdentifierName(self.0);
                 match <IdentifierName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -18085,7 +19917,8 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
                     }
                 }
             }
-            TsEnumMemberNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -18096,7 +19929,8 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
                     }
                 }
             }
-            TsEnumMemberNameData::TemplateLiteral(it) => {
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
                 match <TemplateLiteral as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18108,7 +19942,45 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
                     }
                 }
             }
-            TsEnumMemberNameData::Expr(it) => {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -18118,6 +19990,7 @@ impl<'a, State> TraverseWith<'a, State> for TsEnumMemberName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -18129,8 +20002,10 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_module_name_data(self) {
-            TsModuleNameData::BindingIdentifier(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                let it = BindingIdentifier(self.0);
                 match <BindingIdentifier as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18142,7 +20017,8 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleName {
                     }
                 }
             }
-            TsModuleNameData::StringLiteral(it) => {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -18153,7 +20029,8 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleName {
                     }
                 }
             }
-            TsModuleNameData::TsQualifiedName(it) => {
+            NodeKind::TsQualifiedName => {
+                let it = TsQualifiedName(self.0);
                 match <TsQualifiedName as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18165,6 +20042,7 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -18176,8 +20054,10 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleBody {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_module_body_data(self) {
-            TsModuleBodyData::TsModuleBlock(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsModuleBlock => {
+                let it = TsModuleBlock(self.0);
                 match <TsModuleBlock as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -18188,7 +20068,8 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleBody {
                     }
                 }
             }
-            TsModuleBodyData::TsModuleDeclaration(it) => {
+            NodeKind::TsModuleDeclaration => {
+                let it = TsModuleDeclaration(self.0);
                 match <TsModuleDeclaration as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18200,6 +20081,7 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleBody {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -18211,8 +20093,10 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleReference {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.ts_module_reference_data(self) {
-            TsModuleReferenceData::TsTypeName(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                let it = TsTypeName(self.0);
                 match <TsTypeName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -18222,7 +20106,8 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleReference {
                     }
                 }
             }
-            TsModuleReferenceData::TsExternalModuleReference(it) => {
+            NodeKind::TsExternalModuleReference => {
+                let it = TsExternalModuleReference(self.0);
                 match <TsExternalModuleReference as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -18234,6 +20119,7 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleReference {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19048,8 +20934,10 @@ impl<'a, State> TraverseWith<'a, State> for JsxElementName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_element_name_data(self) {
-            JsxElementNameData::JsxIdentifier(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 match <JsxIdentifier as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -19060,7 +20948,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxElementName {
                     }
                 }
             }
-            JsxElementNameData::JsxNamespacedName(it) => {
+            NodeKind::JsxNamespacedName => {
+                let it = JsxNamespacedName(self.0);
                 match <JsxNamespacedName as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19072,7 +20961,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxElementName {
                     }
                 }
             }
-            JsxElementNameData::JsxMemberExpression(it) => {
+            NodeKind::JsxMemberExpression => {
+                let it = JsxMemberExpression(self.0);
                 match <JsxMemberExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19084,6 +20974,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxElementName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19095,8 +20986,10 @@ impl<'a, State> TraverseWith<'a, State> for JsxMemberExpressionObject {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_member_expression_object_data(self) {
-            JsxMemberExpressionObjectData::JsxIdentifier(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 match <JsxIdentifier as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -19107,7 +21000,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxMemberExpressionObject {
                     ),
                 }
             }
-            JsxMemberExpressionObjectData::JsxMemberExpression(it) => {
+            NodeKind::JsxMemberExpression => {
+                let it = JsxMemberExpression(self.0);
                 match <JsxMemberExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19119,6 +21013,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxMemberExpressionObject {
                     ),
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19130,8 +21025,10 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeName {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_attribute_name_data(self) {
-            JsxAttributeNameData::JsxIdentifier(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                let it = JsxIdentifier(self.0);
                 match <JsxIdentifier as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -19142,7 +21039,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeName {
                     }
                 }
             }
-            JsxAttributeNameData::JsxNamespacedName(it) => {
+            NodeKind::JsxNamespacedName => {
+                let it = JsxNamespacedName(self.0);
                 match <JsxNamespacedName as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19154,6 +21052,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeName {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19165,8 +21064,10 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeItem {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_attribute_item_data(self) {
-            JsxAttributeItemData::JsxAttribute(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxAttribute => {
+                let it = JsxAttribute(self.0);
                 match <JsxAttribute as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19176,7 +21077,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeItem {
                     }
                 }
             }
-            JsxAttributeItemData::JsxSpreadAttribute(it) => {
+            NodeKind::JsxSpreadAttribute => {
+                let it = JsxSpreadAttribute(self.0);
                 match <JsxSpreadAttribute as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19188,6 +21090,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeItem {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19199,8 +21102,10 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeValue {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_attribute_value_data(self) {
-            JsxAttributeValueData::StringLiteral(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
                 match <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -19211,7 +21116,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeValue {
                     }
                 }
             }
-            JsxAttributeValueData::JsxExpressionContainer(it) => {
+            NodeKind::JsxExpressionContainer => {
+                let it = JsxExpressionContainer(self.0);
                 match <JsxExpressionContainer as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19223,7 +21129,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeValue {
                     ),
                 }
             }
-            JsxAttributeValueData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 match <JsxElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19233,7 +21140,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeValue {
                     }
                 }
             }
-            JsxAttributeValueData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 match <JsxFragment as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19243,6 +21151,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxAttributeValue {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19254,8 +21163,49 @@ impl<'a, State> TraverseWith<'a, State> for JsxExpression {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_expression_data(self) {
-            JsxExpressionData::Expr(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => {
+                let it = Expr(self.0);
                 match <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19265,7 +21215,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxExpression {
                     }
                 }
             }
-            JsxExpressionData::JsxEmptyExpression(it) => {
+            NodeKind::JsxEmptyExpression => {
+                let it = JsxEmptyExpression(self.0);
                 match <JsxEmptyExpression as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19277,6 +21228,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxExpression {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -19288,8 +21240,10 @@ impl<'a, State> TraverseWith<'a, State> for JsxChild {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) -> TraverseAction<Self::Node> {
-        match ctx.ast.jsx_child_data(self) {
-            JsxChildData::JsxText(it) => {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxText => {
+                let it = JsxText(self.0);
                 match <JsxText as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19299,7 +21253,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxChild {
                     }
                 }
             }
-            JsxChildData::JsxExpressionContainer(it) => {
+            NodeKind::JsxExpressionContainer => {
+                let it = JsxExpressionContainer(self.0);
                 match <JsxExpressionContainer as TraverseWith<'a, State>>::traverse_with(
                     it, traverser, ctx,
                 ) {
@@ -19311,7 +21266,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxChild {
                     }
                 }
             }
-            JsxChildData::JsxSpreadChild(it) => {
+            NodeKind::JsxSpreadChild => {
+                let it = JsxSpreadChild(self.0);
                 match <JsxSpreadChild as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
                 {
                     TraverseAction::Proceed => TraverseAction::Proceed,
@@ -19322,7 +21278,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxChild {
                     }
                 }
             }
-            JsxChildData::JsxElement(it) => {
+            NodeKind::JsxElement => {
+                let it = JsxElement(self.0);
                 match <JsxElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19332,7 +21289,8 @@ impl<'a, State> TraverseWith<'a, State> for JsxChild {
                     }
                 }
             }
-            JsxChildData::JsxFragment(it) => {
+            NodeKind::JsxFragment => {
+                let it = JsxFragment(self.0);
                 match <JsxFragment as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
                     TraverseAction::Proceed => TraverseAction::Proceed,
                     TraverseAction::Skip => TraverseAction::Skip,
@@ -19342,6 +21300,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxChild {
                     }
                 }
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }

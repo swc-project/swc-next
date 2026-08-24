@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -316,44 +318,58 @@ fn generate_extra_data_property_accessors_partial(
 
 fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
-    let data_name = format_ident!("{}Data", ast.name);
-    let data_fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
     let has_contextual_variants = ast.name == "ExportDefaultDeclarationKind";
 
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
+    let mut classified_node_kinds = HashSet::new();
 
     for variant in ast.variants.iter() {
-        let variant_name = format_ident!("{}", variant.name);
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
+        let node_kind_names = concrete_node_kinds(variant.type_id.unwrap(), schema);
+        let node_kinds: Vec<_> = node_kind_names
+            .iter()
+            .map(|name| format_ident!("{name}"))
+            .collect();
         let kind_check = if has_contextual_variants {
-            quote!(matches!(ast.#data_fn_name(self), #data_name::#variant_name(_)))
+            generate_contextual_variant_check(&variant.name, &node_kinds)
         } else {
-            let node_kinds: Vec<_> = concrete_node_kinds(variant.type_id.unwrap(), schema)
-                .into_iter()
-                .map(|name| format_ident!("{name}"))
-                .collect();
             if let [node_kind] = node_kinds.as_slice() {
                 quote!(ast.node_kind(self.0) == NodeKind::#node_kind)
             } else {
                 quote!(matches!(ast.node_kind(self.0), #(NodeKind::#node_kinds)|*))
             }
         };
+        let kind_load = has_contextual_variants
+            .then(|| quote!(let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };));
         is_variant.extend(quote! {
             #[inline]
             pub fn #is_fn_name(self, ast: &Ast<'_>) -> bool {
+                #kind_load
                 #kind_check
             }
         });
 
         let as_fn_name = format_ident!("as_{}", variant.name.to_case(Case::Snake));
         let variant_type = schema.types[variant.type_id.unwrap()].repr_ident(schema);
+        let classified_kinds: Vec<_> = node_kind_names
+            .into_iter()
+            .filter(|node_kind| classified_node_kinds.insert(node_kind.clone()))
+            .map(|node_kind| format_ident!("{node_kind}"))
+            .collect();
+        let classified_check = if has_contextual_variants {
+            generate_contextual_variant_check(&variant.name, &classified_kinds)
+        } else {
+            quote!(matches!(kind, #(NodeKind::#classified_kinds)|*))
+        };
         as_variant.extend(quote! {
             #[inline]
             pub fn #as_fn_name(self, ast: &Ast<'_>) -> Option<#variant_type> {
-                match ast.#data_fn_name(self) {
-                    #data_name::#variant_name(it) => Some(it),
-                    _ => None,
+                let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+                if #classified_check {
+                    Some(#variant_type(self.0))
+                } else {
+                    None
                 }
             }
         });
@@ -364,5 +380,46 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
             #is_variant
             #as_variant
         }
+    }
+}
+
+fn generate_contextual_variant_check(variant_name: &str, node_kinds: &[syn::Ident]) -> TokenStream {
+    match variant_name {
+        "Expr" => {
+            let plain_node_kinds = node_kinds
+                .iter()
+                .filter(|node_kind| node_kind != &"Function" && node_kind != &"Class");
+            quote! {
+                match kind {
+                    #(NodeKind::#plain_node_kinds => true,)*
+                    NodeKind::Function => {
+                        let function = Function(self.0);
+                        function.function_type(ast) != FunctionType::FunctionDeclaration
+                    }
+                    NodeKind::Class => {
+                        let class = Class(self.0);
+                        class.class_type(ast) != ClassType::ClassDeclaration
+                    }
+                    _ => false,
+                }
+            }
+        }
+        "Function" => quote! {
+            if kind == NodeKind::Function {
+                let function = Function(self.0);
+                function.function_type(ast) == FunctionType::FunctionDeclaration
+            } else {
+                false
+            }
+        },
+        "Class" => quote! {
+            if kind == NodeKind::Class {
+                let class = Class(self.0);
+                class.class_type(ast) == ClassType::ClassDeclaration
+            } else {
+                false
+            }
+        },
+        _ => quote!(matches!(kind, #(NodeKind::#node_kinds)|*)),
     }
 }

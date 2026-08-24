@@ -1,5 +1,5 @@
 #![allow(unused, clippy::manual_map)]
-use crate::{Ast, CloneIn, GetSpan};
+use crate::{Ast, CloneIn, GetSpan, NodeKind};
 use crate::{ast::*, node_id::*};
 impl<'a> CloneIn<'a> for Program {
     type Cloned = Program;
@@ -16,37 +16,69 @@ impl<'a> CloneIn<'a> for Stmt {
     type Cloned = Stmt;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.stmt_data(*self);
-        match data {
-            StmtData::BlockStatement(it) => Self::BlockStatement(it.clone_in(ast)),
-            StmtData::BreakStatement(it) => Self::BreakStatement(it.clone_in(ast)),
-            StmtData::ContinueStatement(it) => Self::ContinueStatement(it.clone_in(ast)),
-            StmtData::DebuggerStatement(it) => Self::DebuggerStatement(it.clone_in(ast)),
-            StmtData::DoWhileStatement(it) => Self::DoWhileStatement(it.clone_in(ast)),
-            StmtData::EmptyStatement(it) => Self::EmptyStatement(it.clone_in(ast)),
-            StmtData::ExpressionStatement(it) => Self::ExpressionStatement(it.clone_in(ast)),
-            StmtData::ForInStatement(it) => Self::ForInStatement(it.clone_in(ast)),
-            StmtData::ForOfStatement(it) => Self::ForOfStatement(it.clone_in(ast)),
-            StmtData::ForStatement(it) => Self::ForStatement(it.clone_in(ast)),
-            StmtData::IfStatement(it) => Self::IfStatement(it.clone_in(ast)),
-            StmtData::LabeledStatement(it) => Self::LabeledStatement(it.clone_in(ast)),
-            StmtData::ReturnStatement(it) => Self::ReturnStatement(it.clone_in(ast)),
-            StmtData::SwitchStatement(it) => Self::SwitchStatement(it.clone_in(ast)),
-            StmtData::ThrowStatement(it) => Self::ThrowStatement(it.clone_in(ast)),
-            StmtData::TryStatement(it) => Self::TryStatement(it.clone_in(ast)),
-            StmtData::WhileStatement(it) => Self::WhileStatement(it.clone_in(ast)),
-            StmtData::WithStatement(it) => Self::WithStatement(it.clone_in(ast)),
-            StmtData::Declaration(it) => Self::Declaration(it.clone_in(ast)),
-            StmtData::ImportDeclaration(it) => Self::ImportDeclaration(it.clone_in(ast)),
-            StmtData::ExportNamedDeclaration(it) => Self::ExportNamedDeclaration(it.clone_in(ast)),
-            StmtData::ExportDefaultDeclaration(it) => {
-                Self::ExportDefaultDeclaration(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BlockStatement => Self::BlockStatement(BlockStatement(self.0).clone_in(ast)),
+            NodeKind::BreakStatement => Self::BreakStatement(BreakStatement(self.0).clone_in(ast)),
+            NodeKind::ContinueStatement => {
+                Self::ContinueStatement(ContinueStatement(self.0).clone_in(ast))
             }
-            StmtData::ExportAllDeclaration(it) => Self::ExportAllDeclaration(it.clone_in(ast)),
-            StmtData::TsExportAssignment(it) => Self::TsExportAssignment(it.clone_in(ast)),
-            StmtData::TsNamespaceExportDeclaration(it) => {
-                Self::TsNamespaceExportDeclaration(it.clone_in(ast))
+            NodeKind::DebuggerStatement => {
+                Self::DebuggerStatement(DebuggerStatement(self.0).clone_in(ast))
             }
+            NodeKind::DoWhileStatement => {
+                Self::DoWhileStatement(DoWhileStatement(self.0).clone_in(ast))
+            }
+            NodeKind::EmptyStatement => Self::EmptyStatement(EmptyStatement(self.0).clone_in(ast)),
+            NodeKind::ExpressionStatement => {
+                Self::ExpressionStatement(ExpressionStatement(self.0).clone_in(ast))
+            }
+            NodeKind::ForInStatement => Self::ForInStatement(ForInStatement(self.0).clone_in(ast)),
+            NodeKind::ForOfStatement => Self::ForOfStatement(ForOfStatement(self.0).clone_in(ast)),
+            NodeKind::ForStatement => Self::ForStatement(ForStatement(self.0).clone_in(ast)),
+            NodeKind::IfStatement => Self::IfStatement(IfStatement(self.0).clone_in(ast)),
+            NodeKind::LabeledStatement => {
+                Self::LabeledStatement(LabeledStatement(self.0).clone_in(ast))
+            }
+            NodeKind::ReturnStatement => {
+                Self::ReturnStatement(ReturnStatement(self.0).clone_in(ast))
+            }
+            NodeKind::SwitchStatement => {
+                Self::SwitchStatement(SwitchStatement(self.0).clone_in(ast))
+            }
+            NodeKind::ThrowStatement => Self::ThrowStatement(ThrowStatement(self.0).clone_in(ast)),
+            NodeKind::TryStatement => Self::TryStatement(TryStatement(self.0).clone_in(ast)),
+            NodeKind::WhileStatement => Self::WhileStatement(WhileStatement(self.0).clone_in(ast)),
+            NodeKind::WithStatement => Self::WithStatement(WithStatement(self.0).clone_in(ast)),
+            NodeKind::VariableDeclaration
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::TsFunction
+            | NodeKind::TsTypeAliasDeclaration
+            | NodeKind::TsInterfaceDeclaration
+            | NodeKind::TsEnumDeclaration
+            | NodeKind::TsModuleDeclaration
+            | NodeKind::TsGlobalDeclaration
+            | NodeKind::TsImportEqualsDeclaration => Self::Declaration(Decl(self.0).clone_in(ast)),
+            NodeKind::ImportDeclaration => {
+                Self::ImportDeclaration(ImportDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::ExportNamedDeclaration => {
+                Self::ExportNamedDeclaration(ExportNamedDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::ExportDefaultDeclaration => {
+                Self::ExportDefaultDeclaration(ExportDefaultDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::ExportAllDeclaration => {
+                Self::ExportAllDeclaration(ExportAllDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::TsExportAssignment => {
+                Self::TsExportAssignment(TsExportAssignment(self.0).clone_in(ast))
+            }
+            NodeKind::TsNamespaceExportDeclaration => Self::TsNamespaceExportDeclaration(
+                TsNamespaceExportDeclaration(self.0).clone_in(ast),
+            ),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -54,20 +86,33 @@ impl<'a> CloneIn<'a> for Decl {
     type Cloned = Decl;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.decl_data(*self);
-        match data {
-            DeclData::VariableDeclaration(it) => Self::VariableDeclaration(it.clone_in(ast)),
-            DeclData::Function(it) => Self::Function(it.clone_in(ast)),
-            DeclData::Class(it) => Self::Class(it.clone_in(ast)),
-            DeclData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
-            DeclData::TsTypeAliasDeclaration(it) => Self::TsTypeAliasDeclaration(it.clone_in(ast)),
-            DeclData::TsInterfaceDeclaration(it) => Self::TsInterfaceDeclaration(it.clone_in(ast)),
-            DeclData::TsEnumDeclaration(it) => Self::TsEnumDeclaration(it.clone_in(ast)),
-            DeclData::TsModuleDeclaration(it) => Self::TsModuleDeclaration(it.clone_in(ast)),
-            DeclData::TsGlobalDeclaration(it) => Self::TsGlobalDeclaration(it.clone_in(ast)),
-            DeclData::TsImportEqualsDeclaration(it) => {
-                Self::TsImportEqualsDeclaration(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                Self::VariableDeclaration(VariableDeclaration(self.0).clone_in(ast))
             }
+            NodeKind::Function => Self::Function(Function(self.0).clone_in(ast)),
+            NodeKind::Class => Self::Class(Class(self.0).clone_in(ast)),
+            NodeKind::TsFunction => Self::TsFunction(TsFunction(self.0).clone_in(ast)),
+            NodeKind::TsTypeAliasDeclaration => {
+                Self::TsTypeAliasDeclaration(TsTypeAliasDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                Self::TsInterfaceDeclaration(TsInterfaceDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::TsEnumDeclaration => {
+                Self::TsEnumDeclaration(TsEnumDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::TsModuleDeclaration => {
+                Self::TsModuleDeclaration(TsModuleDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::TsGlobalDeclaration => {
+                Self::TsGlobalDeclaration(TsGlobalDeclaration(self.0).clone_in(ast))
+            }
+            NodeKind::TsImportEqualsDeclaration => {
+                Self::TsImportEqualsDeclaration(TsImportEqualsDeclaration(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -75,56 +120,97 @@ impl<'a> CloneIn<'a> for Expr {
     type Cloned = Expr;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.expr_data(*self);
-        match data {
-            ExprData::IdentifierReference(it) => Self::IdentifierReference(it.clone_in(ast)),
-            ExprData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
-            ExprData::Super(it) => Self::Super(it.clone_in(ast)),
-            ExprData::MetaProperty(it) => Self::MetaProperty(it.clone_in(ast)),
-            ExprData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
-            ExprData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
-            ExprData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
-            ExprData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
-            ExprData::NullLiteral(it) => Self::NullLiteral(it.clone_in(ast)),
-            ExprData::RegExpLiteral(it) => Self::RegExpLiteral(it.clone_in(ast)),
-            ExprData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
-            ExprData::BinaryExpression(it) => Self::BinaryExpression(it.clone_in(ast)),
-            ExprData::LogicalExpression(it) => Self::LogicalExpression(it.clone_in(ast)),
-            ExprData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
-            ExprData::UpdateExpression(it) => Self::UpdateExpression(it.clone_in(ast)),
-            ExprData::AssignmentExpression(it) => Self::AssignmentExpression(it.clone_in(ast)),
-            ExprData::ConditionalExpression(it) => Self::ConditionalExpression(it.clone_in(ast)),
-            ExprData::SequenceExpression(it) => Self::SequenceExpression(it.clone_in(ast)),
-            ExprData::MemberExpression(it) => Self::MemberExpression(it.clone_in(ast)),
-            ExprData::CallExpression(it) => Self::CallExpression(it.clone_in(ast)),
-            ExprData::ChainExpression(it) => Self::ChainExpression(it.clone_in(ast)),
-            ExprData::NewExpression(it) => Self::NewExpression(it.clone_in(ast)),
-            ExprData::TaggedTemplateExpression(it) => {
-                Self::TaggedTemplateExpression(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                Self::IdentifierReference(IdentifierReference(self.0).clone_in(ast))
             }
-            ExprData::ArrowFunctionExpression(it) => {
-                Self::ArrowFunctionExpression(it.clone_in(ast))
+            NodeKind::ThisExpression => Self::ThisExpression(ThisExpression(self.0).clone_in(ast)),
+            NodeKind::Super => Self::Super(Super(self.0).clone_in(ast)),
+            NodeKind::MetaProperty => Self::MetaProperty(MetaProperty(self.0).clone_in(ast)),
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            NodeKind::NumericLiteral => Self::NumericLiteral(NumericLiteral(self.0).clone_in(ast)),
+            NodeKind::BigIntLiteral => Self::BigIntLiteral(BigIntLiteral(self.0).clone_in(ast)),
+            NodeKind::BooleanLiteral => Self::BooleanLiteral(BooleanLiteral(self.0).clone_in(ast)),
+            NodeKind::NullLiteral => Self::NullLiteral(NullLiteral(self.0).clone_in(ast)),
+            NodeKind::RegExpLiteral => Self::RegExpLiteral(RegExpLiteral(self.0).clone_in(ast)),
+            NodeKind::TemplateLiteral => {
+                Self::TemplateLiteral(TemplateLiteral(self.0).clone_in(ast))
             }
-            ExprData::ArrayExpression(it) => Self::ArrayExpression(it.clone_in(ast)),
-            ExprData::ObjectExpression(it) => Self::ObjectExpression(it.clone_in(ast)),
-            ExprData::ParenthesizedExpression(it) => {
-                Self::ParenthesizedExpression(it.clone_in(ast))
+            NodeKind::BinaryExpression => {
+                Self::BinaryExpression(BinaryExpression(self.0).clone_in(ast))
             }
-            ExprData::Function(it) => Self::Function(it.clone_in(ast)),
-            ExprData::Class(it) => Self::Class(it.clone_in(ast)),
-            ExprData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
-            ExprData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
-            ExprData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
-            ExprData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
-            ExprData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
-            ExprData::TsSatisfiesExpression(it) => Self::TsSatisfiesExpression(it.clone_in(ast)),
-            ExprData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
-            ExprData::TsNonNullExpression(it) => Self::TsNonNullExpression(it.clone_in(ast)),
-            ExprData::TsInstantiationExpression(it) => {
-                Self::TsInstantiationExpression(it.clone_in(ast))
+            NodeKind::LogicalExpression => {
+                Self::LogicalExpression(LogicalExpression(self.0).clone_in(ast))
             }
-            ExprData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
-            ExprData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
+            NodeKind::UnaryExpression => {
+                Self::UnaryExpression(UnaryExpression(self.0).clone_in(ast))
+            }
+            NodeKind::UpdateExpression => {
+                Self::UpdateExpression(UpdateExpression(self.0).clone_in(ast))
+            }
+            NodeKind::AssignmentExpression => {
+                Self::AssignmentExpression(AssignmentExpression(self.0).clone_in(ast))
+            }
+            NodeKind::ConditionalExpression => {
+                Self::ConditionalExpression(ConditionalExpression(self.0).clone_in(ast))
+            }
+            NodeKind::SequenceExpression => {
+                Self::SequenceExpression(SequenceExpression(self.0).clone_in(ast))
+            }
+            NodeKind::MemberExpression => {
+                Self::MemberExpression(MemberExpression(self.0).clone_in(ast))
+            }
+            NodeKind::CallExpression => Self::CallExpression(CallExpression(self.0).clone_in(ast)),
+            NodeKind::ChainExpression => {
+                Self::ChainExpression(ChainExpression(self.0).clone_in(ast))
+            }
+            NodeKind::NewExpression => Self::NewExpression(NewExpression(self.0).clone_in(ast)),
+            NodeKind::TaggedTemplateExpression => {
+                Self::TaggedTemplateExpression(TaggedTemplateExpression(self.0).clone_in(ast))
+            }
+            NodeKind::ArrowFunctionExpression => {
+                Self::ArrowFunctionExpression(ArrowFunctionExpression(self.0).clone_in(ast))
+            }
+            NodeKind::ArrayExpression => {
+                Self::ArrayExpression(ArrayExpression(self.0).clone_in(ast))
+            }
+            NodeKind::ObjectExpression => {
+                Self::ObjectExpression(ObjectExpression(self.0).clone_in(ast))
+            }
+            NodeKind::ParenthesizedExpression => {
+                Self::ParenthesizedExpression(ParenthesizedExpression(self.0).clone_in(ast))
+            }
+            NodeKind::Function => Self::Function(Function(self.0).clone_in(ast)),
+            NodeKind::Class => Self::Class(Class(self.0).clone_in(ast)),
+            NodeKind::ImportExpression => {
+                Self::ImportExpression(ImportExpression(self.0).clone_in(ast))
+            }
+            NodeKind::AwaitExpression => {
+                Self::AwaitExpression(AwaitExpression(self.0).clone_in(ast))
+            }
+            NodeKind::YieldExpression => {
+                Self::YieldExpression(YieldExpression(self.0).clone_in(ast))
+            }
+            NodeKind::PrivateIdentifier => {
+                Self::PrivateIdentifier(PrivateIdentifier(self.0).clone_in(ast))
+            }
+            NodeKind::TsAsExpression => Self::TsAsExpression(TsAsExpression(self.0).clone_in(ast)),
+            NodeKind::TsSatisfiesExpression => {
+                Self::TsSatisfiesExpression(TsSatisfiesExpression(self.0).clone_in(ast))
+            }
+            NodeKind::TsTypeAssertion => {
+                Self::TsTypeAssertion(TsTypeAssertion(self.0).clone_in(ast))
+            }
+            NodeKind::TsNonNullExpression => {
+                Self::TsNonNullExpression(TsNonNullExpression(self.0).clone_in(ast))
+            }
+            NodeKind::TsInstantiationExpression => {
+                Self::TsInstantiationExpression(TsInstantiationExpression(self.0).clone_in(ast))
+            }
+            NodeKind::JsxElement => Self::JsxElement(JsxElement(self.0).clone_in(ast)),
+            NodeKind::JsxFragment => Self::JsxFragment(JsxFragment(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -132,18 +218,28 @@ impl<'a> CloneIn<'a> for BindingPattern {
     type Cloned = BindingPattern;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.binding_pattern_data(*self);
-        match data {
-            BindingPatternData::BindingIdentifier(it) => Self::BindingIdentifier(it.clone_in(ast)),
-            BindingPatternData::SimpleAssignmentTarget(it) => {
-                Self::SimpleAssignmentTarget(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                Self::BindingIdentifier(BindingIdentifier(self.0).clone_in(ast))
             }
-            BindingPatternData::AssignmentPattern(it) => Self::AssignmentPattern(it.clone_in(ast)),
-            BindingPatternData::BindingRestElement(it) => {
-                Self::BindingRestElement(it.clone_in(ast))
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                Self::SimpleAssignmentTarget(SimpleAssignmentTarget(self.0).clone_in(ast))
             }
-            BindingPatternData::ArrayPattern(it) => Self::ArrayPattern(it.clone_in(ast)),
-            BindingPatternData::ObjectPattern(it) => Self::ObjectPattern(it.clone_in(ast)),
+            NodeKind::AssignmentPattern => {
+                Self::AssignmentPattern(AssignmentPattern(self.0).clone_in(ast))
+            }
+            NodeKind::BindingRestElement => {
+                Self::BindingRestElement(BindingRestElement(self.0).clone_in(ast))
+            }
+            NodeKind::ArrayPattern => Self::ArrayPattern(ArrayPattern(self.0).clone_in(ast)),
+            NodeKind::ObjectPattern => Self::ObjectPattern(ObjectPattern(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -151,17 +247,23 @@ impl<'a> CloneIn<'a> for AssignmentTarget {
     type Cloned = AssignmentTarget;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.assignment_target_data(*self);
-        match data {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => {
-                Self::SimpleAssignmentTarget(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression => {
+                Self::SimpleAssignmentTarget(SimpleAssignmentTarget(self.0).clone_in(ast))
             }
-            AssignmentTargetData::ArrayAssignmentTarget(it) => {
-                Self::ArrayAssignmentTarget(it.clone_in(ast))
+            NodeKind::ArrayPattern => {
+                Self::ArrayAssignmentTarget(ArrayPattern(self.0).clone_in(ast))
             }
-            AssignmentTargetData::ObjectAssignmentTarget(it) => {
-                Self::ObjectAssignmentTarget(it.clone_in(ast))
+            NodeKind::ObjectPattern => {
+                Self::ObjectAssignmentTarget(ObjectPattern(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -169,26 +271,25 @@ impl<'a> CloneIn<'a> for SimpleAssignmentTarget {
     type Cloned = SimpleAssignmentTarget;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.simple_assignment_target_data(*self);
-        match data {
-            SimpleAssignmentTargetData::IdentifierReference(it) => {
-                Self::IdentifierReference(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                Self::IdentifierReference(IdentifierReference(self.0).clone_in(ast))
             }
-            SimpleAssignmentTargetData::MemberExpression(it) => {
-                Self::MemberExpression(it.clone_in(ast))
+            NodeKind::MemberExpression => {
+                Self::MemberExpression(MemberExpression(self.0).clone_in(ast))
             }
-            SimpleAssignmentTargetData::TsAsExpression(it) => {
-                Self::TsAsExpression(it.clone_in(ast))
+            NodeKind::TsAsExpression => Self::TsAsExpression(TsAsExpression(self.0).clone_in(ast)),
+            NodeKind::TsSatisfiesExpression => {
+                Self::TsSatisfiesExpression(TsSatisfiesExpression(self.0).clone_in(ast))
             }
-            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => {
-                Self::TsSatisfiesExpression(it.clone_in(ast))
+            NodeKind::TsTypeAssertion => {
+                Self::TsTypeAssertion(TsTypeAssertion(self.0).clone_in(ast))
             }
-            SimpleAssignmentTargetData::TsTypeAssertion(it) => {
-                Self::TsTypeAssertion(it.clone_in(ast))
+            NodeKind::TsNonNullExpression => {
+                Self::TsNonNullExpression(TsNonNullExpression(self.0).clone_in(ast))
             }
-            SimpleAssignmentTargetData::TsNonNullExpression(it) => {
-                Self::TsNonNullExpression(it.clone_in(ast))
-            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -196,14 +297,52 @@ impl<'a> CloneIn<'a> for PropertyKey {
     type Cloned = PropertyKey;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.property_key_data(*self);
-        match data {
-            PropertyKeyData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            PropertyKeyData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
-            PropertyKeyData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
-            PropertyKeyData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
-            PropertyKeyData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
-            PropertyKeyData::Expr(it) => Self::Expr(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
+            NodeKind::PrivateIdentifier => {
+                Self::PrivateIdentifier(PrivateIdentifier(self.0).clone_in(ast))
+            }
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            NodeKind::NumericLiteral => Self::NumericLiteral(NumericLiteral(self.0).clone_in(ast)),
+            NodeKind::BigIntLiteral => Self::BigIntLiteral(BigIntLiteral(self.0).clone_in(ast)),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -211,10 +350,11 @@ impl<'a> CloneIn<'a> for ModuleExportName {
     type Cloned = ModuleExportName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.module_export_name_data(*self);
-        match data {
-            ModuleExportNameData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            ModuleExportNameData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -222,10 +362,50 @@ impl<'a> CloneIn<'a> for Argument {
     type Cloned = Argument;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.argument_data(*self);
-        match data {
-            ArgumentData::Expr(it) => Self::Expr(it.clone_in(ast)),
-            ArgumentData::SpreadElement(it) => Self::SpreadElement(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            NodeKind::SpreadElement => Self::SpreadElement(SpreadElement(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -233,10 +413,11 @@ impl<'a> CloneIn<'a> for ObjectPropertyKind {
     type Cloned = ObjectPropertyKind;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.object_property_kind_data(*self);
-        match data {
-            ObjectPropertyKindData::ObjectProperty(it) => Self::ObjectProperty(it.clone_in(ast)),
-            ObjectPropertyKindData::SpreadElement(it) => Self::SpreadElement(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ObjectProperty => Self::ObjectProperty(ObjectProperty(self.0).clone_in(ast)),
+            NodeKind::SpreadElement => Self::SpreadElement(SpreadElement(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -244,12 +425,52 @@ impl<'a> CloneIn<'a> for ForStatementInit {
     type Cloned = ForStatementInit;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.for_statement_init_data(*self);
-        match data {
-            ForStatementInitData::VariableDeclaration(it) => {
-                Self::VariableDeclaration(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                Self::VariableDeclaration(VariableDeclaration(self.0).clone_in(ast))
             }
-            ForStatementInitData::Expr(it) => Self::Expr(it.clone_in(ast)),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -257,12 +478,22 @@ impl<'a> CloneIn<'a> for ForStatementLeft {
     type Cloned = ForStatementLeft;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.for_statement_left_data(*self);
-        match data {
-            ForStatementLeftData::VariableDeclaration(it) => {
-                Self::VariableDeclaration(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                Self::VariableDeclaration(VariableDeclaration(self.0).clone_in(ast))
             }
-            ForStatementLeftData::AssignmentTarget(it) => Self::AssignmentTarget(it.clone_in(ast)),
+            NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => {
+                Self::AssignmentTarget(AssignmentTarget(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -270,10 +501,50 @@ impl<'a> CloneIn<'a> for ArrowFunctionBody {
     type Cloned = ArrowFunctionBody;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.arrow_function_body_data(*self);
-        match data {
-            ArrowFunctionBodyData::FunctionBody(it) => Self::FunctionBody(it.clone_in(ast)),
-            ArrowFunctionBodyData::Expr(it) => Self::Expr(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FunctionBody => Self::FunctionBody(FunctionBody(self.0).clone_in(ast)),
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -281,12 +552,15 @@ impl<'a> CloneIn<'a> for FormalParameterItem {
     type Cloned = FormalParameterItem;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.formal_parameter_item_data(*self);
-        match data {
-            FormalParameterItemData::FormalParameter(it) => Self::FormalParameter(it.clone_in(ast)),
-            FormalParameterItemData::TsParameterProperty(it) => {
-                Self::TsParameterProperty(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FormalParameter => {
+                Self::FormalParameter(FormalParameter(self.0).clone_in(ast))
             }
+            NodeKind::TsParameterProperty => {
+                Self::TsParameterProperty(TsParameterProperty(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -294,14 +568,23 @@ impl<'a> CloneIn<'a> for FormalParameterPattern {
     type Cloned = FormalParameterPattern;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.formal_parameter_pattern_data(*self);
-        match data {
-            FormalParameterPatternData::BindingPattern(it) => {
-                Self::BindingPattern(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier
+            | NodeKind::IdentifierReference
+            | NodeKind::MemberExpression
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::AssignmentPattern
+            | NodeKind::BindingRestElement
+            | NodeKind::ArrayPattern
+            | NodeKind::ObjectPattern => Self::BindingPattern(BindingPattern(self.0).clone_in(ast)),
+            NodeKind::TsThisParameter => {
+                Self::TsThisParameter(TsThisParameter(self.0).clone_in(ast))
             }
-            FormalParameterPatternData::TsThisParameter(it) => {
-                Self::TsThisParameter(it.clone_in(ast))
-            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -309,13 +592,22 @@ impl<'a> CloneIn<'a> for ClassElement {
     type Cloned = ClassElement;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.class_element_data(*self);
-        match data {
-            ClassElementData::MethodDefinition(it) => Self::MethodDefinition(it.clone_in(ast)),
-            ClassElementData::PropertyDefinition(it) => Self::PropertyDefinition(it.clone_in(ast)),
-            ClassElementData::StaticBlock(it) => Self::StaticBlock(it.clone_in(ast)),
-            ClassElementData::TsMethodDefinition(it) => Self::TsMethodDefinition(it.clone_in(ast)),
-            ClassElementData::TsIndexSignature(it) => Self::TsIndexSignature(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::MethodDefinition => {
+                Self::MethodDefinition(MethodDefinition(self.0).clone_in(ast))
+            }
+            NodeKind::PropertyDefinition => {
+                Self::PropertyDefinition(PropertyDefinition(self.0).clone_in(ast))
+            }
+            NodeKind::StaticBlock => Self::StaticBlock(StaticBlock(self.0).clone_in(ast)),
+            NodeKind::TsMethodDefinition => {
+                Self::TsMethodDefinition(TsMethodDefinition(self.0).clone_in(ast))
+            }
+            NodeKind::TsIndexSignature => {
+                Self::TsIndexSignature(TsIndexSignature(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -323,17 +615,18 @@ impl<'a> CloneIn<'a> for ImportDeclarationSpecifier {
     type Cloned = ImportDeclarationSpecifier;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.import_declaration_specifier_data(*self);
-        match data {
-            ImportDeclarationSpecifierData::ImportSpecifier(it) => {
-                Self::ImportSpecifier(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ImportSpecifier => {
+                Self::ImportSpecifier(ImportSpecifier(self.0).clone_in(ast))
             }
-            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => {
-                Self::ImportDefaultSpecifier(it.clone_in(ast))
+            NodeKind::ImportDefaultSpecifier => {
+                Self::ImportDefaultSpecifier(ImportDefaultSpecifier(self.0).clone_in(ast))
             }
-            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => {
-                Self::ImportNamespaceSpecifier(it.clone_in(ast))
+            NodeKind::ImportNamespaceSpecifier => {
+                Self::ImportNamespaceSpecifier(ImportNamespaceSpecifier(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -341,15 +634,67 @@ impl<'a> CloneIn<'a> for ExportDefaultDeclarationKind {
     type Cloned = ExportDefaultDeclarationKind;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.export_default_declaration_kind_data(*self);
-        match data {
-            ExportDefaultDeclarationKindData::Expr(it) => Self::Expr(it.clone_in(ast)),
-            ExportDefaultDeclarationKindData::Function(it) => Self::Function(it.clone_in(ast)),
-            ExportDefaultDeclarationKindData::Class(it) => Self::Class(it.clone_in(ast)),
-            ExportDefaultDeclarationKindData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
-                Self::TsInterfaceDeclaration(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::Function => {
+                let concrete = Function(self.0);
+                if concrete.function_type(ast) == FunctionType::FunctionDeclaration {
+                    Self::Function(concrete.clone_in(ast))
+                } else {
+                    Self::Expr(Expr(self.0).clone_in(ast))
+                }
             }
+            NodeKind::Class => {
+                let concrete = Class(self.0);
+                if concrete.class_type(ast) == ClassType::ClassDeclaration {
+                    Self::Class(concrete.clone_in(ast))
+                } else {
+                    Self::Expr(Expr(self.0).clone_in(ast))
+                }
+            }
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            NodeKind::TsFunction => Self::TsFunction(TsFunction(self.0).clone_in(ast)),
+            NodeKind::TsInterfaceDeclaration => {
+                Self::TsInterfaceDeclaration(TsInterfaceDeclaration(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1334,48 +1679,87 @@ impl<'a> CloneIn<'a> for TsType {
     type Cloned = TsType;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_type_data(*self);
-        match data {
-            TsTypeData::TsAnyKeyword(it) => Self::TsAnyKeyword(it.clone_in(ast)),
-            TsTypeData::TsUnknownKeyword(it) => Self::TsUnknownKeyword(it.clone_in(ast)),
-            TsTypeData::TsNeverKeyword(it) => Self::TsNeverKeyword(it.clone_in(ast)),
-            TsTypeData::TsVoidKeyword(it) => Self::TsVoidKeyword(it.clone_in(ast)),
-            TsTypeData::TsNullKeyword(it) => Self::TsNullKeyword(it.clone_in(ast)),
-            TsTypeData::TsUndefinedKeyword(it) => Self::TsUndefinedKeyword(it.clone_in(ast)),
-            TsTypeData::TsStringKeyword(it) => Self::TsStringKeyword(it.clone_in(ast)),
-            TsTypeData::TsNumberKeyword(it) => Self::TsNumberKeyword(it.clone_in(ast)),
-            TsTypeData::TsBigIntKeyword(it) => Self::TsBigIntKeyword(it.clone_in(ast)),
-            TsTypeData::TsBooleanKeyword(it) => Self::TsBooleanKeyword(it.clone_in(ast)),
-            TsTypeData::TsSymbolKeyword(it) => Self::TsSymbolKeyword(it.clone_in(ast)),
-            TsTypeData::TsObjectKeyword(it) => Self::TsObjectKeyword(it.clone_in(ast)),
-            TsTypeData::TsIntrinsicKeyword(it) => Self::TsIntrinsicKeyword(it.clone_in(ast)),
-            TsTypeData::TsThisType(it) => Self::TsThisType(it.clone_in(ast)),
-            TsTypeData::TsTypeReference(it) => Self::TsTypeReference(it.clone_in(ast)),
-            TsTypeData::TsTypeQuery(it) => Self::TsTypeQuery(it.clone_in(ast)),
-            TsTypeData::TsImportType(it) => Self::TsImportType(it.clone_in(ast)),
-            TsTypeData::TsLiteralType(it) => Self::TsLiteralType(it.clone_in(ast)),
-            TsTypeData::TsTemplateLiteralType(it) => Self::TsTemplateLiteralType(it.clone_in(ast)),
-            TsTypeData::TsArrayType(it) => Self::TsArrayType(it.clone_in(ast)),
-            TsTypeData::TsIndexedAccessType(it) => Self::TsIndexedAccessType(it.clone_in(ast)),
-            TsTypeData::TsTupleType(it) => Self::TsTupleType(it.clone_in(ast)),
-            TsTypeData::TsOptionalType(it) => Self::TsOptionalType(it.clone_in(ast)),
-            TsTypeData::TsRestType(it) => Self::TsRestType(it.clone_in(ast)),
-            TsTypeData::TsJsDocNullableType(it) => Self::TsJsDocNullableType(it.clone_in(ast)),
-            TsTypeData::TsJsDocNonNullableType(it) => {
-                Self::TsJsDocNonNullableType(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword => Self::TsAnyKeyword(TsAnyKeyword(self.0).clone_in(ast)),
+            NodeKind::TsUnknownKeyword => {
+                Self::TsUnknownKeyword(TsUnknownKeyword(self.0).clone_in(ast))
             }
-            TsTypeData::TsJsDocUnknownType(it) => Self::TsJsDocUnknownType(it.clone_in(ast)),
-            TsTypeData::TsUnionType(it) => Self::TsUnionType(it.clone_in(ast)),
-            TsTypeData::TsIntersectionType(it) => Self::TsIntersectionType(it.clone_in(ast)),
-            TsTypeData::TsConditionalType(it) => Self::TsConditionalType(it.clone_in(ast)),
-            TsTypeData::TsInferType(it) => Self::TsInferType(it.clone_in(ast)),
-            TsTypeData::TsTypeOperator(it) => Self::TsTypeOperator(it.clone_in(ast)),
-            TsTypeData::TsParenthesizedType(it) => Self::TsParenthesizedType(it.clone_in(ast)),
-            TsTypeData::TsFunctionType(it) => Self::TsFunctionType(it.clone_in(ast)),
-            TsTypeData::TsConstructorType(it) => Self::TsConstructorType(it.clone_in(ast)),
-            TsTypeData::TsTypePredicate(it) => Self::TsTypePredicate(it.clone_in(ast)),
-            TsTypeData::TsTypeLiteral(it) => Self::TsTypeLiteral(it.clone_in(ast)),
-            TsTypeData::TsMappedType(it) => Self::TsMappedType(it.clone_in(ast)),
+            NodeKind::TsNeverKeyword => Self::TsNeverKeyword(TsNeverKeyword(self.0).clone_in(ast)),
+            NodeKind::TsVoidKeyword => Self::TsVoidKeyword(TsVoidKeyword(self.0).clone_in(ast)),
+            NodeKind::TsNullKeyword => Self::TsNullKeyword(TsNullKeyword(self.0).clone_in(ast)),
+            NodeKind::TsUndefinedKeyword => {
+                Self::TsUndefinedKeyword(TsUndefinedKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsStringKeyword => {
+                Self::TsStringKeyword(TsStringKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsNumberKeyword => {
+                Self::TsNumberKeyword(TsNumberKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsBigIntKeyword => {
+                Self::TsBigIntKeyword(TsBigIntKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsBooleanKeyword => {
+                Self::TsBooleanKeyword(TsBooleanKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsSymbolKeyword => {
+                Self::TsSymbolKeyword(TsSymbolKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsObjectKeyword => {
+                Self::TsObjectKeyword(TsObjectKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsIntrinsicKeyword => {
+                Self::TsIntrinsicKeyword(TsIntrinsicKeyword(self.0).clone_in(ast))
+            }
+            NodeKind::TsThisType => Self::TsThisType(TsThisType(self.0).clone_in(ast)),
+            NodeKind::TsTypeReference => {
+                Self::TsTypeReference(TsTypeReference(self.0).clone_in(ast))
+            }
+            NodeKind::TsTypeQuery => Self::TsTypeQuery(TsTypeQuery(self.0).clone_in(ast)),
+            NodeKind::TsImportType => Self::TsImportType(TsImportType(self.0).clone_in(ast)),
+            NodeKind::TsLiteralType => Self::TsLiteralType(TsLiteralType(self.0).clone_in(ast)),
+            NodeKind::TsTemplateLiteralType => {
+                Self::TsTemplateLiteralType(TsTemplateLiteralType(self.0).clone_in(ast))
+            }
+            NodeKind::TsArrayType => Self::TsArrayType(TsArrayType(self.0).clone_in(ast)),
+            NodeKind::TsIndexedAccessType => {
+                Self::TsIndexedAccessType(TsIndexedAccessType(self.0).clone_in(ast))
+            }
+            NodeKind::TsTupleType => Self::TsTupleType(TsTupleType(self.0).clone_in(ast)),
+            NodeKind::TsOptionalType => Self::TsOptionalType(TsOptionalType(self.0).clone_in(ast)),
+            NodeKind::TsRestType => Self::TsRestType(TsRestType(self.0).clone_in(ast)),
+            NodeKind::TsJsDocNullableType => {
+                Self::TsJsDocNullableType(TsJsDocNullableType(self.0).clone_in(ast))
+            }
+            NodeKind::TsJsDocNonNullableType => {
+                Self::TsJsDocNonNullableType(TsJsDocNonNullableType(self.0).clone_in(ast))
+            }
+            NodeKind::TsJsDocUnknownType => {
+                Self::TsJsDocUnknownType(TsJsDocUnknownType(self.0).clone_in(ast))
+            }
+            NodeKind::TsUnionType => Self::TsUnionType(TsUnionType(self.0).clone_in(ast)),
+            NodeKind::TsIntersectionType => {
+                Self::TsIntersectionType(TsIntersectionType(self.0).clone_in(ast))
+            }
+            NodeKind::TsConditionalType => {
+                Self::TsConditionalType(TsConditionalType(self.0).clone_in(ast))
+            }
+            NodeKind::TsInferType => Self::TsInferType(TsInferType(self.0).clone_in(ast)),
+            NodeKind::TsTypeOperator => Self::TsTypeOperator(TsTypeOperator(self.0).clone_in(ast)),
+            NodeKind::TsParenthesizedType => {
+                Self::TsParenthesizedType(TsParenthesizedType(self.0).clone_in(ast))
+            }
+            NodeKind::TsFunctionType => Self::TsFunctionType(TsFunctionType(self.0).clone_in(ast)),
+            NodeKind::TsConstructorType => {
+                Self::TsConstructorType(TsConstructorType(self.0).clone_in(ast))
+            }
+            NodeKind::TsTypePredicate => {
+                Self::TsTypePredicate(TsTypePredicate(self.0).clone_in(ast))
+            }
+            NodeKind::TsTypeLiteral => Self::TsTypeLiteral(TsTypeLiteral(self.0).clone_in(ast)),
+            NodeKind::TsMappedType => Self::TsMappedType(TsMappedType(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1383,10 +1767,15 @@ impl<'a> CloneIn<'a> for TsTypeName {
     type Cloned = TsTypeName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_type_name_data(*self);
-        match data {
-            TsTypeNameData::IdentifierReference(it) => Self::IdentifierReference(it.clone_in(ast)),
-            TsTypeNameData::TsQualifiedName(it) => Self::TsQualifiedName(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                Self::IdentifierReference(IdentifierReference(self.0).clone_in(ast))
+            }
+            NodeKind::TsQualifiedName => {
+                Self::TsQualifiedName(TsQualifiedName(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1394,17 +1783,20 @@ impl<'a> CloneIn<'a> for TsQualifiedNameLeft {
     type Cloned = TsQualifiedNameLeft;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_qualified_name_left_data(*self);
-        match data {
-            TsQualifiedNameLeftData::IdentifierReference(it) => {
-                Self::IdentifierReference(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                Self::IdentifierReference(IdentifierReference(self.0).clone_in(ast))
             }
-            TsQualifiedNameLeftData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            TsQualifiedNameLeftData::BindingIdentifier(it) => {
-                Self::BindingIdentifier(it.clone_in(ast))
+            NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
+            NodeKind::BindingIdentifier => {
+                Self::BindingIdentifier(BindingIdentifier(self.0).clone_in(ast))
             }
-            TsQualifiedNameLeftData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
-            TsQualifiedNameLeftData::TsQualifiedName(it) => Self::TsQualifiedName(it.clone_in(ast)),
+            NodeKind::ThisExpression => Self::ThisExpression(ThisExpression(self.0).clone_in(ast)),
+            NodeKind::TsQualifiedName => {
+                Self::TsQualifiedName(TsQualifiedName(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1412,12 +1804,13 @@ impl<'a> CloneIn<'a> for TsImportTypeQualifier {
     type Cloned = TsImportTypeQualifier;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_import_type_qualifier_data(*self);
-        match data {
-            TsImportTypeQualifierData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            TsImportTypeQualifierData::TsQualifiedName(it) => {
-                Self::TsQualifiedName(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
+            NodeKind::TsQualifiedName => {
+                Self::TsQualifiedName(TsQualifiedName(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1425,11 +1818,14 @@ impl<'a> CloneIn<'a> for TsTypeQueryExprName {
     type Cloned = TsTypeQueryExprName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_type_query_expr_name_data(*self);
-        match data {
-            TsTypeQueryExprNameData::TsTypeName(it) => Self::TsTypeName(it.clone_in(ast)),
-            TsTypeQueryExprNameData::ThisExpression(it) => Self::ThisExpression(it.clone_in(ast)),
-            TsTypeQueryExprNameData::TsImportType(it) => Self::TsImportType(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                Self::TsTypeName(TsTypeName(self.0).clone_in(ast))
+            }
+            NodeKind::ThisExpression => Self::ThisExpression(ThisExpression(self.0).clone_in(ast)),
+            NodeKind::TsImportType => Self::TsImportType(TsImportType(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1437,14 +1833,19 @@ impl<'a> CloneIn<'a> for TsLiteral {
     type Cloned = TsLiteral;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_literal_data(*self);
-        match data {
-            TsLiteralData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
-            TsLiteralData::NumericLiteral(it) => Self::NumericLiteral(it.clone_in(ast)),
-            TsLiteralData::BigIntLiteral(it) => Self::BigIntLiteral(it.clone_in(ast)),
-            TsLiteralData::BooleanLiteral(it) => Self::BooleanLiteral(it.clone_in(ast)),
-            TsLiteralData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
-            TsLiteralData::UnaryExpression(it) => Self::UnaryExpression(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            NodeKind::NumericLiteral => Self::NumericLiteral(NumericLiteral(self.0).clone_in(ast)),
+            NodeKind::BigIntLiteral => Self::BigIntLiteral(BigIntLiteral(self.0).clone_in(ast)),
+            NodeKind::BooleanLiteral => Self::BooleanLiteral(BooleanLiteral(self.0).clone_in(ast)),
+            NodeKind::TemplateLiteral => {
+                Self::TemplateLiteral(TemplateLiteral(self.0).clone_in(ast))
+            }
+            NodeKind::UnaryExpression => {
+                Self::UnaryExpression(UnaryExpression(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1452,12 +1853,50 @@ impl<'a> CloneIn<'a> for TsTupleElement {
     type Cloned = TsTupleElement;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_tuple_element_data(*self);
-        match data {
-            TsTupleElementData::TsType(it) => Self::TsType(it.clone_in(ast)),
-            TsTupleElementData::TsNamedTupleMember(it) => {
-                Self::TsNamedTupleMember(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword
+            | NodeKind::TsUnknownKeyword
+            | NodeKind::TsNeverKeyword
+            | NodeKind::TsVoidKeyword
+            | NodeKind::TsNullKeyword
+            | NodeKind::TsUndefinedKeyword
+            | NodeKind::TsStringKeyword
+            | NodeKind::TsNumberKeyword
+            | NodeKind::TsBigIntKeyword
+            | NodeKind::TsBooleanKeyword
+            | NodeKind::TsSymbolKeyword
+            | NodeKind::TsObjectKeyword
+            | NodeKind::TsIntrinsicKeyword
+            | NodeKind::TsThisType
+            | NodeKind::TsTypeReference
+            | NodeKind::TsTypeQuery
+            | NodeKind::TsImportType
+            | NodeKind::TsLiteralType
+            | NodeKind::TsTemplateLiteralType
+            | NodeKind::TsArrayType
+            | NodeKind::TsIndexedAccessType
+            | NodeKind::TsTupleType
+            | NodeKind::TsOptionalType
+            | NodeKind::TsRestType
+            | NodeKind::TsJsDocNullableType
+            | NodeKind::TsJsDocNonNullableType
+            | NodeKind::TsJsDocUnknownType
+            | NodeKind::TsUnionType
+            | NodeKind::TsIntersectionType
+            | NodeKind::TsConditionalType
+            | NodeKind::TsInferType
+            | NodeKind::TsTypeOperator
+            | NodeKind::TsParenthesizedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsTypePredicate
+            | NodeKind::TsTypeLiteral
+            | NodeKind::TsMappedType => Self::TsType(TsType(self.0).clone_in(ast)),
+            NodeKind::TsNamedTupleMember => {
+                Self::TsNamedTupleMember(TsNamedTupleMember(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1465,19 +1904,24 @@ impl<'a> CloneIn<'a> for TsTypeElement {
     type Cloned = TsTypeElement;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_type_element_data(*self);
-        match data {
-            TsTypeElementData::TsPropertySignature(it) => {
-                Self::TsPropertySignature(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsPropertySignature => {
+                Self::TsPropertySignature(TsPropertySignature(self.0).clone_in(ast))
             }
-            TsTypeElementData::TsMethodSignature(it) => Self::TsMethodSignature(it.clone_in(ast)),
-            TsTypeElementData::TsCallSignatureDeclaration(it) => {
-                Self::TsCallSignatureDeclaration(it.clone_in(ast))
+            NodeKind::TsMethodSignature => {
+                Self::TsMethodSignature(TsMethodSignature(self.0).clone_in(ast))
             }
-            TsTypeElementData::TsConstructSignatureDeclaration(it) => {
-                Self::TsConstructSignatureDeclaration(it.clone_in(ast))
+            NodeKind::TsCallSignatureDeclaration => {
+                Self::TsCallSignatureDeclaration(TsCallSignatureDeclaration(self.0).clone_in(ast))
             }
-            TsTypeElementData::TsIndexSignature(it) => Self::TsIndexSignature(it.clone_in(ast)),
+            NodeKind::TsConstructSignatureDeclaration => Self::TsConstructSignatureDeclaration(
+                TsConstructSignatureDeclaration(self.0).clone_in(ast),
+            ),
+            NodeKind::TsIndexSignature => {
+                Self::TsIndexSignature(TsIndexSignature(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1485,10 +1929,11 @@ impl<'a> CloneIn<'a> for TsTypePredicateName {
     type Cloned = TsTypePredicateName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_type_predicate_name_data(*self);
-        match data {
-            TsTypePredicateNameData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            TsTypePredicateNameData::TsThisType(it) => Self::TsThisType(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
+            NodeKind::TsThisType => Self::TsThisType(TsThisType(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1496,12 +1941,52 @@ impl<'a> CloneIn<'a> for TsEnumMemberName {
     type Cloned = TsEnumMemberName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_enum_member_name_data(*self);
-        match data {
-            TsEnumMemberNameData::IdentifierName(it) => Self::IdentifierName(it.clone_in(ast)),
-            TsEnumMemberNameData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
-            TsEnumMemberNameData::TemplateLiteral(it) => Self::TemplateLiteral(it.clone_in(ast)),
-            TsEnumMemberNameData::Expr(it) => Self::Expr(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            NodeKind::TemplateLiteral => {
+                Self::TemplateLiteral(TemplateLiteral(self.0).clone_in(ast))
+            }
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1509,11 +1994,16 @@ impl<'a> CloneIn<'a> for TsModuleName {
     type Cloned = TsModuleName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_module_name_data(*self);
-        match data {
-            TsModuleNameData::BindingIdentifier(it) => Self::BindingIdentifier(it.clone_in(ast)),
-            TsModuleNameData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
-            TsModuleNameData::TsQualifiedName(it) => Self::TsQualifiedName(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                Self::BindingIdentifier(BindingIdentifier(self.0).clone_in(ast))
+            }
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            NodeKind::TsQualifiedName => {
+                Self::TsQualifiedName(TsQualifiedName(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1521,12 +2011,13 @@ impl<'a> CloneIn<'a> for TsModuleBody {
     type Cloned = TsModuleBody;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_module_body_data(*self);
-        match data {
-            TsModuleBodyData::TsModuleBlock(it) => Self::TsModuleBlock(it.clone_in(ast)),
-            TsModuleBodyData::TsModuleDeclaration(it) => {
-                Self::TsModuleDeclaration(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsModuleBlock => Self::TsModuleBlock(TsModuleBlock(self.0).clone_in(ast)),
+            NodeKind::TsModuleDeclaration => {
+                Self::TsModuleDeclaration(TsModuleDeclaration(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -1534,12 +2025,15 @@ impl<'a> CloneIn<'a> for TsModuleReference {
     type Cloned = TsModuleReference;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.ts_module_reference_data(*self);
-        match data {
-            TsModuleReferenceData::TsTypeName(it) => Self::TsTypeName(it.clone_in(ast)),
-            TsModuleReferenceData::TsExternalModuleReference(it) => {
-                Self::TsExternalModuleReference(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
+                Self::TsTypeName(TsTypeName(self.0).clone_in(ast))
             }
+            NodeKind::TsExternalModuleReference => {
+                Self::TsExternalModuleReference(TsExternalModuleReference(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2329,13 +2823,16 @@ impl<'a> CloneIn<'a> for JsxElementName {
     type Cloned = JsxElementName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_element_name_data(*self);
-        match data {
-            JsxElementNameData::JsxIdentifier(it) => Self::JsxIdentifier(it.clone_in(ast)),
-            JsxElementNameData::JsxNamespacedName(it) => Self::JsxNamespacedName(it.clone_in(ast)),
-            JsxElementNameData::JsxMemberExpression(it) => {
-                Self::JsxMemberExpression(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => Self::JsxIdentifier(JsxIdentifier(self.0).clone_in(ast)),
+            NodeKind::JsxNamespacedName => {
+                Self::JsxNamespacedName(JsxNamespacedName(self.0).clone_in(ast))
             }
+            NodeKind::JsxMemberExpression => {
+                Self::JsxMemberExpression(JsxMemberExpression(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2343,14 +2840,13 @@ impl<'a> CloneIn<'a> for JsxMemberExpressionObject {
     type Cloned = JsxMemberExpressionObject;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_member_expression_object_data(*self);
-        match data {
-            JsxMemberExpressionObjectData::JsxIdentifier(it) => {
-                Self::JsxIdentifier(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => Self::JsxIdentifier(JsxIdentifier(self.0).clone_in(ast)),
+            NodeKind::JsxMemberExpression => {
+                Self::JsxMemberExpression(JsxMemberExpression(self.0).clone_in(ast))
             }
-            JsxMemberExpressionObjectData::JsxMemberExpression(it) => {
-                Self::JsxMemberExpression(it.clone_in(ast))
-            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2358,12 +2854,13 @@ impl<'a> CloneIn<'a> for JsxAttributeName {
     type Cloned = JsxAttributeName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_attribute_name_data(*self);
-        match data {
-            JsxAttributeNameData::JsxIdentifier(it) => Self::JsxIdentifier(it.clone_in(ast)),
-            JsxAttributeNameData::JsxNamespacedName(it) => {
-                Self::JsxNamespacedName(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => Self::JsxIdentifier(JsxIdentifier(self.0).clone_in(ast)),
+            NodeKind::JsxNamespacedName => {
+                Self::JsxNamespacedName(JsxNamespacedName(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2371,12 +2868,13 @@ impl<'a> CloneIn<'a> for JsxAttributeItem {
     type Cloned = JsxAttributeItem;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_attribute_item_data(*self);
-        match data {
-            JsxAttributeItemData::JsxAttribute(it) => Self::JsxAttribute(it.clone_in(ast)),
-            JsxAttributeItemData::JsxSpreadAttribute(it) => {
-                Self::JsxSpreadAttribute(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxAttribute => Self::JsxAttribute(JsxAttribute(self.0).clone_in(ast)),
+            NodeKind::JsxSpreadAttribute => {
+                Self::JsxSpreadAttribute(JsxSpreadAttribute(self.0).clone_in(ast))
             }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2384,14 +2882,15 @@ impl<'a> CloneIn<'a> for JsxAttributeValue {
     type Cloned = JsxAttributeValue;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_attribute_value_data(*self);
-        match data {
-            JsxAttributeValueData::StringLiteral(it) => Self::StringLiteral(it.clone_in(ast)),
-            JsxAttributeValueData::JsxExpressionContainer(it) => {
-                Self::JsxExpressionContainer(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
+            NodeKind::JsxExpressionContainer => {
+                Self::JsxExpressionContainer(JsxExpressionContainer(self.0).clone_in(ast))
             }
-            JsxAttributeValueData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
-            JsxAttributeValueData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
+            NodeKind::JsxElement => Self::JsxElement(JsxElement(self.0).clone_in(ast)),
+            NodeKind::JsxFragment => Self::JsxFragment(JsxFragment(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2399,10 +2898,52 @@ impl<'a> CloneIn<'a> for JsxExpression {
     type Cloned = JsxExpression;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_expression_data(*self);
-        match data {
-            JsxExpressionData::Expr(it) => Self::Expr(it.clone_in(ast)),
-            JsxExpressionData::JsxEmptyExpression(it) => Self::JsxEmptyExpression(it.clone_in(ast)),
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference
+            | NodeKind::ThisExpression
+            | NodeKind::Super
+            | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
+            | NodeKind::BooleanLiteral
+            | NodeKind::NullLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
+            | NodeKind::BinaryExpression
+            | NodeKind::LogicalExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::ConditionalExpression
+            | NodeKind::SequenceExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::ChainExpression
+            | NodeKind::NewExpression
+            | NodeKind::TaggedTemplateExpression
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::ArrayExpression
+            | NodeKind::ObjectExpression
+            | NodeKind::ParenthesizedExpression
+            | NodeKind::Function
+            | NodeKind::Class
+            | NodeKind::ImportExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
+            | NodeKind::TsAsExpression
+            | NodeKind::TsSatisfiesExpression
+            | NodeKind::TsTypeAssertion
+            | NodeKind::TsNonNullExpression
+            | NodeKind::TsInstantiationExpression
+            | NodeKind::JsxElement
+            | NodeKind::JsxFragment => Self::Expr(Expr(self.0).clone_in(ast)),
+            NodeKind::JsxEmptyExpression => {
+                Self::JsxEmptyExpression(JsxEmptyExpression(self.0).clone_in(ast))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
@@ -2410,15 +2951,16 @@ impl<'a> CloneIn<'a> for JsxChild {
     type Cloned = JsxChild;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.jsx_child_data(*self);
-        match data {
-            JsxChildData::JsxText(it) => Self::JsxText(it.clone_in(ast)),
-            JsxChildData::JsxExpressionContainer(it) => {
-                Self::JsxExpressionContainer(it.clone_in(ast))
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxText => Self::JsxText(JsxText(self.0).clone_in(ast)),
+            NodeKind::JsxExpressionContainer => {
+                Self::JsxExpressionContainer(JsxExpressionContainer(self.0).clone_in(ast))
             }
-            JsxChildData::JsxSpreadChild(it) => Self::JsxSpreadChild(it.clone_in(ast)),
-            JsxChildData::JsxElement(it) => Self::JsxElement(it.clone_in(ast)),
-            JsxChildData::JsxFragment(it) => Self::JsxFragment(it.clone_in(ast)),
+            NodeKind::JsxSpreadChild => Self::JsxSpreadChild(JsxSpreadChild(self.0).clone_in(ast)),
+            NodeKind::JsxElement => Self::JsxElement(JsxElement(self.0).clone_in(ast)),
+            NodeKind::JsxFragment => Self::JsxFragment(JsxFragment(self.0).clone_in(ast)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }

@@ -184,170 +184,230 @@ impl Stmt {
     }
     #[inline]
     pub fn as_block_statement(self, ast: &Ast<'_>) -> Option<BlockStatement> {
-        match ast.stmt_data(self) {
-            StmtData::BlockStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BlockStatement) {
+            Some(BlockStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_break_statement(self, ast: &Ast<'_>) -> Option<BreakStatement> {
-        match ast.stmt_data(self) {
-            StmtData::BreakStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BreakStatement) {
+            Some(BreakStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_continue_statement(self, ast: &Ast<'_>) -> Option<ContinueStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ContinueStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ContinueStatement) {
+            Some(ContinueStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_debugger_statement(self, ast: &Ast<'_>) -> Option<DebuggerStatement> {
-        match ast.stmt_data(self) {
-            StmtData::DebuggerStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::DebuggerStatement) {
+            Some(DebuggerStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_do_while_statement(self, ast: &Ast<'_>) -> Option<DoWhileStatement> {
-        match ast.stmt_data(self) {
-            StmtData::DoWhileStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::DoWhileStatement) {
+            Some(DoWhileStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_empty_statement(self, ast: &Ast<'_>) -> Option<EmptyStatement> {
-        match ast.stmt_data(self) {
-            StmtData::EmptyStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::EmptyStatement) {
+            Some(EmptyStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_expression_statement(self, ast: &Ast<'_>) -> Option<ExpressionStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ExpressionStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ExpressionStatement) {
+            Some(ExpressionStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_for_in_statement(self, ast: &Ast<'_>) -> Option<ForInStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ForInStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ForInStatement) {
+            Some(ForInStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_for_of_statement(self, ast: &Ast<'_>) -> Option<ForOfStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ForOfStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ForOfStatement) {
+            Some(ForOfStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_for_statement(self, ast: &Ast<'_>) -> Option<ForStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ForStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ForStatement) {
+            Some(ForStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_if_statement(self, ast: &Ast<'_>) -> Option<IfStatement> {
-        match ast.stmt_data(self) {
-            StmtData::IfStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IfStatement) {
+            Some(IfStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_labeled_statement(self, ast: &Ast<'_>) -> Option<LabeledStatement> {
-        match ast.stmt_data(self) {
-            StmtData::LabeledStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::LabeledStatement) {
+            Some(LabeledStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_return_statement(self, ast: &Ast<'_>) -> Option<ReturnStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ReturnStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ReturnStatement) {
+            Some(ReturnStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_switch_statement(self, ast: &Ast<'_>) -> Option<SwitchStatement> {
-        match ast.stmt_data(self) {
-            StmtData::SwitchStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::SwitchStatement) {
+            Some(SwitchStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_throw_statement(self, ast: &Ast<'_>) -> Option<ThrowStatement> {
-        match ast.stmt_data(self) {
-            StmtData::ThrowStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ThrowStatement) {
+            Some(ThrowStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_try_statement(self, ast: &Ast<'_>) -> Option<TryStatement> {
-        match ast.stmt_data(self) {
-            StmtData::TryStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TryStatement) {
+            Some(TryStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_while_statement(self, ast: &Ast<'_>) -> Option<WhileStatement> {
-        match ast.stmt_data(self) {
-            StmtData::WhileStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::WhileStatement) {
+            Some(WhileStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_with_statement(self, ast: &Ast<'_>) -> Option<WithStatement> {
-        match ast.stmt_data(self) {
-            StmtData::WithStatement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::WithStatement) {
+            Some(WithStatement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_declaration(self, ast: &Ast<'_>) -> Option<Decl> {
-        match ast.stmt_data(self) {
-            StmtData::Declaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::VariableDeclaration
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::TsFunction
+                | NodeKind::TsTypeAliasDeclaration
+                | NodeKind::TsInterfaceDeclaration
+                | NodeKind::TsEnumDeclaration
+                | NodeKind::TsModuleDeclaration
+                | NodeKind::TsGlobalDeclaration
+                | NodeKind::TsImportEqualsDeclaration
+        ) {
+            Some(Decl(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_import_declaration(self, ast: &Ast<'_>) -> Option<ImportDeclaration> {
-        match ast.stmt_data(self) {
-            StmtData::ImportDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ImportDeclaration) {
+            Some(ImportDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_export_named_declaration(self, ast: &Ast<'_>) -> Option<ExportNamedDeclaration> {
-        match ast.stmt_data(self) {
-            StmtData::ExportNamedDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ExportNamedDeclaration) {
+            Some(ExportNamedDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_export_default_declaration(self, ast: &Ast<'_>) -> Option<ExportDefaultDeclaration> {
-        match ast.stmt_data(self) {
-            StmtData::ExportDefaultDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ExportDefaultDeclaration) {
+            Some(ExportDefaultDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_export_all_declaration(self, ast: &Ast<'_>) -> Option<ExportAllDeclaration> {
-        match ast.stmt_data(self) {
-            StmtData::ExportAllDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ExportAllDeclaration) {
+            Some(ExportAllDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_export_assignment(self, ast: &Ast<'_>) -> Option<TsExportAssignment> {
-        match ast.stmt_data(self) {
-            StmtData::TsExportAssignment(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsExportAssignment) {
+            Some(TsExportAssignment(self.0))
+        } else {
+            None
         }
     }
     #[inline]
@@ -355,9 +415,11 @@ impl Stmt {
         self,
         ast: &Ast<'_>,
     ) -> Option<TsNamespaceExportDeclaration> {
-        match ast.stmt_data(self) {
-            StmtData::TsNamespaceExportDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNamespaceExportDeclaration) {
+            Some(TsNamespaceExportDeclaration(self.0))
+        } else {
+            None
         }
     }
 }
@@ -404,65 +466,83 @@ impl Decl {
     }
     #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::VariableDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::VariableDeclaration) {
+            Some(VariableDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_function(self, ast: &Ast<'_>) -> Option<Function> {
-        match ast.decl_data(self) {
-            DeclData::Function(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::Function) {
+            Some(Function(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_class(self, ast: &Ast<'_>) -> Option<Class> {
-        match ast.decl_data(self) {
-            DeclData::Class(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::Class) {
+            Some(Class(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_function(self, ast: &Ast<'_>) -> Option<TsFunction> {
-        match ast.decl_data(self) {
-            DeclData::TsFunction(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsFunction) {
+            Some(TsFunction(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_alias_declaration(self, ast: &Ast<'_>) -> Option<TsTypeAliasDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::TsTypeAliasDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeAliasDeclaration) {
+            Some(TsTypeAliasDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_interface_declaration(self, ast: &Ast<'_>) -> Option<TsInterfaceDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::TsInterfaceDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsInterfaceDeclaration) {
+            Some(TsInterfaceDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_enum_declaration(self, ast: &Ast<'_>) -> Option<TsEnumDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::TsEnumDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsEnumDeclaration) {
+            Some(TsEnumDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_module_declaration(self, ast: &Ast<'_>) -> Option<TsModuleDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::TsModuleDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsModuleDeclaration) {
+            Some(TsModuleDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_global_declaration(self, ast: &Ast<'_>) -> Option<TsGlobalDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::TsGlobalDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsGlobalDeclaration) {
+            Some(TsGlobalDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
@@ -470,9 +550,11 @@ impl Decl {
         self,
         ast: &Ast<'_>,
     ) -> Option<TsImportEqualsDeclaration> {
-        match ast.decl_data(self) {
-            DeclData::TsImportEqualsDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsImportEqualsDeclaration) {
+            Some(TsImportEqualsDeclaration(self.0))
+        } else {
+            None
         }
     }
 }
@@ -639,261 +721,335 @@ impl Expr {
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
-        match ast.expr_data(self) {
-            ExprData::IdentifierReference(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierReference) {
+            Some(IdentifierReference(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
-        match ast.expr_data(self) {
-            ExprData::ThisExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ThisExpression) {
+            Some(ThisExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_super(self, ast: &Ast<'_>) -> Option<Super> {
-        match ast.expr_data(self) {
-            ExprData::Super(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::Super) {
+            Some(Super(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_meta_property(self, ast: &Ast<'_>) -> Option<MetaProperty> {
-        match ast.expr_data(self) {
-            ExprData::MetaProperty(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::MetaProperty) {
+            Some(MetaProperty(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.expr_data(self) {
-            ExprData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
-        match ast.expr_data(self) {
-            ExprData::NumericLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::NumericLiteral) {
+            Some(NumericLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
-        match ast.expr_data(self) {
-            ExprData::BigIntLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BigIntLiteral) {
+            Some(BigIntLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
-        match ast.expr_data(self) {
-            ExprData::BooleanLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BooleanLiteral) {
+            Some(BooleanLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_null_literal(self, ast: &Ast<'_>) -> Option<NullLiteral> {
-        match ast.expr_data(self) {
-            ExprData::NullLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::NullLiteral) {
+            Some(NullLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_reg_exp_literal(self, ast: &Ast<'_>) -> Option<RegExpLiteral> {
-        match ast.expr_data(self) {
-            ExprData::RegExpLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::RegExpLiteral) {
+            Some(RegExpLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
-        match ast.expr_data(self) {
-            ExprData::TemplateLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TemplateLiteral) {
+            Some(TemplateLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_binary_expression(self, ast: &Ast<'_>) -> Option<BinaryExpression> {
-        match ast.expr_data(self) {
-            ExprData::BinaryExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BinaryExpression) {
+            Some(BinaryExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_logical_expression(self, ast: &Ast<'_>) -> Option<LogicalExpression> {
-        match ast.expr_data(self) {
-            ExprData::LogicalExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::LogicalExpression) {
+            Some(LogicalExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
-        match ast.expr_data(self) {
-            ExprData::UnaryExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::UnaryExpression) {
+            Some(UnaryExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_update_expression(self, ast: &Ast<'_>) -> Option<UpdateExpression> {
-        match ast.expr_data(self) {
-            ExprData::UpdateExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::UpdateExpression) {
+            Some(UpdateExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_assignment_expression(self, ast: &Ast<'_>) -> Option<AssignmentExpression> {
-        match ast.expr_data(self) {
-            ExprData::AssignmentExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::AssignmentExpression) {
+            Some(AssignmentExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_conditional_expression(self, ast: &Ast<'_>) -> Option<ConditionalExpression> {
-        match ast.expr_data(self) {
-            ExprData::ConditionalExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ConditionalExpression) {
+            Some(ConditionalExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_sequence_expression(self, ast: &Ast<'_>) -> Option<SequenceExpression> {
-        match ast.expr_data(self) {
-            ExprData::SequenceExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::SequenceExpression) {
+            Some(SequenceExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
-        match ast.expr_data(self) {
-            ExprData::MemberExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::MemberExpression) {
+            Some(MemberExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
-        match ast.expr_data(self) {
-            ExprData::CallExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::CallExpression) {
+            Some(CallExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_chain_expression(self, ast: &Ast<'_>) -> Option<ChainExpression> {
-        match ast.expr_data(self) {
-            ExprData::ChainExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ChainExpression) {
+            Some(ChainExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_new_expression(self, ast: &Ast<'_>) -> Option<NewExpression> {
-        match ast.expr_data(self) {
-            ExprData::NewExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::NewExpression) {
+            Some(NewExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_tagged_template_expression(self, ast: &Ast<'_>) -> Option<TaggedTemplateExpression> {
-        match ast.expr_data(self) {
-            ExprData::TaggedTemplateExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TaggedTemplateExpression) {
+            Some(TaggedTemplateExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_arrow_function_expression(self, ast: &Ast<'_>) -> Option<ArrowFunctionExpression> {
-        match ast.expr_data(self) {
-            ExprData::ArrowFunctionExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ArrowFunctionExpression) {
+            Some(ArrowFunctionExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_array_expression(self, ast: &Ast<'_>) -> Option<ArrayExpression> {
-        match ast.expr_data(self) {
-            ExprData::ArrayExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ArrayExpression) {
+            Some(ArrayExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_object_expression(self, ast: &Ast<'_>) -> Option<ObjectExpression> {
-        match ast.expr_data(self) {
-            ExprData::ObjectExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ObjectExpression) {
+            Some(ObjectExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_parenthesized_expression(self, ast: &Ast<'_>) -> Option<ParenthesizedExpression> {
-        match ast.expr_data(self) {
-            ExprData::ParenthesizedExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ParenthesizedExpression) {
+            Some(ParenthesizedExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_function(self, ast: &Ast<'_>) -> Option<Function> {
-        match ast.expr_data(self) {
-            ExprData::Function(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::Function) {
+            Some(Function(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_class(self, ast: &Ast<'_>) -> Option<Class> {
-        match ast.expr_data(self) {
-            ExprData::Class(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::Class) {
+            Some(Class(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_import_expression(self, ast: &Ast<'_>) -> Option<ImportExpression> {
-        match ast.expr_data(self) {
-            ExprData::ImportExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ImportExpression) {
+            Some(ImportExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_await_expression(self, ast: &Ast<'_>) -> Option<AwaitExpression> {
-        match ast.expr_data(self) {
-            ExprData::AwaitExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::AwaitExpression) {
+            Some(AwaitExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_yield_expression(self, ast: &Ast<'_>) -> Option<YieldExpression> {
-        match ast.expr_data(self) {
-            ExprData::YieldExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::YieldExpression) {
+            Some(YieldExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
-        match ast.expr_data(self) {
-            ExprData::PrivateIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::PrivateIdentifier) {
+            Some(PrivateIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
-        match ast.expr_data(self) {
-            ExprData::TsAsExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsAsExpression) {
+            Some(TsAsExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
-        match ast.expr_data(self) {
-            ExprData::TsSatisfiesExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsSatisfiesExpression) {
+            Some(TsSatisfiesExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
-        match ast.expr_data(self) {
-            ExprData::TsTypeAssertion(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeAssertion) {
+            Some(TsTypeAssertion(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
-        match ast.expr_data(self) {
-            ExprData::TsNonNullExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNonNullExpression) {
+            Some(TsNonNullExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
@@ -901,23 +1057,29 @@ impl Expr {
         self,
         ast: &Ast<'_>,
     ) -> Option<TsInstantiationExpression> {
-        match ast.expr_data(self) {
-            ExprData::TsInstantiationExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsInstantiationExpression) {
+            Some(TsInstantiationExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
-        match ast.expr_data(self) {
-            ExprData::JsxElement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxElement) {
+            Some(JsxElement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
-        match ast.expr_data(self) {
-            ExprData::JsxFragment(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxFragment) {
+            Some(JsxFragment(self.0))
+        } else {
+            None
         }
     }
 }
@@ -956,44 +1118,64 @@ impl BindingPattern {
     }
     #[inline]
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::BindingIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BindingIdentifier) {
+            Some(BindingIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_simple_assignment_target(self, ast: &Ast<'_>) -> Option<SimpleAssignmentTarget> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::SimpleAssignmentTarget(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+        ) {
+            Some(SimpleAssignmentTarget(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_assignment_pattern(self, ast: &Ast<'_>) -> Option<AssignmentPattern> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::AssignmentPattern(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::AssignmentPattern) {
+            Some(AssignmentPattern(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_binding_rest_element(self, ast: &Ast<'_>) -> Option<BindingRestElement> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::BindingRestElement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BindingRestElement) {
+            Some(BindingRestElement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_array_pattern(self, ast: &Ast<'_>) -> Option<ArrayPattern> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::ArrayPattern(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ArrayPattern) {
+            Some(ArrayPattern(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_object_pattern(self, ast: &Ast<'_>) -> Option<ObjectPattern> {
-        match ast.binding_pattern_data(self) {
-            BindingPatternData::ObjectPattern(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ObjectPattern) {
+            Some(ObjectPattern(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1020,23 +1202,37 @@ impl AssignmentTarget {
     }
     #[inline]
     pub fn as_simple_assignment_target(self, ast: &Ast<'_>) -> Option<SimpleAssignmentTarget> {
-        match ast.assignment_target_data(self) {
-            AssignmentTargetData::SimpleAssignmentTarget(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+        ) {
+            Some(SimpleAssignmentTarget(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_array_assignment_target(self, ast: &Ast<'_>) -> Option<ArrayPattern> {
-        match ast.assignment_target_data(self) {
-            AssignmentTargetData::ArrayAssignmentTarget(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ArrayPattern) {
+            Some(ArrayPattern(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_object_assignment_target(self, ast: &Ast<'_>) -> Option<ObjectPattern> {
-        match ast.assignment_target_data(self) {
-            AssignmentTargetData::ObjectAssignmentTarget(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ObjectPattern) {
+            Some(ObjectPattern(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1067,44 +1263,56 @@ impl SimpleAssignmentTarget {
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::IdentifierReference(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierReference) {
+            Some(IdentifierReference(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::MemberExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::MemberExpression) {
+            Some(MemberExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::TsAsExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsAsExpression) {
+            Some(TsAsExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_satisfies_expression(self, ast: &Ast<'_>) -> Option<TsSatisfiesExpression> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsSatisfiesExpression) {
+            Some(TsSatisfiesExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_assertion(self, ast: &Ast<'_>) -> Option<TsTypeAssertion> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::TsTypeAssertion(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeAssertion) {
+            Some(TsTypeAssertion(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_non_null_expression(self, ast: &Ast<'_>) -> Option<TsNonNullExpression> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::TsNonNullExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNonNullExpression) {
+            Some(TsNonNullExpression(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1177,44 +1385,94 @@ impl PropertyKey {
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
-        match ast.property_key_data(self) {
-            PropertyKeyData::IdentifierName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierName) {
+            Some(IdentifierName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
-        match ast.property_key_data(self) {
-            PropertyKeyData::PrivateIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::PrivateIdentifier) {
+            Some(PrivateIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.property_key_data(self) {
-            PropertyKeyData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
-        match ast.property_key_data(self) {
-            PropertyKeyData::NumericLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::NumericLiteral) {
+            Some(NumericLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
-        match ast.property_key_data(self) {
-            PropertyKeyData::BigIntLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BigIntLiteral) {
+            Some(BigIntLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.property_key_data(self) {
-            PropertyKeyData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        ) {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1229,16 +1487,20 @@ impl ModuleExportName {
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
-        match ast.module_export_name_data(self) {
-            ModuleExportNameData::IdentifierName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierName) {
+            Some(IdentifierName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.module_export_name_data(self) {
-            ModuleExportNameData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1295,16 +1557,62 @@ impl Argument {
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.argument_data(self) {
-            ArgumentData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        ) {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_spread_element(self, ast: &Ast<'_>) -> Option<SpreadElement> {
-        match ast.argument_data(self) {
-            ArgumentData::SpreadElement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::SpreadElement) {
+            Some(SpreadElement(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1319,16 +1627,20 @@ impl ObjectPropertyKind {
     }
     #[inline]
     pub fn as_object_property(self, ast: &Ast<'_>) -> Option<ObjectProperty> {
-        match ast.object_property_kind_data(self) {
-            ObjectPropertyKindData::ObjectProperty(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ObjectProperty) {
+            Some(ObjectProperty(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_spread_element(self, ast: &Ast<'_>) -> Option<SpreadElement> {
-        match ast.object_property_kind_data(self) {
-            ObjectPropertyKindData::SpreadElement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::SpreadElement) {
+            Some(SpreadElement(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1385,16 +1697,62 @@ impl ForStatementInit {
     }
     #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
-        match ast.for_statement_init_data(self) {
-            ForStatementInitData::VariableDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::VariableDeclaration) {
+            Some(VariableDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.for_statement_init_data(self) {
-            ForStatementInitData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        ) {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1419,16 +1777,30 @@ impl ForStatementLeft {
     }
     #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
-        match ast.for_statement_left_data(self) {
-            ForStatementLeftData::VariableDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::VariableDeclaration) {
+            Some(VariableDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_assignment_target(self, ast: &Ast<'_>) -> Option<AssignmentTarget> {
-        match ast.for_statement_left_data(self) {
-            ForStatementLeftData::AssignmentTarget(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::ArrayPattern
+                | NodeKind::ObjectPattern
+        ) {
+            Some(AssignmentTarget(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1485,16 +1857,62 @@ impl ArrowFunctionBody {
     }
     #[inline]
     pub fn as_function_body(self, ast: &Ast<'_>) -> Option<FunctionBody> {
-        match ast.arrow_function_body_data(self) {
-            ArrowFunctionBodyData::FunctionBody(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::FunctionBody) {
+            Some(FunctionBody(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.arrow_function_body_data(self) {
-            ArrowFunctionBodyData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        ) {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1509,16 +1927,20 @@ impl FormalParameterItem {
     }
     #[inline]
     pub fn as_formal_parameter(self, ast: &Ast<'_>) -> Option<FormalParameter> {
-        match ast.formal_parameter_item_data(self) {
-            FormalParameterItemData::FormalParameter(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::FormalParameter) {
+            Some(FormalParameter(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_parameter_property(self, ast: &Ast<'_>) -> Option<TsParameterProperty> {
-        match ast.formal_parameter_item_data(self) {
-            FormalParameterItemData::TsParameterProperty(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsParameterProperty) {
+            Some(TsParameterProperty(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1546,16 +1968,33 @@ impl FormalParameterPattern {
     }
     #[inline]
     pub fn as_binding_pattern(self, ast: &Ast<'_>) -> Option<BindingPattern> {
-        match ast.formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::BindingPattern(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::BindingIdentifier
+                | NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::AssignmentPattern
+                | NodeKind::BindingRestElement
+                | NodeKind::ArrayPattern
+                | NodeKind::ObjectPattern
+        ) {
+            Some(BindingPattern(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_this_parameter(self, ast: &Ast<'_>) -> Option<TsThisParameter> {
-        match ast.formal_parameter_pattern_data(self) {
-            FormalParameterPatternData::TsThisParameter(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsThisParameter) {
+            Some(TsThisParameter(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1582,37 +2021,47 @@ impl ClassElement {
     }
     #[inline]
     pub fn as_method_definition(self, ast: &Ast<'_>) -> Option<MethodDefinition> {
-        match ast.class_element_data(self) {
-            ClassElementData::MethodDefinition(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::MethodDefinition) {
+            Some(MethodDefinition(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_property_definition(self, ast: &Ast<'_>) -> Option<PropertyDefinition> {
-        match ast.class_element_data(self) {
-            ClassElementData::PropertyDefinition(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::PropertyDefinition) {
+            Some(PropertyDefinition(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_static_block(self, ast: &Ast<'_>) -> Option<StaticBlock> {
-        match ast.class_element_data(self) {
-            ClassElementData::StaticBlock(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StaticBlock) {
+            Some(StaticBlock(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_method_definition(self, ast: &Ast<'_>) -> Option<TsMethodDefinition> {
-        match ast.class_element_data(self) {
-            ClassElementData::TsMethodDefinition(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsMethodDefinition) {
+            Some(TsMethodDefinition(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_index_signature(self, ast: &Ast<'_>) -> Option<TsIndexSignature> {
-        match ast.class_element_data(self) {
-            ClassElementData::TsIndexSignature(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsIndexSignature) {
+            Some(TsIndexSignature(self.0))
+        } else {
+            None
         }
     }
 }
@@ -1631,95 +2080,217 @@ impl ImportDeclarationSpecifier {
     }
     #[inline]
     pub fn as_import_specifier(self, ast: &Ast<'_>) -> Option<ImportSpecifier> {
-        match ast.import_declaration_specifier_data(self) {
-            ImportDeclarationSpecifierData::ImportSpecifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ImportSpecifier) {
+            Some(ImportSpecifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_import_default_specifier(self, ast: &Ast<'_>) -> Option<ImportDefaultSpecifier> {
-        match ast.import_declaration_specifier_data(self) {
-            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ImportDefaultSpecifier) {
+            Some(ImportDefaultSpecifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_import_namespace_specifier(self, ast: &Ast<'_>) -> Option<ImportNamespaceSpecifier> {
-        match ast.import_declaration_specifier_data(self) {
-            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ImportNamespaceSpecifier) {
+            Some(ImportNamespaceSpecifier(self.0))
+        } else {
+            None
         }
     }
 }
 impl ExportDefaultDeclarationKind {
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Expr(_)
-        )
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => true,
+            NodeKind::ThisExpression => true,
+            NodeKind::Super => true,
+            NodeKind::MetaProperty => true,
+            NodeKind::StringLiteral => true,
+            NodeKind::NumericLiteral => true,
+            NodeKind::BigIntLiteral => true,
+            NodeKind::BooleanLiteral => true,
+            NodeKind::NullLiteral => true,
+            NodeKind::RegExpLiteral => true,
+            NodeKind::TemplateLiteral => true,
+            NodeKind::BinaryExpression => true,
+            NodeKind::LogicalExpression => true,
+            NodeKind::UnaryExpression => true,
+            NodeKind::UpdateExpression => true,
+            NodeKind::AssignmentExpression => true,
+            NodeKind::ConditionalExpression => true,
+            NodeKind::SequenceExpression => true,
+            NodeKind::MemberExpression => true,
+            NodeKind::CallExpression => true,
+            NodeKind::ChainExpression => true,
+            NodeKind::NewExpression => true,
+            NodeKind::TaggedTemplateExpression => true,
+            NodeKind::ArrowFunctionExpression => true,
+            NodeKind::ArrayExpression => true,
+            NodeKind::ObjectExpression => true,
+            NodeKind::ParenthesizedExpression => true,
+            NodeKind::ImportExpression => true,
+            NodeKind::AwaitExpression => true,
+            NodeKind::YieldExpression => true,
+            NodeKind::PrivateIdentifier => true,
+            NodeKind::TsAsExpression => true,
+            NodeKind::TsSatisfiesExpression => true,
+            NodeKind::TsTypeAssertion => true,
+            NodeKind::TsNonNullExpression => true,
+            NodeKind::TsInstantiationExpression => true,
+            NodeKind::JsxElement => true,
+            NodeKind::JsxFragment => true,
+            NodeKind::Function => {
+                let function = Function(self.0);
+                function.function_type(ast) != FunctionType::FunctionDeclaration
+            }
+            NodeKind::Class => {
+                let class = Class(self.0);
+                class.class_type(ast) != ClassType::ClassDeclaration
+            }
+            _ => false,
+        }
     }
     #[inline]
     pub fn is_function(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Function(_)
-        )
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if kind == NodeKind::Function {
+            let function = Function(self.0);
+            function.function_type(ast) == FunctionType::FunctionDeclaration
+        } else {
+            false
+        }
     }
     #[inline]
     pub fn is_class(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Class(_)
-        )
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if kind == NodeKind::Class {
+            let class = Class(self.0);
+            class.class_type(ast) == ClassType::ClassDeclaration
+        } else {
+            false
+        }
     }
     #[inline]
     pub fn is_ts_function(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsFunction(_)
-        )
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        matches!(kind, NodeKind::TsFunction)
     }
     #[inline]
     pub fn is_ts_interface_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(_)
-        )
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        matches!(kind, NodeKind::TsInterfaceDeclaration)
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if match kind {
+            NodeKind::IdentifierReference => true,
+            NodeKind::ThisExpression => true,
+            NodeKind::Super => true,
+            NodeKind::MetaProperty => true,
+            NodeKind::StringLiteral => true,
+            NodeKind::NumericLiteral => true,
+            NodeKind::BigIntLiteral => true,
+            NodeKind::BooleanLiteral => true,
+            NodeKind::NullLiteral => true,
+            NodeKind::RegExpLiteral => true,
+            NodeKind::TemplateLiteral => true,
+            NodeKind::BinaryExpression => true,
+            NodeKind::LogicalExpression => true,
+            NodeKind::UnaryExpression => true,
+            NodeKind::UpdateExpression => true,
+            NodeKind::AssignmentExpression => true,
+            NodeKind::ConditionalExpression => true,
+            NodeKind::SequenceExpression => true,
+            NodeKind::MemberExpression => true,
+            NodeKind::CallExpression => true,
+            NodeKind::ChainExpression => true,
+            NodeKind::NewExpression => true,
+            NodeKind::TaggedTemplateExpression => true,
+            NodeKind::ArrowFunctionExpression => true,
+            NodeKind::ArrayExpression => true,
+            NodeKind::ObjectExpression => true,
+            NodeKind::ParenthesizedExpression => true,
+            NodeKind::ImportExpression => true,
+            NodeKind::AwaitExpression => true,
+            NodeKind::YieldExpression => true,
+            NodeKind::PrivateIdentifier => true,
+            NodeKind::TsAsExpression => true,
+            NodeKind::TsSatisfiesExpression => true,
+            NodeKind::TsTypeAssertion => true,
+            NodeKind::TsNonNullExpression => true,
+            NodeKind::TsInstantiationExpression => true,
+            NodeKind::JsxElement => true,
+            NodeKind::JsxFragment => true,
+            NodeKind::Function => {
+                let function = Function(self.0);
+                function.function_type(ast) != FunctionType::FunctionDeclaration
+            }
+            NodeKind::Class => {
+                let class = Class(self.0);
+                class.class_type(ast) != ClassType::ClassDeclaration
+            }
+            _ => false,
+        } {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_function(self, ast: &Ast<'_>) -> Option<Function> {
-        match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Function(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if if kind == NodeKind::Function {
+            let function = Function(self.0);
+            function.function_type(ast) == FunctionType::FunctionDeclaration
+        } else {
+            false
+        } {
+            Some(Function(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_class(self, ast: &Ast<'_>) -> Option<Class> {
-        match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::Class(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if if kind == NodeKind::Class {
+            let class = Class(self.0);
+            class.class_type(ast) == ClassType::ClassDeclaration
+        } else {
+            false
+        } {
+            Some(Class(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_function(self, ast: &Ast<'_>) -> Option<TsFunction> {
-        match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::TsFunction(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsFunction) {
+            Some(TsFunction(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_interface_declaration(self, ast: &Ast<'_>) -> Option<TsInterfaceDeclaration> {
-        match ast.export_default_declaration_kind_data(self) {
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsInterfaceDeclaration) {
+            Some(TsInterfaceDeclaration(self.0))
+        } else {
+            None
         }
     }
 }
@@ -5642,268 +6213,344 @@ impl TsType {
     }
     #[inline]
     pub fn as_ts_any_keyword(self, ast: &Ast<'_>) -> Option<TsAnyKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsAnyKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsAnyKeyword) {
+            Some(TsAnyKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_unknown_keyword(self, ast: &Ast<'_>) -> Option<TsUnknownKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsUnknownKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsUnknownKeyword) {
+            Some(TsUnknownKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_never_keyword(self, ast: &Ast<'_>) -> Option<TsNeverKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsNeverKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNeverKeyword) {
+            Some(TsNeverKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_void_keyword(self, ast: &Ast<'_>) -> Option<TsVoidKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsVoidKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsVoidKeyword) {
+            Some(TsVoidKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_null_keyword(self, ast: &Ast<'_>) -> Option<TsNullKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsNullKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNullKeyword) {
+            Some(TsNullKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_undefined_keyword(self, ast: &Ast<'_>) -> Option<TsUndefinedKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsUndefinedKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsUndefinedKeyword) {
+            Some(TsUndefinedKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_string_keyword(self, ast: &Ast<'_>) -> Option<TsStringKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsStringKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsStringKeyword) {
+            Some(TsStringKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_number_keyword(self, ast: &Ast<'_>) -> Option<TsNumberKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsNumberKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNumberKeyword) {
+            Some(TsNumberKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_big_int_keyword(self, ast: &Ast<'_>) -> Option<TsBigIntKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsBigIntKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsBigIntKeyword) {
+            Some(TsBigIntKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_boolean_keyword(self, ast: &Ast<'_>) -> Option<TsBooleanKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsBooleanKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsBooleanKeyword) {
+            Some(TsBooleanKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_symbol_keyword(self, ast: &Ast<'_>) -> Option<TsSymbolKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsSymbolKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsSymbolKeyword) {
+            Some(TsSymbolKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_object_keyword(self, ast: &Ast<'_>) -> Option<TsObjectKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsObjectKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsObjectKeyword) {
+            Some(TsObjectKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_intrinsic_keyword(self, ast: &Ast<'_>) -> Option<TsIntrinsicKeyword> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsIntrinsicKeyword(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsIntrinsicKeyword) {
+            Some(TsIntrinsicKeyword(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_this_type(self, ast: &Ast<'_>) -> Option<TsThisType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsThisType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsThisType) {
+            Some(TsThisType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_reference(self, ast: &Ast<'_>) -> Option<TsTypeReference> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTypeReference(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeReference) {
+            Some(TsTypeReference(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_query(self, ast: &Ast<'_>) -> Option<TsTypeQuery> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTypeQuery(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeQuery) {
+            Some(TsTypeQuery(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_import_type(self, ast: &Ast<'_>) -> Option<TsImportType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsImportType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsImportType) {
+            Some(TsImportType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_literal_type(self, ast: &Ast<'_>) -> Option<TsLiteralType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsLiteralType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsLiteralType) {
+            Some(TsLiteralType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_template_literal_type(self, ast: &Ast<'_>) -> Option<TsTemplateLiteralType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTemplateLiteralType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTemplateLiteralType) {
+            Some(TsTemplateLiteralType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_array_type(self, ast: &Ast<'_>) -> Option<TsArrayType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsArrayType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsArrayType) {
+            Some(TsArrayType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_indexed_access_type(self, ast: &Ast<'_>) -> Option<TsIndexedAccessType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsIndexedAccessType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsIndexedAccessType) {
+            Some(TsIndexedAccessType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_tuple_type(self, ast: &Ast<'_>) -> Option<TsTupleType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTupleType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTupleType) {
+            Some(TsTupleType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_optional_type(self, ast: &Ast<'_>) -> Option<TsOptionalType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsOptionalType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsOptionalType) {
+            Some(TsOptionalType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_rest_type(self, ast: &Ast<'_>) -> Option<TsRestType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsRestType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsRestType) {
+            Some(TsRestType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_js_doc_nullable_type(self, ast: &Ast<'_>) -> Option<TsJsDocNullableType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsJsDocNullableType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsJsDocNullableType) {
+            Some(TsJsDocNullableType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_js_doc_non_nullable_type(self, ast: &Ast<'_>) -> Option<TsJsDocNonNullableType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsJsDocNonNullableType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsJsDocNonNullableType) {
+            Some(TsJsDocNonNullableType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_js_doc_unknown_type(self, ast: &Ast<'_>) -> Option<TsJsDocUnknownType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsJsDocUnknownType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsJsDocUnknownType) {
+            Some(TsJsDocUnknownType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_union_type(self, ast: &Ast<'_>) -> Option<TsUnionType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsUnionType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsUnionType) {
+            Some(TsUnionType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_intersection_type(self, ast: &Ast<'_>) -> Option<TsIntersectionType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsIntersectionType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsIntersectionType) {
+            Some(TsIntersectionType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_conditional_type(self, ast: &Ast<'_>) -> Option<TsConditionalType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsConditionalType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsConditionalType) {
+            Some(TsConditionalType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_infer_type(self, ast: &Ast<'_>) -> Option<TsInferType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsInferType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsInferType) {
+            Some(TsInferType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_operator(self, ast: &Ast<'_>) -> Option<TsTypeOperator> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTypeOperator(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeOperator) {
+            Some(TsTypeOperator(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_parenthesized_type(self, ast: &Ast<'_>) -> Option<TsParenthesizedType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsParenthesizedType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsParenthesizedType) {
+            Some(TsParenthesizedType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_function_type(self, ast: &Ast<'_>) -> Option<TsFunctionType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsFunctionType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsFunctionType) {
+            Some(TsFunctionType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_constructor_type(self, ast: &Ast<'_>) -> Option<TsConstructorType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsConstructorType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsConstructorType) {
+            Some(TsConstructorType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_predicate(self, ast: &Ast<'_>) -> Option<TsTypePredicate> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTypePredicate(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypePredicate) {
+            Some(TsTypePredicate(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_type_literal(self, ast: &Ast<'_>) -> Option<TsTypeLiteral> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsTypeLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsTypeLiteral) {
+            Some(TsTypeLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_mapped_type(self, ast: &Ast<'_>) -> Option<TsMappedType> {
-        match ast.ts_type_data(self) {
-            TsTypeData::TsMappedType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsMappedType) {
+            Some(TsMappedType(self.0))
+        } else {
+            None
         }
     }
 }
@@ -5918,16 +6565,20 @@ impl TsTypeName {
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
-        match ast.ts_type_name_data(self) {
-            TsTypeNameData::IdentifierReference(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierReference) {
+            Some(IdentifierReference(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_qualified_name(self, ast: &Ast<'_>) -> Option<TsQualifiedName> {
-        match ast.ts_type_name_data(self) {
-            TsTypeNameData::TsQualifiedName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsQualifiedName) {
+            Some(TsQualifiedName(self.0))
+        } else {
+            None
         }
     }
 }
@@ -5954,37 +6605,47 @@ impl TsQualifiedNameLeft {
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
-        match ast.ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::IdentifierReference(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierReference) {
+            Some(IdentifierReference(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
-        match ast.ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::IdentifierName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierName) {
+            Some(IdentifierName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
-        match ast.ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::BindingIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BindingIdentifier) {
+            Some(BindingIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
-        match ast.ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::ThisExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ThisExpression) {
+            Some(ThisExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_qualified_name(self, ast: &Ast<'_>) -> Option<TsQualifiedName> {
-        match ast.ts_qualified_name_left_data(self) {
-            TsQualifiedNameLeftData::TsQualifiedName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsQualifiedName) {
+            Some(TsQualifiedName(self.0))
+        } else {
+            None
         }
     }
 }
@@ -5999,16 +6660,20 @@ impl TsImportTypeQualifier {
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
-        match ast.ts_import_type_qualifier_data(self) {
-            TsImportTypeQualifierData::IdentifierName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierName) {
+            Some(IdentifierName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_qualified_name(self, ast: &Ast<'_>) -> Option<TsQualifiedName> {
-        match ast.ts_import_type_qualifier_data(self) {
-            TsImportTypeQualifierData::TsQualifiedName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsQualifiedName) {
+            Some(TsQualifiedName(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6030,23 +6695,32 @@ impl TsTypeQueryExprName {
     }
     #[inline]
     pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
-        match ast.ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsTypeName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
+        ) {
+            Some(TsTypeName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_this_expression(self, ast: &Ast<'_>) -> Option<ThisExpression> {
-        match ast.ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::ThisExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ThisExpression) {
+            Some(ThisExpression(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_import_type(self, ast: &Ast<'_>) -> Option<TsImportType> {
-        match ast.ts_type_query_expr_name_data(self) {
-            TsTypeQueryExprNameData::TsImportType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsImportType) {
+            Some(TsImportType(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6077,44 +6751,56 @@ impl TsLiteral {
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.ts_literal_data(self) {
-            TsLiteralData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_numeric_literal(self, ast: &Ast<'_>) -> Option<NumericLiteral> {
-        match ast.ts_literal_data(self) {
-            TsLiteralData::NumericLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::NumericLiteral) {
+            Some(NumericLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_big_int_literal(self, ast: &Ast<'_>) -> Option<BigIntLiteral> {
-        match ast.ts_literal_data(self) {
-            TsLiteralData::BigIntLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BigIntLiteral) {
+            Some(BigIntLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_boolean_literal(self, ast: &Ast<'_>) -> Option<BooleanLiteral> {
-        match ast.ts_literal_data(self) {
-            TsLiteralData::BooleanLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BooleanLiteral) {
+            Some(BooleanLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
-        match ast.ts_literal_data(self) {
-            TsLiteralData::TemplateLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TemplateLiteral) {
+            Some(TemplateLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_unary_expression(self, ast: &Ast<'_>) -> Option<UnaryExpression> {
-        match ast.ts_literal_data(self) {
-            TsLiteralData::UnaryExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::UnaryExpression) {
+            Some(UnaryExpression(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6169,16 +6855,60 @@ impl TsTupleElement {
     }
     #[inline]
     pub fn as_ts_type(self, ast: &Ast<'_>) -> Option<TsType> {
-        match ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::TsAnyKeyword
+                | NodeKind::TsUnknownKeyword
+                | NodeKind::TsNeverKeyword
+                | NodeKind::TsVoidKeyword
+                | NodeKind::TsNullKeyword
+                | NodeKind::TsUndefinedKeyword
+                | NodeKind::TsStringKeyword
+                | NodeKind::TsNumberKeyword
+                | NodeKind::TsBigIntKeyword
+                | NodeKind::TsBooleanKeyword
+                | NodeKind::TsSymbolKeyword
+                | NodeKind::TsObjectKeyword
+                | NodeKind::TsIntrinsicKeyword
+                | NodeKind::TsThisType
+                | NodeKind::TsTypeReference
+                | NodeKind::TsTypeQuery
+                | NodeKind::TsImportType
+                | NodeKind::TsLiteralType
+                | NodeKind::TsTemplateLiteralType
+                | NodeKind::TsArrayType
+                | NodeKind::TsIndexedAccessType
+                | NodeKind::TsTupleType
+                | NodeKind::TsOptionalType
+                | NodeKind::TsRestType
+                | NodeKind::TsJsDocNullableType
+                | NodeKind::TsJsDocNonNullableType
+                | NodeKind::TsJsDocUnknownType
+                | NodeKind::TsUnionType
+                | NodeKind::TsIntersectionType
+                | NodeKind::TsConditionalType
+                | NodeKind::TsInferType
+                | NodeKind::TsTypeOperator
+                | NodeKind::TsParenthesizedType
+                | NodeKind::TsFunctionType
+                | NodeKind::TsConstructorType
+                | NodeKind::TsTypePredicate
+                | NodeKind::TsTypeLiteral
+                | NodeKind::TsMappedType
+        ) {
+            Some(TsType(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_named_tuple_member(self, ast: &Ast<'_>) -> Option<TsNamedTupleMember> {
-        match ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsNamedTupleMember(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsNamedTupleMember) {
+            Some(TsNamedTupleMember(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6205,16 +6935,20 @@ impl TsTypeElement {
     }
     #[inline]
     pub fn as_ts_property_signature(self, ast: &Ast<'_>) -> Option<TsPropertySignature> {
-        match ast.ts_type_element_data(self) {
-            TsTypeElementData::TsPropertySignature(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsPropertySignature) {
+            Some(TsPropertySignature(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_method_signature(self, ast: &Ast<'_>) -> Option<TsMethodSignature> {
-        match ast.ts_type_element_data(self) {
-            TsTypeElementData::TsMethodSignature(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsMethodSignature) {
+            Some(TsMethodSignature(self.0))
+        } else {
+            None
         }
     }
     #[inline]
@@ -6222,9 +6956,11 @@ impl TsTypeElement {
         self,
         ast: &Ast<'_>,
     ) -> Option<TsCallSignatureDeclaration> {
-        match ast.ts_type_element_data(self) {
-            TsTypeElementData::TsCallSignatureDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsCallSignatureDeclaration) {
+            Some(TsCallSignatureDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
@@ -6232,16 +6968,20 @@ impl TsTypeElement {
         self,
         ast: &Ast<'_>,
     ) -> Option<TsConstructSignatureDeclaration> {
-        match ast.ts_type_element_data(self) {
-            TsTypeElementData::TsConstructSignatureDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsConstructSignatureDeclaration) {
+            Some(TsConstructSignatureDeclaration(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_index_signature(self, ast: &Ast<'_>) -> Option<TsIndexSignature> {
-        match ast.ts_type_element_data(self) {
-            TsTypeElementData::TsIndexSignature(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsIndexSignature) {
+            Some(TsIndexSignature(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6256,16 +6996,20 @@ impl TsTypePredicateName {
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
-        match ast.ts_type_predicate_name_data(self) {
-            TsTypePredicateNameData::IdentifierName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierName) {
+            Some(IdentifierName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_this_type(self, ast: &Ast<'_>) -> Option<TsThisType> {
-        match ast.ts_type_predicate_name_data(self) {
-            TsTypePredicateNameData::TsThisType(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsThisType) {
+            Some(TsThisType(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6330,30 +7074,78 @@ impl TsEnumMemberName {
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
-        match ast.ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::IdentifierName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::IdentifierName) {
+            Some(IdentifierName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
-        match ast.ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::TemplateLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TemplateLiteral) {
+            Some(TemplateLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.ts_enum_member_name_data(self) {
-            TsEnumMemberNameData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        ) {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6372,23 +7164,29 @@ impl TsModuleName {
     }
     #[inline]
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
-        match ast.ts_module_name_data(self) {
-            TsModuleNameData::BindingIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::BindingIdentifier) {
+            Some(BindingIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.ts_module_name_data(self) {
-            TsModuleNameData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_qualified_name(self, ast: &Ast<'_>) -> Option<TsQualifiedName> {
-        match ast.ts_module_name_data(self) {
-            TsModuleNameData::TsQualifiedName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsQualifiedName) {
+            Some(TsQualifiedName(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6403,16 +7201,20 @@ impl TsModuleBody {
     }
     #[inline]
     pub fn as_ts_module_block(self, ast: &Ast<'_>) -> Option<TsModuleBlock> {
-        match ast.ts_module_body_data(self) {
-            TsModuleBodyData::TsModuleBlock(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsModuleBlock) {
+            Some(TsModuleBlock(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_ts_module_declaration(self, ast: &Ast<'_>) -> Option<TsModuleDeclaration> {
-        match ast.ts_module_body_data(self) {
-            TsModuleBodyData::TsModuleDeclaration(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsModuleDeclaration) {
+            Some(TsModuleDeclaration(self.0))
+        } else {
+            None
         }
     }
 }
@@ -6430,9 +7232,14 @@ impl TsModuleReference {
     }
     #[inline]
     pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
-        match ast.ts_module_reference_data(self) {
-            TsModuleReferenceData::TsTypeName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
+        ) {
+            Some(TsTypeName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
@@ -6440,9 +7247,11 @@ impl TsModuleReference {
         self,
         ast: &Ast<'_>,
     ) -> Option<TsExternalModuleReference> {
-        match ast.ts_module_reference_data(self) {
-            TsModuleReferenceData::TsExternalModuleReference(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TsExternalModuleReference) {
+            Some(TsExternalModuleReference(self.0))
+        } else {
+            None
         }
     }
 }
@@ -8834,23 +9643,29 @@ impl JsxElementName {
     }
     #[inline]
     pub fn as_jsx_identifier(self, ast: &Ast<'_>) -> Option<JsxIdentifier> {
-        match ast.jsx_element_name_data(self) {
-            JsxElementNameData::JsxIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxIdentifier) {
+            Some(JsxIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_namespaced_name(self, ast: &Ast<'_>) -> Option<JsxNamespacedName> {
-        match ast.jsx_element_name_data(self) {
-            JsxElementNameData::JsxNamespacedName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxNamespacedName) {
+            Some(JsxNamespacedName(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_member_expression(self, ast: &Ast<'_>) -> Option<JsxMemberExpression> {
-        match ast.jsx_element_name_data(self) {
-            JsxElementNameData::JsxMemberExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxMemberExpression) {
+            Some(JsxMemberExpression(self.0))
+        } else {
+            None
         }
     }
 }
@@ -8865,16 +9680,20 @@ impl JsxMemberExpressionObject {
     }
     #[inline]
     pub fn as_jsx_identifier(self, ast: &Ast<'_>) -> Option<JsxIdentifier> {
-        match ast.jsx_member_expression_object_data(self) {
-            JsxMemberExpressionObjectData::JsxIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxIdentifier) {
+            Some(JsxIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_member_expression(self, ast: &Ast<'_>) -> Option<JsxMemberExpression> {
-        match ast.jsx_member_expression_object_data(self) {
-            JsxMemberExpressionObjectData::JsxMemberExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxMemberExpression) {
+            Some(JsxMemberExpression(self.0))
+        } else {
+            None
         }
     }
 }
@@ -8889,16 +9708,20 @@ impl JsxAttributeName {
     }
     #[inline]
     pub fn as_jsx_identifier(self, ast: &Ast<'_>) -> Option<JsxIdentifier> {
-        match ast.jsx_attribute_name_data(self) {
-            JsxAttributeNameData::JsxIdentifier(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxIdentifier) {
+            Some(JsxIdentifier(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_namespaced_name(self, ast: &Ast<'_>) -> Option<JsxNamespacedName> {
-        match ast.jsx_attribute_name_data(self) {
-            JsxAttributeNameData::JsxNamespacedName(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxNamespacedName) {
+            Some(JsxNamespacedName(self.0))
+        } else {
+            None
         }
     }
 }
@@ -8913,16 +9736,20 @@ impl JsxAttributeItem {
     }
     #[inline]
     pub fn as_jsx_attribute(self, ast: &Ast<'_>) -> Option<JsxAttribute> {
-        match ast.jsx_attribute_item_data(self) {
-            JsxAttributeItemData::JsxAttribute(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxAttribute) {
+            Some(JsxAttribute(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_spread_attribute(self, ast: &Ast<'_>) -> Option<JsxSpreadAttribute> {
-        match ast.jsx_attribute_item_data(self) {
-            JsxAttributeItemData::JsxSpreadAttribute(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxSpreadAttribute) {
+            Some(JsxSpreadAttribute(self.0))
+        } else {
+            None
         }
     }
 }
@@ -8945,30 +9772,38 @@ impl JsxAttributeValue {
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
-        match ast.jsx_attribute_value_data(self) {
-            JsxAttributeValueData::StringLiteral(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_expression_container(self, ast: &Ast<'_>) -> Option<JsxExpressionContainer> {
-        match ast.jsx_attribute_value_data(self) {
-            JsxAttributeValueData::JsxExpressionContainer(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxExpressionContainer) {
+            Some(JsxExpressionContainer(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
-        match ast.jsx_attribute_value_data(self) {
-            JsxAttributeValueData::JsxElement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxElement) {
+            Some(JsxElement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
-        match ast.jsx_attribute_value_data(self) {
-            JsxAttributeValueData::JsxFragment(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxFragment) {
+            Some(JsxFragment(self.0))
+        } else {
+            None
         }
     }
 }
@@ -9025,16 +9860,62 @@ impl JsxExpression {
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
-        match ast.jsx_expression_data(self) {
-            JsxExpressionData::Expr(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(
+            kind,
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        ) {
+            Some(Expr(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_empty_expression(self, ast: &Ast<'_>) -> Option<JsxEmptyExpression> {
-        match ast.jsx_expression_data(self) {
-            JsxExpressionData::JsxEmptyExpression(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxEmptyExpression) {
+            Some(JsxEmptyExpression(self.0))
+        } else {
+            None
         }
     }
 }
@@ -9061,37 +9942,47 @@ impl JsxChild {
     }
     #[inline]
     pub fn as_jsx_text(self, ast: &Ast<'_>) -> Option<JsxText> {
-        match ast.jsx_child_data(self) {
-            JsxChildData::JsxText(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxText) {
+            Some(JsxText(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_expression_container(self, ast: &Ast<'_>) -> Option<JsxExpressionContainer> {
-        match ast.jsx_child_data(self) {
-            JsxChildData::JsxExpressionContainer(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxExpressionContainer) {
+            Some(JsxExpressionContainer(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_spread_child(self, ast: &Ast<'_>) -> Option<JsxSpreadChild> {
-        match ast.jsx_child_data(self) {
-            JsxChildData::JsxSpreadChild(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxSpreadChild) {
+            Some(JsxSpreadChild(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_element(self, ast: &Ast<'_>) -> Option<JsxElement> {
-        match ast.jsx_child_data(self) {
-            JsxChildData::JsxElement(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxElement) {
+            Some(JsxElement(self.0))
+        } else {
+            None
         }
     }
     #[inline]
     pub fn as_jsx_fragment(self, ast: &Ast<'_>) -> Option<JsxFragment> {
-        match ast.jsx_child_data(self) {
-            JsxChildData::JsxFragment(it) => Some(it),
-            _ => None,
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::JsxFragment) {
+            Some(JsxFragment(self.0))
+        } else {
+            None
         }
     }
 }

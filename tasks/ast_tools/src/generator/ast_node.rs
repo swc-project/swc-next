@@ -217,7 +217,7 @@ fn generate_nested_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream 
     }
 }
 
-pub(super) fn concrete_node_kinds(type_id: crate::schema::TypeId, schema: &Schema) -> Vec<String> {
+pub(crate) fn concrete_node_kinds(type_id: crate::schema::TypeId, schema: &Schema) -> Vec<String> {
     match &schema.types[type_id] {
         AstType::Struct(ast) => vec![ast.name.clone()],
         AstType::Enum(ast) => ast

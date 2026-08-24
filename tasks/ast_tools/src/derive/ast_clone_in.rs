@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -8,6 +10,8 @@ use crate::{
     schema::{AstEnum, AstStruct, AstType, Schema},
     util::safe_ident,
 };
+
+use crate::generator::ast_node::concrete_node_kinds;
 
 pub fn ast_clone_in(schema: &Schema) -> RawOutput {
     let mut impls = TokenStream::new();
@@ -23,7 +27,7 @@ pub fn ast_clone_in(schema: &Schema) -> RawOutput {
 
     let output = quote! {
         #![allow(unused, clippy::manual_map)]
-        use crate::{Ast, CloneIn, GetSpan};
+        use crate::{Ast, CloneIn, GetSpan, NodeKind};
         use crate::{ast::*, node_id::*};
 
         #impls
@@ -69,16 +73,67 @@ fn generate_clone_in_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStrea
     }
 }
 
-fn generate_clone_in_for_enum(ast: &AstEnum, _schema: &Schema) -> TokenStream {
+fn generate_clone_in_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
-    let data_name = format_ident!("{}Data", ast.name);
-    let data_fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
 
     let mut arms = TokenStream::new();
+    let mut seen_node_kinds = HashSet::new();
     for variant in ast.variants.iter() {
         let variant_ident = format_ident!("{}", variant.name);
+        let variant_type_id = variant.type_id.unwrap();
+        let variant_type = schema.types[variant_type_id].repr_ident(schema);
+        let mut node_kind_names: Vec<_> = concrete_node_kinds(variant_type_id, schema)
+            .into_iter()
+            .filter(|node_kind| seen_node_kinds.insert(node_kind.clone()))
+            .collect();
+
+        if ast.name == "ExportDefaultDeclarationKind" && variant.name == "Expr" {
+            for contextual_kind in ["Function", "Class"] {
+                let Some(index) = node_kind_names
+                    .iter()
+                    .position(|node_kind| node_kind == contextual_kind)
+                else {
+                    continue;
+                };
+                node_kind_names.remove(index);
+
+                let node_kind = format_ident!("{contextual_kind}");
+                let concrete_type = format_ident!("{contextual_kind}");
+                let (type_getter, declaration_type) = if contextual_kind == "Function" {
+                    (
+                        format_ident!("function_type"),
+                        quote!(FunctionType::FunctionDeclaration),
+                    )
+                } else {
+                    (
+                        format_ident!("class_type"),
+                        quote!(ClassType::ClassDeclaration),
+                    )
+                };
+                arms.extend(quote! {
+                    NodeKind::#node_kind => {
+                        let concrete = #concrete_type(self.0);
+                        if concrete.#type_getter(ast) == #declaration_type {
+                            Self::#node_kind(concrete.clone_in(ast))
+                        } else {
+                            Self::#variant_ident(#variant_type(self.0).clone_in(ast))
+                        }
+                    }
+                });
+            }
+        }
+
+        if node_kind_names.is_empty() {
+            continue;
+        }
+        let node_kinds: Vec<_> = node_kind_names
+            .iter()
+            .map(|node_kind| format_ident!("{node_kind}"))
+            .collect();
         arms.extend(quote! {
-            #data_name::#variant_ident(it) => Self::#variant_ident(it.clone_in(ast)),
+            #(NodeKind::#node_kinds)|* => {
+                Self::#variant_ident(#variant_type(self.0).clone_in(ast))
+            }
         });
     }
 
@@ -88,9 +143,10 @@ fn generate_clone_in_for_enum(ast: &AstEnum, _schema: &Schema) -> TokenStream {
 
             #[inline]
             fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-                let data = ast.#data_fn_name(*self);
-                match data {
+                let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+                match kind {
                     #arms
+                    _ => unsafe { std::hint::unreachable_unchecked() },
                 }
             }
         }

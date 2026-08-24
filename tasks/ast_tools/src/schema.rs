@@ -56,13 +56,6 @@ impl AstType {
             AstType::Primitive(ast) => format_ident!("{}", &ast.name).into_token_stream(),
         }
     }
-
-    pub fn data_ident(&self) -> TokenStream {
-        match self {
-            AstType::Enum(ast) => format_ident!("{}Data", ast.name).into_token_stream(),
-            _ => unreachable!("only AST enums have data types"),
-        }
-    }
 }
 
 #[derive(Debug)]
