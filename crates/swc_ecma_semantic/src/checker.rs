@@ -622,13 +622,23 @@ fn is_inside_static_block(context: &SemanticVisitCtx<'_, '_>) -> bool {
 /// `arguments` is available inside regular functions but not in class field
 /// initializers or static blocks (arrow functions are transparent).
 fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
+    let mut child = None;
     for ancestor in context.ancestors() {
-        match context.ast.node_kind(ancestor) {
-            NodeKind::Function => return true,
-            NodeKind::PropertyDefinition | NodeKind::StaticBlock => return false,
-            NodeKind::ArrowFunctionExpression | NodeKind::Program => {}
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::Function(_) => return true,
+            NodeKindData::PropertyDefinition(property) => {
+                if property
+                    .value(context.ast)
+                    .is_some_and(|value| Some(value.node_id()) == child)
+                {
+                    return false;
+                }
+            }
+            NodeKindData::StaticBlock(_) => return false,
+            NodeKindData::ArrowFunctionExpression(_) | NodeKindData::Program(_) => {}
             _ => {}
         }
+        child = Some(ancestor);
     }
     true
 }

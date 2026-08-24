@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 2230/2238 (99.64%)
+Positive Passed: 2231/2238 (99.69%)
 Negative Passed: 1601/1743 (91.85%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
@@ -26,7 +26,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-sp
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest-with-ts/input.js - es2018/object-rest-spread/no-pattern-in-rest-with-ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest/input.js - es2018/object-rest-spread/no-pattern-in-rest: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2020/nullish-coalescing-operator/no-paren-nullish-or/input.js - es2020/nullish-coalescing-operator/no-paren-nullish-or: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/arguments-in-key/input.js - es2022/class-properties/arguments-in-key: semantic: 'arguments' is not allowed in class field initializers or static blocks at 33..42
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-4/input.js - es2022/private-in/invalid-private-followed-by-in-4: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak/input.js - es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
