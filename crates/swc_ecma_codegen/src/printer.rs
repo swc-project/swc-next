@@ -2247,7 +2247,8 @@ impl<'a> Printer<'a> {
         let need_space_before_dot = self.need_space_before_dot == self.js.len();
         self.need_space_before_dot = usize::MAX;
         let property = e.property(self.ast);
-        let property_text: Option<&Wtf8> = match self.ast.property_key_data(property) {
+        let property_data = self.ast.property_key_data(property);
+        let property_text: Option<&Wtf8> = match property_data {
             PropertyKeyData::IdentifierName(identifier) => {
                 Some(Wtf8::from_str(self.ast.get_utf8(identifier.name(self.ast))))
             }
@@ -2287,7 +2288,7 @@ impl<'a> Printer<'a> {
                 self.print(".");
             }
             self.add_source_mapping(property.span(self.ast).start);
-            self.print_property_key_plain(property);
+            self.print_property_key_plain_data(property, property_data);
         }
     }
 
@@ -2663,7 +2664,12 @@ impl<'a> Printer<'a> {
 
     #[inline(always)]
     fn print_property_key_plain(&mut self, key: PropertyKey) {
-        match self.ast.property_key_data(key) {
+        self.print_property_key_plain_data(key, self.ast.property_key_data(key));
+    }
+
+    #[inline(always)]
+    fn print_property_key_plain_data(&mut self, key: PropertyKey, data: PropertyKeyData) {
+        match data {
             PropertyKeyData::IdentifierName(value) => {
                 let name = self.ast.get_utf8(value.name(self.ast));
                 if self.can_print_identifier(name) {
