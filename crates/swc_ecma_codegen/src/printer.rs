@@ -2294,7 +2294,11 @@ impl<'a> Printer<'a> {
                 self.print(".");
             }
             self.add_source_mapping(property.span(self.ast).start);
-            self.print_property_key_plain_data(property, property_data);
+            if let PropertyKeyData::IdentifierName(identifier) = property_data {
+                self.print_identifier(self.ast.get_utf8(identifier.name(self.ast)));
+            } else {
+                self.print_property_key_plain_data(property, property_data);
+            }
         }
     }
 
