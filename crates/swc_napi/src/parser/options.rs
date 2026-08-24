@@ -1,6 +1,10 @@
+use napi::bindgen_prelude::Either;
 use napi_derive::napi;
 use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
-use swc_next_ecma_parser::{CommentMode as AstCommentMode, Options as AstParserOptions};
+use swc_next_ecma_parser::{
+    CommentMode as AstCommentMode, FragmentContext as AstFragmentContext,
+    Options as AstParserOptions,
+};
 
 #[napi(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -83,6 +87,41 @@ impl From<CommentMode> for AstCommentMode {
     }
 }
 
+/// The function body surrounding a parsed fragment.
+#[napi(object)]
+pub struct FunctionFragmentContext {
+    /// Enables `await` expressions at the fragment root.
+    pub r#async: bool,
+    /// Enables `yield` expressions at the fragment root.
+    pub generator: bool,
+}
+
+/// The syntactic context surrounding a parsed fragment.
+///
+/// Omit `function` for a top-level fragment.
+#[napi(object)]
+#[derive(Default)]
+pub struct FragmentContext {
+    /// `true` selects an ordinary function body. An object selects an async,
+    /// generator, or async-generator function body.
+    pub function: Option<Either<bool, FunctionFragmentContext>>,
+}
+
+impl From<FragmentContext> for AstFragmentContext {
+    fn from(value: FragmentContext) -> Self {
+        match value.function {
+            None | Some(Either::A(false)) => Self::TopLevel,
+            Some(Either::A(true)) => Self::Function,
+            Some(Either::B(function)) => match (function.r#async, function.generator) {
+                (false, false) => Self::Function,
+                (true, false) => Self::AsyncFunction,
+                (false, true) => Self::Generator,
+                (true, true) => Self::AsyncGenerator,
+            },
+        }
+    }
+}
+
 #[napi(object)]
 #[derive(Default)]
 pub struct ParserOptions {
@@ -106,10 +145,6 @@ pub struct ParserOptions {
     ///
     /// @default "flat"
     pub comments: Option<CommentMode>,
-    /// Allows `return` statements outside functions.
-    ///
-    /// @default false
-    pub allow_return_outside_function: Option<bool>,
 }
 
 impl From<ParserOptions> for AstParserOptions {
@@ -126,9 +161,6 @@ impl From<ParserOptions> for AstParserOptions {
                 .comments
                 .map(Into::into)
                 .unwrap_or(defaults.comments),
-            allow_return_outside_function: options
-                .allow_return_outside_function
-                .unwrap_or(defaults.allow_return_outside_function),
         }
     }
 }

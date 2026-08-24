@@ -89,7 +89,7 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
         comment_count,
         0, // attached_comment_count
         0, // diag_count
-        tree.root_program().node_id().index() as u32,
+        tree.root_node_id().index() as u32,
         (if tree.is_ts() { FLAG_TS } else { 0 })
             | ((tree.source_type() as u32) << FLAG_SOURCE_TYPE_SHIFT),
     ] {

@@ -13,6 +13,6 @@ mod unicode_id;
 mod util;
 
 pub use config::{NoTokenParserConfig, ParserConfig, TokenParserConfig};
-pub use parser::{CommentMode, Options, ParseReturn, Parser};
+pub use parser::{CommentMode, FragmentContext, Options, ParseReturn, Parser};
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity};
 pub use token::{Token, TokenFlag, TokenTag};

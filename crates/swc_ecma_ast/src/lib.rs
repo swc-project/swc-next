@@ -105,6 +105,11 @@ impl ExtraData {
 }
 
 impl<'a> Ast<'a> {
+    #[inline]
+    pub(crate) fn root_node_id(&self) -> NodeId {
+        self.root.expect("AST has no root")
+    }
+
     /// Returns the AST's root program.
     ///
     /// # Panics
@@ -112,7 +117,7 @@ impl<'a> Ast<'a> {
     /// Panics if the AST has no root or its root is not a program.
     #[inline]
     pub fn root_program(&self) -> Program {
-        let root = self.root.expect("AST has no root");
+        let root = self.root_node_id();
         assert_eq!(
             self.node_kind(root),
             NodeKind::Program,
@@ -129,13 +134,29 @@ impl<'a> Ast<'a> {
     /// Panics if the AST has no root or its root is not an expression.
     #[inline]
     pub fn root_expression(&self) -> Expr {
-        let root = self.root.expect("AST has no root");
+        let root = self.root_node_id();
         assert!(
             self.node_kind(root).is_expr(),
             "AST root is not an expression"
         );
         // SAFETY: The node kind was checked above.
         unsafe { Expr::from_node_id_unchecked(root) }
+    }
+
+    /// Returns the AST's root statement.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the AST has no root or its root is not a statement.
+    #[inline]
+    pub fn root_statement(&self) -> Stmt {
+        let root = self.root_node_id();
+        assert!(
+            self.node_kind(root).is_stmt(),
+            "AST root is not a statement"
+        );
+        // SAFETY: The node kind was checked above.
+        unsafe { Stmt::from_node_id_unchecked(root) }
     }
 
     #[inline]
@@ -419,6 +440,12 @@ impl<'a> Ast<'a> {
     /// Sets an expression as the AST root.
     #[inline]
     pub fn set_root_expression(&mut self, root: Expr) {
+        self.root = Some(root.node_id());
+    }
+
+    /// Sets a statement as the AST root.
+    #[inline]
+    pub fn set_root_statement(&mut self, root: Stmt) {
         self.root = Some(root.node_id());
     }
 
