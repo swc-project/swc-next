@@ -675,12 +675,18 @@ impl<'a> Printer<'a> {
         }
     }
 
+    #[inline]
     fn print_identifier(&mut self, name: &str) {
         self.print_space_before_identifier();
         if !self.options.ascii_only || name.is_ascii() {
             self.print_bytes(name);
-            return;
+        } else {
+            self.print_identifier_ascii_only(name);
         }
+    }
+
+    #[cold]
+    fn print_identifier_ascii_only(&mut self, name: &str) {
         let name = name.as_bytes();
         let mut i = 0;
         while i < name.len() {
