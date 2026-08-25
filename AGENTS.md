@@ -62,8 +62,14 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 - Add tests to the existing module; group related cases by broad feature and use a coarse
   feature name for the test function.
 - Keep each input small; do not combine independently testable JavaScript/TypeScript statements.
+- Move repeated setup and parsing boilerplate into local helper functions so the test body only
+  shows the input, result, and assertions.
+- Reuse named options, contexts, and language configurations across related cases.
 - Write assertions flat; do not define a cases table and iterate over it.
-- Keep input and expected output on one source line; encode line breaks as `\n`.
+- Keep each input and result acquisition on one source line, separate cases with a blank line,
+  and encode input line breaks as `\n`.
+- Assert observable behavior and structure; avoid exact diagnostic messages and verbose custom
+  failure output unless the text itself is part of the contract.
 - Do not add unit tests for behavior already covered by conformance tests or for highly specific
   cases.
 
