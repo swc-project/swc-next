@@ -60,6 +60,7 @@ swc_next_regular_expression = { version = "0.1.0", path = "crates/swc_regular_ex
 swc_next_ecma_semantic    = { version = "0.1.0", path = "crates/swc_ecma_semantic" }
 swc_next_ecma_transformer = { version = "0.1.0", path = "crates/swc_ecma_transformer" }
 swc_next_napi             = { version = "0.1.0", path = "crates/swc_napi" }
+swc_next_type_strip       = { version = "0.1.0", path = "crates/swc_type_strip" }
 
 # Dev
 clap          = { version = "4.5.51", features = ["derive"] }

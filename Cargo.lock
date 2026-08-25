@@ -2884,6 +2884,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_type_strip"
+version = "0.1.3"
+dependencies = [
+ "swc_next_allocator",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_parser",
+]
+
+[[package]]
 name = "swc_sourcemap"
 version = "10.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
