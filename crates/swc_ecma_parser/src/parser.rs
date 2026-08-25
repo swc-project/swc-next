@@ -1032,76 +1032,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         (result, config)
     }
 
-    /// Parses the source as exactly one statement in `fragment_context`.
-    pub fn parse_statement_fragment(
-        mut self,
-        fragment_context: FragmentContext,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        if !self.validate_fragment_root() {
-            return Err(self.diagnostics);
-        }
-        let is_unambiguous = self.source_type == SourceType::Unambiguous;
-        let initial_source_type = if is_unambiguous {
-            SourceType::Module
-        } else {
-            self.source_type
-        };
-        let statement_context =
-            self.enter_fragment_context(initial_source_type, fragment_context, is_unambiguous);
-        if self.advance().is_none() {
-            self.current_token = Token::eof(0);
-        }
-        self.ensure_capacity();
-        let statement = self.parse_statement_fragment_once(statement_context, fragment_context);
-        if is_unambiguous {
-            match self.unambiguous_parse_action() {
-                UnambiguousParseAction::KeepModule => {}
-                UnambiguousParseAction::RelabelAsScript => {
-                    self.set_source_type(SourceType::Script);
-                }
-                UnambiguousParseAction::RetryAsScript => {
-                    cold_path();
-                    let allocator = self.ast.allocator();
-                    let source = self.source;
-                    let options = self.script_options();
-                    let (module_result, config) =
-                        self.finish_statement_fragment_with_config(statement);
-                    return Parser::init(allocator, source, options, config)
-                        .parse_statement_fragment_as_script(fragment_context)
-                        .unwrap_or(module_result);
-                }
-            }
-        }
-        self.finish_statement_fragment(statement)
-    }
-
-    fn finish_statement_fragment(
-        self,
-        statement: Option<Stmt>,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        self.finish_statement_fragment_with_config(statement).0
-    }
-
-    fn finish_statement_fragment_with_config(
-        mut self,
-        statement: Option<Stmt>,
-    ) -> (Result<Ast<'a>, Vec<Diagnostic<'a>>>, C) {
-        self.report_module_mode_errors();
-        let result = match statement {
-            Some(statement) if self.diagnostics.is_empty() => {
-                self.finish_fragment();
-                self.ast.set_root_statement(statement);
-                if self.comment_mode == CommentMode::Flat {
-                    self.ast.set_attached_comments(self.lexer.comments);
-                }
-                Ok(self.ast)
-            }
-            _ => Err(self.diagnostics),
-        };
-        let config = self.lexer.config;
-        (result, config)
-    }
-
     fn enter_program_context(&mut self, source_type: SourceType, can_be_module: bool) {
         self.set_source_type(source_type);
         self.context = Context::from(source_type);
@@ -1171,24 +1101,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         } else {
             Some(self.finish_expression_fragment(expr))
-        }
-    }
-
-    fn parse_statement_fragment_as_script(
-        mut self,
-        fragment_context: FragmentContext,
-    ) -> Option<Result<Ast<'a>, Vec<Diagnostic<'a>>>> {
-        let statement_context =
-            self.enter_fragment_context(SourceType::Script, fragment_context, false);
-        if self.advance().is_none() {
-            self.current_token = Token::eof(0);
-        }
-        self.ensure_capacity();
-        let statement = self.parse_statement_fragment_once(statement_context, fragment_context);
-        if self.script_retry_failed() {
-            None
-        } else {
-            Some(self.finish_statement_fragment(statement))
         }
     }
 
