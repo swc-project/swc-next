@@ -886,7 +886,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             source_type => {
                 self.enter_program_context(source_type, false);
                 let body = self.parse_body(None, self.source_type.into());
-                self.finish_parse(body)
+                self.finish_parse_program(body)
             }
         }
     }
@@ -895,10 +895,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.enter_program_context(SourceType::Module, true);
         let body = self.parse_body(None, self.source_type.into());
         match self.unambiguous_parse_action() {
-            UnambiguousParseAction::KeepModule => self.finish_parse(body),
+            UnambiguousParseAction::KeepModule => self.finish_parse_program(body),
             UnambiguousParseAction::RelabelAsScript => {
                 self.set_source_type(SourceType::Script);
-                self.finish_parse(body)
+                self.finish_parse_program(body)
             }
             UnambiguousParseAction::RetryAsScript => {
                 self.parse_unambiguous_program_script_retry(body)
@@ -919,10 +919,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if ret.diagnostics.is_empty() {
             return ret;
         }
-        self.finish_parse(body)
+        self.finish_parse_program(body)
     }
 
-    fn finish_parse(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
+    fn finish_parse_program(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
         let ParsedBody { directives, body } = parsed_body;
 
         // Create the root node and set it as the AST's root.
