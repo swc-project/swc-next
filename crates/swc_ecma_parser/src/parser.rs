@@ -877,56 +877,67 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     pub fn parse(mut self) -> ParseReturn<'a> {
-        let is_unambiguous = self.source_type == SourceType::Unambiguous;
-        let initial_source_type = if is_unambiguous {
-            SourceType::Module
-        } else {
-            self.source_type
-        };
-        self.enter_program_context(initial_source_type, is_unambiguous);
+        self.ensure_capacity();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
         }
-        self.ensure_capacity();
-        let parsed_body = self.parse_body(None, self.source_type.into());
-        if is_unambiguous {
-            match self.unambiguous_parse_action() {
-                UnambiguousParseAction::KeepModule => {}
-                UnambiguousParseAction::RelabelAsScript => {
-                    self.set_source_type(SourceType::Script);
-                }
-                UnambiguousParseAction::RetryAsScript => {
-                    cold_path();
-                    let allocator = self.ast.allocator();
-                    let source = self.source;
-                    let options = self.script_options();
-                    let (module_result, config) = self.finish_program_with_config(parsed_body);
-                    return Parser::init(allocator, source, options, config)
-                        .parse_program_as_script()
-                        .unwrap_or(module_result);
-                }
+        match self.source_type {
+            SourceType::Unambiguous => self.parse_unambiguous_program(),
+            source_type => {
+                self.enter_program_context(source_type, false);
+                let body = self.parse_body(None, self.source_type.into());
+                self.finish_parse(body)
             }
         }
-        self.finish_program(parsed_body)
     }
 
-    fn finish_program(self, parsed_body: ParsedBody) -> ParseReturn<'a> {
-        self.finish_program_with_config(parsed_body).0
+    fn parse_unambiguous_program(mut self) -> ParseReturn<'a> {
+        self.enter_program_context(SourceType::Module, true);
+        let body = self.parse_body(None, self.source_type.into());
+        match self.unambiguous_parse_action() {
+            UnambiguousParseAction::KeepModule => self.finish_parse(body),
+            UnambiguousParseAction::RelabelAsScript => {
+                self.set_source_type(SourceType::Script);
+                self.finish_parse(body)
+            }
+            UnambiguousParseAction::RetryAsScript => {
+                self.parse_unambiguous_program_script_retry(body)
+            }
+        }
     }
 
-    fn finish_program_with_config(mut self, parsed_body: ParsedBody) -> (ParseReturn<'a>, C) {
+    #[cold]
+    fn parse_unambiguous_program_script_retry(self, body: ParsedBody) -> ParseReturn<'a> {
+        let retry_parser = {
+            let allocator = self.ast.allocator();
+            let source = self.source;
+            let options = self.script_options();
+            let config = self.lexer.config.clone();
+            Parser::init(allocator, source, options, config)
+        };
+        let ret = retry_parser.parse();
+        if ret.diagnostics.is_empty() {
+            return ret;
+        }
+        self.finish_parse(body)
+    }
+
+    fn finish_parse(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
         let ParsedBody { directives, body } = parsed_body;
+
+        // Create the root node and set it as the AST's root.
         let end = self.current_token.span.end;
+        let root_span = Span::new(0, end);
         let hashbang = self.lexer.hashbang.map(|hashbang| {
             let start = hashbang.start;
             let end = start + u32::from(hashbang.len);
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
+        let program = self.ast.program(root_span, directives, body, hashbang);
+        self.ast.set_root_program(program);
         self.report_module_mode_errors();
-        let program = self
-            .ast
-            .program(Span::new(0, end), directives, body, hashbang);
+
         if !self.preserve_parens {
             strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
         }
@@ -934,8 +945,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.comment_mode == CommentMode::Flat {
             self.ast.set_attached_comments(self.lexer.comments);
         }
-        self.ast.set_root_program(program);
 
+        // Collect tokens
         let diagnostics = self.diagnostics;
         let mut tokens = self.lexer.tokens;
         if self.lexer.config.tokens() && !diagnostics.iter().any(|d| d.severity == Severity::Error)
@@ -946,15 +957,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             tokens.clear();
         }
 
-        let config = self.lexer.config;
-        (
-            ParseReturn {
-                ast: self.ast,
-                tokens,
-                diagnostics,
-            },
-            config,
-        )
+        ParseReturn {
+            ast: self.ast,
+            tokens,
+            diagnostics,
+        }
     }
 
     /// Parses the source as exactly one expression in `fragment_context`.
@@ -1150,20 +1157,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_program_as_script(mut self) -> Option<ParseReturn<'a>> {
-        self.enter_program_context(SourceType::Script, false);
-        if self.advance().is_none() {
-            self.current_token = Token::eof(0);
-        }
-        self.ensure_capacity();
-        let parsed_body = self.parse_body(None, self.source_type.into());
-        if self.script_retry_failed() {
-            None
-        } else {
-            Some(self.finish_program(parsed_body))
-        }
-    }
-
     fn parse_expression_fragment_as_script(
         mut self,
         fragment_context: FragmentContext,
@@ -1270,10 +1263,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             UnambiguousParseAction::RelabelAsScript
         }
-    }
-
-    fn script_retry_failed(&self) -> bool {
-        self.has_errors() || self.state.contains(ParserState::HAS_MODULE_SYNTAX)
     }
 
     fn set_source_type(&mut self, source_type: SourceType) {

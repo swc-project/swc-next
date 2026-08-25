@@ -1,4 +1,4 @@
-pub trait ParserConfig {
+pub trait ParserConfig: Clone {
     fn tokens(&self) -> bool;
 }
 
