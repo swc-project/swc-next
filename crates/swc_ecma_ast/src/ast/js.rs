@@ -1333,7 +1333,7 @@ pub struct Decorator {
 ///
 /// `@dec class` populates `decorators`. `abstract class` sets `abstract`.
 /// `declare class` sets `declare`.
-#[ast]
+#[ast(builder)]
 pub struct Class {
     class_type: ClassType,
     /// `decorator[]`
@@ -1385,7 +1385,7 @@ pub struct ClassBody {
 /// //                           ^ optional
 /// //                            ^^^^^^^^^^^ value
 /// ```
-#[ast]
+#[ast(builder)]
 pub struct MethodDefinition {
     /// `decorator[]`
     decorators: Vec<Decorator>,

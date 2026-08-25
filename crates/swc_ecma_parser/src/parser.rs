@@ -2257,16 +2257,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let end = body.span(&self.ast).end;
         Some(self.ast.class(
             Span::new(start, end),
-            class_type,
-            decorators,
-            id,
-            type_parameters,
-            super_class,
-            super_type_arguments,
-            implements,
-            body,
-            is_abstract,
-            opts.is_declare,
+            ClassBuilder {
+                class_type,
+                decorators,
+                id,
+                type_parameters,
+                super_class,
+                super_type_arguments,
+                implements,
+                body,
+                r#abstract: is_abstract,
+                declare: opts.is_declare,
+            },
         ))
     }
 
@@ -2767,16 +2769,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
             let method = self.ast.method_definition(
                 method_span,
-                decorators,
-                key,
-                function,
-                modifiers.kind,
-                modifiers.computed,
-                modifiers.is_static,
-                modifiers.r#override,
-                optional,
-                modifiers.r#abstract,
-                modifiers.accessibility,
+                MethodDefinitionBuilder {
+                    decorators,
+                    key,
+                    value: function,
+                    kind: modifiers.kind,
+                    computed: modifiers.computed,
+                    r#static: modifiers.is_static,
+                    r#override: modifiers.r#override,
+                    optional,
+                    r#abstract: modifiers.r#abstract,
+                    accessibility: modifiers.accessibility,
+                },
             );
             Some(ClassElement::MethodDefinition(method))
         } else {

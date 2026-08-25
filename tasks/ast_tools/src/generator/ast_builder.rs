@@ -13,10 +13,12 @@ use crate::{
 };
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
+    let mut builders = TokenStream::new();
     let mut build_functions = TokenStream::new();
     for ty in schema.types.iter() {
         match ty {
             AstType::Struct(ast_struct) => {
+                builders.extend(generate_builder_struct(ast_struct, schema));
                 build_functions.extend(generate_build_function_for_struct(ast_struct, schema))
             }
             AstType::Enum(ast_enum) => {
@@ -44,6 +46,8 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
             use crate::*;
             use oxc_index::Idx;
 
+            #builders
+
             impl<'a> Ast<'a> {
                 #build_functions
             }
@@ -54,6 +58,25 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
         tokens: output,
     }
     .into()
+}
+
+fn generate_builder_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
+    if !uses_builder(ast) {
+        return TokenStream::new();
+    }
+
+    let builder_name = builder_name(ast);
+    let fields = ast.fields.iter().map(|field| {
+        let field_name = format_ident!("{}", field.name);
+        let field_ty = schema.types[field.type_id].repr_ident(schema);
+        quote!(pub #field_name: #field_ty)
+    });
+
+    quote! {
+        pub struct #builder_name {
+            #(#fields),*
+        }
+    }
 }
 
 fn generate_build_function_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
@@ -78,10 +101,13 @@ fn generate_build_function_inline(
     fn_params: TokenStream,
     layout: &crate::util::InlineLayout,
 ) -> TokenStream {
+    let builder_destructure = generate_builder_destructure(ast);
+
     if layout.fields.is_empty() {
         return quote! {
             #[inline]
-            pub fn #fn_name(&mut self, span: Span) -> #ret_ty {
+            pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                #builder_destructure
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
@@ -113,6 +139,7 @@ fn generate_build_function_inline(
         InlineStorageMode::Full => quote! {
             #[inline]
             pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                #builder_destructure
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
@@ -142,6 +169,7 @@ fn generate_build_function_inline(
             quote! {
                 #[inline]
                 pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                    #builder_destructure
                     #add_extra_data
                     #ret_ty(self.add_node(
                         span,
@@ -166,6 +194,7 @@ fn generate_build_function_extra_data(
     ret_ty: syn::Ident,
     fn_params: TokenStream,
 ) -> TokenStream {
+    let builder_destructure = generate_builder_destructure(ast);
     let mut extra_data_values = Vec::new();
     for field in &ast.fields {
         let field_name = format_ident!("{}", field.name);
@@ -183,6 +212,7 @@ fn generate_build_function_extra_data(
     let tokens = quote! {
         #[inline]
         pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+            #builder_destructure
             #add_extra_data
 
             #ret_ty(
@@ -300,6 +330,11 @@ fn generate_build_function_for_enum(
 }
 
 fn generate_fn_params_decl(ast: &AstStruct, schema: &Schema) -> TokenStream {
+    if uses_builder(ast) {
+        let builder_name = builder_name(ast);
+        return quote!(builder: #builder_name);
+    }
+
     let mut fields = Vec::default();
     for field in ast.fields.iter() {
         let field_name = format_ident!("{}", field.name);
@@ -311,6 +346,10 @@ fn generate_fn_params_decl(ast: &AstStruct, schema: &Schema) -> TokenStream {
 }
 
 fn generate_fn_args(ast: &AstStruct) -> TokenStream {
+    if uses_builder(ast) {
+        return quote!(builder);
+    }
+
     let mut fields = Vec::default();
     for field in ast.fields.iter() {
         let field_name = format_ident!("{}", field.name);
@@ -318,4 +357,25 @@ fn generate_fn_args(ast: &AstStruct) -> TokenStream {
     }
 
     quote!( #(#fields),* )
+}
+
+fn uses_builder(ast: &AstStruct) -> bool {
+    ast._attrs.ast_attrs.contains("builder")
+}
+
+fn builder_name(ast: &AstStruct) -> syn::Ident {
+    format_ident!("{}Builder", ast.name)
+}
+
+fn generate_builder_destructure(ast: &AstStruct) -> TokenStream {
+    if !uses_builder(ast) {
+        return TokenStream::new();
+    }
+
+    let builder_name = builder_name(ast);
+    let fields = ast.fields.iter().map(|field| {
+        let field_name = format_ident!("{}", field.name);
+        quote!(#field_name)
+    });
+    quote!(let #builder_name { #(#fields),* } = builder;)
 }

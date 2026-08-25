@@ -11,7 +11,7 @@ mod syntax;
 mod visit;
 
 mod generated {
-    mod ast_builder;
+    pub mod ast_builder;
     mod ast_clone_in;
     pub(crate) mod ast_extra_compact;
     pub mod ast_node;
@@ -27,6 +27,7 @@ pub use ast::*;
 pub use comment::*;
 pub use derive::*;
 pub use diagnostic::*;
+pub use generated::ast_builder::*;
 pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};

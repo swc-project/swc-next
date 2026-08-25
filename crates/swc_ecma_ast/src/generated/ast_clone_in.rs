@@ -846,16 +846,18 @@ impl<'a> CloneIn<'a> for Class {
         let declare = self.declare(ast).clone_in(ast);
         ast.class(
             span,
-            class_type,
-            decorators,
-            id,
-            type_parameters,
-            super_class,
-            super_type_arguments,
-            implements,
-            body,
-            r#abstract,
-            declare,
+            crate::ClassBuilder {
+                class_type,
+                decorators,
+                id,
+                type_parameters,
+                super_class,
+                super_type_arguments,
+                implements,
+                body,
+                r#abstract,
+                declare,
+            },
         )
     }
 }
@@ -885,16 +887,18 @@ impl<'a> CloneIn<'a> for MethodDefinition {
         let accessibility = self.accessibility(ast).clone_in(ast);
         ast.method_definition(
             span,
-            decorators,
-            key,
-            value,
-            kind,
-            computed,
-            r#static,
-            r#override,
-            optional,
-            r#abstract,
-            accessibility,
+            crate::MethodDefinitionBuilder {
+                decorators,
+                key,
+                value,
+                kind,
+                computed,
+                r#static,
+                r#override,
+                optional,
+                r#abstract,
+                accessibility,
+            },
         )
     }
 }

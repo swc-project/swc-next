@@ -6,6 +6,30 @@
 )]
 use crate::*;
 use oxc_index::Idx;
+pub struct ClassBuilder {
+    pub class_type: ClassType,
+    pub decorators: TypedSubRange<Decorator>,
+    pub id: Option<BindingIdentifier>,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub super_class: Option<Expr>,
+    pub super_type_arguments: Option<TsTypeParameterInstantiation>,
+    pub implements: TypedSubRange<TsClassImplements>,
+    pub body: ClassBody,
+    pub r#abstract: bool,
+    pub declare: bool,
+}
+pub struct MethodDefinitionBuilder {
+    pub decorators: TypedSubRange<Decorator>,
+    pub key: PropertyKey,
+    pub value: Function,
+    pub kind: MethodDefinitionKind,
+    pub computed: bool,
+    pub r#static: bool,
+    pub r#override: bool,
+    pub optional: bool,
+    pub r#abstract: bool,
+    pub accessibility: Accessibility,
+}
 impl<'a> Ast<'a> {
     #[inline]
     pub fn program(
@@ -187,36 +211,8 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn stmt_decl_class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> Stmt {
-        Stmt::Declaration(Decl::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+    pub fn stmt_decl_class(&mut self, span: Span, builder: ClassBuilder) -> Stmt {
+        Stmt::Declaration(Decl::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn stmt_decl_ts_function(
@@ -435,36 +431,8 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn decl_class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> Decl {
-        Decl::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        )
+    pub fn decl_class(&mut self, span: Span, builder: ClassBuilder) -> Decl {
+        Decl::Class(self.class(span, builder).into())
     }
     #[inline]
     pub fn decl_ts_function(
@@ -833,36 +801,8 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn expr_class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> Expr {
-        Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        )
+    pub fn expr_class(&mut self, span: Span, builder: ClassBuilder) -> Expr {
+        Expr::Class(self.class(span, builder).into())
     }
     #[inline]
     pub fn expr_import_expression(
@@ -1646,36 +1586,8 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn property_key_expr_class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> PropertyKey {
-        PropertyKey::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+    pub fn property_key_expr_class(&mut self, span: Span, builder: ClassBuilder) -> PropertyKey {
+        PropertyKey::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn property_key_expr_import_expression(
@@ -2133,36 +2045,8 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn argument_expr_class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> Argument {
-        Argument::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+    pub fn argument_expr_class(&mut self, span: Span, builder: ClassBuilder) -> Argument {
+        Argument::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn argument_expr_import_expression(
@@ -2655,33 +2539,9 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_class(
         &mut self,
         span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
+        builder: ClassBuilder,
     ) -> ForStatementInit {
-        ForStatementInit::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+        ForStatementInit::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn for_statement_init_expr_import_expression(
@@ -3282,33 +3142,9 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_class(
         &mut self,
         span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
+        builder: ClassBuilder,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+        ArrowFunctionBody::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn arrow_function_body_expr_import_expression(
@@ -3645,33 +3481,9 @@ impl<'a> Ast<'a> {
     pub fn class_element_method_definition(
         &mut self,
         span: Span,
-        decorators: TypedSubRange<Decorator>,
-        key: PropertyKey,
-        value: Function,
-        kind: MethodDefinitionKind,
-        computed: bool,
-        r#static: bool,
-        r#override: bool,
-        optional: bool,
-        r#abstract: bool,
-        accessibility: Accessibility,
+        builder: MethodDefinitionBuilder,
     ) -> ClassElement {
-        ClassElement::MethodDefinition(
-            self.method_definition(
-                span,
-                decorators,
-                key,
-                value,
-                kind,
-                computed,
-                r#static,
-                r#override,
-                optional,
-                r#abstract,
-                accessibility,
-            )
-            .into(),
-        )
+        ClassElement::MethodDefinition(self.method_definition(span, builder).into())
     }
     #[inline]
     pub fn class_element_property_definition(
@@ -4140,33 +3952,9 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_class(
         &mut self,
         span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
+        builder: ClassBuilder,
     ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+        ExportDefaultDeclarationKind::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn export_default_declaration_kind_expr_import_expression(
@@ -4329,33 +4117,9 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_class(
         &mut self,
         span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
+        builder: ClassBuilder,
     ) -> ExportDefaultDeclarationKind {
-        ExportDefaultDeclarationKind::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        )
+        ExportDefaultDeclarationKind::Class(self.class(span, builder).into())
     }
     #[inline]
     pub fn export_default_declaration_kind_ts_function(
@@ -5115,20 +4879,19 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
-    ) -> Class {
+    pub fn class(&mut self, span: Span, builder: ClassBuilder) -> Class {
+        let ClassBuilder {
+            class_type,
+            decorators,
+            id,
+            type_parameters,
+            super_class,
+            super_type_arguments,
+            implements,
+            body,
+            r#abstract,
+            declare,
+        } = builder;
         let _extra_data = [
             decorators.to_extra_data(self),
             super_class.to_extra_data(self),
@@ -5166,17 +4929,20 @@ impl<'a> Ast<'a> {
     pub fn method_definition(
         &mut self,
         span: Span,
-        decorators: TypedSubRange<Decorator>,
-        key: PropertyKey,
-        value: Function,
-        kind: MethodDefinitionKind,
-        computed: bool,
-        r#static: bool,
-        r#override: bool,
-        optional: bool,
-        r#abstract: bool,
-        accessibility: Accessibility,
+        builder: MethodDefinitionBuilder,
     ) -> MethodDefinition {
+        let MethodDefinitionBuilder {
+            decorators,
+            key,
+            value,
+            kind,
+            computed,
+            r#static,
+            r#override,
+            optional,
+            r#abstract,
+            accessibility,
+        } = builder;
         let _extra_data = [decorators.to_extra_data(self), value.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         MethodDefinition(self.add_node(
@@ -7079,33 +6845,9 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_class(
         &mut self,
         span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
+        builder: ClassBuilder,
     ) -> TsEnumMemberName {
-        TsEnumMemberName::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+        TsEnumMemberName::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn ts_enum_member_name_expr_import_expression(
@@ -8850,33 +8592,9 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_class(
         &mut self,
         span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_class: Option<Expr>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        body: ClassBody,
-        r#abstract: bool,
-        declare: bool,
+        builder: ClassBuilder,
     ) -> JsxExpression {
-        JsxExpression::Expr(Expr::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                type_parameters,
-                super_class,
-                super_type_arguments,
-                implements,
-                body,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        ))
+        JsxExpression::Expr(Expr::Class(self.class(span, builder).into()))
     }
     #[inline]
     pub fn jsx_expression_expr_import_expression(
