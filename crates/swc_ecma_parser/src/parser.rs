@@ -9392,6 +9392,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let argument =
                             self.expression_to_pattern(spread.argument(&self.ast), context)?;
+                        if matches!(
+                            self.ast.node_kind(argument.node_id()),
+                            NodeKind::ArrayPattern | NodeKind::ObjectPattern
+                        ) {
+                            self.report(
+                                argument.span(&self.ast),
+                                "Object rest argument cannot be a destructuring pattern",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Collect the remaining properties into an identifier and destructure it separately.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                        }
                         if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             self.report(
                                 spread.span(&self.ast),

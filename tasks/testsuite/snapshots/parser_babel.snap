@@ -1,21 +1,12 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1611/1743 (92.43%)
+Negative Passed: 1620/1743 (92.94%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js - core/opts/allowAwaitOutsideFunction-false: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-class-func/input.js - core/scope/dupl-bind-class-func: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/class-methods/disallow-super-call-after-new/input.js - es2015/class-methods/disallow-super-call-after-new: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/16/input.js - es2018/object-rest-spread/16: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/17/input.js - es2018/object-rest-spread/17: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/19/input.js - es2018/object-rest-spread/19: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/20/input.js - es2018/object-rest-spread/20: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/24/input.js - es2018/object-rest-spread/24: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/25/input.js - es2018/object-rest-spread/25: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/26/input.js - es2018/object-rest-spread/26: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest-with-ts/input.js - es2018/object-rest-spread/no-pattern-in-rest-with-ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest/input.js - es2018/object-rest-spread/no-pattern-in-rest: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2020/nullish-coalescing-operator/no-paren-nullish-or/input.js - es2020/nullish-coalescing-operator/no-paren-nullish-or: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-4/input.js - es2022/private-in/invalid-private-followed-by-in-4: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak/input.js - es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak: expected a parse or early error, but pipeline succeeded
