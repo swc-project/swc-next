@@ -1,14 +1,11 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1620/1743 (92.94%)
+Negative Passed: 1623/1743 (93.12%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js - core/opts/allowAwaitOutsideFunction-false: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-class-func/input.js - core/scope/dupl-bind-class-func: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/class-methods/disallow-super-call-after-new/input.js - es2015/class-methods/disallow-super-call-after-new: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2020/nullish-coalescing-operator/no-paren-nullish-or/input.js - es2020/nullish-coalescing-operator/no-paren-nullish-or: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-4/input.js - es2022/private-in/invalid-private-followed-by-in-4: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak/input.js - es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/invalid-for-using-of-no-initializer/input.js - es2026/explicit-resource-management/invalid-for-using-of-no-initializer: expected a parse or early error, but pipeline succeeded

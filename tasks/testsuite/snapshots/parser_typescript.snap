@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13049/13156 (99.19%)
-Negative Passed: 1553/2981 (52.10%)
+Negative Passed: 1554/2981 (52.13%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -627,7 +627,6 @@ Failed: fixtures/typescript/tests/cases/compiler/super1.ts - super1.ts: expected
 Failed: fixtures/typescript/tests/cases/compiler/superCallInsideClassDeclaration.ts - superCallInsideClassDeclaration.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superCallInsideClassExpression.ts - superCallInsideClassExpression.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superInConstructorParam1.ts - superInConstructorParam1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/superNewCall1.ts - superNewCall1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superPropertyAccess2.ts - superPropertyAccess2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superPropertyAccessInSuperCall01.ts - superPropertyAccessInSuperCall01.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/systemModule9.ts - systemModule9.ts: expected a parse or early error, but pipeline succeeded

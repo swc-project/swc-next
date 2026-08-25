@@ -3371,7 +3371,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             TokenTag::Import => self.parse_import_expression()?,
-            _ => self.parse_primary_expression(false)?,
+            _ => self.parse_primary_expression(false, Precedence::Primary)?,
         };
 
         loop {
@@ -7935,10 +7935,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        self.parse_primary_expression(in_cover)
+        self.parse_primary_expression(in_cover, minimum)
     }
 
-    fn parse_primary_expression(&mut self, in_cover: bool) -> Option<Expr> {
+    fn parse_primary_expression(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
         let token = self.current_token;
 
         if token.tag.is_numeric_literal() {
@@ -7948,7 +7948,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         match token.tag {
             TokenTag::PrivateIdentifier => {
                 let private = self.parse_private_identifier()?;
-                if self.current_token.tag != TokenTag::In {
+                if self.current_token.tag != TokenTag::In || minimum > Precedence::Compare {
                     self.report(
                         token.span,
                         "Private names are only valid in property accesses (`obj.#field`) or `in` expressions (`#field in obj`)",
@@ -10606,7 +10606,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut callee = match self.current_token.tag {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
-            _ => self.parse_primary_expression(false)?,
+            _ => self.parse_primary_expression(false, Precedence::Primary)?,
         };
         loop {
             callee = match self.current_token.tag {
@@ -10628,6 +10628,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 _ => break,
             };
+        }
+        if self.ast.node_kind(callee.node_id()) == NodeKind::Super {
+            self.report(
+                callee.span(&self.ast),
+                "'super' cannot be used as the target of 'new'",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Call the parent constructor with 'super()', or construct a parent member with 'new super.prop()'.",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
         }
         if callee_starts_with_import
             && is_import_expression_or_member_access_on_import_expression(callee, &self.ast)
@@ -11711,13 +11723,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             },
             ParseExpressionOpts::default(),
         )?;
-        if self.ast.node_kind(right.node_id()) == NodeKind::PrivateIdentifier {
-            self.report(
-                right.span(&self.ast),
-                "Private names are only allowed in property accesses (`obj.#field`) or in `in` expressions (`#field in obj`)",
-                ReportOptions::default(),
-            );
-        }
         let operator = binary_operator(tag);
         Some(self.ast.expr_binary_expression(
             Span::new(start, right.span(&self.ast).end),
@@ -11738,24 +11743,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::NullishCoalescing => LogicalOperator::NullishCoalescing,
             _ => unreachable!(),
         };
-        let operator_to_check = match self.ast.expr_data(left) {
-            ExprData::LogicalExpression(expression) => Some(expression.operator(&self.ast)),
-            _ => match self.ast.expr_data(right) {
-                ExprData::LogicalExpression(expression) => Some(expression.operator(&self.ast)),
-                _ => None,
-            },
-        };
-        if let Some(operator_to_check) = operator_to_check {
-            let mixes_coalesce = (operator == LogicalOperator::NullishCoalescing)
-                != (operator_to_check == LogicalOperator::NullishCoalescing);
-            if mixes_coalesce {
-                self.report(
-                    Span::new(start, right.span(&self.ast).end),
-                    "Logical expressions and nullish coalescing cannot be mixed",
-                    ReportOptions::default(),
-                );
-                return None;
-            }
+        let mixes_coalesce = [left, right].into_iter().any(|expression| {
+            let ExprData::LogicalExpression(expression) = self.ast.expr_data(expression) else {
+                return false;
+            };
+            (operator == LogicalOperator::NullishCoalescing)
+                != (expression.operator(&self.ast) == LogicalOperator::NullishCoalescing)
+        });
+        if mixes_coalesce {
+            self.report(
+                Span::new(start, right.span(&self.ast).end),
+                "Logical expressions and nullish coalescing cannot be mixed",
+                ReportOptions::default(),
+            );
+            return None;
         }
         Some(self.ast.expr_logical_expression(
             Span::new(start, right.span(&self.ast).end),
@@ -12749,6 +12750,27 @@ mod tests {
 
         let diagnostics = parse("await using in object;", SourceType::Module);
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+    }
+
+    #[test]
+    fn private_name_early_errors() {
+        let allocator = Allocator::new();
+        let result = Parser::init(
+            &allocator,
+            "class C { #x; m() { a + #x in object; } }",
+            Options {
+                source_type: SourceType::Script,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+
+        assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
+        assert_eq!(
+            result.diagnostics[0].message,
+            "Private names are only valid in property accesses (`obj.#field`) or `in` expressions (`#field in obj`)"
+        );
     }
 
     #[test]
