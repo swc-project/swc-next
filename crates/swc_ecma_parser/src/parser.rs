@@ -1906,6 +1906,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(true)
     }
 
+    fn is_await_using_declaration_ahead(&mut self) -> Option<bool> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Await);
+        if !self.context.contains(Context::AWAIT) && !self.boundary_context.can_be_module() {
+            return Some(false);
+        }
+
+        let mut peek = self.begin_peek();
+        let result = (|| {
+            let using = peek.next()?;
+            if using.tag != TokenTag::Using || using.has_line_terminator_before() {
+                return Some(false);
+            }
+            let binding = peek.next()?;
+            Some(!binding.has_line_terminator_before() && can_start_binding_identifier(binding.tag))
+        })();
+        peek.end();
+        result
+    }
+
     fn parse_block_statement(&mut self) -> Option<BlockStatement> {
         let start = self.current_token.span.start;
         if !self.expect(
@@ -7204,8 +7223,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             TokenTag::Await => {
                 let await_span = self.current_token.span;
-                let next = self.peek_ahead()?;
-                if next.tag != TokenTag::Using || next.has_line_terminator_before() {
+                if !self.is_await_using_declaration_ahead()? {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
                 self.report_await_using_if_disallowed(await_span);
@@ -7494,6 +7512,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     id.span(&self.ast),
                     "'const' declarations in for loop initializer must be initialized",
                     ReportOptions::default(),
+                );
+                return None;
+            }
+            if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
+                self.report(
+                    id.span(&self.ast),
+                    Cow::Owned(format!(
+                        "'{}' declarations must be initialized",
+                        kind.as_str()
+                    )),
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Disposable resources require an initial value that implements the dispose protocol.",
+                        )),
+                        ..ReportOptions::default()
+                    },
                 );
                 return None;
             }

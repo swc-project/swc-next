@@ -1123,7 +1123,6 @@ impl Checker<'_, '_> {
                 if context.ast.get_utf8(directive.value(context.ast)) != "use strict" {
                     return;
                 }
-                let directive_span = context.ast.span(directive.node_id());
                 let mut parameter = None;
                 for node in context.ancestors() {
                     match context.ast.kind_data(node) {
@@ -1147,7 +1146,7 @@ impl Checker<'_, '_> {
                 }
                 if let Some(parameter) = parameter {
                     checks.report(
-                        directive_span,
+                        context.ast.span(directive.node_id()),
                         "Illegal 'use strict' directive in function with non-simple parameter list",
                         ReportOptions {
                             labels: checks

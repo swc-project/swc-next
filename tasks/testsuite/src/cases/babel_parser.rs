@@ -137,6 +137,17 @@ impl BabelParserCase {
     }
 
     fn configured_source_type(&self) -> SourceType {
+        if self.options.source_type.is_none() {
+            return match self
+                .path
+                .extension()
+                .and_then(|extension| extension.to_str())
+            {
+                Some("mjs" | "mts") => SourceType::Module,
+                Some("cjs" | "cts") => SourceType::CommonJs,
+                _ => SourceType::Script,
+            };
+        }
         source_type(&self.path, &self.options)
     }
 }

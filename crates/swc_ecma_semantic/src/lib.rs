@@ -430,7 +430,7 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
+    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, Span};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::{
@@ -477,6 +477,51 @@ mod tests {
         let result = analyze(&ast, options);
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         (ast, result.semantic)
+    }
+
+    fn syntax_diagnostics(source: &str) -> Vec<(String, Span)> {
+        let allocator = Allocator::new();
+        let parse = Parser::init(
+            &allocator,
+            source,
+            Options {
+                lang: Lang::Js,
+                source_type: SourceType::Script,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+
+        analyze(
+            &parse.ast,
+            AnalyzeOptions {
+                check_syntax: true,
+                ..AnalyzeOptions::default()
+            },
+        )
+        .diagnostics
+        .into_iter()
+        .map(|diagnostic| (diagnostic.message.into_owned(), diagnostic.span))
+        .collect()
+    }
+
+    #[test]
+    fn strict_directive_octal_escapes() {
+        let before_directive = syntax_diagnostics(r#"'\1'; 'use strict';"#);
+        assert_eq!(before_directive.len(), 1, "{before_directive:#?}");
+        assert_eq!(before_directive[0].1, Span::new(0, 4));
+
+        let after_directive = syntax_diagnostics(r#"'use strict'; '\1';"#);
+        assert_eq!(after_directive.len(), 1, "{after_directive:#?}");
+        assert_eq!(after_directive[0].1, Span::new(14, 18));
+
+        let comment = syntax_diagnostics(r#"'use strict'; "ok" /* \1 */;"#);
+        assert!(comment.is_empty(), "{comment:#?}");
+
+        let escaped_backslash = syntax_diagnostics(r#""\\1"; "use strict";"#);
+        assert!(escaped_backslash.is_empty(), "{escaped_backslash:#?}");
     }
 
     #[test]

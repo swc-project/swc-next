@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11316/11509 (98.32%)
+Positive Passed: 11314/11509 (98.31%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -169,6 +169,8 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName35.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/salsa/constructorNameInGenerator.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/salsa/plainJSGrammarErrors3.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarationsInForOf.3.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarationsInForOf.4.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarationsInForOf.3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/for-ofStatements/ES5For-of12.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/labeledStatements/labeledStatementWithLabel.ts

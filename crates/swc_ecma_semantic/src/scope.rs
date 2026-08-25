@@ -165,6 +165,10 @@ pub(crate) struct ScopeTracker<'a> {
 impl<'a> ScopeTracker<'a> {
     pub fn init(tree: &Ast<'a>) -> Self {
         let root = tree.root_program();
+        let root_strict = root.directives(tree).iter().any(|directive| {
+            let directive = tree.get_node_in_sub_range(directive);
+            tree.get_utf8(directive.value(tree)) == "use strict"
+        });
         let allocator = tree.allocator();
         let estimated_scopes = 16usize.max(tree.node_count() / 16);
         let mut tracker = Self {
@@ -174,18 +178,21 @@ impl<'a> ScopeTracker<'a> {
             active_with_scopes: Vec::new(),
             decorator_saved: Vec::new(),
         };
-        tracker.push_root(root.node_id(), tree.source_type());
+        tracker.push_root(root.node_id(), tree.source_type(), root_strict);
         tracker
     }
 
-    fn push_root(&mut self, root_node: NodeId, source_type: SourceType) {
+    fn push_root(&mut self, root_node: NodeId, source_type: SourceType, root_strict: bool) {
         debug_assert!(self.scopes.is_empty());
         self.scopes.push(Scope {
             node: root_node,
             parent: None,
             hoist_target: ScopeId::ROOT,
             kind: ScopeKind::Global,
-            flags: ScopeFlags::default(),
+            flags: ScopeFlags {
+                strict: source_type == SourceType::Script && root_strict,
+                ..ScopeFlags::default()
+            },
         });
         self.current = ScopeId::ROOT;
 
@@ -201,7 +208,14 @@ impl<'a> ScopeTracker<'a> {
                 );
             }
             SourceType::CommonJs => {
-                self.push_scope(ScopeKind::Function, root_node, ScopeFlags::default());
+                self.push_scope(
+                    ScopeKind::Function,
+                    root_node,
+                    ScopeFlags {
+                        strict: root_strict,
+                        ..ScopeFlags::default()
+                    },
+                );
             }
             SourceType::Script => {}
             SourceType::Unambiguous => {

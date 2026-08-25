@@ -729,7 +729,11 @@ impl<'a> SymbolTracker<'a> {
             excludes: if annex_b_block_function {
                 Excludes::ANNEX_B_BLOCK_FUNCTION
             } else if allow_overload {
-                Excludes::FUNCTION
+                if tree.is_ts() {
+                    Excludes::FUNCTION
+                } else {
+                    Excludes::FUNCTION.union(SymbolFlags::CLASS)
+                }
             } else {
                 Excludes::BLOCK_SCOPED_VAR
             },
