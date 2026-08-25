@@ -12812,7 +12812,7 @@ mod tests {
 
         fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {
             let parser = Parser::init(
-                &allocator,
+                allocator,
                 source,
                 Options {
                     source_type: SourceType::Unambiguous,
