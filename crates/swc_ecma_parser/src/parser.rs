@@ -12675,6 +12675,172 @@ mod tests {
     }
 
     #[test]
+    fn unambiguous() {
+        fn assert_unambiguous_source_type_with_lang(
+            source: &str,
+            lang: Lang,
+            expected: SourceType,
+        ) {
+            fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
+                use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
+                let mut buffer = vec![0; buffer_size(ast)];
+                serialize_into(ast, &mut buffer);
+                buffer
+            }
+
+            let unambiguous_allocator = Allocator::new();
+            let unambiguous_options = Options {
+                source_type: SourceType::Unambiguous,
+                lang,
+                ..Options::default()
+            };
+            let unambiguous_result = Parser::init(
+                &unambiguous_allocator,
+                source,
+                unambiguous_options,
+                NoTokenParserConfig,
+            )
+            .parse();
+            assert!(unambiguous_result.diagnostics.is_empty(),);
+            assert_eq!(unambiguous_result.ast.source_type(), expected, "{source}");
+
+            let explicit_allocator = Allocator::new();
+            let explicit_options = Options {
+                source_type: expected,
+                lang,
+                ..Options::default()
+            };
+            let explicit_result = Parser::init(
+                &explicit_allocator,
+                source,
+                explicit_options,
+                NoTokenParserConfig,
+            )
+            .parse();
+            assert!(explicit_result.diagnostics.is_empty(),);
+
+            let unambiguous_ast = serialize_ast(&unambiguous_result.ast);
+            let explicit_ast = serialize_ast(&explicit_result.ast);
+            assert!(unambiguous_ast == explicit_ast);
+        }
+
+        fn assert_unambiguous_source_type_js(source: &str, expected: SourceType) {
+            assert_unambiguous_source_type_with_lang(source, Lang::Js, expected);
+        }
+
+        fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
+            assert_unambiguous_source_type_with_lang(source, Lang::Ts, expected);
+        }
+
+        assert_unambiguous_source_type_js(
+            "const f = (x = await + value) => x;",
+            SourceType::Script,
+        );
+        assert_unambiguous_source_type_js("(x = await value);", SourceType::Module);
+        assert_unambiguous_source_type_js("(a = (b = (c = await value)));", SourceType::Module);
+
+        assert_unambiguous_source_type("const value = 1;", SourceType::Script);
+        assert_unambiguous_source_type("const f = (x = await + value) => x;", SourceType::Script);
+        assert_unambiguous_source_type("import value from 'value';", SourceType::Module);
+        assert_unambiguous_source_type("export const value = 1;", SourceType::Module);
+        assert_unambiguous_source_type("const value = import.meta.url;", SourceType::Module);
+        assert_unambiguous_source_type("import('value');", SourceType::Script);
+        assert_unambiguous_source_type("import value = require('value');", SourceType::Module);
+        assert_unambiguous_source_type("import Value = Namespace.Value;", SourceType::Script);
+        assert_unambiguous_source_type("export as namespace Foo", SourceType::Module);
+        assert_unambiguous_source_type("await;", SourceType::Script);
+        assert_unambiguous_source_type("await value;", SourceType::Module);
+        assert_unambiguous_source_type("await\nvalue;", SourceType::Script);
+        assert_unambiguous_source_type("for (await of values) {}", SourceType::Script);
+        assert_unambiguous_source_type("await+0;", SourceType::Script);
+        assert_unambiguous_source_type("await-0;", SourceType::Script);
+        assert_unambiguous_source_type("await+=0;", SourceType::Script);
+        assert_unambiguous_source_type("await-=0;", SourceType::Script);
+        assert_unambiguous_source_type("await*=0;", SourceType::Script);
+        assert_unambiguous_source_type("await/=0;", SourceType::Script);
+        assert_unambiguous_source_type("await**0;", SourceType::Script);
+        assert_unambiguous_source_type("await&0;", SourceType::Script);
+        assert_unambiguous_source_type("await|0;", SourceType::Script);
+        assert_unambiguous_source_type("await&&0;", SourceType::Script);
+        assert_unambiguous_source_type("await||0;", SourceType::Script);
+        assert_unambiguous_source_type("await<0;", SourceType::Script);
+        assert_unambiguous_source_type("await>0;", SourceType::Script);
+        assert_unambiguous_source_type("await(0);", SourceType::Script);
+        assert_unambiguous_source_type("await[0];", SourceType::Script);
+        assert_unambiguous_source_type("await`0`;", SourceType::Script);
+        assert_unambiguous_source_type("await`0${0}`;", SourceType::Script);
+        assert_unambiguous_source_type("await /1/u; var await = 1, u = 1;", SourceType::Script);
+        assert_unambiguous_source_type("await! + value;", SourceType::Script);
+        assert_unambiguous_source_type("await<T>(value);", SourceType::Script);
+        assert_unambiguous_source_type("await++a;", SourceType::Module);
+        assert_unambiguous_source_type("await--a;", SourceType::Module);
+        assert_unambiguous_source_type("await? 0 : 1;", SourceType::Script);
+        assert_unambiguous_source_type("await?.();", SourceType::Script);
+        assert_unambiguous_source_type("await => value;", SourceType::Script);
+        assert_unambiguous_source_type("await as T;", SourceType::Script);
+        assert_unambiguous_source_type("await satisfies T;", SourceType::Script);
+        assert_unambiguous_source_type("await in T;", SourceType::Script);
+        assert_unambiguous_source_type("await instanceof Object;", SourceType::Script);
+        assert_unambiguous_source_type("class C { field = await + value; }", SourceType::Script);
+        assert_unambiguous_source_type("{ await value; }", SourceType::Module);
+        assert_unambiguous_source_type("for await (const value of values) {}", SourceType::Module);
+        assert_unambiguous_source_type(
+            "{ for await (const value of values) {} }",
+            SourceType::Module,
+        );
+        assert_unambiguous_source_type("await using value = resource;", SourceType::Module);
+        assert_unambiguous_source_type("{ await using value = resource; }", SourceType::Module);
+        assert_unambiguous_source_type("using value = resource;", SourceType::Script);
+        assert_unambiguous_source_type("async function f() { await value; }", SourceType::Script);
+        assert_unambiguous_source_type(
+            "async function f() { for await (const value of values) {} }",
+            SourceType::Script,
+        );
+        assert_unambiguous_source_type(
+            "async function f() { await using value = resource; }",
+            SourceType::Script,
+        );
+        assert_unambiguous_source_type(
+            "async function f() { await value; } await other;",
+            SourceType::Module,
+        );
+        assert_unambiguous_source_type("{ using value = resource; }", SourceType::Script);
+        assert_unambiguous_source_type("export {}; await\nvalue;", SourceType::Module);
+        assert_unambiguous_source_type("await\nvalue; export {};", SourceType::Module);
+        assert_unambiguous_source_type("await + 0; export {};", SourceType::Module);
+        assert_unambiguous_source_type("foo(await 0);", SourceType::Module);
+
+        fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {
+            let parser = Parser::init(
+                &allocator,
+                source,
+                Options {
+                    source_type: SourceType::Unambiguous,
+                    lang: Lang::Js,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            );
+            parser.parse()
+        }
+
+        let allocator = Allocator::new();
+        let result = parse(&allocator, "value + await \"unterminated");
+        assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
+
+        let allocator = Allocator::new();
+        let result = parse(&allocator, "value\n<!-- comment");
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        assert_eq!(result.ast.source_type(), SourceType::Script);
+        assert_eq!(result.ast.root_program().body(&result.ast).len(), 1);
+
+        let allocator = Allocator::new();
+        let result = parse(&allocator, "value\n<!-- comment\nexport {};");
+        assert_eq!(result.ast.source_type(), SourceType::Module);
+        assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
+    }
+
+    #[test]
     fn fragment_context() {
         fn parse_expr<'a>(
             allocator: &'a Allocator,
