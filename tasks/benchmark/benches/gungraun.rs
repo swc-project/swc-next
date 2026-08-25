@@ -8,12 +8,13 @@ use gungraun::{Callgrind, EventKind};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit, VisitMut,
-    VisitMutWith, VisitWith,
+    PrivateIdentifier, SourceType, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit,
+    VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
-use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze, name_resolver::resolver as resolve_names};
+use swc_next_type_strip::strip_types;
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
 const BACKBONE: &str = include_str!("../files/backbone-1.1.0.js");
@@ -25,6 +26,9 @@ const THREE: &str = include_str!("../files/three-0.138.3.js");
 const YUI: &str = include_str!("../files/yui-3.12.0.js");
 const TYPESCRIPT: &str = include_str!("../files/typescript.js");
 const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
+const ASTRO_CONFIG: &str = include_str!("../files/astro-config.ts");
+const EFFECT_SCHEMA_AST: &str = include_str!("../files/effect-schema-ast.ts");
+const HONO_TYPES: &str = include_str!("../files/hono-types.ts");
 
 #[library_benchmark]
 #[bench::angular(ANGULAR, Lang::Js)]
@@ -101,6 +105,23 @@ fn bench_resolver(ast: Ast<'static>) {
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_codegen(ast: Ast<'static>) {
     black_box(print(ast.allocator(), &ast, CodegenOptions::default()));
+}
+
+fn type_strip_options(lang: Lang) -> Options {
+    Options {
+        source_type: SourceType::Module,
+        lang,
+        preserve_parens: true,
+        comments: CommentMode::None,
+    }
+}
+
+#[library_benchmark]
+#[bench::astro_config(ASTRO_CONFIG, type_strip_options(Lang::Ts))]
+#[bench::effect_schema_ast(EFFECT_SCHEMA_AST, type_strip_options(Lang::Ts))]
+#[bench::hono_types(HONO_TYPES, type_strip_options(Lang::Ts))]
+fn bench_type_strip(source: &str, options: Options) {
+    black_box(strip_types(black_box(source), black_box(options)));
 }
 
 struct VisitCounter<'visit, 'ast> {
@@ -277,6 +298,8 @@ library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
 
 library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
 
+library_benchmark_group!(name = type_strip, benchmarks = bench_type_strip);
+
 library_benchmark_group!(
     name = visit,
     benchmarks = [bench_visit, bench_visit_mut, bench_traverse]
@@ -287,5 +310,5 @@ main!(
         LibraryBenchmarkConfig::default().tool(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
-    library_benchmark_groups = [parser, semantic, resolver, codegen, visit]
+    library_benchmark_groups = [parser, semantic, resolver, codegen, type_strip, visit]
 );
