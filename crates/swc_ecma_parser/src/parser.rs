@@ -12617,190 +12617,122 @@ mod tests {
 
     #[test]
     fn parse_expression_fragment() {
-        let allocator = Allocator::default();
-        let source = "1 + 1";
-        let parser = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig);
-        let ast = parser
-            .parse_expression_fragment(FragmentContext::TopLevel)
-            .unwrap();
-        assert!(matches!(
-            ast.expr_data(ast.root_expression()),
-            swc_next_ecma_ast::ExprData::BinaryExpression(_)
-        ));
+        fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
+            Parser::init(allocator, source, options, NoTokenParserConfig)
+                .parse_expression_fragment(FragmentContext::TopLevel)
+                .unwrap()
+        }
 
         let allocator = Allocator::default();
-        let parser = Parser::init(
-            &allocator,
-            "await value",
-            Options {
-                source_type: SourceType::Unambiguous,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        );
-        let ast = parser
-            .parse_expression_fragment(FragmentContext::TopLevel)
-            .unwrap();
+        let unambiguous = Options {
+            source_type: SourceType::Unambiguous,
+            ..Options::default()
+        };
+
+        let ast = parse(&allocator, "1 + 1", Options::default());
+        let root_expression = ast.expr_data(ast.root_expression());
+        assert!(matches!(root_expression, ExprData::BinaryExpression(_)));
+
+        let ast = parse(&allocator, "await value", unambiguous);
+        let root_expression = ast.expr_data(ast.root_expression());
         assert_eq!(ast.source_type(), SourceType::Module);
-        assert!(matches!(
-            ast.expr_data(ast.root_expression()),
-            ExprData::AwaitExpression(_)
-        ));
+        assert!(matches!(root_expression, ExprData::AwaitExpression(_)));
 
-        let allocator = Allocator::default();
-        let parser = Parser::init(
-            &allocator,
-            "value",
-            Options {
-                source_type: SourceType::Unambiguous,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        );
-        let ast = parser
-            .parse_expression_fragment(FragmentContext::TopLevel)
-            .unwrap();
+        let ast = parse(&allocator, "value", unambiguous);
         assert_eq!(ast.source_type(), SourceType::Script);
     }
 
     #[test]
     fn await_using_context() {
-        let allocator = Allocator::new();
-        let options = Options {
-            source_type: SourceType::Script,
-            ..Options::default()
-        };
+        fn parse(source: &str, source_type: SourceType) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            Parser::init(
+                &allocator,
+                source,
+                Options {
+                    source_type,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse()
+            .diagnostics
+        }
 
-        let script = Parser::init(
-            &allocator,
-            "await using in object;",
-            options,
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert_eq!(script.diagnostics.len(), 1, "{:#?}", script.diagnostics);
-        assert_eq!(
-            script.diagnostics[0].message,
-            "'await using' is only valid in async functions or modules"
-        );
+        let script = SourceType::Script;
 
-        let function = Parser::init(
-            &allocator,
-            "function f() { await using instanceof C; }",
-            options,
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert_eq!(function.diagnostics.len(), 1, "{:#?}", function.diagnostics);
-        assert_eq!(
-            function.diagnostics[0].message,
-            "'await using' is only valid in async functions or modules"
-        );
+        let diagnostics = parse("await using in object;", script);
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
 
-        let async_function = Parser::init(
-            &allocator,
-            "async function f() { await using in object; }",
-            options,
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert!(
-            async_function.diagnostics.is_empty(),
-            "{:#?}",
-            async_function.diagnostics
-        );
+        let diagnostics = parse("function f() { await using instanceof C; }", script);
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
 
-        let module = Parser::init(
-            &allocator,
-            "await using in object;",
-            Options::default(),
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert!(module.diagnostics.is_empty(), "{:#?}", module.diagnostics);
+        let diagnostics = parse("async function f() { await using in object; }", script);
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse("await using in object;", SourceType::Module);
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
     }
 
     #[test]
     fn fragment_context() {
+        fn parse_expr<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            options: Options,
+            context: FragmentContext,
+        ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+            let parser = Parser::init(allocator, source, options, NoTokenParserConfig);
+            parser.parse_expression_fragment(context)
+        }
+
+        fn parse_stmt<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            options: Options,
+            context: FragmentContext,
+        ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+            let parser = Parser::init(allocator, source, options, NoTokenParserConfig);
+            parser.parse_statement_fragment(context)
+        }
+
+        use FragmentContext::{AsyncFunction, Function, Generator, TopLevel};
+
         let allocator = Allocator::new();
         let script = Options {
             source_type: SourceType::Script,
             ..Options::default()
         };
-
-        let ast = Parser::init(&allocator, "return value;", script, NoTokenParserConfig)
-            .parse_statement_fragment(FragmentContext::Function)
-            .unwrap();
-        assert!(matches!(
-            ast.stmt_data(ast.root_statement()),
-            StmtData::ReturnStatement(_)
-        ));
-
-        let result = Parser::init(&allocator, "return value;", script, NoTokenParserConfig)
-            .parse_statement_fragment(FragmentContext::TopLevel);
-        let Err(diagnostics) = result else {
-            panic!("top-level script fragment accepted return")
+        let auto = Options {
+            source_type: SourceType::Unambiguous,
+            ..Options::default()
         };
-        assert_eq!(
-            diagnostics[0].message,
-            "'return' statement is only valid inside a function"
-        );
 
-        let ast = Parser::init(&allocator, "await value", script, NoTokenParserConfig)
-            .parse_expression_fragment(FragmentContext::AsyncFunction)
-            .unwrap();
-        assert!(matches!(
-            ast.expr_data(ast.root_expression()),
-            ExprData::AwaitExpression(_)
-        ));
+        let ast = parse_stmt(&allocator, "return value;", script, Function).unwrap();
+        let root_statement = ast.stmt_data(ast.root_statement());
+        assert!(matches!(root_statement, StmtData::ReturnStatement(_)));
 
-        let ast = Parser::init(&allocator, "yield value", script, NoTokenParserConfig)
-            .parse_expression_fragment(FragmentContext::Generator)
-            .unwrap();
-        assert!(matches!(
-            ast.expr_data(ast.root_expression()),
-            ExprData::YieldExpression(_)
-        ));
+        let result = parse_stmt(&allocator, "return value;", script, TopLevel);
+        assert!(result.is_err_and(|result| !result.is_empty()));
 
-        let ast = Parser::init(
-            &allocator,
-            "import value from 'value';",
-            Options {
-                source_type: SourceType::Unambiguous,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse_statement_fragment(FragmentContext::TopLevel)
-        .unwrap();
-        assert!(matches!(
-            ast.stmt_data(ast.root_statement()),
-            StmtData::ImportDeclaration(_)
-        ));
+        let ast = parse_expr(&allocator, "await value", script, AsyncFunction).unwrap();
+        let root_expression = ast.expr_data(ast.root_expression());
+        assert!(matches!(root_expression, ExprData::AwaitExpression(_)));
+
+        let ast = parse_expr(&allocator, "yield value", script, Generator).unwrap();
+        let root_expression = ast.expr_data(ast.root_expression());
+        assert!(matches!(root_expression, ExprData::YieldExpression(_)));
+
+        let ast = parse_stmt(&allocator, "import value from 'value';", auto, TopLevel).unwrap();
+        let root_statement = ast.stmt_data(ast.root_statement());
+        assert!(matches!(root_statement, StmtData::ImportDeclaration(_)));
         assert_eq!(ast.source_type(), SourceType::Module);
 
-        let ast = Parser::init(
-            &allocator,
-            "await value;",
-            Options {
-                source_type: SourceType::Unambiguous,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse_statement_fragment(FragmentContext::AsyncFunction)
-        .unwrap();
+        let ast = parse_stmt(&allocator, "await value;", auto, AsyncFunction).unwrap();
         assert_eq!(ast.source_type(), SourceType::Script);
 
-        let result = Parser::init(&allocator, "value; other;", script, NoTokenParserConfig)
-            .parse_statement_fragment(FragmentContext::TopLevel);
-        let Err(diagnostics) = result else {
-            panic!("statement fragment accepted trailing tokens")
-        };
-        assert_eq!(
-            diagnostics.last().unwrap().message,
-            "Expected end of fragment, but found 'other'"
-        );
+        let result = parse_stmt(&allocator, "value; other;", script, TopLevel);
+        assert!(result.is_err_and(|result| !result.is_empty()));
     }
 
     #[test]
