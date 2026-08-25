@@ -2,37 +2,12 @@
 /* eslint-disable */
 export declare function langFromPath(path: string): Lang
 
-export declare function parseExpressionFragmentSync(source: string, fragmentContext: FragmentContext, options?: ParserOptions | undefined | null): Buffer
-
-export declare function parseStatementFragmentSync(source: string, fragmentContext: FragmentContext, options?: ParserOptions | undefined | null): Buffer
-
 export declare function parseSync(source: string, options?: ParserOptions | undefined | null): Buffer
 
 export declare function sourceTypeFromPath(path: string): SourceType
 export declare const enum CommentMode {
   None = 'none',
   Flat = 'flat'
-}
-
-/**
- * The syntactic context surrounding a parsed fragment.
- *
- * Omit `function` for a top-level fragment.
- */
-export interface FragmentContext {
-  /**
-   * `true` selects an ordinary function body. An object selects an async,
-   * generator, or async-generator function body.
-   */
-  function?: boolean | FunctionFragmentContext
-}
-
-/** The function body surrounding a parsed fragment. */
-export interface FunctionFragmentContext {
-  /** Enables `await` expressions at the fragment root. */
-  async: boolean
-  /** Enables `yield` expressions at the fragment root. */
-  generator: boolean
 }
 
 export declare const enum Lang {

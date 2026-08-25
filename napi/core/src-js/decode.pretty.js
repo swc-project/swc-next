@@ -91,7 +91,7 @@ function decodePool(bytes) {
   return result;
 }
 
-export function decode(buffer, source, rootName = "program") {
+export function decode(buffer, source) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;
   const byteLength = buffer.byteLength;
@@ -103,7 +103,7 @@ export function decode(buffer, source, rootName = "program") {
   const stringPoolLength = _u32[2];
   const sourceLength = _u32[3];
   const commentCount = _u32[4];
-  const rootIndex = _u32[7];
+  const programIndex = _u32[7];
   const isTs = (_u32[8] & 1) !== 0;
 
   const spans = HEADER_SIZE;
@@ -1826,12 +1826,12 @@ export function decode(buffer, source, rootName = "program") {
     return result;
   }
 
-  let _root, _comments;
+  let _program, _comments;
   return {
-    get [rootName]() {
-      return _root !== undefined
-        ? _root
-        : (_root = node(rootIndex));
+    get program() {
+      return _program !== undefined
+        ? _program
+        : (_program = node(programIndex));
     },
     get comments() {
       return _comments !== undefined
