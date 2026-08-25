@@ -1,0 +1,12 @@
+[package]
+description          = "TypeScript type stripping for erasable syntax"
+edition              = "2024"
+license.workspace    = true
+name                 = "swc_next_type_strip"
+repository.workspace = true
+version              = "0.1.3"
+
+[dependencies]
+swc_next_allocator   = { workspace = true }
+swc_next_ecma_ast    = { workspace = true }
+swc_next_ecma_parser = { workspace = true }
