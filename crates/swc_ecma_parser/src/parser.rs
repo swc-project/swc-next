@@ -701,7 +701,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     comment_mode: CommentMode,
     boundary_context: BoundaryContext,
     lexer: Lexer<'a, C>,
-    pub(super) diagnostics: Vec<Diagnostic<'static>>,
+    diagnostics: Vec<Diagnostic<'static>>,
     current_token: Token,
     scratch_statements: ScratchBuffer,
     scratch_cover: ScratchBuffer,
