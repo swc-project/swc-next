@@ -11595,6 +11595,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert!(matches!(tag, TokenTag::As | TokenTag::Satisfies));
         self.advance()?;
         let type_annotation = self.parse_type()?;
+        if assertion_erasure_changes_binary_grouping(left, self.current_token.tag, &self.ast) {
+            self.report(
+                self.current_token.span,
+                "An unparenthesized `as` or `satisfies` expression cannot be followed by an operator that would bind differently after type erasure",
+                ReportOptions {
+                    help: Some(Cow::Borrowed("Wrap the expression in parentheses.")),
+                    ..ReportOptions::default()
+                },
+            );
+            return None;
+        }
         let span = Span::new(
             left.span(&self.ast).start,
             type_annotation.span(&self.ast).end,
@@ -12368,6 +12379,33 @@ fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
     }
 }
 
+fn assertion_erasure_changes_binary_grouping(
+    mut expression: Expr,
+    next_operator: TokenTag,
+    ast: &Ast<'_>,
+) -> bool {
+    loop {
+        expression = match ast.expr_data(expression) {
+            ExprData::TsAsExpression(assertion) => assertion.expression(ast),
+            ExprData::TsSatisfiesExpression(assertion) => assertion.expression(ast),
+            _ => break,
+        };
+    }
+
+    let current_precedence = match ast.expr_data(expression) {
+        ExprData::BinaryExpression(binary) => binary.operator(ast).precedence(),
+        ExprData::LogicalExpression(logical) => logical.operator(ast).precedence(),
+        _ => return false,
+    };
+    if !next_operator.is_binary_operator() && !next_operator.is_logical_operator() {
+        return false;
+    }
+
+    let next_precedence = next_operator.precedence();
+    next_precedence > current_precedence
+        || (next_precedence == current_precedence && next_operator == TokenTag::Exponent)
+}
+
 fn is_angle_open(tag: TokenTag) -> bool {
     matches!(tag, TokenTag::LessThan | TokenTag::LeftShift)
 }
@@ -12727,6 +12765,21 @@ mod tests {
 
     use super::*;
 
+    fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+        let allocator = Allocator::new();
+        Parser::init(
+            &allocator,
+            source,
+            Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse()
+        .diagnostics
+    }
+
     #[test]
     fn parse_expression_fragment() {
         fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
@@ -12752,6 +12805,42 @@ mod tests {
 
         let ast = parse(&allocator, "value", unambiguous);
         assert_eq!(ast.source_type(), SourceType::Script);
+    }
+
+    #[test]
+    fn disallow_unerasable_assertions() {
+        let diagnostics = parse_typescript_diagnostics("1 + 1 as number * 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("1 + 1 satisfies number * 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("1 + 1 as unknown as number * 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("1 >> 1 as number + 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("2 * 3 as number * 2");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("2 * 3 satisfies number * 2");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("2 ** 3 as number ** 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("2 ** 3 satisfies number ** 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("2 ** 3 as unknown as number ** 2");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("1 * 1 as number + 2");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("1 as number * 2");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
     }
 
     #[test]
