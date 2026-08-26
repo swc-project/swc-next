@@ -225,7 +225,7 @@ bitflags! {
         const COVER_HAS_INIT_NAME = 1 << 0;
         /// Whether the source contains syntax which is only valid in a module.
         const HAS_MODULE_SYNTAX = 1 << 1;
-        /// Whether a top-level `await` has a different valid Script
+        /// Whether a module-sensitive `await` may have a different Script
         /// interpretation.
         const AMBIGUOUS_SCRIPT_DIFFERENT_AST = 1 << 2;
     }
@@ -6959,7 +6959,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         if self.current_token.tag == TokenTag::Await {
-            if !self.context.contains(Context::AWAIT) && !self.boundary_context.can_be_module() {
+            if !self.context.contains(Context::AWAIT) {
                 self.report(
                     self.current_token.span,
                     "'for await' is only valid in async functions or modules",
@@ -7712,40 +7712,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_parenthesized_or_arrow_function::<false>(None);
         }
 
-        if tag == TokenTag::Await
-            && (self.context.contains(Context::AWAIT) || self.boundary_context.can_be_module())
-        {
+        if tag == TokenTag::Await && self.context.contains(Context::AWAIT) {
             let token = self.current_token;
             let can_classify_as_module = self.boundary_context.can_be_module();
             self.advance_without_escape_check()?;
-            let parse_as_await = self.context.contains(Context::AWAIT)
-                || !matches!(
-                    self.current_token.tag,
-                    TokenTag::Semicolon
-                        | TokenTag::RightBrace
-                        | TokenTag::RightParen
-                        | TokenTag::RightBracket
-                        | TokenTag::Comma
-                        | TokenTag::Colon
-                        | TokenTag::Eof
-                );
-            if parse_as_await {
-                self.report_if_escaped_keyword(token);
-                let ambiguous_script_different_ast =
-                    can_classify_as_module && self.is_ambiguous_await_prefix();
-                let expression = self.parse_await_expression(token.span.start)?;
-                if ambiguous_script_different_ast {
-                    self.state
-                        .insert(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST);
-                } else if can_classify_as_module {
-                    self.state.insert(ParserState::HAS_MODULE_SYNTAX);
-                }
-                return Some(expression);
+            self.report_if_escaped_keyword(token);
+            let ambiguous_script_different_ast =
+                can_classify_as_module && self.is_ambiguous_await_prefix();
+            let expression = self.parse_await_expression(token.span.start)?;
+            if ambiguous_script_different_ast {
+                self.state
+                    .insert(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST);
+            } else if can_classify_as_module {
+                self.state.insert(ParserState::HAS_MODULE_SYNTAX);
             }
-
-            self.validate_identifier(token, "an identifier");
-            let name = self.identifier_name(token);
-            return Some(self.ast.expr_identifier_reference(token.span, name));
+            return Some(expression);
         }
 
         if tag == TokenTag::Yield
