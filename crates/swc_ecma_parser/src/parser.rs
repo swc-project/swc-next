@@ -3,7 +3,7 @@
 //! This module is a Rust port of the parser design from
 //! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 
-use std::{borrow::Cow, hint::cold_path, mem};
+use std::{borrow::Cow, mem};
 
 use bitflags::bitflags;
 use rustc_hash::FxHashSet;
@@ -972,52 +972,64 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.validate_fragment_root() {
             return Err(self.diagnostics);
         }
-        let is_unambiguous = self.source_type == SourceType::Unambiguous;
-        let initial_source_type = if is_unambiguous {
-            SourceType::Module
-        } else {
-            self.source_type
-        };
-        self.enter_fragment_context(initial_source_type, fragment_context, is_unambiguous);
+        self.ensure_capacity();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
         }
-        self.ensure_capacity();
-        let expr = self.parse_expression_fragment_once();
-        if is_unambiguous {
-            match self.unambiguous_parse_action() {
-                UnambiguousParseAction::KeepModule => {}
-                UnambiguousParseAction::RelabelAsScript => {
-                    self.set_source_type(SourceType::Script);
-                }
-                UnambiguousParseAction::RetryAsScript => {
-                    cold_path();
-                    let allocator = self.ast.allocator();
-                    let source = self.source;
-                    let options = self.script_options();
-                    let (module_result, config) = self.finish_expression_fragment_with_config(expr);
-                    return Parser::init(allocator, source, options, config)
-                        .parse_expression_fragment_as_script(fragment_context)
-                        .unwrap_or(module_result);
-                }
+        match self.source_type {
+            SourceType::Unambiguous => self.parse_unambiguous_expression_fragment(fragment_context),
+            source_type => {
+                self.enter_fragment_context(source_type, fragment_context, false);
+                let expr = self.parse_expression_fragment_once();
+                self.finish_parse_expression_fragment(expr)
             }
         }
-        self.finish_expression_fragment(expr)
     }
 
-    fn finish_expression_fragment(
+    fn parse_unambiguous_expression_fragment(
+        mut self,
+        fragment_context: FragmentContext,
+    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+        self.enter_fragment_context(SourceType::Module, fragment_context, true);
+        let expr = self.parse_expression_fragment_once();
+        match self.unambiguous_parse_action() {
+            UnambiguousParseAction::KeepModule => self.finish_parse_expression_fragment(expr),
+            UnambiguousParseAction::RelabelAsScript => {
+                self.set_source_type(SourceType::Script);
+                self.finish_parse_expression_fragment(expr)
+            }
+            UnambiguousParseAction::RetryAsScript => {
+                self.parse_unambiguous_expression_fragment_script_retry(expr, fragment_context)
+            }
+        }
+    }
+
+    #[cold]
+    fn parse_unambiguous_expression_fragment_script_retry(
         self,
         expr: Option<Expr>,
+        fragment_context: FragmentContext,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        self.finish_expression_fragment_with_config(expr).0
+        let retry_parser = {
+            let allocator = self.ast.allocator();
+            let source = self.source;
+            let options = self.script_options();
+            let config = self.lexer.config.clone();
+            Parser::init(allocator, source, options, config)
+        };
+        let result = retry_parser.parse_expression_fragment(fragment_context);
+        if result.is_ok() {
+            return result;
+        }
+        self.finish_parse_expression_fragment(expr)
     }
 
-    fn finish_expression_fragment_with_config(
+    fn finish_parse_expression_fragment(
         mut self,
         expr: Option<Expr>,
-    ) -> (Result<Ast<'a>, Vec<Diagnostic<'a>>>, C) {
+    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
         self.report_module_mode_errors();
-        let result = match expr {
+        match expr {
             Some(expr) if self.diagnostics.is_empty() => {
                 self.finish_fragment();
                 self.ast.set_root_expression(expr);
@@ -1027,9 +1039,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Ok(self.ast)
             }
             _ => Err(self.diagnostics),
-        };
-        let config = self.lexer.config;
-        (result, config)
+        }
     }
 
     fn enter_program_context(&mut self, source_type: SourceType, can_be_module: bool) {
@@ -1087,49 +1097,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_expression_fragment_as_script(
-        mut self,
-        fragment_context: FragmentContext,
-    ) -> Option<Result<Ast<'a>, Vec<Diagnostic<'a>>>> {
-        self.enter_fragment_context(SourceType::Script, fragment_context, false);
-        if self.advance().is_none() {
-            self.current_token = Token::eof(0);
-        }
-        self.ensure_capacity();
-        let expr = self.parse_expression_fragment_once();
-        if self.script_retry_failed() {
-            None
-        } else {
-            Some(self.finish_expression_fragment(expr))
-        }
-    }
-
     fn parse_expression_fragment_once(&mut self) -> Option<Expr> {
         let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         self.report_fragment_trailing_tokens();
         expression
-    }
-
-    fn parse_statement_fragment_once(
-        &mut self,
-        statement_context: StatementContext,
-        fragment_context: FragmentContext,
-    ) -> Option<Stmt> {
-        let statement = self.parse_statement(statement_context);
-        if let Some(statement) = statement {
-            if statement_context == StatementContext::ModuleItem {
-                self.record_statement_module_syntax(statement);
-            } else if self.statement_requires_module_item_context(statement, fragment_context) {
-                self.mark_module_syntax();
-                self.report(
-                    statement.span(&self.ast),
-                    "Import and export declarations may only appear at the top level of a module",
-                    ReportOptions::default(),
-                );
-            }
-        }
-        self.report_fragment_trailing_tokens();
-        statement
     }
 
     fn report_fragment_trailing_tokens(&mut self) {
@@ -1541,33 +1512,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn record_statement_module_syntax(&mut self, statement: Stmt) {
         if self.statement_has_module_syntax(statement) {
             self.mark_module_syntax();
-        }
-    }
-
-    fn statement_requires_module_item_context(
-        &self,
-        statement: Stmt,
-        fragment_context: FragmentContext,
-    ) -> bool {
-        match self.ast.stmt_data(statement) {
-            StmtData::ImportDeclaration(_)
-            | StmtData::ExportNamedDeclaration(_)
-            | StmtData::ExportDefaultDeclaration(_)
-            | StmtData::ExportAllDeclaration(_)
-            | StmtData::TsExportAssignment(_)
-            | StmtData::TsNamespaceExportDeclaration(_) => true,
-            StmtData::Declaration(declaration) => {
-                let DeclData::TsImportEqualsDeclaration(declaration) =
-                    self.ast.decl_data(declaration)
-                else {
-                    return false;
-                };
-                fragment_context.is_function()
-                    || declaration
-                        .module_reference(&self.ast)
-                        .is_ts_external_module_reference(&self.ast)
-            }
-            _ => false,
         }
     }
 
@@ -12886,34 +12830,13 @@ mod tests {
             parser.parse_expression_fragment(context)
         }
 
-        fn parse_stmt<'a>(
-            allocator: &'a Allocator,
-            source: &'a str,
-            options: Options,
-            context: FragmentContext,
-        ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-            let parser = Parser::init(allocator, source, options, NoTokenParserConfig);
-            parser.parse_statement_fragment(context)
-        }
-
-        use FragmentContext::{AsyncFunction, Function, Generator, TopLevel};
+        use FragmentContext::{AsyncFunction, Generator};
 
         let allocator = Allocator::new();
         let script = Options {
             source_type: SourceType::Script,
             ..Options::default()
         };
-        let auto = Options {
-            source_type: SourceType::Unambiguous,
-            ..Options::default()
-        };
-
-        let ast = parse_stmt(&allocator, "return value;", script, Function).unwrap();
-        let root_statement = ast.stmt_data(ast.root_statement());
-        assert!(matches!(root_statement, StmtData::ReturnStatement(_)));
-
-        let result = parse_stmt(&allocator, "return value;", script, TopLevel);
-        assert!(result.is_err_and(|result| !result.is_empty()));
 
         let ast = parse_expr(&allocator, "await value", script, AsyncFunction).unwrap();
         let root_expression = ast.expr_data(ast.root_expression());
@@ -12922,17 +12845,6 @@ mod tests {
         let ast = parse_expr(&allocator, "yield value", script, Generator).unwrap();
         let root_expression = ast.expr_data(ast.root_expression());
         assert!(matches!(root_expression, ExprData::YieldExpression(_)));
-
-        let ast = parse_stmt(&allocator, "import value from 'value';", auto, TopLevel).unwrap();
-        let root_statement = ast.stmt_data(ast.root_statement());
-        assert!(matches!(root_statement, StmtData::ImportDeclaration(_)));
-        assert_eq!(ast.source_type(), SourceType::Module);
-
-        let ast = parse_stmt(&allocator, "await value;", auto, AsyncFunction).unwrap();
-        assert_eq!(ast.source_type(), SourceType::Script);
-
-        let result = parse_stmt(&allocator, "value; other;", script, TopLevel);
-        assert!(result.is_err_and(|result| !result.is_empty()));
     }
 
     #[test]
