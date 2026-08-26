@@ -887,7 +887,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             source_type => {
                 self.enter_program_context(source_type, false);
                 let body = self.parse_body(None, self.source_type.into());
-                self.finish_parse_program(body)
+                self.finish_program(body)
             }
         }
     }
@@ -896,11 +896,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.enter_program_context(SourceType::Module, true);
         let body = self.parse_body(None, self.source_type.into());
         match self.unambiguous_parse_action() {
-            UnambiguousParseAction::KeepModule => self.finish_parse_program(body),
-            UnambiguousParseAction::RelabelAsScript => {
-                self.set_source_type(SourceType::Script);
-                self.finish_parse_program(body)
-            }
+            UnambiguousParseAction::KeepModule => {}
+            UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
                 let retry_parser = {
@@ -914,12 +911,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if ret.diagnostics.is_empty() {
                     return ret;
                 }
-                self.finish_parse_program(body)
             }
-        }
+        };
+        self.finish_program(body)
     }
 
-    fn finish_parse_program(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
+    fn enter_program_context(&mut self, source_type: SourceType, can_be_module: bool) {
+        self.set_source_type(source_type);
+        self.context = Context::from(source_type);
+        self.boundary_context.set(
+            BoundaryContext::IN_FUNCTION,
+            source_type == SourceType::CommonJs,
+        );
+        self.boundary_context
+            .set(BoundaryContext::CAN_BE_MODULE, can_be_module);
+        self.statement_context = source_type.into();
+    }
+
+    fn finish_program(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
         let ParsedBody { directives, body } = parsed_body;
 
         // Create the root node and set it as the AST's root.
@@ -985,7 +994,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             source_type => {
                 self.enter_fragment_context(source_type, fragment_context, false);
                 let expr = self.parse_expression_fragment_once();
-                self.finish_parse_expression_fragment(expr)
+                self.finish_expression_fragment(expr)
             }
         }
     }
@@ -997,11 +1006,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.enter_fragment_context(SourceType::Module, fragment_context, true);
         let expr = self.parse_expression_fragment_once();
         match self.unambiguous_parse_action() {
-            UnambiguousParseAction::KeepModule => self.finish_parse_expression_fragment(expr),
-            UnambiguousParseAction::RelabelAsScript => {
-                self.set_source_type(SourceType::Script);
-                self.finish_parse_expression_fragment(expr)
-            }
+            UnambiguousParseAction::KeepModule => {}
+            UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
                 let retry_parser = {
@@ -1015,41 +1021,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if result.is_ok() {
                     return result;
                 }
-                self.finish_parse_expression_fragment(expr)
             }
-        }
-    }
-
-    fn finish_parse_expression_fragment(
-        mut self,
-        expr: Option<Expr>,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        self.report_module_mode_errors();
-        match expr {
-            Some(expr) if self.diagnostics.is_empty() => {
-                if !self.preserve_parens {
-                    strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
-                }
-                self.ast.set_root_expression(expr);
-                if self.comment_mode == CommentMode::Flat {
-                    self.ast.set_attached_comments(self.lexer.comments);
-                }
-                Ok(self.ast)
-            }
-            _ => Err(self.diagnostics),
-        }
-    }
-
-    fn enter_program_context(&mut self, source_type: SourceType, can_be_module: bool) {
-        self.set_source_type(source_type);
-        self.context = Context::from(source_type);
-        self.boundary_context.set(
-            BoundaryContext::IN_FUNCTION,
-            source_type == SourceType::CommonJs,
-        );
-        self.boundary_context
-            .set(BoundaryContext::CAN_BE_MODULE, can_be_module);
-        self.statement_context = source_type.into();
+        };
+        self.finish_expression_fragment(expr)
     }
 
     fn enter_fragment_context(
@@ -1071,6 +1045,26 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
         self.statement_context = statement_context;
         statement_context
+    }
+
+    fn finish_expression_fragment(
+        mut self,
+        expr: Option<Expr>,
+    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+        self.report_module_mode_errors();
+        match expr {
+            Some(expr) if self.diagnostics.is_empty() => {
+                if !self.preserve_parens {
+                    strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
+                }
+                self.ast.set_root_expression(expr);
+                if self.comment_mode == CommentMode::Flat {
+                    self.ast.set_attached_comments(self.lexer.comments);
+                }
+                Ok(self.ast)
+            }
+            _ => Err(self.diagnostics),
+        }
     }
 
     fn script_options(&self) -> Options {
