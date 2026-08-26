@@ -716,6 +716,10 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     state: ParserState,
     /// Start offset of an array or object cover grammar with a trailing comma.
     cover_has_trailing_comma: Option<u32>,
+    /// Target node whose parentheses were stripped while converting an
+    /// assignment target. The same target must be rejected if cover grammar
+    /// later establishes that it is a binding pattern.
+    stripped_paren: Option<NodeId>,
     /// Start offsets which failed speculative parenthesized-arrow parsing.
     ///
     /// This cache is intentionally not part of [`Checkpoint`]: a failed
@@ -751,6 +755,7 @@ struct Checkpoint {
     ts_context: TsContext,
     state: ParserState,
     cover_has_trailing_comma: Option<u32>,
+    stripped_paren: Option<NodeId>,
     boundary_context: BoundaryContext,
 }
 
@@ -866,6 +871,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             },
             state: ParserState::default(),
             cover_has_trailing_comma: None,
+            stripped_paren: None,
             not_parenthesized_arrow: FxHashSet::default(),
         }
     }
@@ -1493,6 +1499,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ts_context: self.ts_context,
             state: self.state,
             cover_has_trailing_comma: self.cover_has_trailing_comma,
+            stripped_paren: self.stripped_paren,
             boundary_context: self.boundary_context,
         }
     }
@@ -1516,6 +1523,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ts_context = checkpoint.ts_context;
         self.state = checkpoint.state;
         self.cover_has_trailing_comma = checkpoint.cover_has_trailing_comma;
+        self.stripped_paren = checkpoint.stripped_paren;
         self.boundary_context = checkpoint.boundary_context;
     }
 
@@ -9072,7 +9080,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     );
                     return None;
                 }
-                self.expression_to_pattern(inner, context)
+                let pattern = self.expression_to_pattern(inner, context)?;
+                self.stripped_paren = Some(pattern.node_id());
+                Some(pattern)
             }
             ExprData::ChainExpression(_) => {
                 self.report(
@@ -9417,6 +9427,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if context == PatternContext::Assignment {
                     return Some(BindingPattern::SimpleAssignmentTarget(target));
                 }
+                if self.report_stripped_paren_in_binding(target.node_id()) {
+                    return Some(BindingPattern::SimpleAssignmentTarget(target));
+                }
                 match self.ast.simple_assignment_target_data(target) {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
                         let decorators = TypedSubRange::empty();
@@ -9488,6 +9501,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         pattern: BindingPattern,
     ) -> Option<BindingPattern> {
+        if self.report_stripped_paren_in_binding(pattern.node_id()) {
+            return Some(pattern);
+        }
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::BindingIdentifier(_) => {}
             BindingPatternData::SimpleAssignmentTarget(target) => {
@@ -9525,6 +9541,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
         Some(pattern)
+    }
+
+    fn report_stripped_paren_in_binding(&mut self, node: NodeId) -> bool {
+        if self.stripped_paren != Some(node) {
+            return false;
+        }
+        self.report(
+            self.ast.span(node),
+            "Parentheses are not allowed in this binding pattern",
+            ReportOptions {
+                help: Some(Cow::Borrowed(
+                    "Remove the extra parentheses. Binding patterns can only be identifiers, destructuring patterns, or assignment patterns, not parenthesized expressions.",
+                )),
+                ..ReportOptions::default()
+            },
+        );
+        true
     }
 
     fn is_destructuring_pattern(&self, pattern: BindingPattern) -> bool {
@@ -11718,13 +11751,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         };
         self.advance()?;
+        // A stripped parenthesis in the right-hand side is in expression
+        // position and must not overwrite evidence from the arrow-head target.
+        let stripped_paren = self.stripped_paren;
         let right = self.parse_expr(
             precedence,
             ParseExpressionOpts {
                 respect_in_parameter,
                 ..ParseExpressionOpts::default()
             },
-        )?;
+        );
+        self.stripped_paren = stripped_paren;
+        let right = right?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(&self.ast).end),
             target,
@@ -11904,7 +11942,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     );
                     return None;
                 }
-                self.expression_to_assignment_target(inner)
+                let target = self.expression_to_assignment_target(inner)?;
+                self.stripped_paren = Some(target.node_id());
+                Some(target)
             }
             _ => Some(AssignmentTarget::SimpleAssignmentTarget(
                 self.expression_to_simple_assignment_target(expression)?,
@@ -12672,6 +12712,36 @@ mod tests {
 
         let diagnostics = parse("await using in object;", SourceType::Module);
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+    }
+
+    #[test]
+    fn arrow_binding_patterns() {
+        fn parse(source: &str, preserve_parens: bool) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            Parser::init(
+                &allocator,
+                source,
+                Options {
+                    preserve_parens,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse()
+            .diagnostics
+        }
+
+        let diagnostics = parse("([[(a)] = []] = []) => {}", false);
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
+
+        let diagnostics = parse("([[(a)] = []] = []) => {}", true);
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
+
+        let diagnostics = parse("([[a] = []] = []) => {}", false);
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse("((a) = b) => {}", false);
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
     }
 
     #[test]
