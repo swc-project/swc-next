@@ -3,6 +3,7 @@
 //! This module is a Rust port of the parser design from
 //! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 
+use std::hint::cold_path;
 use std::{borrow::Cow, mem};
 
 use bitflags::bitflags;
@@ -901,25 +902,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.finish_parse_program(body)
             }
             UnambiguousParseAction::RetryAsScript => {
-                self.parse_unambiguous_program_script_retry(body)
+                cold_path();
+                let retry_parser = {
+                    let allocator = self.ast.allocator();
+                    let source = self.source;
+                    let options = self.script_options();
+                    let config = self.lexer.config.clone();
+                    Parser::init(allocator, source, options, config)
+                };
+                let ret = retry_parser.parse();
+                if ret.diagnostics.is_empty() {
+                    return ret;
+                }
+                self.finish_parse_program(body)
             }
         }
-    }
-
-    #[cold]
-    fn parse_unambiguous_program_script_retry(self, body: ParsedBody) -> ParseReturn<'a> {
-        let retry_parser = {
-            let allocator = self.ast.allocator();
-            let source = self.source;
-            let options = self.script_options();
-            let config = self.lexer.config.clone();
-            Parser::init(allocator, source, options, config)
-        };
-        let ret = retry_parser.parse();
-        if ret.diagnostics.is_empty() {
-            return ret;
-        }
-        self.finish_parse_program(body)
     }
 
     fn finish_parse_program(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
@@ -999,29 +996,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.finish_parse_expression_fragment(expr)
             }
             UnambiguousParseAction::RetryAsScript => {
-                self.parse_unambiguous_expression_fragment_script_retry(expr, fragment_context)
+                cold_path();
+                let retry_parser = {
+                    let allocator = self.ast.allocator();
+                    let source = self.source;
+                    let options = self.script_options();
+                    let config = self.lexer.config.clone();
+                    Parser::init(allocator, source, options, config)
+                };
+                let result = retry_parser.parse_expression_fragment(fragment_context);
+                if result.is_ok() {
+                    return result;
+                }
+                self.finish_parse_expression_fragment(expr)
             }
         }
-    }
-
-    #[cold]
-    fn parse_unambiguous_expression_fragment_script_retry(
-        self,
-        expr: Option<Expr>,
-        fragment_context: FragmentContext,
-    ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        let retry_parser = {
-            let allocator = self.ast.allocator();
-            let source = self.source;
-            let options = self.script_options();
-            let config = self.lexer.config.clone();
-            Parser::init(allocator, source, options, config)
-        };
-        let result = retry_parser.parse_expression_fragment(fragment_context);
-        if result.is_ok() {
-            return result;
-        }
-        self.finish_parse_expression_fragment(expr)
     }
 
     fn finish_parse_expression_fragment(
