@@ -2,6 +2,9 @@ use std::borrow::Cow;
 
 use swc_next_ecma_ast::Span;
 
+use crate::simd::prelude::SimdPartialOrd;
+use crate::simd::{AVAILABLE as SIMD_AVAILABLE, mask8x16, u8x16};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum FixedSubstitution {
     #[allow(dead_code)]
@@ -185,6 +188,14 @@ fn normalize_operations(operations: &mut [Operation]) -> Vec<Operation> {
 }
 
 fn push_blank(output: &mut String, source: &str) {
+    if SIMD_AVAILABLE {
+        push_blank_simd(output, source);
+    } else {
+        push_blank_scalar(output, source);
+    }
+}
+
+fn push_blank_scalar(output: &mut String, source: &str) {
     debug_assert!(output.capacity() - output.len() >= source.len());
     let output_start = output.len();
     let mut written = 0;
@@ -215,6 +226,68 @@ fn push_blank(output: &mut String, source: &str) {
             let (consumed, produced) = blank_non_ascii(destination.add(written), &source[offset..]);
             offset += consumed;
             written += produced;
+        }
+
+        output.set_len(output_start + written);
+    }
+}
+
+fn push_blank_simd(output: &mut String, source: &str) {
+    debug_assert!(output.capacity() - output.len() >= source.len());
+    let output_start = output.len();
+    let mut written = 0;
+    let mut offset = 0;
+
+    // SAFETY: `output` has enough spare capacity for `source`. Each write stays
+    // within that capacity and produces valid UTF-8.
+    unsafe {
+        let output = output.as_mut_vec();
+        let destination = output.as_mut_ptr().add(output_start);
+
+        while offset < source.len() {
+            while offset + u8x16::LEN <= source.len() {
+                let bytes = u8x16::from_slice(&source.as_bytes()[offset..]);
+                let non_ascii = bytes.simd_ge(u8x16::splat(0x80));
+                if non_ascii.any() {
+                    break;
+                }
+
+                let control_whitespace: mask8x16 =
+                    bytes.simd_ge(u8x16::splat(b'\t')) & bytes.simd_le(u8x16::splat(b'\r'));
+                let blanked = control_whitespace
+                    .select(bytes, u8x16::splat(b' '))
+                    .to_array();
+                std::ptr::copy_nonoverlapping(
+                    blanked.as_ptr(),
+                    destination.add(written),
+                    u8x16::LEN,
+                );
+                written += u8x16::LEN;
+                offset += u8x16::LEN;
+            }
+
+            while offset < source.len() {
+                let byte = source.as_bytes()[offset];
+                if byte.is_ascii() {
+                    let blanked = if is_preserved_ascii_control_whitespace(byte) {
+                        byte
+                    } else {
+                        b' '
+                    };
+                    destination.add(written).write(blanked);
+                    offset += 1;
+                    written += 1;
+                    continue;
+                }
+
+                // SAFETY: `offset` is at a non-ASCII character boundary and
+                // the destination has `source.len() - offset` bytes available.
+                let (consumed, produced) =
+                    blank_non_ascii(destination.add(written), &source[offset..]);
+                offset += consumed;
+                written += produced;
+                break;
+            }
         }
 
         output.set_len(output_start + written);

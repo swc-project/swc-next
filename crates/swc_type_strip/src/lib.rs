@@ -27,6 +27,7 @@ use swc_next_ecma_parser::{ParseReturn, Parser, TokenParserConfig, TokenTag};
 use crate::token_cursor::TokenCursor;
 
 mod edit;
+mod simd;
 mod token_cursor;
 
 const UNSUPPORTED_LANG_MESSAGE: &str = "TypeError: Unsupported lang variant";
