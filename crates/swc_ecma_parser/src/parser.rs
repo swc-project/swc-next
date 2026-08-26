@@ -8896,7 +8896,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 is_expression: false,
             });
         }
-        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(
+            Precedence::Assignment,
+            ParseExpressionOpts {
+                respect_in_parameter: true,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         Some(ArrowBodyResult {
             body: ArrowFunctionBody::Expr(expression),
             is_expression: true,
@@ -12742,6 +12748,25 @@ mod tests {
 
         let diagnostics = parse("((a) = b) => {}", false);
         assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
+    }
+
+    #[test]
+    fn in_grammar_parameter() {
+        fn parse(source: &str) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig)
+                .parse()
+                .diagnostics
+        }
+
+        let diagnostics = parse("for (() => x in y;;);");
+        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse("() => x in y;");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse("for (() => (x in y);;);");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
     }
 
     #[test]
