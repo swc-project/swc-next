@@ -7690,6 +7690,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     #[inline(always)]
+    fn parse_expr_preserving_stripped_paren(
+        &mut self,
+        minimum: Precedence,
+        opts: ParseExpressionOpts,
+    ) -> Option<Expr> {
+        let stripped_paren = self.stripped_paren;
+        let expression = self.parse_expr(minimum, opts);
+        self.stripped_paren = stripped_paren;
+        expression
+    }
+
+    #[inline(always)]
     fn parse_expr_from_left(
         &mut self,
         mut left: Expr,
@@ -10222,7 +10234,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         match token.tag {
             TokenTag::LeftBracket => {
                 self.advance()?;
-                let expression = self.parse_expr(
+                // Computed keys stay expressions when an object cover becomes a
+                // binding pattern, so they must not replace binding evidence.
+                let expression = self.parse_expr_preserving_stripped_paren(
                     Precedence::Assignment,
                     ParseExpressionOpts {
                         in_cover,
@@ -11764,16 +11778,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         // A stripped parenthesis in the right-hand side is in expression
         // position and must not overwrite evidence from the arrow-head target.
-        let stripped_paren = self.stripped_paren;
-        let right = self.parse_expr(
+        let right = self.parse_expr_preserving_stripped_paren(
             precedence,
             ParseExpressionOpts {
                 respect_in_parameter,
                 ..ParseExpressionOpts::default()
             },
-        );
-        self.stripped_paren = stripped_paren;
-        let right = right?;
+        )?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(&self.ast).end),
             target,
