@@ -966,9 +966,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         fragment_context: FragmentContext,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        if !self.validate_fragment_root() {
+        if let Some(hashbang) = self.lexer.hashbang {
+            let end = hashbang.start + u32::from(hashbang.len);
+            self.report(
+                Span::new(0, end),
+                "Hashbang comments are only valid at the start of a program",
+                ReportOptions::default(),
+            );
             return Err(self.diagnostics);
         }
+
         self.ensure_capacity();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
@@ -1020,7 +1027,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.report_module_mode_errors();
         match expr {
             Some(expr) if self.diagnostics.is_empty() => {
-                self.finish_fragment();
+                if !self.preserve_parens {
+                    strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
+                }
                 self.ast.set_root_expression(expr);
                 if self.comment_mode == CommentMode::Flat {
                     self.ast.set_attached_comments(self.lexer.comments);
@@ -1064,19 +1073,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         statement_context
     }
 
-    fn validate_fragment_root(&mut self) -> bool {
-        let Some(hashbang) = self.lexer.hashbang else {
-            return true;
-        };
-        let end = hashbang.start + u32::from(hashbang.len);
-        self.report(
-            Span::new(0, end),
-            "Hashbang comments are only valid at the start of a program",
-            ReportOptions::default(),
-        );
-        false
-    }
-
     fn script_options(&self) -> Options {
         Options {
             source_type: SourceType::Script,
@@ -1088,11 +1084,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_expression_fragment_once(&mut self) -> Option<Expr> {
         let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
-        self.report_fragment_trailing_tokens();
-        expression
-    }
-
-    fn report_fragment_trailing_tokens(&mut self) {
         if self.current_token.tag != TokenTag::Eof {
             self.report_expected(
                 self.current_token.span,
@@ -1100,12 +1091,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-    }
-
-    fn finish_fragment(&mut self) {
-        if !self.preserve_parens {
-            strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
-        }
+        expression
     }
 
     fn report_module_mode_errors(&mut self) {
@@ -1126,7 +1112,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn unambiguous_parse_action(&self) -> UnambiguousParseAction {
         if self.state.contains(ParserState::HAS_MODULE_SYNTAX) {
             UnambiguousParseAction::KeepModule
-        } else if self.has_errors()
+        } else if self
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.severity == Severity::Error)
             || self
                 .state
                 .contains(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST)
@@ -1142,22 +1131,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ast.set_source_metadata(source_type, self.lang);
     }
 
-    fn mark_module_syntax(&mut self) {
-        self.state.insert(ParserState::HAS_MODULE_SYNTAX);
-    }
-
     fn enter_module_context(&mut self) {
         if self.statement_context == StatementContext::ModuleItem
             && self.boundary_context.can_be_module()
         {
-            self.mark_module_syntax();
+            self.state.insert(ParserState::HAS_MODULE_SYNTAX);
         }
-    }
-
-    fn has_errors(&self) -> bool {
-        self.diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.severity == Severity::Error)
     }
 
     /// Returns the resolved name for an identifier-like token.
@@ -1500,7 +1479,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn record_statement_module_syntax(&mut self, statement: Stmt) {
         if self.statement_has_module_syntax(statement) {
-            self.mark_module_syntax();
+            self.state.insert(ParserState::HAS_MODULE_SYNTAX);
         }
     }
 
@@ -1651,7 +1630,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn report_await_using_if_disallowed(&mut self, span: Span) {
         if self.boundary_context.can_be_module() {
-            self.mark_module_syntax();
+            self.state.insert(ParserState::HAS_MODULE_SYNTAX);
             return;
         }
         if self.context.contains(Context::AWAIT) {
@@ -6988,7 +6967,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 );
             }
             if self.boundary_context.can_be_module() {
-                self.mark_module_syntax();
+                self.state.insert(ParserState::HAS_MODULE_SYNTAX);
             }
             self.advance()?;
             if !self.expect(TokenTag::LeftParen, "Expected '(' after 'for await'", None) {
@@ -7759,7 +7738,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.state
                         .insert(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST);
                 } else if can_classify_as_module {
-                    self.mark_module_syntax();
+                    self.state.insert(ParserState::HAS_MODULE_SYNTAX);
                 }
                 return Some(expression);
             }
@@ -10588,7 +10567,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Identifier if property.text(self.source) == "sync" => (None, true),
             TokenTag::Identifier if property.text(self.source) == "meta" => {
                 let property = self.parse_identifier_name()?;
-                self.mark_module_syntax();
+                self.state.insert(ParserState::HAS_MODULE_SYNTAX);
                 return Some(self.ast.expr_meta_property(
                     Span::new(
                         import_name.span(&self.ast).start,
