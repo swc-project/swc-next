@@ -8630,7 +8630,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     if token.is_escaped() {
                         self.report_escaped_keyword(token.span);
                     }
-                    let parameter = self.parse_primary_expression(false)?;
+                    let context = enter_grammar_context![&mut self.context, ?Yield, +Await];
+                    let parameter = self.parse_identifier();
+                    self.context = context;
+                    let parameter = parameter?;
                     return self.identifier_to_arrow_function(parameter, true, token.span.start);
                 }
                 Some(async_identifier)

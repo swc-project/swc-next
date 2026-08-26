@@ -1,13 +1,12 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1609/1743 (92.31%)
+Negative Passed: 1611/1743 (92.43%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js - core/opts/allowAwaitOutsideFunction-false: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-class-func/input.js - core/scope/dupl-bind-class-func: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/class-methods/disallow-super-call-after-new/input.js - es2015/class-methods/disallow-super-call-after-new: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-functions/async-await-as-arrow-binding-identifier/input.js - es2017/async-functions/async-await-as-arrow-binding-identifier: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/16/input.js - es2018/object-rest-spread/16: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/17/input.js - es2018/object-rest-spread/17: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/19/input.js - es2018/object-rest-spread/19: expected a parse or early error, but pipeline succeeded
@@ -26,7 +25,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resou
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/invalid-syntax/migrated_0216/input.js - esprima/invalid-syntax/migrated_0216: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-arrow-function-after-binary-operator/input.ts - typescript/arrow-function/async-arrow-function-after-binary-operator: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/async-call/with-optional-parameter/input.ts - typescript/async-call/with-optional-parameter: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/invalid/input.ts - typescript/cast/invalid: expected a parse or early error, but pipeline succeeded
