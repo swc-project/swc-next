@@ -1102,15 +1102,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn unambiguous_parse_action(&self) -> UnambiguousParseAction {
         if self.state.contains(ParserState::HAS_MODULE_SYNTAX) {
-            UnambiguousParseAction::KeepModule
-        } else if self
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.severity == Severity::Error)
-            || self
-                .state
-                .contains(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST)
+            return UnambiguousParseAction::KeepModule;
+        }
+
+        if self
+            .state
+            .contains(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST)
         {
+            return UnambiguousParseAction::RetryAsScript;
+        }
+
+        if !self.diagnostics.is_empty() {
             UnambiguousParseAction::RetryAsScript
         } else {
             UnambiguousParseAction::RelabelAsScript
