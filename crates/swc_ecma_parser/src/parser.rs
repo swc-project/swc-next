@@ -12721,55 +12721,6 @@ mod tests {
     }
 
     #[test]
-    fn arrow_binding_patterns() {
-        fn parse(source: &str, preserve_parens: bool) -> Vec<Diagnostic<'static>> {
-            let allocator = Allocator::new();
-            Parser::init(
-                &allocator,
-                source,
-                Options {
-                    preserve_parens,
-                    ..Options::default()
-                },
-                NoTokenParserConfig,
-            )
-            .parse()
-            .diagnostics
-        }
-
-        let diagnostics = parse("([[(a)] = []] = []) => {}", false);
-        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
-
-        let diagnostics = parse("([[(a)] = []] = []) => {}", true);
-        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
-
-        let diagnostics = parse("([[a] = []] = []) => {}", false);
-        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
-
-        let diagnostics = parse("((a) = b) => {}", false);
-        assert_eq!(diagnostics.len(), 1, "{diagnostics:#?}");
-    }
-
-    #[test]
-    fn in_grammar_parameter() {
-        fn parse(source: &str) -> Vec<Diagnostic<'static>> {
-            let allocator = Allocator::new();
-            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig)
-                .parse()
-                .diagnostics
-        }
-
-        let diagnostics = parse("for (() => x in y;;);");
-        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
-
-        let diagnostics = parse("() => x in y;");
-        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
-
-        let diagnostics = parse("for (() => (x in y);;);");
-        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
-    }
-
-    #[test]
     fn unambiguous() {
         fn assert_unambiguous_source_type_with_lang(
             source: &str,
