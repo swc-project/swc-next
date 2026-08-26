@@ -912,13 +912,26 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
                     Parser::init(allocator, source, options, config)
                 };
-                let ret = retry_parser.parse();
-                if ret.diagnostics.is_empty() {
+                if let Some(ret) = retry_parser.parse_script_retry() {
                     return ret;
                 }
             }
         };
         self.finish_program(body)
+    }
+
+    fn parse_script_retry(mut self) -> Option<ParseReturn<'a>> {
+        self.ensure_capacity();
+        if self.advance().is_none() {
+            self.current_token = Token::eof(0);
+        }
+        self.enter_program_context(SourceType::Script, false);
+        let body = self.parse_body(None, self.source_type.into());
+        if !self.diagnostics.is_empty() || self.state.contains(ParserState::HAS_MODULE_SYNTAX) {
+            None
+        } else {
+            Some(self.finish_program(body))
+        }
     }
 
     fn enter_program_context(&mut self, source_type: SourceType, can_be_module: bool) {
