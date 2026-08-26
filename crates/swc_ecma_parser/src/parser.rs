@@ -8611,7 +8611,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 minimum,
                 token.is_escaped(),
             ),
-            TokenTag::LessThan if self.lang.is_typescript() => {
+            TokenTag::LessThan
+                if self.lang.is_typescript() && minimum <= Precedence::Assignment =>
+            {
                 if let Some(arrow) = self.try_parse_generic_arrow(true, token.span.start)? {
                     if token.is_escaped() {
                         self.report_escaped_keyword(token.span);
@@ -8620,7 +8622,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 Some(async_identifier)
             }
-            tag if tag.is_identifier_like() => {
+            tag if tag.is_identifier_like() && minimum <= Precedence::Assignment => {
                 let after_identifier = self.peek_ahead()?;
                 if after_identifier.tag == TokenTag::Arrow
                     && !after_identifier.has_line_terminator_before()
