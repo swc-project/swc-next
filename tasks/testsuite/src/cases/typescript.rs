@@ -202,14 +202,18 @@ fn read_typescript_file(path: &Path) -> std::io::Result<String> {
     let bytes = read(path)?;
     if let Some(bytes) = bytes.strip_prefix(&[0xfe, 0xff]) {
         let code_units = bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
             .collect::<Vec<_>>();
         return Ok(String::from_utf16_lossy(&code_units));
     }
     if let Some(bytes) = bytes.strip_prefix(&[0xff, 0xfe]) {
         let code_units = bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
             .collect::<Vec<_>>();
         return Ok(String::from_utf16_lossy(&code_units));
