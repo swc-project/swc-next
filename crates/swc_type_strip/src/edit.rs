@@ -178,14 +178,64 @@ fn normalize_operations(operations: &mut [Operation]) -> Vec<Operation> {
 }
 
 fn push_blank(output: &mut String, source: &str) {
-    for character in source.chars() {
-        if is_ecmascript_whitespace_or_line_terminator(character) {
-            output.push(character);
-        } else {
-            for _ in 0..character.len_utf16() {
-                output.push(' ');
+    debug_assert!(output.capacity() - output.len() >= source.len());
+    let output_start = output.len();
+    let mut written = 0;
+    let mut offset = 0;
+
+    // SAFETY: `output` has enough spare capacity for `source`. Each write stays
+    // within that capacity and produces valid UTF-8.
+    unsafe {
+        let output = output.as_mut_vec();
+        let destination = output.as_mut_ptr().add(output_start);
+
+        while offset < source.len() {
+            let byte = source.as_bytes()[offset];
+            if byte.is_ascii() {
+                let blanked = if byte.is_ascii_whitespace() {
+                    byte
+                } else {
+                    b' '
+                };
+                destination.add(written).write(blanked);
+                offset += 1;
+                written += 1;
+                continue;
             }
+
+            // SAFETY: `offset` is at a non-ASCII character boundary and the
+            // destination has `source.len() - offset` bytes available.
+            let (consumed, produced) = blank_non_ascii(destination.add(written), &source[offset..]);
+            offset += consumed;
+            written += produced;
         }
+
+        output.set_len(output_start + written);
+    }
+}
+
+#[cold]
+#[inline(never)]
+unsafe fn blank_non_ascii(destination: *mut u8, source: &str) -> (usize, usize) {
+    let character = source
+        .chars()
+        .next()
+        .expect("blanking source must start with a character");
+    let consumed = character.len_utf8();
+
+    if is_ecmascript_whitespace_or_line_terminator(character) {
+        // SAFETY: The caller provides `source.len()` bytes of writable space.
+        unsafe {
+            std::ptr::copy_nonoverlapping(source.as_ptr(), destination, consumed);
+        }
+        (consumed, consumed)
+    } else {
+        let produced = character.len_utf16();
+        // SAFETY: UTF-16 width never exceeds the character's UTF-8 width.
+        unsafe {
+            destination.write_bytes(b' ', produced);
+        }
+        (consumed, produced)
     }
 }
 
