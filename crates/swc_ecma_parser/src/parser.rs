@@ -903,8 +903,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let retry_parser = {
                     let allocator = self.ast.allocator();
                     let source = self.source;
-                    let options = self.script_options();
                     let config = self.lexer.config.clone();
+                    let options = Options {
+                        source_type: SourceType::Script,
+                        lang: self.lang,
+                        preserve_parens: self.preserve_parens,
+                        comments: self.comment_mode,
+                    };
                     Parser::init(allocator, source, options, config)
                 };
                 let ret = retry_parser.parse();
@@ -1013,8 +1018,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let retry_parser = {
                     let allocator = self.ast.allocator();
                     let source = self.source;
-                    let options = self.script_options();
                     let config = self.lexer.config.clone();
+                    let options = Options {
+                        source_type: SourceType::Script,
+                        lang: self.lang,
+                        preserve_parens: self.preserve_parens,
+                        comments: self.comment_mode,
+                    };
                     Parser::init(allocator, source, options, config)
                 };
                 let result = retry_parser.parse_expression_fragment(fragment_context);
@@ -1064,15 +1074,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Ok(self.ast)
             }
             _ => Err(self.diagnostics),
-        }
-    }
-
-    fn script_options(&self) -> Options {
-        Options {
-            source_type: SourceType::Script,
-            lang: self.lang,
-            preserve_parens: self.preserve_parens,
-            comments: self.comment_mode,
         }
     }
 
