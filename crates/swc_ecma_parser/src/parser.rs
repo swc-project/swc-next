@@ -998,7 +998,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             SourceType::Unambiguous => self.parse_unambiguous_expression_fragment(fragment_context),
             source_type => {
                 self.enter_fragment_context(source_type, fragment_context, false);
-                let expr = self.parse_expression_fragment_once();
+                let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
                 self.finish_expression_fragment(expr)
             }
         }
@@ -1009,7 +1009,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         fragment_context: FragmentContext,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
         self.enter_fragment_context(SourceType::Module, fragment_context, true);
-        let expr = self.parse_expression_fragment_once();
+        let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         match self.unambiguous_parse_action() {
             UnambiguousParseAction::KeepModule => {}
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
@@ -1061,6 +1061,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         expr: Option<Expr>,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+        if self.current_token.tag != TokenTag::Eof {
+            self.report_expected(
+                self.current_token.span,
+                "Expected end of fragment",
+                ReportOptions::default(),
+            );
+        }
+
         self.report_module_mode_errors();
         match expr {
             Some(expr) if self.diagnostics.is_empty() => {
@@ -1075,18 +1083,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             _ => Err(self.diagnostics),
         }
-    }
-
-    fn parse_expression_fragment_once(&mut self) -> Option<Expr> {
-        let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
-        if self.current_token.tag != TokenTag::Eof {
-            self.report_expected(
-                self.current_token.span,
-                "Expected end of fragment",
-                ReportOptions::default(),
-            );
-        }
-        expression
     }
 
     fn report_module_mode_errors(&mut self) {
