@@ -790,45 +790,6 @@ impl Checker<'_, '_> {
                     );
                 }
             }
-            NodeKindData::BindingIdentifier(identifier) => {
-                let node_id = identifier.node_id();
-                let name = context
-                    .ast
-                    .get_utf8(identifier.name(context.ast))
-                    .as_bytes();
-                let flags = context.state.symbols.pending.flags;
-                if context.state.in_type_position() && !flags.contains(SymbolFlags::TYPE_PARAMETER)
-                {
-                    return;
-                }
-                if context.state.scope.is_strict() && !flags.contains(SymbolFlags::AMBIENT) {
-                    checks.check_strict_reserved(name, node_id, context, "a binding identifier");
-                    if is_eval_or_arguments(name) {
-                        let message = checks.fmt(format_args!(
-                            "'{}' is not allowed as a binding identifier in strict mode",
-                            String::from_utf8_lossy(name)
-                        ));
-                        checks.report(context.ast.span(node_id), message, ReportOptions::default());
-                    }
-                } else if flags.contains(SymbolFlags::BLOCK_SCOPED_VAR) && name == b"let" {
-                    checks.report(
-                        context.ast.span(node_id),
-                        "'let' is not allowed as a variable name in a lexical declaration",
-                        ReportOptions::default(),
-                    );
-                }
-                let existing = context
-                    .state
-                    .symbols
-                    .binding(context.state.symbols.pending.scope, name);
-                checks.check_redeclaration(identifier, node_id, name, flags, context, existing);
-                if context.state.symbols.export_state.named().is_some() {
-                    let skip = existing.is_some() && context.ast.is_ts();
-                    if !skip {
-                        checks.record_exported_name(name, node_id, context);
-                    }
-                }
-            }
             NodeKindData::LabelIdentifier(identifier) => {
                 let name = context
                     .ast
@@ -1736,7 +1697,45 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         let flags = self.context.enter_node(node.node_id());
         node.visit_children_with(self);
-        self.leave_node(node.node_id());
+        if self.check_syntax {
+            let checks = &mut self.checks;
+            let context = &mut self.context;
+            let node_id = node.node_id();
+            let name = context.ast.get_utf8(node.name(context.ast)).as_bytes();
+            let symbol_flags = context.state.symbols.pending.flags;
+            if !context.state.in_type_position()
+                || symbol_flags.contains(SymbolFlags::TYPE_PARAMETER)
+            {
+                if context.state.scope.is_strict() && !symbol_flags.contains(SymbolFlags::AMBIENT) {
+                    checks.check_strict_reserved(name, node_id, context, "a binding identifier");
+                    if is_eval_or_arguments(name) {
+                        let message = checks.fmt(format_args!(
+                            "'{}' is not allowed as a binding identifier in strict mode",
+                            String::from_utf8_lossy(name)
+                        ));
+                        checks.report(context.ast.span(node_id), message, ReportOptions::default());
+                    }
+                } else if symbol_flags.contains(SymbolFlags::BLOCK_SCOPED_VAR) && name == b"let" {
+                    checks.report(
+                        context.ast.span(node_id),
+                        "'let' is not allowed as a variable name in a lexical declaration",
+                        ReportOptions::default(),
+                    );
+                }
+                let existing = context
+                    .state
+                    .symbols
+                    .binding(context.state.symbols.pending.scope, name);
+                checks.check_redeclaration(node, node_id, name, symbol_flags, context, existing);
+                if context.state.symbols.export_state.named().is_some() {
+                    let skip = existing.is_some() && context.ast.is_ts();
+                    if !skip {
+                        checks.record_exported_name(name, node_id, context);
+                    }
+                }
+            }
+        }
+        self.context.leave_node(node.node_id());
         let direct_export = self.context.state.symbols.export_state.named();
         let direct_export = direct_export.filter(|_| !self.context.state.in_ts_namespace());
         let state = &mut self.context.state;
