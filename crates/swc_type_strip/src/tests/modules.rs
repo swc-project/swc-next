@@ -165,3 +165,27 @@ fn qualified_type_only_import_equals() {
         ";                                    \nrun();"
     );
 }
+
+#[test]
+fn exported_qualified_type_only_import_equals() {
+    assert_strip!(
+        "export import type Alias = Namespace.Member;"
+        ";                                           "
+    );
+}
+
+#[test]
+fn exported_external_type_only_import_equals() {
+    assert_strip!(
+        "export import type Alias = require('pkg');"
+        ";                                         "
+    );
+}
+
+#[test]
+fn type_only_namespace_with_exported_import_equals() {
+    assert_strip!(
+        "namespace N { export import type Alias = Namespace.Member; }"
+        ";                                                           "
+    );
+}

@@ -41,6 +41,19 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
         None
     }
 
+    pub(crate) fn previous_before(self, position: u32) -> Option<Token> {
+        let index = self.index_containing_or_after(position);
+        index
+            .checked_sub(1)
+            .and_then(|previous| self.tokens.get(previous).copied())
+    }
+
+    pub(crate) fn at_or_after(self, position: u32) -> Option<Token> {
+        self.tokens
+            .get(self.index_containing_or_after(position))
+            .copied()
+    }
+
     #[allow(dead_code)]
     pub(crate) fn find_forward(self, start: u32, end: u32, tag: TokenTag) -> Option<Token> {
         let mut index = self.index_containing_or_after(start);
@@ -91,10 +104,6 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
     pub(crate) fn leading_character_span(self, start: u32) -> Option<Span> {
         let character = self.source.get(start as usize..)?.chars().next()?;
         Some(Span::new(start, start + character.len_utf8() as u32))
-    }
-
-    pub(crate) fn byte_at(self, position: u32) -> Option<u8> {
-        self.source.as_bytes().get(position as usize).copied()
     }
 
     fn index_containing_or_after(self, position: u32) -> usize {

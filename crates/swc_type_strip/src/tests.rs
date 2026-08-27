@@ -140,6 +140,18 @@ fn preserve_parens_option_does_not_change_output() {
 }
 
 #[test]
+fn comments_option_does_not_change_output() {
+    let source = "/* lead */ let value: number = 1; // tail";
+    let mut parser_options = options(crate::Lang::Ts);
+    parser_options.comments = CommentMode::Flat;
+    let result = strip_types(source, parser_options);
+
+    assert_utf16_len_preserved(source, &result.code);
+    assert_eq!(result.code, "/* lead */ let value         = 1; // tail");
+    assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+}
+
+#[test]
 fn unsupported_lang_variants() {
     let source = "let value: = 1;";
     let result = strip_types(source, options(crate::Lang::Js));

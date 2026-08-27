@@ -141,3 +141,19 @@ fn suffix_assertion_before_binary_continuation_stays_connected() {
         "value        \n+ next;"
     );
 }
+
+#[test]
+fn suffix_assertion_before_member_continuation_stays_connected() {
+    assert_strip!(
+        "const value = input!\n[0];"
+        "const value = input \n[0];"
+    );
+}
+
+#[test]
+fn parenthesized_suffix_assertion_before_call_continuation_stays_connected() {
+    assert_strip!(
+        "const value = (input as Fn)\n(0);"
+        "const value = (input      )\n(0);"
+    );
+}
