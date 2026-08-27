@@ -1567,6 +1567,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_update_expression(&mut self, node: UpdateExpression) {
         self.context.enter_node(node.node_id());
@@ -1575,6 +1576,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.visit_with_reference_flags(argument, flags);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_assignment_expression(&mut self, node: AssignmentExpression) {
         self.context.enter_node(node.node_id());
@@ -1585,6 +1587,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.right(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_assignment_pattern(&mut self, node: AssignmentPattern) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1594,6 +1597,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.right(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1602,6 +1606,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_array_pattern(&mut self, node: ArrayPattern) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1617,6 +1622,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_object_pattern(&mut self, node: ObjectPattern) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1631,6 +1637,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_binding_property(&mut self, node: BindingProperty) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1638,6 +1645,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.visit_with_reference_flags(node.value(self.context.ast), node_flags);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_property_definition(&mut self, node: PropertyDefinition) {
         self.context.enter_node(node.node_id());
@@ -1658,6 +1666,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.value(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_method_definition(&mut self, node: TsMethodDefinition) {
         self.context.enter_node(node.node_id());
@@ -1671,6 +1680,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.value(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_member_expression(&mut self, node: MemberExpression) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1681,12 +1691,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.property(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_parenthesized_expression(&mut self, node: ParenthesizedExpression) {
         let node_flags = self.context.enter_node(node.node_id());
         self.visit_with_reference_flags(node.expression(self.context.ast), node_flags);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_as_expression(&mut self, node: TsAsExpression) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1694,6 +1706,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_satisfies_expression(&mut self, node: TsSatisfiesExpression) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1701,6 +1714,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.type_annotation(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_type_assertion(&mut self, node: TsTypeAssertion) {
         let node_flags = self.context.enter_node(node.node_id());
@@ -1708,12 +1722,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.visit_with_reference_flags(node.expression(self.context.ast), node_flags);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_non_null_expression(&mut self, node: TsNonNullExpression) {
         let node_flags = self.context.enter_node(node.node_id());
         self.visit_with_reference_flags(node.expression(self.context.ast), node_flags);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_unary_expression(&mut self, node: UnaryExpression) {
         self.context.enter_node(node.node_id());
@@ -1726,6 +1742,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         }
         self.leave_node(node.node_id());
     }
+
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
         let flags = self.context.enter_node(node.node_id());
         let context = &mut self.context;
@@ -1737,6 +1754,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
+
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         let flags = self.context.enter_node(node.node_id());
         node.visit_children_with(self);
@@ -1763,6 +1781,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
                 .add_direct_export(self.context.ast, node.node_id(), statement);
         }
     }
+
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
         let node_flags = self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
@@ -1866,6 +1885,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     fn visit_export_named_declaration(&mut self, node: ExportNamedDeclaration) {
         self.context.enter_node(node.node_id());
         self.context
@@ -1876,6 +1896,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_export_declaration();
         self.leave_node(node.node_id());
     }
+
     fn visit_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
         self.context.enter_node(node.node_id());
         if !self.context.state.in_ts_namespace() {
@@ -1899,6 +1920,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_export_declaration();
         self.leave_node(node.node_id());
     }
+
     fn visit_export_all_declaration(&mut self, node: ExportAllDeclaration) {
         self.context.enter_node(node.node_id());
         if !self.context.state.in_ts_namespace() {
@@ -1910,6 +1932,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         self.context.enter_node(node.node_id());
@@ -1947,6 +1970,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.exported(self.context.ast).visit_with(self);
         self.leave_node(node.node_id());
     }
+
     fn visit_formal_parameters(&mut self, node: FormalParameters) {
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
@@ -1955,6 +1979,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_formal_parameters();
         self.leave_node(node.node_id());
     }
+
     fn visit_import_specifier(&mut self, node: ImportSpecifier) {
         self.context.enter_node(node.node_id());
         self.context
@@ -1965,6 +1990,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_import_equals_declaration(&mut self, node: TsImportEqualsDeclaration) {
         self.context.enter_node(node.node_id());
         let import_kind = node.import_kind(self.context.ast);
@@ -1981,6 +2007,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_export_assignment(&mut self, node: TsExportAssignment) {
         self.context.enter_node(node.node_id());
@@ -1990,6 +2017,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.visit_with_reference_flags(expression, flags);
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_enum_declaration(&mut self, node: TsEnumDeclaration) {
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
@@ -2000,6 +2028,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_module_declaration(&mut self, node: TsModuleDeclaration) {
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
@@ -2013,6 +2042,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
         self.context.enter_node(node.node_id());
         self.context.state.symbols.enter_ts_global_declaration();
@@ -2020,6 +2050,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
@@ -2030,6 +2061,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.symbols.exit_saved_context();
         self.leave_node(node.node_id());
     }
+
     #[inline]
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
         self.context.state.enter_type_position();
@@ -2038,6 +2070,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_reference(&mut self, node: TsTypeReference) {
         self.context.state.enter_type_position();
@@ -2046,6 +2079,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
         if self.in_ts_module_name {
@@ -2068,6 +2102,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_query(&mut self, node: TsTypeQuery) {
         self.context.state.enter_type_position();
@@ -2078,6 +2113,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_import_type(&mut self, node: TsImportType) {
         self.context.state.enter_type_position();
@@ -2086,6 +2122,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
         self.context.state.enter_type_position();
@@ -2100,6 +2137,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
         self.context.state.enter_type_position();
@@ -2108,6 +2146,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
         self.context.state.enter_type_position();
@@ -2116,6 +2155,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_literal_type(&mut self, node: TsLiteralType) {
         self.context.state.enter_type_position();
@@ -2124,6 +2164,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
         self.context.state.enter_type_position();
@@ -2132,6 +2173,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_array_type(&mut self, node: TsArrayType) {
         self.context.state.enter_type_position();
@@ -2140,6 +2182,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
         self.context.state.enter_type_position();
@@ -2148,6 +2191,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_tuple_type(&mut self, node: TsTupleType) {
         self.context.state.enter_type_position();
@@ -2156,6 +2200,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
         self.context.state.enter_type_position();
@@ -2164,6 +2209,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
         self.context.state.enter_type_position();
@@ -2172,6 +2218,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
         self.context.state.enter_type_position();
@@ -2180,6 +2227,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
         self.context.state.enter_type_position();
@@ -2188,6 +2236,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
         self.context.state.enter_type_position();
@@ -2196,6 +2245,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
         self.context.state.enter_type_position();
@@ -2204,6 +2254,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_union_type(&mut self, node: TsUnionType) {
         self.context.state.enter_type_position();
@@ -2212,6 +2263,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_intersection_type(&mut self, node: TsIntersectionType) {
         self.context.state.enter_type_position();
@@ -2220,6 +2272,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_infer_type(&mut self, node: TsInferType) {
         self.context.state.enter_type_position();
@@ -2228,6 +2281,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_operator(&mut self, node: TsTypeOperator) {
         self.context.state.enter_type_position();
@@ -2236,6 +2290,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
         self.context.state.enter_type_position();
@@ -2244,6 +2299,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
         self.context.state.enter_type_position();
@@ -2252,6 +2308,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
         self.context.state.enter_type_position();
@@ -2261,6 +2318,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
         self.context.state.enter_type_position();
@@ -2269,6 +2327,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
         self.context.state.enter_type_position();
@@ -2277,6 +2336,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     #[inline]
     fn visit_ts_interface_body(&mut self, node: TsInterfaceBody) {
         self.context.state.enter_type_position();
@@ -2285,6 +2345,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
         self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
@@ -2298,6 +2359,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_switch_case(&mut self, node: SwitchCase) {
         self.context
             .state
@@ -2306,6 +2368,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
+
     fn visit_for_statement(&mut self, node: ForStatement) {
         self.context.state.enter_for_statement(node.node_id());
         self.context.enter_node(node.node_id());
@@ -2313,6 +2376,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_catch_clause(&mut self, node: CatchClause) {
         self.context.state.enter_catch_clause(node.node_id());
         self.context.enter_node(node.node_id());
@@ -2323,6 +2387,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_decorator(&mut self, node: Decorator) {
         self.context.state.enter_decorator();
         self.context.enter_node(node.node_id());
@@ -2330,6 +2395,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_decorator();
         self.leave_node(node.node_id());
     }
+
     fn visit_class(&mut self, node: Class) {
         self.context.state.enter_class(self.context.ast, node);
         self.context.enter_node(node.node_id());
@@ -2342,6 +2408,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_static_block(&mut self, node: StaticBlock) {
         self.context.state.enter_static_block(node.node_id());
         self.context.enter_node(node.node_id());
@@ -2349,6 +2416,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_function_body(&mut self, node: FunctionBody) {
         let parent = self.context.current_node();
         self.context
@@ -2359,6 +2427,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_block_statement(&mut self, node: BlockStatement) {
         self.context
             .state
@@ -2368,6 +2437,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_with_statement(&mut self, node: WithStatement) {
         self.context.enter_node(node.node_id());
         node.object(self.context.ast).visit_with(self);
@@ -2376,6 +2446,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_with_statement(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
         self.context
             .state
@@ -2390,6 +2461,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_function(&mut self, node: TsFunction) {
         self.context.state.enter_ts_function(node.node_id());
         self.context.enter_node(node.node_id());
@@ -2400,6 +2472,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
         self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
@@ -2412,6 +2485,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_function_type(&mut self, node: TsFunctionType) {
         self.context.state.enter_ts_function_type(node.node_id());
         self.context.state.enter_type_position();
@@ -2424,6 +2498,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
         self.context.state.enter_ts_constructor_type(node.node_id());
         self.context.state.enter_type_position();
@@ -2436,6 +2511,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
         self.context.state.enter_ts_mapped_type(node.node_id());
         self.context.state.enter_type_position();
@@ -2451,6 +2527,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
         self.context.state.enter_ts_method_signature(node.node_id());
         self.context.state.enter_type_position();
@@ -2466,6 +2543,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
         self.context
             .state
@@ -2482,6 +2560,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
         self.context
             .state
@@ -2498,6 +2577,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
         self.context.state.enter_ts_index_signature(node.node_id());
         self.context.state.enter_type_position();
@@ -2510,6 +2590,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
+
     fn visit_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
         self.context
             .state
@@ -2524,6 +2605,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
         self.context
             .state
@@ -2538,6 +2620,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
         self.context.state.enter_ts_enum_body(node.node_id());
         self.context.enter_node(node.node_id());
@@ -2546,6 +2629,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_scope(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
@@ -2557,6 +2641,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
+
     fn visit_ts_module_block(&mut self, node: TsModuleBlock) {
         self.context.state.enter_ts_module_block(node.node_id());
         self.context.enter_node(node.node_id());
@@ -2565,6 +2650,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.exit_ts_module_block(node.node_id());
         self.leave_node(node.node_id());
     }
+
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
@@ -2576,6 +2662,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.leave_node(node.node_id());
     }
+
     fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
