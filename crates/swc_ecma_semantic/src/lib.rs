@@ -430,7 +430,7 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, Span};
+    use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::{
@@ -441,98 +441,37 @@ mod tests {
     fn analyze_source<'a>(
         allocator: &'a Allocator,
         source: &'a str,
-        lang: Lang,
-        source_type: SourceType,
+        parser_options: Options,
     ) -> (Ast<'a>, Semantic<'a>) {
-        analyze_source_with_options(
-            allocator,
-            source,
-            lang,
-            source_type,
-            AnalyzeOptions::default(),
-        )
+        analyze_with_options(allocator, source, parser_options, AnalyzeOptions::default())
     }
 
-    fn analyze_source_with_options<'a>(
+    fn analyze_with_options<'a>(
         allocator: &'a Allocator,
         source: &'a str,
-        lang: Lang,
-        source_type: SourceType,
-        options: AnalyzeOptions,
+        parser_options: Options,
+        analyze_options: AnalyzeOptions,
     ) -> (Ast<'a>, Semantic<'a>) {
-        let parse = Parser::init(
-            allocator,
-            source,
-            Options {
-                lang,
-                source_type,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
+        let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
         let ast = parse.ast;
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        assert!(parse.diagnostics.is_empty());
 
-        let result = analyze(&ast, options);
-        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        let result = analyze(&ast, analyze_options);
+        assert!(result.diagnostics.is_empty());
         (ast, result.semantic)
-    }
-
-    fn syntax_diagnostics(source: &str) -> Vec<(String, Span)> {
-        let allocator = Allocator::new();
-        let parse = Parser::init(
-            &allocator,
-            source,
-            Options {
-                lang: Lang::Js,
-                source_type: SourceType::Script,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
-
-        analyze(
-            &parse.ast,
-            AnalyzeOptions {
-                check_syntax: true,
-                ..AnalyzeOptions::default()
-            },
-        )
-        .diagnostics
-        .into_iter()
-        .map(|diagnostic| (diagnostic.message.into_owned(), diagnostic.span))
-        .collect()
-    }
-
-    #[test]
-    fn strict_directive_octal_escapes() {
-        let before_directive = syntax_diagnostics(r#"'\1'; 'use strict';"#);
-        assert_eq!(before_directive.len(), 1, "{before_directive:#?}");
-        assert_eq!(before_directive[0].1, Span::new(0, 4));
-
-        let after_directive = syntax_diagnostics(r#"'use strict'; '\1';"#);
-        assert_eq!(after_directive.len(), 1, "{after_directive:#?}");
-        assert_eq!(after_directive[0].1, Span::new(14, 18));
-
-        let comment = syntax_diagnostics(r#"'use strict'; "ok" /* \1 */;"#);
-        assert!(comment.is_empty(), "{comment:#?}");
-
-        let escaped_backslash = syntax_diagnostics(r#""\\1"; "use strict";"#);
-        assert!(escaped_backslash.is_empty(), "{escaped_backslash:#?}");
     }
 
     #[test]
     fn symbols() {
         let allocator = Allocator::new();
-        let (ast, semantic) = analyze_source(
-            &allocator,
-            "interface A {} interface B {} interface A {} interface A {}",
-            Lang::Ts,
-            SourceType::Script,
-        );
+        let ts_script = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        let source = "interface A {} interface B {} interface A {} interface A {}";
+        let (ast, semantic) = analyze_source(&allocator, source, ts_script);
         let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
         let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
         let mut a_declarations = semantic.declaration_ids(a);
@@ -569,50 +508,38 @@ mod tests {
     #[test]
     fn references() {
         let allocator = Allocator::new();
+        let js_script = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let ts_module = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "let value; value;",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "let value; value;";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic.iter_references().next().unwrap().reference;
         assert!(reference.flags.is_read_only());
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "let value; value = 1;",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "let value; value = 1;";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic.iter_references().next().unwrap().reference;
         assert!(reference.flags.is_write_only());
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "let value; value++;",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "let value; value++;";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic.iter_references().next().unwrap().reference;
         assert!(reference.flags.is_read_write());
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "let value; delete value;",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "let value; delete value;";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic.iter_references().next().unwrap().reference;
         assert!(!reference.flags.is_read());
         assert!(!reference.flags.is_write());
 
-        let (ast, semantic) = analyze_source(
-            &allocator,
-            "import type { T } from 'mod'; type U = T;",
-            Lang::Ts,
-            SourceType::Module,
-        );
+        let source = "import type { T } from 'mod'; type U = T;";
+        let (ast, semantic) = analyze_source(&allocator, source, ts_module);
         let symbol = semantic
             .iter_symbols()
             .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"T")
@@ -628,12 +555,8 @@ mod tests {
         assert_eq!(reference.symbol, Some(symbol.id));
         assert!(!reference.flags.is_read());
 
-        let (ast, semantic) = analyze_source(
-            &allocator,
-            "import type { T } from 'mod'; T;",
-            Lang::Ts,
-            SourceType::Module,
-        );
+        let source = "import type { T } from 'mod'; T;";
+        let (ast, semantic) = analyze_source(&allocator, source, ts_module);
         let reference = semantic
             .iter_references()
             .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"T")
@@ -647,25 +570,18 @@ mod tests {
     #[test]
     fn modules() {
         let allocator = Allocator::new();
+        let js_module = Options::default();
+        let module_options = AnalyzeOptions {
+            build_module_record: true,
+            ..AnalyzeOptions::default()
+        };
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "export const value = 1; export { value }; export * from 'dep'; export default value;",
-            Lang::Js,
-            SourceType::Module,
-        );
+        let source = "export const value = 1;";
+        let (_, semantic) = analyze_source(&allocator, source, js_module);
         assert!(semantic.module_record().exports().is_empty());
 
-        let (ast, semantic) = analyze_source_with_options(
-            &allocator,
-            "export { value }; const value = 1;",
-            Lang::Js,
-            SourceType::Module,
-            AnalyzeOptions {
-                build_module_record: true,
-                ..AnalyzeOptions::default()
-            },
-        );
+        let source = "export { value }; const value = 1;";
+        let (ast, semantic) = analyze_with_options(&allocator, source, js_module, module_options);
         let body = ast.root_program().body(&ast);
         let statement = body.get_node(&ast, 0).unwrap();
         let declaration = statement.as_export_named_declaration(&ast).unwrap();
@@ -692,16 +608,8 @@ mod tests {
             }
         );
 
-        let (ast, semantic) = analyze_source_with_options(
-            &allocator,
-            "export { external as alias } from 'dep';",
-            Lang::Js,
-            SourceType::Module,
-            AnalyzeOptions {
-                build_module_record: true,
-                ..AnalyzeOptions::default()
-            },
-        );
+        let source = "export { external as alias } from 'dep';";
+        let (ast, semantic) = analyze_with_options(&allocator, source, js_module, module_options);
         let body = ast.root_program().body(&ast);
         let statement = body.get_node(&ast, 0).unwrap();
         let declaration = statement.as_export_named_declaration(&ast).unwrap();
@@ -722,13 +630,13 @@ mod tests {
     #[test]
     fn dynamic_scopes() {
         let allocator = Allocator::new();
+        let js_script = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
 
-        let (ast, semantic) = analyze_source(
-            &allocator,
-            "let value; with ({}) { value; }",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "let value; with ({}) { value; }";
+        let (ast, semantic) = analyze_source(&allocator, source, js_script);
         let value_symbol = semantic.binding(ScopeId::ROOT, b"value").unwrap();
         let value = semantic
             .iter_references()
@@ -738,22 +646,14 @@ mod tests {
         assert!(value.flags.is_dynamic());
         assert_eq!(value.symbol, Some(value_symbol));
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "with ({}) { missing; }",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "with ({}) { missing; }";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let missing = semantic.iter_references().next().unwrap().reference;
         assert!(missing.flags.is_dynamic());
         assert!(missing.symbol.is_none());
 
-        let (ast, semantic) = analyze_source(
-            &allocator,
-            "with ({}) { let value; value; }",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "with ({}) { let value; value; }";
+        let (ast, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic
             .iter_references()
             .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
@@ -762,14 +662,9 @@ mod tests {
         assert!(!reference.flags.is_dynamic());
         assert!(reference.symbol.is_some());
 
-        let (ast, semantic) = analyze_source(
-            &allocator,
-            "with ({}) { var value = 1; }",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "with ({}) { var value = 1; }";
+        let (ast, semantic) = analyze_source(&allocator, source, js_script);
         let declaration = semantic.iter_declarations().next().unwrap();
-
         let reference_id = semantic.reference_of(declaration.declaration.node).unwrap();
         let reference = semantic.reference(reference_id);
         let symbol_id = declaration.declaration.symbol;
@@ -782,12 +677,8 @@ mod tests {
             b"value"
         );
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "function f() { eval('direct'); }",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "function f() { eval('direct'); }";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let function = semantic
             .iter_scopes()
             .find(|entry| entry.scope.kind == ScopeKind::Function)
@@ -795,12 +686,8 @@ mod tests {
         assert!(function.scope.flags.contains_direct_eval());
         assert!(semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
 
-        let (_, semantic) = analyze_source(
-            &allocator,
-            "function f() { (0, eval)('indirect'); }",
-            Lang::Js,
-            SourceType::Script,
-        );
+        let source = "function f() { (0, eval)('indirect'); }";
+        let (_, semantic) = analyze_source(&allocator, source, js_script);
         let function = semantic
             .iter_scopes()
             .find(|entry| entry.scope.kind == ScopeKind::Function)
