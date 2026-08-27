@@ -1,5 +1,7 @@
 name: Gungraun Benchmarks
 
+# This comparison retains raw profiles so task-specific hot paths can be inspected.
+
 on:
   pull_request:
     types: ["opened", "reopened", "synchronize"]
