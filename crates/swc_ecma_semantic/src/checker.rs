@@ -1324,34 +1324,6 @@ impl Checker<'_, '_> {
                     }
                 }
             }
-            NodeKindData::CallExpression(call) => {
-                if context.ast.node_kind(call.callee(context.ast).node_id()) == NodeKind::Super {
-                    let message = "'super()' is only valid in a constructor of a derived class";
-                    match super_call_validity(context) {
-                        SuperCallValidity::Valid => {}
-                        SuperCallValidity::NotInConstructor => checks.report(
-                            context.ast.span(call.node_id()),
-                            message,
-                            ReportOptions {
-                                help: Some(Cow::Borrowed(
-                                    "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                                )),
-                                ..ReportOptions::default()
-                            },
-                        ),
-                        SuperCallValidity::NoExtends => checks.report(
-                            context.ast.span(call.node_id()),
-                            message,
-                            ReportOptions {
-                                help: Some(Cow::Borrowed(
-                                    "Add an 'extends' clause to the class or remove the 'super()' call",
-                                )),
-                                ..ReportOptions::default()
-                            },
-                        ),
-                    }
-                }
-            }
             NodeKindData::AwaitExpression(expression) => {
                 let message = {
                     let mut message = None;
@@ -1506,7 +1478,37 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             self.context.state.scope.mark_direct_eval();
         }
         node.visit_children_with(self);
-        self.leave_node(node.node_id());
+        if self.check_syntax {
+            let checks = &mut self.checks;
+            let context = &mut self.context;
+            if context.ast.node_kind(node.callee(context.ast).node_id()) == NodeKind::Super {
+                let message = "'super()' is only valid in a constructor of a derived class";
+                match super_call_validity(context) {
+                    SuperCallValidity::Valid => {}
+                    SuperCallValidity::NotInConstructor => checks.report(
+                        context.ast.span(node.node_id()),
+                        message,
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Use an arrow function instead of a regular function to inherit the 'super' binding",
+                            )),
+                            ..ReportOptions::default()
+                        },
+                    ),
+                    SuperCallValidity::NoExtends => checks.report(
+                        context.ast.span(node.node_id()),
+                        message,
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Add an 'extends' clause to the class or remove the 'super()' call",
+                            )),
+                            ..ReportOptions::default()
+                        },
+                    ),
+                }
+            }
+        }
+        self.context.leave_node(node.node_id());
     }
     #[inline]
     fn visit_update_expression(&mut self, node: UpdateExpression) {
