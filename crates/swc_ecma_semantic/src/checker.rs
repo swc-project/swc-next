@@ -710,6 +710,7 @@ impl Default for ReportOptions<'_> {
 }
 
 impl Checker<'_, '_> {
+    #[inline(always)]
     fn check(&mut self, node: NodeId) {
         let checks = &mut self.checks;
         let context = &mut self.context;
@@ -1541,16 +1542,20 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.ast
     }
 
+    #[inline(always)]
     fn enter_node(&mut self, node: NodeId) {
         self.context.enter_node(node);
     }
 
+    #[inline(always)]
     fn leave_node(&mut self, node: NodeId) {
         if self.check_syntax {
             self.check(node);
         }
         self.context.leave_node(node);
     }
+
+    #[inline]
     fn visit_call_expression(&mut self, node: CallExpression) {
         self.context.enter_node(node.node_id());
         if !self.context.state.symbols.in_ambient_context()
