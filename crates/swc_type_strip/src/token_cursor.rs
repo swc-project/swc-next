@@ -41,6 +41,19 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
         None
     }
 
+    pub(crate) fn previous_before(self, position: u32) -> Option<Token> {
+        let index = self.index_containing_or_after(position);
+        index
+            .checked_sub(1)
+            .and_then(|previous| self.tokens.get(previous).copied())
+    }
+
+    pub(crate) fn at_or_after(self, position: u32) -> Option<Token> {
+        self.tokens
+            .get(self.index_containing_or_after(position))
+            .copied()
+    }
+
     #[allow(dead_code)]
     pub(crate) fn find_forward(self, start: u32, end: u32, tag: TokenTag) -> Option<Token> {
         let mut index = self.index_containing_or_after(start);
@@ -69,12 +82,6 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
             }
         }
         None
-    }
-
-    pub(crate) fn at_or_after(self, position: u32) -> Option<Token> {
-        self.tokens
-            .get(self.index_containing_or_after(position))
-            .copied()
     }
 
     #[allow(dead_code)]
