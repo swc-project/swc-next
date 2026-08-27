@@ -712,6 +712,46 @@ impl Default for ReportOptions<'_> {
     }
 }
 
+#[inline]
+fn has_syntax_check(kind: NodeKind) -> bool {
+    matches!(
+        kind,
+        NodeKind::Program
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::RegExpLiteral
+            | NodeKind::IdentifierReference
+            | NodeKind::BindingIdentifier
+            | NodeKind::LabelIdentifier
+            | NodeKind::BinaryExpression
+            | NodeKind::UnaryExpression
+            | NodeKind::UpdateExpression
+            | NodeKind::AssignmentExpression
+            | NodeKind::VariableDeclaration
+            | NodeKind::SwitchStatement
+            | NodeKind::ForInStatement
+            | NodeKind::ForOfStatement
+            | NodeKind::BreakStatement
+            | NodeKind::ContinueStatement
+            | NodeKind::LabeledStatement
+            | NodeKind::Directive
+            | NodeKind::ClassBody
+            | NodeKind::Function
+            | NodeKind::WithStatement
+            | NodeKind::ObjectExpression
+            | NodeKind::MemberExpression
+            | NodeKind::CallExpression
+            | NodeKind::AwaitExpression
+            | NodeKind::YieldExpression
+            | NodeKind::MetaProperty
+            | NodeKind::ImportDeclaration
+            | NodeKind::ExportNamedDeclaration
+            | NodeKind::ExportDefaultDeclaration
+            | NodeKind::ExportAllDeclaration
+            | NodeKind::ExportSpecifier
+    )
+}
+
 impl Checker<'_, '_> {
     fn check(&mut self, node: NodeId) {
         let checks = &mut self.checks;
@@ -1549,7 +1589,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
 
     fn leave_node(&mut self, node: NodeId) {
-        if self.check_syntax {
+        if self.check_syntax && has_syntax_check(self.context.ast.node_kind(node)) {
             self.check(node);
         }
         self.context.leave_node(node);
