@@ -1280,50 +1280,6 @@ impl Checker<'_, '_> {
                     }
                 }
             }
-            NodeKindData::MemberExpression(expression) => {
-                let object = expression.object(context.ast).node_id();
-                if context.ast.node_kind(object) == NodeKind::Super
-                    && !is_super_property_valid(context)
-                {
-                    checks.report(
-                        context.ast.span(expression.node_id()),
-                        "'super' property access is only valid inside a method or class body",
-                        ReportOptions {
-                            help: Some(Cow::Borrowed(
-                                "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                            )),
-                            ..ReportOptions::default()
-                        },
-                    );
-                }
-                let property = expression.property(context.ast).node_id();
-                if !expression.computed(context.ast)
-                    && let NodeKindData::PrivateIdentifier(identifier) =
-                        context.ast.kind_data(property)
-                {
-                    let name = context
-                        .ast
-                        .get_utf8(identifier.name(context.ast))
-                        .as_bytes();
-                    if context.ast.node_kind(object) == NodeKind::Super {
-                        checks.report(
-                            context.ast.span(expression.node_id()),
-                            "'super' keyword unexpected here",
-                            ReportOptions::default(),
-                        );
-                    } else if !is_private_name_declared(context, name) {
-                        let message = checks.fmt(format_args!(
-                            "Private field '#{}' must be declared in an enclosing class",
-                            String::from_utf8_lossy(name)
-                        ));
-                        checks.report(
-                            context.ast.span(property),
-                            message,
-                            ReportOptions::default(),
-                        );
-                    }
-                }
-            }
             NodeKindData::CallExpression(call) => {
                 if context.ast.node_kind(call.callee(context.ast).node_id()) == NodeKind::Super {
                     let message = "'super()' is only valid in a constructor of a derived class";
@@ -1620,7 +1576,51 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let object_flags = self.flags_with_space(node_flags.space);
         self.visit_with_reference_flags(node.object(self.context.ast), object_flags);
         node.property(self.context.ast).visit_with(self);
-        self.leave_node(node.node_id());
+        if self.check_syntax {
+            let checks = &mut self.checks;
+            let context = &mut self.context;
+            let object = node.object(context.ast).node_id();
+            if context.ast.node_kind(object) == NodeKind::Super && !is_super_property_valid(context)
+            {
+                checks.report(
+                    context.ast.span(node.node_id()),
+                    "'super' property access is only valid inside a method or class body",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Use an arrow function instead of a regular function to inherit the 'super' binding",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+            }
+            let property = node.property(context.ast).node_id();
+            if !node.computed(context.ast)
+                && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(property)
+            {
+                let name = context
+                    .ast
+                    .get_utf8(identifier.name(context.ast))
+                    .as_bytes();
+                if context.ast.node_kind(object) == NodeKind::Super {
+                    checks.report(
+                        context.ast.span(node.node_id()),
+                        "'super' keyword unexpected here",
+                        ReportOptions::default(),
+                    );
+                } else if !is_private_name_declared(context, name) {
+                    let message = checks.fmt(format_args!(
+                        "Private field '#{}' must be declared in an enclosing class",
+                        String::from_utf8_lossy(name)
+                    ));
+                    checks.report(
+                        context.ast.span(property),
+                        message,
+                        ReportOptions::default(),
+                    );
+                }
+            }
+        }
+        self.context.leave_node(node.node_id());
     }
     #[inline]
     fn visit_parenthesized_expression(&mut self, node: ParenthesizedExpression) {
