@@ -2769,6 +2769,7 @@ impl<'a> CheckerState<'a> {
     }
 
     /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
+    #[inline]
     fn check_strict_reserved(
         &mut self,
         name: &[u8],
