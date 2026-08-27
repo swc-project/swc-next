@@ -37,13 +37,10 @@ impl<T: Copy, const N: usize> Simd<T, N> {
 
     #[inline]
     pub(crate) fn from_slice(slice: &[T]) -> Self {
-        assert!(
-            slice.len() >= N,
-            "source slice is shorter than the SIMD vector"
-        );
-        // SAFETY: The length check makes the first `N` elements readable. An
-        // unaligned read is valid for any slice alignment.
-        Self(unsafe { slice.as_ptr().cast::<[T; N]>().read_unaligned() })
+        let array = slice
+            .first_chunk::<N>()
+            .expect("source slice is shorter than the SIMD vector");
+        Self(*array)
     }
 
     #[inline]

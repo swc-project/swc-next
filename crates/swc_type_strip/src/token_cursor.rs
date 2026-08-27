@@ -90,9 +90,7 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
     }
 
     pub(crate) fn has_line_terminator(self, start: u32, end: u32) -> bool {
-        self.source[start as usize..end as usize]
-            .chars()
-            .any(|character| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+        self.source[start as usize..end as usize].contains(['\n', '\r', '\u{2028}', '\u{2029}'])
     }
 
     pub(crate) fn trailing_character_span(self, end: u32) -> Option<Span> {
@@ -107,31 +105,13 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
     }
 
     fn index_containing_or_after(self, position: u32) -> usize {
-        let mut low = 0;
-        let mut high = self.tokens.len();
-        while low < high {
-            let middle = low + (high - low) / 2;
-            if self.tokens[middle].span.end <= position {
-                low = middle + 1;
-            } else {
-                high = middle;
-            }
-        }
-        low
+        self.tokens
+            .partition_point(|token| token.span.end <= position)
     }
 
     fn index_starting_at_or_after(self, position: u32) -> usize {
-        let mut low = 0;
-        let mut high = self.tokens.len();
-        while low < high {
-            let middle = low + (high - low) / 2;
-            if self.tokens[middle].span.start < position {
-                low = middle + 1;
-            } else {
-                high = middle;
-            }
-        }
-        low
+        self.tokens
+            .partition_point(|token| token.span.start < position)
     }
 }
 

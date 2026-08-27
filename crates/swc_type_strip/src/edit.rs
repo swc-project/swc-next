@@ -104,17 +104,10 @@ impl EditPlan {
 }
 
 fn normalize_operations(operations: &mut [Operation]) -> Vec<Operation> {
-    operations.sort_unstable_by(|left, right| {
-        let left_span = left.span();
-        let right_span = right.span();
-        left_span
-            .start
-            .cmp(&right_span.start)
-            .then_with(|| match (left, right) {
-                (Operation::Blank(_), Operation::Substitute { .. }) => std::cmp::Ordering::Less,
-                (Operation::Substitute { .. }, Operation::Blank(_)) => std::cmp::Ordering::Greater,
-                _ => left_span.end.cmp(&right_span.end),
-            })
+    operations.sort_unstable_by_key(|operation| {
+        let span = operation.span();
+        let is_substitution = matches!(operation, Operation::Substitute { .. });
+        (span.start, is_substitution, span.end)
     });
 
     let mut normalized = Vec::with_capacity(operations.len());
@@ -210,7 +203,7 @@ fn push_blank_scalar(output: &mut String, source: &str) {
         while offset < source.len() {
             let byte = source.as_bytes()[offset];
             if byte.is_ascii() {
-                let blanked = if is_preserved_ascii_control_whitespace(byte) {
+                let blanked = if byte.is_ascii_whitespace() {
                     byte
                 } else {
                     b' '
@@ -269,7 +262,7 @@ fn push_blank_simd(output: &mut String, source: &str) {
             while offset < source.len() {
                 let byte = source.as_bytes()[offset];
                 if byte.is_ascii() {
-                    let blanked = if is_preserved_ascii_control_whitespace(byte) {
+                    let blanked = if byte.is_ascii_whitespace() {
                         byte
                     } else {
                         b' '
@@ -346,10 +339,6 @@ fn is_ecmascript_whitespace_or_line_terminator(character: char) -> bool {
                 | '\u{3000}'
                 | '\u{FEFF}'
     )
-}
-
-fn is_preserved_ascii_control_whitespace(byte: u8) -> bool {
-    matches!(byte, b'\t' | b'\n' | 0x0b | 0x0c | b'\r')
 }
 
 #[cfg(test)]

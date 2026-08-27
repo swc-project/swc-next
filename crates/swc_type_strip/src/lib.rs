@@ -329,9 +329,10 @@ impl TypeEraser<'_, '_, '_> {
 
     fn erase_explicit_this_parameter(&mut self, parameters: FormalParameters) {
         let items = parameters.items(self.ast);
-        let Some(first_item) = items.get_node(self.ast, 0) else {
+        let Some(first_item) = items.first() else {
             return;
         };
+        let first_item = self.ast.get_node_in_sub_range(first_item);
         let Some(first_parameter) = first_item.as_formal_parameter(self.ast) else {
             return;
         };
@@ -344,7 +345,8 @@ impl TypeEraser<'_, '_, '_> {
 
         let first_span = first_item.span(self.ast);
         let search_end = items
-            .get_node(self.ast, 1)
+            .get(1)
+            .map(|item| self.ast.get_node_in_sub_range(item))
             .map(|item| item.span(self.ast).start)
             .or_else(|| {
                 parameters
@@ -414,10 +416,8 @@ impl TypeEraser<'_, '_, '_> {
     ) {
         let saved_context = self.item_context;
         let mut previous_retained = None;
-        for position in 0..statements.len() {
-            let Some(statement) = statements.get_node(self.ast, position) else {
-                continue;
-            };
+        for (position, statement) in statements.iter().enumerate() {
+            let statement = self.ast.get_node_in_sub_range(statement);
             self.item_context = ItemContext {
                 previous_retained,
                 terminates_directive_prologue: terminates_directive_prologue && position == 0,
@@ -435,10 +435,8 @@ impl TypeEraser<'_, '_, '_> {
     fn visit_class_element_list(&mut self, elements: TypedSubRange<ClassElement>) {
         let saved_context = self.item_context;
         let mut previous_retained = None;
-        for position in 0..elements.len() {
-            let Some(element) = elements.get_node(self.ast, position) else {
-                continue;
-            };
+        for element in elements.iter() {
+            let element = self.ast.get_node_in_sub_range(element);
             self.item_context = ItemContext {
                 previous_retained,
                 ..ItemContext::default()
@@ -580,10 +578,9 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         }
 
         let implements = node.implements(self.ast);
-        if let (Some(first), Some(last)) = (
-            implements.get_node(self.ast, 0),
-            implements.get_node(self.ast, implements.len().saturating_sub(1)),
-        ) {
+        if let (Some(first), Some(last)) = (implements.first(), implements.last()) {
+            let first = self.ast.get_node_in_sub_range(first);
+            let last = self.ast.get_node_in_sub_range(last);
             let first_span = first.span(self.ast);
             let last_span = last.span(self.ast);
             if let Some(keyword) =
@@ -767,10 +764,9 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         }
 
         let specifiers = node.specifiers(self.ast);
-        for position in 0..specifiers.len() {
-            let Some(specifier) = specifiers.get_node(self.ast, position) else {
-                continue;
-            };
+        let mut specifier_ids = specifiers.iter().peekable();
+        while let Some(specifier) = specifier_ids.next() {
+            let specifier = self.ast.get_node_in_sub_range(specifier);
             let Some(specifier) = specifier.as_import_specifier(self.ast) else {
                 continue;
             };
@@ -779,9 +775,10 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             }
 
             let item = specifier.span(self.ast);
-            let next = specifiers
-                .get_node(self.ast, position + 1)
-                .map(|specifier| specifier.span(self.ast));
+            let next = specifier_ids
+                .peek()
+                .copied()
+                .map(|specifier| self.ast.get_node_in_sub_range(specifier).span(self.ast));
             self.erase_list_item(item, next, container);
         }
     }
@@ -800,18 +797,18 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         }
 
         let specifiers = node.specifiers(self.ast);
-        for position in 0..specifiers.len() {
-            let Some(specifier) = specifiers.get_node(self.ast, position) else {
-                continue;
-            };
+        let mut specifier_ids = specifiers.iter().peekable();
+        while let Some(specifier) = specifier_ids.next() {
+            let specifier = self.ast.get_node_in_sub_range(specifier);
             if specifier.export_kind(self.ast) != ImportOrExportKind::Type {
                 continue;
             }
 
             let item = specifier.span(self.ast);
-            let next = specifiers
-                .get_node(self.ast, position + 1)
-                .map(|specifier| specifier.span(self.ast));
+            let next = specifier_ids
+                .peek()
+                .copied()
+                .map(|specifier| self.ast.get_node_in_sub_range(specifier).span(self.ast));
             self.erase_list_item(item, next, container);
         }
         if let Some(module) =
@@ -962,14 +959,11 @@ fn earliest_position(current: Option<u32>, candidate: Option<u32>) -> Option<u32
     }
 }
 
-fn modifiers_start<'ast>(
-    member_start: u32,
-    decorators: TypedSubRange<Decorator>,
-    ast: &Ast<'ast>,
-) -> u32 {
-    decorators
-        .get_node(ast, decorators.len().saturating_sub(1))
-        .map_or(member_start, |decorator| decorator.span(ast).end)
+fn modifiers_start(member_start: u32, decorators: TypedSubRange<Decorator>, ast: &Ast<'_>) -> u32 {
+    let Some(decorator) = decorators.last() else {
+        return member_start;
+    };
+    ast.get_node_in_sub_range(decorator).span(ast).end
 }
 
 fn pattern_type_annotation(
@@ -1046,10 +1040,8 @@ fn is_type_only_module(module: TsModuleDeclaration, ast: &Ast<'_>) -> bool {
         return false;
     };
     let statements = block.body(ast);
-    for position in 0..statements.len() {
-        let Some(statement) = statements.get_node(ast, position) else {
-            return false;
-        };
+    for statement in statements.iter() {
+        let statement = ast.get_node_in_sub_range(statement);
         if statement_has_runtime_effect(statement, ast) {
             return false;
         }
