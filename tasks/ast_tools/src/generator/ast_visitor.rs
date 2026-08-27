@@ -26,9 +26,9 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
         fn ast(&self) -> &Ast<'a>;
 
         #[inline]
-        fn enter_node(&mut self, node_id: NodeId) {}
+        fn enter_node(&mut self, node: NodeKindData) {}
         #[inline]
-        fn leave_node(&mut self, node_id: NodeId) {}
+        fn leave_node(&mut self, node: NodeKindData) {}
     });
 
     visit_mut_functions.extend(quote! {
@@ -49,9 +49,9 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 visit_functions.extend(quote! {
                     #[inline]
                     fn #fn_name(&mut self, node: #ty_ident) {
-                        self.enter_node(node.node_id());
+                        self.enter_node(NodeKindData::#ty_ident(node));
                         <#ty_ident as VisitWith<'a, Self>>::visit_children_with(node, self);
-                        self.leave_node(node.node_id());
+                        self.leave_node(NodeKindData::#ty_ident(node));
                     }
                 });
 

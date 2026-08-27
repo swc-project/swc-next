@@ -4,14 +4,14 @@ use crate::*;
 pub trait Visit<'a> {
     fn ast(&self) -> &Ast<'a>;
     #[inline]
-    fn enter_node(&mut self, node_id: NodeId) {}
+    fn enter_node(&mut self, node: NodeKindData) {}
     #[inline]
-    fn leave_node(&mut self, node_id: NodeId) {}
+    fn leave_node(&mut self, node: NodeKindData) {}
     #[inline]
     fn visit_program(&mut self, node: Program) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Program(node));
         <Program as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Program(node));
     }
     #[inline]
     fn visit_stmt(&mut self, node: Stmt) {
@@ -87,513 +87,513 @@ pub trait Visit<'a> {
     }
     #[inline]
     fn visit_super(&mut self, node: Super) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Super(node));
         <Super as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Super(node));
     }
     #[inline]
     fn visit_this_expression(&mut self, node: ThisExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ThisExpression(node));
         <ThisExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ThisExpression(node));
     }
     #[inline]
     fn visit_string_literal(&mut self, node: StringLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::StringLiteral(node));
         <StringLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::StringLiteral(node));
     }
     #[inline]
     fn visit_numeric_literal(&mut self, node: NumericLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::NumericLiteral(node));
         <NumericLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::NumericLiteral(node));
     }
     #[inline]
     fn visit_big_int_literal(&mut self, node: BigIntLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BigIntLiteral(node));
         <BigIntLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BigIntLiteral(node));
     }
     #[inline]
     fn visit_boolean_literal(&mut self, node: BooleanLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BooleanLiteral(node));
         <BooleanLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BooleanLiteral(node));
     }
     #[inline]
     fn visit_null_literal(&mut self, node: NullLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::NullLiteral(node));
         <NullLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::NullLiteral(node));
     }
     #[inline]
     fn visit_reg_exp_literal(&mut self, node: RegExpLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::RegExpLiteral(node));
         <RegExpLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::RegExpLiteral(node));
     }
     #[inline]
     fn visit_template_literal(&mut self, node: TemplateLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TemplateLiteral(node));
         <TemplateLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TemplateLiteral(node));
     }
     #[inline]
     fn visit_template_element(&mut self, node: TemplateElement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TemplateElement(node));
         <TemplateElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TemplateElement(node));
     }
     #[inline]
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::IdentifierReference(node));
         <IdentifierReference as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::IdentifierReference(node));
     }
     #[inline]
     fn visit_private_identifier(&mut self, node: PrivateIdentifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::PrivateIdentifier(node));
         <PrivateIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::PrivateIdentifier(node));
     }
     #[inline]
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BindingIdentifier(node));
         <BindingIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BindingIdentifier(node));
     }
     #[inline]
     fn visit_identifier_name(&mut self, node: IdentifierName) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::IdentifierName(node));
         <IdentifierName as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::IdentifierName(node));
     }
     #[inline]
     fn visit_label_identifier(&mut self, node: LabelIdentifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::LabelIdentifier(node));
         <LabelIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::LabelIdentifier(node));
     }
     #[inline]
     fn visit_assignment_pattern(&mut self, node: AssignmentPattern) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::AssignmentPattern(node));
         <AssignmentPattern as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::AssignmentPattern(node));
     }
     #[inline]
     fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BindingRestElement(node));
         <BindingRestElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BindingRestElement(node));
     }
     #[inline]
     fn visit_array_pattern(&mut self, node: ArrayPattern) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ArrayPattern(node));
         <ArrayPattern as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ArrayPattern(node));
     }
     #[inline]
     fn visit_object_pattern(&mut self, node: ObjectPattern) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ObjectPattern(node));
         <ObjectPattern as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ObjectPattern(node));
     }
     #[inline]
     fn visit_binding_property(&mut self, node: BindingProperty) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BindingProperty(node));
         <BindingProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BindingProperty(node));
     }
     #[inline]
     fn visit_binary_expression(&mut self, node: BinaryExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BinaryExpression(node));
         <BinaryExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BinaryExpression(node));
     }
     #[inline]
     fn visit_logical_expression(&mut self, node: LogicalExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::LogicalExpression(node));
         <LogicalExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::LogicalExpression(node));
     }
     #[inline]
     fn visit_conditional_expression(&mut self, node: ConditionalExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ConditionalExpression(node));
         <ConditionalExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ConditionalExpression(node));
     }
     #[inline]
     fn visit_unary_expression(&mut self, node: UnaryExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::UnaryExpression(node));
         <UnaryExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::UnaryExpression(node));
     }
     #[inline]
     fn visit_update_expression(&mut self, node: UpdateExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::UpdateExpression(node));
         <UpdateExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::UpdateExpression(node));
     }
     #[inline]
     fn visit_assignment_expression(&mut self, node: AssignmentExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::AssignmentExpression(node));
         <AssignmentExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::AssignmentExpression(node));
     }
     #[inline]
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::VariableDeclaration(node));
         <VariableDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::VariableDeclaration(node));
     }
     #[inline]
     fn visit_variable_declarator(&mut self, node: VariableDeclarator) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::VariableDeclarator(node));
         <VariableDeclarator as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::VariableDeclarator(node));
     }
     #[inline]
     fn visit_if_statement(&mut self, node: IfStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::IfStatement(node));
         <IfStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::IfStatement(node));
     }
     #[inline]
     fn visit_switch_statement(&mut self, node: SwitchStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::SwitchStatement(node));
         <SwitchStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::SwitchStatement(node));
     }
     #[inline]
     fn visit_switch_case(&mut self, node: SwitchCase) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::SwitchCase(node));
         <SwitchCase as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::SwitchCase(node));
     }
     #[inline]
     fn visit_for_statement(&mut self, node: ForStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ForStatement(node));
         <ForStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ForStatement(node));
     }
     #[inline]
     fn visit_for_in_statement(&mut self, node: ForInStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ForInStatement(node));
         <ForInStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ForInStatement(node));
     }
     #[inline]
     fn visit_for_of_statement(&mut self, node: ForOfStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ForOfStatement(node));
         <ForOfStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ForOfStatement(node));
     }
     #[inline]
     fn visit_try_statement(&mut self, node: TryStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TryStatement(node));
         <TryStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TryStatement(node));
     }
     #[inline]
     fn visit_catch_clause(&mut self, node: CatchClause) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::CatchClause(node));
         <CatchClause as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::CatchClause(node));
     }
     #[inline]
     fn visit_break_statement(&mut self, node: BreakStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BreakStatement(node));
         <BreakStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BreakStatement(node));
     }
     #[inline]
     fn visit_continue_statement(&mut self, node: ContinueStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ContinueStatement(node));
         <ContinueStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ContinueStatement(node));
     }
     #[inline]
     fn visit_labeled_statement(&mut self, node: LabeledStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::LabeledStatement(node));
         <LabeledStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::LabeledStatement(node));
     }
     #[inline]
     fn visit_expression_statement(&mut self, node: ExpressionStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ExpressionStatement(node));
         <ExpressionStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ExpressionStatement(node));
     }
     #[inline]
     fn visit_return_statement(&mut self, node: ReturnStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ReturnStatement(node));
         <ReturnStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ReturnStatement(node));
     }
     #[inline]
     fn visit_throw_statement(&mut self, node: ThrowStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ThrowStatement(node));
         <ThrowStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ThrowStatement(node));
     }
     #[inline]
     fn visit_debugger_statement(&mut self, node: DebuggerStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::DebuggerStatement(node));
         <DebuggerStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::DebuggerStatement(node));
     }
     #[inline]
     fn visit_empty_statement(&mut self, node: EmptyStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::EmptyStatement(node));
         <EmptyStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::EmptyStatement(node));
     }
     #[inline]
     fn visit_directive(&mut self, node: Directive) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Directive(node));
         <Directive as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Directive(node));
     }
     #[inline]
     fn visit_decorator(&mut self, node: Decorator) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Decorator(node));
         <Decorator as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Decorator(node));
     }
     #[inline]
     fn visit_class(&mut self, node: Class) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Class(node));
         <Class as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Class(node));
     }
     #[inline]
     fn visit_class_body(&mut self, node: ClassBody) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ClassBody(node));
         <ClassBody as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ClassBody(node));
     }
     #[inline]
     fn visit_method_definition(&mut self, node: MethodDefinition) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::MethodDefinition(node));
         <MethodDefinition as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::MethodDefinition(node));
     }
     #[inline]
     fn visit_property_definition(&mut self, node: PropertyDefinition) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::PropertyDefinition(node));
         <PropertyDefinition as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::PropertyDefinition(node));
     }
     #[inline]
     fn visit_static_block(&mut self, node: StaticBlock) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::StaticBlock(node));
         <StaticBlock as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::StaticBlock(node));
     }
     #[inline]
     fn visit_function(&mut self, node: Function) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Function(node));
         <Function as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Function(node));
     }
     #[inline]
     fn visit_function_body(&mut self, node: FunctionBody) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::FunctionBody(node));
         <FunctionBody as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::FunctionBody(node));
     }
     #[inline]
     fn visit_block_statement(&mut self, node: BlockStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::BlockStatement(node));
         <BlockStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::BlockStatement(node));
     }
     #[inline]
     fn visit_while_statement(&mut self, node: WhileStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::WhileStatement(node));
         <WhileStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::WhileStatement(node));
     }
     #[inline]
     fn visit_do_while_statement(&mut self, node: DoWhileStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::DoWhileStatement(node));
         <DoWhileStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::DoWhileStatement(node));
     }
     #[inline]
     fn visit_with_statement(&mut self, node: WithStatement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::WithStatement(node));
         <WithStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::WithStatement(node));
     }
     #[inline]
     fn visit_formal_parameters(&mut self, node: FormalParameters) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::FormalParameters(node));
         <FormalParameters as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::FormalParameters(node));
     }
     #[inline]
     fn visit_formal_parameter(&mut self, node: FormalParameter) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::FormalParameter(node));
         <FormalParameter as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::FormalParameter(node));
     }
     #[inline]
     fn visit_array_expression(&mut self, node: ArrayExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ArrayExpression(node));
         <ArrayExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ArrayExpression(node));
     }
     #[inline]
     fn visit_object_expression(&mut self, node: ObjectExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ObjectExpression(node));
         <ObjectExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ObjectExpression(node));
     }
     #[inline]
     fn visit_spread_element(&mut self, node: SpreadElement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::SpreadElement(node));
         <SpreadElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::SpreadElement(node));
     }
     #[inline]
     fn visit_object_property(&mut self, node: ObjectProperty) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ObjectProperty(node));
         <ObjectProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ObjectProperty(node));
     }
     #[inline]
     fn visit_parenthesized_expression(&mut self, node: ParenthesizedExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ParenthesizedExpression(node));
         <ParenthesizedExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ParenthesizedExpression(node));
     }
     #[inline]
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ArrowFunctionExpression(node));
         <ArrowFunctionExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ArrowFunctionExpression(node));
     }
     #[inline]
     fn visit_sequence_expression(&mut self, node: SequenceExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::SequenceExpression(node));
         <SequenceExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::SequenceExpression(node));
     }
     #[inline]
     fn visit_member_expression(&mut self, node: MemberExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::MemberExpression(node));
         <MemberExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::MemberExpression(node));
     }
     #[inline]
     fn visit_call_expression(&mut self, node: CallExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::CallExpression(node));
         <CallExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::CallExpression(node));
     }
     #[inline]
     fn visit_chain_expression(&mut self, node: ChainExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ChainExpression(node));
         <ChainExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ChainExpression(node));
     }
     #[inline]
     fn visit_tagged_template_expression(&mut self, node: TaggedTemplateExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TaggedTemplateExpression(node));
         <TaggedTemplateExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TaggedTemplateExpression(node));
     }
     #[inline]
     fn visit_new_expression(&mut self, node: NewExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::NewExpression(node));
         <NewExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::NewExpression(node));
     }
     #[inline]
     fn visit_await_expression(&mut self, node: AwaitExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::AwaitExpression(node));
         <AwaitExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::AwaitExpression(node));
     }
     #[inline]
     fn visit_yield_expression(&mut self, node: YieldExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::YieldExpression(node));
         <YieldExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::YieldExpression(node));
     }
     #[inline]
     fn visit_meta_property(&mut self, node: MetaProperty) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::MetaProperty(node));
         <MetaProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::MetaProperty(node));
     }
     #[inline]
     fn visit_import_expression(&mut self, node: ImportExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ImportExpression(node));
         <ImportExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ImportExpression(node));
     }
     #[inline]
     fn visit_import_declaration(&mut self, node: ImportDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ImportDeclaration(node));
         <ImportDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ImportDeclaration(node));
     }
     #[inline]
     fn visit_import_specifier(&mut self, node: ImportSpecifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ImportSpecifier(node));
         <ImportSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ImportSpecifier(node));
     }
     #[inline]
     fn visit_import_default_specifier(&mut self, node: ImportDefaultSpecifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ImportDefaultSpecifier(node));
         <ImportDefaultSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ImportDefaultSpecifier(node));
     }
     #[inline]
     fn visit_import_namespace_specifier(&mut self, node: ImportNamespaceSpecifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ImportNamespaceSpecifier(node));
         <ImportNamespaceSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ImportNamespaceSpecifier(node));
     }
     #[inline]
     fn visit_import_attribute(&mut self, node: ImportAttribute) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ImportAttribute(node));
         <ImportAttribute as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ImportAttribute(node));
     }
     #[inline]
     fn visit_export_named_declaration(&mut self, node: ExportNamedDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ExportNamedDeclaration(node));
         <ExportNamedDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ExportNamedDeclaration(node));
     }
     #[inline]
     fn visit_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ExportDefaultDeclaration(node));
         <ExportDefaultDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ExportDefaultDeclaration(node));
     }
     #[inline]
     fn visit_export_all_declaration(&mut self, node: ExportAllDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ExportAllDeclaration(node));
         <ExportAllDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ExportAllDeclaration(node));
     }
     #[inline]
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::ExportSpecifier(node));
         <ExportSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::ExportSpecifier(node));
     }
     #[inline]
     fn visit_hashbang(&mut self, node: Hashbang) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::Hashbang(node));
         <Hashbang as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::Hashbang(node));
     }
     #[inline]
     fn visit_ts_type(&mut self, node: TsType) {
@@ -649,441 +649,441 @@ pub trait Visit<'a> {
     }
     #[inline]
     fn visit_ts_function(&mut self, node: TsFunction) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsFunction(node));
         <TsFunction as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsFunction(node));
     }
     #[inline]
     fn visit_ts_method_definition(&mut self, node: TsMethodDefinition) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsMethodDefinition(node));
         <TsMethodDefinition as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsMethodDefinition(node));
     }
     #[inline]
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeAnnotation(node));
         <TsTypeAnnotation as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeAnnotation(node));
     }
     #[inline]
     fn visit_ts_any_keyword(&mut self, node: TsAnyKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsAnyKeyword(node));
         <TsAnyKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsAnyKeyword(node));
     }
     #[inline]
     fn visit_ts_unknown_keyword(&mut self, node: TsUnknownKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsUnknownKeyword(node));
         <TsUnknownKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsUnknownKeyword(node));
     }
     #[inline]
     fn visit_ts_never_keyword(&mut self, node: TsNeverKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsNeverKeyword(node));
         <TsNeverKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsNeverKeyword(node));
     }
     #[inline]
     fn visit_ts_void_keyword(&mut self, node: TsVoidKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsVoidKeyword(node));
         <TsVoidKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsVoidKeyword(node));
     }
     #[inline]
     fn visit_ts_null_keyword(&mut self, node: TsNullKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsNullKeyword(node));
         <TsNullKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsNullKeyword(node));
     }
     #[inline]
     fn visit_ts_undefined_keyword(&mut self, node: TsUndefinedKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsUndefinedKeyword(node));
         <TsUndefinedKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsUndefinedKeyword(node));
     }
     #[inline]
     fn visit_ts_string_keyword(&mut self, node: TsStringKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsStringKeyword(node));
         <TsStringKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsStringKeyword(node));
     }
     #[inline]
     fn visit_ts_number_keyword(&mut self, node: TsNumberKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsNumberKeyword(node));
         <TsNumberKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsNumberKeyword(node));
     }
     #[inline]
     fn visit_ts_big_int_keyword(&mut self, node: TsBigIntKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsBigIntKeyword(node));
         <TsBigIntKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsBigIntKeyword(node));
     }
     #[inline]
     fn visit_ts_boolean_keyword(&mut self, node: TsBooleanKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsBooleanKeyword(node));
         <TsBooleanKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsBooleanKeyword(node));
     }
     #[inline]
     fn visit_ts_symbol_keyword(&mut self, node: TsSymbolKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsSymbolKeyword(node));
         <TsSymbolKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsSymbolKeyword(node));
     }
     #[inline]
     fn visit_ts_object_keyword(&mut self, node: TsObjectKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsObjectKeyword(node));
         <TsObjectKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsObjectKeyword(node));
     }
     #[inline]
     fn visit_ts_intrinsic_keyword(&mut self, node: TsIntrinsicKeyword) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsIntrinsicKeyword(node));
         <TsIntrinsicKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsIntrinsicKeyword(node));
     }
     #[inline]
     fn visit_ts_this_type(&mut self, node: TsThisType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsThisType(node));
         <TsThisType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsThisType(node));
     }
     #[inline]
     fn visit_ts_type_reference(&mut self, node: TsTypeReference) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeReference(node));
         <TsTypeReference as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeReference(node));
     }
     #[inline]
     fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsQualifiedName(node));
         <TsQualifiedName as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsQualifiedName(node));
     }
     #[inline]
     fn visit_ts_type_query(&mut self, node: TsTypeQuery) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeQuery(node));
         <TsTypeQuery as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeQuery(node));
     }
     #[inline]
     fn visit_ts_import_type(&mut self, node: TsImportType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsImportType(node));
         <TsImportType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsImportType(node));
     }
     #[inline]
     fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeParameter(node));
         <TsTypeParameter as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeParameter(node));
     }
     #[inline]
     fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeParameterDeclaration(node));
         <TsTypeParameterDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeParameterDeclaration(node));
     }
     #[inline]
     fn visit_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeParameterInstantiation(node));
         <TsTypeParameterInstantiation as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeParameterInstantiation(node));
     }
     #[inline]
     fn visit_ts_literal_type(&mut self, node: TsLiteralType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsLiteralType(node));
         <TsLiteralType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsLiteralType(node));
     }
     #[inline]
     fn visit_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTemplateLiteralType(node));
         <TsTemplateLiteralType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTemplateLiteralType(node));
     }
     #[inline]
     fn visit_ts_array_type(&mut self, node: TsArrayType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsArrayType(node));
         <TsArrayType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsArrayType(node));
     }
     #[inline]
     fn visit_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsIndexedAccessType(node));
         <TsIndexedAccessType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsIndexedAccessType(node));
     }
     #[inline]
     fn visit_ts_tuple_type(&mut self, node: TsTupleType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTupleType(node));
         <TsTupleType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTupleType(node));
     }
     #[inline]
     fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsNamedTupleMember(node));
         <TsNamedTupleMember as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsNamedTupleMember(node));
     }
     #[inline]
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsOptionalType(node));
         <TsOptionalType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsOptionalType(node));
     }
     #[inline]
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsRestType(node));
         <TsRestType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsRestType(node));
     }
     #[inline]
     fn visit_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsJsDocNullableType(node));
         <TsJsDocNullableType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsJsDocNullableType(node));
     }
     #[inline]
     fn visit_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsJsDocNonNullableType(node));
         <TsJsDocNonNullableType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsJsDocNonNullableType(node));
     }
     #[inline]
     fn visit_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsJsDocUnknownType(node));
         <TsJsDocUnknownType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsJsDocUnknownType(node));
     }
     #[inline]
     fn visit_ts_union_type(&mut self, node: TsUnionType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsUnionType(node));
         <TsUnionType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsUnionType(node));
     }
     #[inline]
     fn visit_ts_intersection_type(&mut self, node: TsIntersectionType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsIntersectionType(node));
         <TsIntersectionType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsIntersectionType(node));
     }
     #[inline]
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsConditionalType(node));
         <TsConditionalType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsConditionalType(node));
     }
     #[inline]
     fn visit_ts_infer_type(&mut self, node: TsInferType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsInferType(node));
         <TsInferType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsInferType(node));
     }
     #[inline]
     fn visit_ts_type_operator(&mut self, node: TsTypeOperator) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeOperator(node));
         <TsTypeOperator as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeOperator(node));
     }
     #[inline]
     fn visit_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsParenthesizedType(node));
         <TsParenthesizedType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsParenthesizedType(node));
     }
     #[inline]
     fn visit_ts_function_type(&mut self, node: TsFunctionType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsFunctionType(node));
         <TsFunctionType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsFunctionType(node));
     }
     #[inline]
     fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsConstructorType(node));
         <TsConstructorType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsConstructorType(node));
     }
     #[inline]
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypePredicate(node));
         <TsTypePredicate as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypePredicate(node));
     }
     #[inline]
     fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeLiteral(node));
         <TsTypeLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeLiteral(node));
     }
     #[inline]
     fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsMappedType(node));
         <TsMappedType as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsMappedType(node));
     }
     #[inline]
     fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsPropertySignature(node));
         <TsPropertySignature as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsPropertySignature(node));
     }
     #[inline]
     fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsMethodSignature(node));
         <TsMethodSignature as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsMethodSignature(node));
     }
     #[inline]
     fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsCallSignatureDeclaration(node));
         <TsCallSignatureDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsCallSignatureDeclaration(node));
     }
     #[inline]
     fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsConstructSignatureDeclaration(node));
         <TsConstructSignatureDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsConstructSignatureDeclaration(node));
     }
     #[inline]
     fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsIndexSignature(node));
         <TsIndexSignature as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsIndexSignature(node));
     }
     #[inline]
     fn visit_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeAliasDeclaration(node));
         <TsTypeAliasDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeAliasDeclaration(node));
     }
     #[inline]
     fn visit_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsInterfaceDeclaration(node));
         <TsInterfaceDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsInterfaceDeclaration(node));
     }
     #[inline]
     fn visit_ts_interface_body(&mut self, node: TsInterfaceBody) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsInterfaceBody(node));
         <TsInterfaceBody as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsInterfaceBody(node));
     }
     #[inline]
     fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsInterfaceHeritage(node));
         <TsInterfaceHeritage as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsInterfaceHeritage(node));
     }
     #[inline]
     fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsClassImplements(node));
         <TsClassImplements as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsClassImplements(node));
     }
     #[inline]
     fn visit_ts_enum_declaration(&mut self, node: TsEnumDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsEnumDeclaration(node));
         <TsEnumDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsEnumDeclaration(node));
     }
     #[inline]
     fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsEnumBody(node));
         <TsEnumBody as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsEnumBody(node));
     }
     #[inline]
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsEnumMember(node));
         <TsEnumMember as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsEnumMember(node));
     }
     #[inline]
     fn visit_ts_module_declaration(&mut self, node: TsModuleDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsModuleDeclaration(node));
         <TsModuleDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsModuleDeclaration(node));
     }
     #[inline]
     fn visit_ts_module_block(&mut self, node: TsModuleBlock) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsModuleBlock(node));
         <TsModuleBlock as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsModuleBlock(node));
     }
     #[inline]
     fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsGlobalDeclaration(node));
         <TsGlobalDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsGlobalDeclaration(node));
     }
     #[inline]
     fn visit_ts_parameter_property(&mut self, node: TsParameterProperty) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsParameterProperty(node));
         <TsParameterProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsParameterProperty(node));
     }
     #[inline]
     fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsThisParameter(node));
         <TsThisParameter as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsThisParameter(node));
     }
     #[inline]
     fn visit_ts_as_expression(&mut self, node: TsAsExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsAsExpression(node));
         <TsAsExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsAsExpression(node));
     }
     #[inline]
     fn visit_ts_satisfies_expression(&mut self, node: TsSatisfiesExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsSatisfiesExpression(node));
         <TsSatisfiesExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsSatisfiesExpression(node));
     }
     #[inline]
     fn visit_ts_type_assertion(&mut self, node: TsTypeAssertion) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsTypeAssertion(node));
         <TsTypeAssertion as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsTypeAssertion(node));
     }
     #[inline]
     fn visit_ts_non_null_expression(&mut self, node: TsNonNullExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsNonNullExpression(node));
         <TsNonNullExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsNonNullExpression(node));
     }
     #[inline]
     fn visit_ts_instantiation_expression(&mut self, node: TsInstantiationExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsInstantiationExpression(node));
         <TsInstantiationExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsInstantiationExpression(node));
     }
     #[inline]
     fn visit_ts_export_assignment(&mut self, node: TsExportAssignment) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsExportAssignment(node));
         <TsExportAssignment as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsExportAssignment(node));
     }
     #[inline]
     fn visit_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsNamespaceExportDeclaration(node));
         <TsNamespaceExportDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsNamespaceExportDeclaration(node));
     }
     #[inline]
     fn visit_ts_import_equals_declaration(&mut self, node: TsImportEqualsDeclaration) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsImportEqualsDeclaration(node));
         <TsImportEqualsDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsImportEqualsDeclaration(node));
     }
     #[inline]
     fn visit_ts_external_module_reference(&mut self, node: TsExternalModuleReference) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::TsExternalModuleReference(node));
         <TsExternalModuleReference as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::TsExternalModuleReference(node));
     }
     #[inline]
     fn visit_jsx_element_name(&mut self, node: JsxElementName) {
@@ -1115,93 +1115,93 @@ pub trait Visit<'a> {
     }
     #[inline]
     fn visit_jsx_element(&mut self, node: JsxElement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxElement(node));
         <JsxElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxElement(node));
     }
     #[inline]
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxOpeningElement(node));
         <JsxOpeningElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxOpeningElement(node));
     }
     #[inline]
     fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxClosingElement(node));
         <JsxClosingElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxClosingElement(node));
     }
     #[inline]
     fn visit_jsx_fragment(&mut self, node: JsxFragment) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxFragment(node));
         <JsxFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxFragment(node));
     }
     #[inline]
     fn visit_jsx_opening_fragment(&mut self, node: JsxOpeningFragment) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxOpeningFragment(node));
         <JsxOpeningFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxOpeningFragment(node));
     }
     #[inline]
     fn visit_jsx_closing_fragment(&mut self, node: JsxClosingFragment) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxClosingFragment(node));
         <JsxClosingFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxClosingFragment(node));
     }
     #[inline]
     fn visit_jsx_identifier(&mut self, node: JsxIdentifier) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxIdentifier(node));
         <JsxIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxIdentifier(node));
     }
     #[inline]
     fn visit_jsx_namespaced_name(&mut self, node: JsxNamespacedName) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxNamespacedName(node));
         <JsxNamespacedName as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxNamespacedName(node));
     }
     #[inline]
     fn visit_jsx_member_expression(&mut self, node: JsxMemberExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxMemberExpression(node));
         <JsxMemberExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxMemberExpression(node));
     }
     #[inline]
     fn visit_jsx_attribute(&mut self, node: JsxAttribute) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxAttribute(node));
         <JsxAttribute as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxAttribute(node));
     }
     #[inline]
     fn visit_jsx_spread_attribute(&mut self, node: JsxSpreadAttribute) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxSpreadAttribute(node));
         <JsxSpreadAttribute as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxSpreadAttribute(node));
     }
     #[inline]
     fn visit_jsx_expression_container(&mut self, node: JsxExpressionContainer) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxExpressionContainer(node));
         <JsxExpressionContainer as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxExpressionContainer(node));
     }
     #[inline]
     fn visit_jsx_empty_expression(&mut self, node: JsxEmptyExpression) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxEmptyExpression(node));
         <JsxEmptyExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxEmptyExpression(node));
     }
     #[inline]
     fn visit_jsx_text(&mut self, node: JsxText) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxText(node));
         <JsxText as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxText(node));
     }
     #[inline]
     fn visit_jsx_spread_child(&mut self, node: JsxSpreadChild) {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKindData::JsxSpreadChild(node));
         <JsxSpreadChild as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKindData::JsxSpreadChild(node));
     }
     #[inline]
     fn visit_directives(&mut self, node: TypedSubRange<Directive>) {

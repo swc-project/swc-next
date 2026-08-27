@@ -68,6 +68,15 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 #node_kind_data_variants
             }
 
+            impl NodeKindData {
+                #[inline]
+                pub fn node_id(self) -> NodeId {
+                    // SAFETY: `NodeKindData` uses the same C layout, discriminant, and node ID
+                    // payload as `AstEnumDataRepr` for every variant.
+                    unsafe { std::mem::transmute::<Self, AstEnumDataRepr>(self).node_id }
+                }
+            }
+
             #node_impls
 
             impl<'a> Ast<'a> {

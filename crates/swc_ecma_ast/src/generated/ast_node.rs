@@ -1115,6 +1115,12 @@ pub enum NodeKindData {
     JsxText(JsxText) = NodeKind::JsxText as u8,
     JsxSpreadChild(JsxSpreadChild) = NodeKind::JsxSpreadChild as u8,
 }
+impl NodeKindData {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        unsafe { std::mem::transmute::<Self, AstEnumDataRepr>(self).node_id }
+    }
+}
 impl Program {
     #[inline]
     pub fn node_id(self) -> NodeId {
