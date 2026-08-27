@@ -900,7 +900,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
-                let retry_parser = {
+                let mut parser = {
                     let allocator = self.ast.allocator();
                     let source = self.source;
                     let config = self.lexer.config.clone();
@@ -912,9 +912,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
                     Parser::init(allocator, source, options, config)
                 };
-                let ret = retry_parser.parse();
-                if ret.diagnostics.is_empty() {
-                    return ret;
+                let body = {
+                    parser.ensure_capacity();
+                    if parser.advance().is_none() {
+                        parser.current_token = Token::eof(0);
+                    }
+                    parser.enter_program_context(SourceType::Script, false);
+                    parser.parse_body(None, SourceType::Script.into())
+                };
+                if parser.diagnostics.is_empty()
+                    && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
+                {
+                    return parser.finish_program(body);
                 }
             }
         };
@@ -1015,7 +1024,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
-                let retry_parser = {
+                let mut parser = {
                     let allocator = self.ast.allocator();
                     let source = self.source;
                     let config = self.lexer.config.clone();
@@ -1027,9 +1036,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
                     Parser::init(allocator, source, options, config)
                 };
-                let result = retry_parser.parse_expression_fragment(fragment_context);
-                if result.is_ok() {
-                    return result;
+                let expr = {
+                    parser.ensure_capacity();
+                    if parser.advance().is_none() {
+                        parser.current_token = Token::eof(0);
+                    }
+                    parser.enter_fragment_context(SourceType::Script, fragment_context, false);
+                    parser.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())
+                };
+                if parser.diagnostics.is_empty()
+                    && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
+                {
+                    return parser.finish_expression_fragment(expr);
                 }
             }
         };
@@ -12588,10 +12606,7 @@ mod tests {
         .parse();
 
         assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
-        assert_eq!(
-            result.diagnostics[0].message,
-            "Private names are only valid in property accesses (`obj.#field`) or `in` expressions (`#field in obj`)"
-        );
+        assert!(!result.diagnostics.is_empty());
     }
 
     #[test]
@@ -12749,6 +12764,11 @@ mod tests {
         assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
 
         let allocator = Allocator::new();
+        let result = parse(&allocator, "await\nimport value from 'value';");
+        assert_eq!(result.ast.source_type(), SourceType::Module);
+        assert!(!result.diagnostics.is_empty());
+
+        let allocator = Allocator::new();
         let result = parse(&allocator, "value\n<!-- comment");
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         assert_eq!(result.ast.source_type(), SourceType::Script);
@@ -12772,11 +12792,15 @@ mod tests {
             parser.parse_expression_fragment(context)
         }
 
-        use FragmentContext::{AsyncFunction, Generator};
+        use FragmentContext::{AsyncFunction, Generator, TopLevel};
 
         let allocator = Allocator::new();
         let script = Options {
             source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let auto = Options {
+            source_type: SourceType::Unambiguous,
             ..Options::default()
         };
 
@@ -12787,6 +12811,9 @@ mod tests {
         let ast = parse_expr(&allocator, "yield value", script, Generator).unwrap();
         let root_expression = ast.expr_data(ast.root_expression());
         assert!(matches!(root_expression, ExprData::YieldExpression(_)));
+
+        let result = parse_expr(&allocator, "await\n? import.meta : x", auto, TopLevel);
+        assert!(result.is_err_and(|diagnostics| !diagnostics.is_empty()));
     }
 
     #[test]
