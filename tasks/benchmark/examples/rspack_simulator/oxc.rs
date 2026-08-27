@@ -44,7 +44,11 @@ fn run_parse<'a>(
 
 #[inline(never)]
 fn run_semantic<'a>(program: &'a Program<'a>) -> Semantic<'a> {
-    SemanticBuilder::new().build(program).semantic
+    SemanticBuilder::new()
+        .with_build_nodes(false)
+        .with_check_syntax_error(true)
+        .build(program)
+        .semantic
 }
 
 #[inline(never)]
