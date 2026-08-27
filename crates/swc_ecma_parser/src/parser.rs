@@ -1044,10 +1044,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     parser.enter_fragment_context(SourceType::Script, fragment_context, false);
                     parser.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())
                 };
-                if parser.diagnostics.is_empty()
-                    && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
-                {
-                    return parser.finish_expression_fragment(expr);
+                if !parser.state.contains(ParserState::HAS_MODULE_SYNTAX) {
+                    let result = parser.finish_expression_fragment(expr);
+                    if result.is_ok() {
+                        return result;
+                    }
                 }
             }
         };
@@ -12814,6 +12815,13 @@ mod tests {
 
         let result = parse_expr(&allocator, "await\n? import.meta : x", auto, TopLevel);
         assert!(result.is_err_and(|diagnostics| !diagnostics.is_empty()));
+
+        let ast = parse_expr(&allocator, "await\n{}", auto, TopLevel).unwrap();
+        assert_eq!(ast.source_type(), SourceType::Module);
+        assert!(matches!(
+            ast.expr_data(ast.root_expression()),
+            ExprData::AwaitExpression(_)
+        ));
     }
 
     #[test]
