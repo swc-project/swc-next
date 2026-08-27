@@ -134,10 +134,7 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
 }
 
 fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace {
-    if matches!(
-        tree.kind_data(expression),
-        NodeKindData::IdentifierReference(_)
-    ) {
+    if tree.node_kind(expression) == NodeKind::IdentifierReference {
         ReferenceSpace::Any
     } else {
         ReferenceSpace::Value
