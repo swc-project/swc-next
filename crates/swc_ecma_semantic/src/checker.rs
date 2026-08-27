@@ -790,24 +790,6 @@ impl Checker<'_, '_> {
                     );
                 }
             }
-            NodeKindData::IdentifierReference(identifier) => {
-                if context.state.in_type_position() {
-                    return;
-                }
-                let node_id = identifier.node_id();
-                let name = context
-                    .ast
-                    .get_utf8(identifier.name(context.ast))
-                    .as_bytes();
-                checks.check_strict_reserved(name, node_id, context, "an identifier");
-                if name == b"arguments" && !is_arguments_available(context) {
-                    checks.report(
-                        context.ast.span(node_id),
-                        "'arguments' is not allowed in class field initializers or static blocks",
-                        ReportOptions::default(),
-                    );
-                }
-            }
             NodeKindData::BindingIdentifier(identifier) => {
                 let node_id = identifier.node_id();
                 let name = context
@@ -1733,7 +1715,23 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .symbols
             .add_identifier_reference(context.ast, identifier, &state.scope, flags);
         node.visit_children_with(self);
-        self.leave_node(node.node_id());
+        if self.check_syntax {
+            let checks = &mut self.checks;
+            let context = &mut self.context;
+            if !context.state.in_type_position() {
+                let node_id = node.node_id();
+                let name = context.ast.get_utf8(node.name(context.ast)).as_bytes();
+                checks.check_strict_reserved(name, node_id, context, "an identifier");
+                if name == b"arguments" && !is_arguments_available(context) {
+                    checks.report(
+                        context.ast.span(node_id),
+                        "'arguments' is not allowed in class field initializers or static blocks",
+                        ReportOptions::default(),
+                    );
+                }
+            }
+        }
+        self.context.leave_node(node.node_id());
     }
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         let flags = self.context.enter_node(node.node_id());
