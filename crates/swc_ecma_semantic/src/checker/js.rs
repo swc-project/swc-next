@@ -6,107 +6,6 @@ use swc_next_ecma_ast::{
 
 use super::*;
 
-impl<'a> CheckerState<'a> {
-    /// Post-traversal check that all local export specifiers refer to
-    /// declared bindings.
-    pub fn check_unresolved_exports(
-        &mut self,
-        tree: &Ast<'a>,
-        symbols: &crate::binder::SymbolTracker<'a>,
-    ) {
-        if !tree.is_module() {
-            return;
-        }
-        for index in 0..self.export_specifiers.len() {
-            let specifier = &self.export_specifiers[index];
-            if symbols
-                .binding(ScopeId::MODULE, &specifier.local_name)
-                .is_none()
-            {
-                let message = self.fmt(format_args!(
-                    "Export '{}' is not defined",
-                    String::from_utf8_lossy(&specifier.local_name)
-                ));
-                self.report(tree.span(specifier.node), message, ReportOptions::default());
-            }
-        }
-    }
-
-    fn report_redeclaration(
-        &mut self,
-        tree: &Ast<'a>,
-        identifier: BindingIdentifier,
-        node: NodeId,
-        existing_id: SymbolId,
-        existing: Symbol,
-        context: &SemanticContext<'a>,
-    ) {
-        let name = tree.get_utf8(identifier.name(tree)).as_bytes();
-        let current_span = tree.span(node);
-        let existing_span = tree.span(context.symbols.first_decl_of(existing_id));
-        let kind = existing.flags.to_string();
-        let article = if matches!(kind.as_bytes()[0], b'a' | b'e' | b'i' | b'o' | b'u') {
-            "an"
-        } else {
-            "a"
-        };
-        let message = self.fmt(format_args!(
-            "Identifier '{}' has already been declared",
-            String::from_utf8_lossy(name)
-        ));
-        let first = self.fmt(format_args!(
-            "'{}' was first declared as {} {} here",
-            String::from_utf8_lossy(name),
-            article,
-            kind
-        ));
-        let help = self.fmt(format_args!(
-            "Consider removing or renaming this declaration of '{}'",
-            String::from_utf8_lossy(name)
-        ));
-        self.report(
-            current_span,
-            message,
-            ReportOptions {
-                help: Some(Cow::Owned(help)),
-                labels: self.labels(&[
-                    self.label(existing_span, first),
-                    self.label(current_span, "cannot be redeclared here"),
-                ]),
-                ..ReportOptions::default()
-            },
-        );
-    }
-
-    fn report(&mut self, span: Span, message: impl Into<Cow<'a, str>>, options: ReportOptions<'a>) {
-        let message = message.into();
-        debug_assert!(span.start <= span.end);
-        debug_assert!(!message.is_empty());
-        self.diagnostics.push(Diagnostic {
-            severity: options.severity,
-            message,
-            span,
-            help: options.help,
-            labels: options.labels,
-        });
-    }
-
-    fn label(&self, span: Span, message: impl Into<Cow<'a, str>>) -> Label<'a> {
-        Label {
-            span,
-            message: message.into(),
-        }
-    }
-
-    fn labels(&self, items: &[Label<'a>]) -> Vec<Label<'a>> {
-        items.to_vec()
-    }
-
-    fn fmt(&self, arguments: std::fmt::Arguments<'_>) -> String {
-        arguments.to_string()
-    }
-}
-
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum PrivateElementKind {
     Field,
@@ -536,6 +435,105 @@ impl Default for ReportOptions<'_> {
 }
 
 impl<'a> CheckerState<'a> {
+    /// Post-traversal check that all local export specifiers refer to
+    /// declared bindings.
+    pub fn check_unresolved_exports(
+        &mut self,
+        tree: &Ast<'a>,
+        symbols: &crate::binder::SymbolTracker<'a>,
+    ) {
+        if !tree.is_module() {
+            return;
+        }
+        for index in 0..self.export_specifiers.len() {
+            let specifier = &self.export_specifiers[index];
+            if symbols
+                .binding(ScopeId::MODULE, &specifier.local_name)
+                .is_none()
+            {
+                let message = self.fmt(format_args!(
+                    "Export '{}' is not defined",
+                    String::from_utf8_lossy(&specifier.local_name)
+                ));
+                self.report(tree.span(specifier.node), message, ReportOptions::default());
+            }
+        }
+    }
+
+    fn report_redeclaration(
+        &mut self,
+        tree: &Ast<'a>,
+        identifier: BindingIdentifier,
+        node: NodeId,
+        existing_id: SymbolId,
+        existing: Symbol,
+        context: &SemanticContext<'a>,
+    ) {
+        let name = tree.get_utf8(identifier.name(tree)).as_bytes();
+        let current_span = tree.span(node);
+        let existing_span = tree.span(context.symbols.first_decl_of(existing_id));
+        let kind = existing.flags.to_string();
+        let article = if matches!(kind.as_bytes()[0], b'a' | b'e' | b'i' | b'o' | b'u') {
+            "an"
+        } else {
+            "a"
+        };
+        let message = self.fmt(format_args!(
+            "Identifier '{}' has already been declared",
+            String::from_utf8_lossy(name)
+        ));
+        let first = self.fmt(format_args!(
+            "'{}' was first declared as {} {} here",
+            String::from_utf8_lossy(name),
+            article,
+            kind
+        ));
+        let help = self.fmt(format_args!(
+            "Consider removing or renaming this declaration of '{}'",
+            String::from_utf8_lossy(name)
+        ));
+        self.report(
+            current_span,
+            message,
+            ReportOptions {
+                help: Some(Cow::Owned(help)),
+                labels: self.labels(&[
+                    self.label(existing_span, first),
+                    self.label(current_span, "cannot be redeclared here"),
+                ]),
+                ..ReportOptions::default()
+            },
+        );
+    }
+
+    fn report(&mut self, span: Span, message: impl Into<Cow<'a, str>>, options: ReportOptions<'a>) {
+        let message = message.into();
+        debug_assert!(span.start <= span.end);
+        debug_assert!(!message.is_empty());
+        self.diagnostics.push(Diagnostic {
+            severity: options.severity,
+            message,
+            span,
+            help: options.help,
+            labels: options.labels,
+        });
+    }
+
+    fn label(&self, span: Span, message: impl Into<Cow<'a, str>>) -> Label<'a> {
+        Label {
+            span,
+            message: message.into(),
+        }
+    }
+
+    fn labels(&self, items: &[Label<'a>]) -> Vec<Label<'a>> {
+        items.to_vec()
+    }
+
+    fn fmt(&self, arguments: std::fmt::Arguments<'_>) -> String {
+        arguments.to_string()
+    }
+
     fn check_redeclaration(
         &mut self,
         identifier: BindingIdentifier,
