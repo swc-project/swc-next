@@ -442,11 +442,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
         let flags = self.context.enter_node(node.node_id());
         let context = &mut self.context;
-        let identifier = node;
         let state = &mut context.state;
         state
             .symbols
-            .add_identifier_reference(context.ast, identifier, &state.scope, flags);
+            .add_identifier_reference(context.ast, node, &state.scope, flags);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::IdentifierReference(node));
     }
@@ -1053,11 +1052,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
-        let predicate = node;
         let state = &mut context.state;
         state
             .symbols
-            .add_ts_type_predicate_reference(context.ast, predicate, &state.scope);
+            .add_ts_type_predicate_reference(context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypePredicate(node));
         self.context.state.exit_type_position();
@@ -1336,11 +1334,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
-        let member = node;
         let state = &mut context.state;
         state
             .symbols
-            .declare_ts_enum_member(context.ast, member, &state.scope);
+            .declare_ts_enum_member(context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsEnumMember(node));
     }
@@ -1357,11 +1354,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
-        let element = node;
         let state = &mut context.state;
         state
             .symbols
-            .add_jsx_opening_element_reference(context.ast, element, &state.scope);
+            .add_jsx_opening_element_reference(context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxOpeningElement(node));
     }
@@ -1369,11 +1365,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
         self.context.enter_node(node.node_id());
         let context = &mut self.context;
-        let element = node;
         let state = &mut context.state;
         state
             .symbols
-            .add_jsx_closing_element_reference(context.ast, element, &state.scope);
+            .add_jsx_closing_element_reference(context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxClosingElement(node));
     }
