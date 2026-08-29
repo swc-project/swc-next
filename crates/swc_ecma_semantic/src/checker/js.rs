@@ -460,6 +460,7 @@ impl<'a> CheckerState<'a> {
         }
     }
 
+    #[cold]
     fn report_redeclaration(
         &mut self,
         tree: &Ast<'a>,
@@ -506,6 +507,7 @@ impl<'a> CheckerState<'a> {
         );
     }
 
+    #[cold]
     fn report(&mut self, span: Span, message: impl Into<Cow<'a, str>>, options: ReportOptions<'a>) {
         let message = message.into();
         debug_assert!(span.start <= span.end);
