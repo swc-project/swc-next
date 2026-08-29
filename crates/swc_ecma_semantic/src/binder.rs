@@ -1306,7 +1306,7 @@ impl<'a> SymbolTracker<'a> {
                 .push(declaration_id);
             existing
         } else {
-            let new_id = symbol_id(self.symbols.len());
+            let new_id = SymbolId::from_usize(self.symbols.len());
             self.symbols.push(Symbol {
                 name,
                 flags: declaration_flags,
@@ -1346,7 +1346,7 @@ impl<'a> SymbolTracker<'a> {
         } else {
             flags
         };
-        let id = reference_id(self.references.len());
+        let id = ReferenceId::from_usize(self.references.len());
         self.references.push(Reference {
             name,
             scope,
@@ -1435,7 +1435,8 @@ impl<'a> SymbolTracker<'a> {
 
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
-            node_references[reference.node.index()] = Some(reference_id(reference_index));
+            node_references[reference.node.index()] =
+                Some(ReferenceId::from_usize(reference_index));
             let name = tree.get_utf8(reference.name).as_bytes();
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
@@ -1513,13 +1514,13 @@ impl<'a> SymbolTracker<'a> {
             range.len = 0;
         }
         let mut use_ids = ArenaVec::with_capacity_in(use_offset as usize, self.allocator);
-        use_ids.resize(use_offset as usize, reference_id(0));
+        use_ids.resize(use_offset as usize, ReferenceId::from_usize(0));
         for (index, reference) in self.references.iter().enumerate() {
             let Some(symbol) = reference.symbol else {
                 continue;
             };
             let range = &mut use_ranges[symbol.index()];
-            use_ids[(range.start + range.len) as usize] = reference_id(index);
+            use_ids[(range.start + range.len) as usize] = ReferenceId::from_usize(index);
             range.len += 1;
         }
 
@@ -1689,16 +1690,4 @@ fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
         }
         _ => true,
     }
-}
-
-#[inline]
-fn symbol_id(index: usize) -> SymbolId {
-    debug_assert!(index < SymbolId::MAX);
-    SymbolId::from_usize(index)
-}
-
-#[inline]
-fn reference_id(index: usize) -> ReferenceId {
-    debug_assert!(index < ReferenceId::MAX);
-    ReferenceId::from_usize(index)
 }
