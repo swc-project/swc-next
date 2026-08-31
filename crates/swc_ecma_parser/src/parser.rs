@@ -189,6 +189,9 @@ bitflags! {
         /// This is false only while reparsing the consequent of a conditional
         /// expression after a `(x): T => ...` arrow consumed the ternary `:`.
         const ALLOW_ARROW_RETURN_TYPE = 1 << 2;
+        /// Whether parsing is inside a TypeScript declaration body that is
+        /// outside ECMAScript module grammar.
+        const IN_TS_CONTAINER_BODY = 1 << 3;
     }
 }
 
@@ -209,6 +212,10 @@ impl TsContext {
 
     fn allow_arrow_return_type(self) -> bool {
         self.contains(Self::ALLOW_ARROW_RETURN_TYPE)
+    }
+
+    fn in_ts_container_body(self) -> bool {
+        self.contains(Self::IN_TS_CONTAINER_BODY)
     }
 }
 
@@ -5021,6 +5028,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.advance()?;
         let checkpoint = self.scratch_a.begin();
+        let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
+        let in_ts_container_body = self.ts_context.in_ts_container_body();
+        self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
+        let boundary_context = mem::take(&mut self.boundary_context);
         let result = (|| {
             while self.current_token.tag != TokenTag::RightBrace
                 && self.current_token.tag != TokenTag::Eof
@@ -5042,6 +5053,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let members = self.add_extra_from_scratch_a(checkpoint);
             Some(self.ast.ts_enum_body(Span::new(start, end), members))
         })();
+        self.ts_context
+            .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
+        self.context = context;
+        self.boundary_context = boundary_context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -5198,10 +5213,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
+        let context = enter_grammar_context![&mut self.context, ~Await];
+        let in_ts_container_body = self.ts_context.in_ts_container_body();
+        self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
         let boundary_context = mem::take(&mut self.boundary_context);
         let ParsedBody { directives, body } =
             self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
         self.boundary_context = boundary_context;
+        self.ts_context
+            .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
+        self.context = context;
         let end = self.current_token.span.end;
         if !self.expect(
             TokenTag::RightBrace,
@@ -7832,6 +7853,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // constructor target in `new import.meta()`. Import calls share
             // this parser entry and are rejected by `parse_new_expression`.
             TokenTag::Import => self.parse_import_expression(),
+            TokenTag::Await | TokenTag::Yield if self.ts_context.in_ts_container_body() => {
+                self.parse_ts_container_await_or_yield(minimum)
+            }
             tag if tag.is_identifier_like() => self.parse_identifier(),
             _ => {
                 let found = self.describe_token(token);
@@ -7852,6 +7876,28 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let token = self.current_token;
         self.validate_identifier(token, "an identifier");
         self.parse_identifier_from_token(token)
+    }
+
+    #[cold]
+    fn parse_ts_container_await_or_yield(&mut self, minimum: Precedence) -> Option<Expr> {
+        debug_assert!(self.ts_context.in_ts_container_body());
+        debug_assert!(!self.boundary_context.can_be_module());
+        let tag = self.current_token.tag;
+        if minimum >= Precedence::Add && tag == TokenTag::Yield {
+            return self.parse_identifier();
+        }
+        if !self.can_recover_ts_await_or_yield_expression()? {
+            return self.parse_identifier();
+        }
+
+        if tag == TokenTag::Yield {
+            return self.parse_yield_expression();
+        }
+
+        let token = self.current_token;
+        self.advance_without_escape_check()?;
+        self.report_if_escaped_keyword(token);
+        self.parse_await_expression(token.span.start)
     }
 
     #[inline(always)]
@@ -11299,6 +11345,26 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
+    /// TypeScript preserves an await/yield expression in declaration containers
+    /// when the following token makes an identifier interpretation impossible.
+    #[cold]
+    #[inline(never)]
+    fn can_recover_ts_await_or_yield_expression(&mut self) -> Option<bool> {
+        debug_assert!(matches!(
+            self.current_token.tag,
+            TokenTag::Await | TokenTag::Yield
+        ));
+        let next = self.peek_ahead()?;
+        let can_follow_identifier = is_binary_operator_like(next.tag) || next.tag == TokenTag::Of;
+        Some(
+            !next.has_line_terminator_before()
+                && !can_follow_identifier
+                && (next.tag.is_identifier_like()
+                    || next.tag.is_numeric_literal()
+                    || next.tag == TokenTag::StringLiteral),
+        )
+    }
+
     fn is_ambiguous_await_prefix(&self) -> bool {
         if self.current_token.has_line_terminator_before() {
             return true;
@@ -11905,10 +11971,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        if token.tag == TokenTag::Await
-            && !self.ts_context.ambient()
-            && (self.context.contains(Context::AWAIT) || self.source_type == SourceType::Module)
-        {
+        let await_is_reserved = self.context.contains(Context::AWAIT)
+            || self.source_type == SourceType::Module && !self.ts_context.in_ts_container_body();
+        if token.tag == TokenTag::Await && !self.ts_context.ambient() && await_is_reserved {
             self.report(
                 token.span,
                 Cow::Owned(format!(
@@ -12807,6 +12872,11 @@ mod tests {
         assert_unambiguous_source_type("await in T;", SourceType::Script);
         assert_unambiguous_source_type("await instanceof Object;", SourceType::Script);
         assert_unambiguous_source_type("class C { field = await + value; }", SourceType::Script);
+        assert_unambiguous_source_type(
+            "namespace N { const value = await input; }",
+            SourceType::Script,
+        );
+        assert_unambiguous_source_type("enum E { value = await input }", SourceType::Script);
         assert_unambiguous_source_type("{ await value; }", SourceType::Module);
         assert_unambiguous_source_type("for await (const value of values) {}", SourceType::Module);
         assert_unambiguous_source_type(

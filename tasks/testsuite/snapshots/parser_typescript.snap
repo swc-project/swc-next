@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13049/13156 (99.19%)
-Negative Passed: 1555/2981 (52.16%)
+Negative Passed: 1556/2981 (52.20%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -796,7 +796,6 @@ Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/deco
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/parameter/decoratorOnClassMethodThisParameter.ts - decoratorOnClassMethodThisParameter.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/invalid/decoratorOnFunctionParameter.ts - decoratorOnFunctionParameter.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionInScriptContext1.ts - 1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/enums/awaitAndYield.ts - awaitAndYield.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumConstantMembers.ts - enumConstantMembers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumMergingErrors.ts - enumMergingErrors.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es2017/useSharedArrayBuffer6.ts - useSharedArrayBuffer6.ts: expected a parse or early error, but pipeline succeeded

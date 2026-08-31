@@ -364,10 +364,6 @@ fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     true
 }
 
-fn is_in_formal_parameters(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    find_formal_parameters(context).is_some()
-}
-
 fn find_formal_parameters(
     context: &SemanticVisitCtx<'_, '_>,
 ) -> Option<swc_next_ecma_ast::FormalParameters> {
@@ -1719,24 +1715,7 @@ pub(super) fn check_call_expression(checker: &mut Checker<'_, '_>, call: CallExp
 pub(super) fn check_await_expression(checker: &mut Checker<'_, '_>, expression: AwaitExpression) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    let message = {
-        let mut message = None;
-        for ancestor in context.ancestors() {
-            match context.ast.node_kind(ancestor) {
-                NodeKind::FormalParameters => {
-                    message = Some("Await expression is not allowed in formal parameters");
-                    break;
-                }
-                NodeKind::StaticBlock => {
-                    message = Some("Cannot use await in class static initialization block");
-                    break;
-                }
-                NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::Program => break,
-                _ => {}
-            }
-        }
-        message
-    };
+    let message = await_expression_error(context);
     if let Some(message) = message {
         checks.report(
             context.ast.span(expression.node_id()),
@@ -1749,13 +1728,85 @@ pub(super) fn check_await_expression(checker: &mut Checker<'_, '_>, expression: 
 pub(super) fn check_yield_expression(checker: &mut Checker<'_, '_>, expression: YieldExpression) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    if is_in_formal_parameters(context) {
+    if let Some(message) = yield_expression_error(context) {
         checks.report(
             context.ast.span(expression.node_id()),
-            "Yield expression is not allowed in formal parameters",
+            message,
             ReportOptions::default(),
         );
     }
+}
+
+fn await_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static str> {
+    const OUTSIDE_ASYNC: &str =
+        "Await expressions are only allowed within async functions and at the top level of modules";
+
+    let mut child = context.current_node()?;
+    for ancestor in context.ancestors().skip(1) {
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::FormalParameters(_) => {
+                return Some("Await expression is not allowed in formal parameters");
+            }
+            NodeKindData::StaticBlock(_) => {
+                return Some("Cannot use await in class static initialization block");
+            }
+            NodeKindData::TsEnumDeclaration(_)
+            | NodeKindData::TsModuleBlock(_)
+            | NodeKindData::TsModuleDeclaration(_) => return Some(OUTSIDE_ASYNC),
+            NodeKindData::PropertyDefinition(property)
+                if property
+                    .value(context.ast)
+                    .is_some_and(|value| value.node_id() == child) =>
+            {
+                return Some(OUTSIDE_ASYNC);
+            }
+            NodeKindData::Function(function) => {
+                return (!function.r#async(context.ast)).then_some(OUTSIDE_ASYNC);
+            }
+            NodeKindData::ArrowFunctionExpression(function) => {
+                return (!function.r#async(context.ast)).then_some(OUTSIDE_ASYNC);
+            }
+            NodeKindData::Program(_) => {
+                return (context.ast.source_type() != swc_next_ecma_ast::SourceType::Module)
+                    .then_some(OUTSIDE_ASYNC);
+            }
+            _ => {}
+        }
+        child = ancestor;
+    }
+    Some(OUTSIDE_ASYNC)
+}
+
+fn yield_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static str> {
+    const OUTSIDE_GENERATOR: &str = "A yield expression is only allowed in a generator body";
+
+    let mut child = context.current_node()?;
+    for ancestor in context.ancestors().skip(1) {
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::FormalParameters(_) => {
+                return Some("Yield expression is not allowed in formal parameters");
+            }
+            NodeKindData::TsEnumDeclaration(_)
+            | NodeKindData::TsModuleBlock(_)
+            | NodeKindData::TsModuleDeclaration(_)
+            | NodeKindData::StaticBlock(_)
+            | NodeKindData::ArrowFunctionExpression(_)
+            | NodeKindData::Program(_) => return Some(OUTSIDE_GENERATOR),
+            NodeKindData::PropertyDefinition(property)
+                if property
+                    .value(context.ast)
+                    .is_some_and(|value| value.node_id() == child) =>
+            {
+                return Some(OUTSIDE_GENERATOR);
+            }
+            NodeKindData::Function(function) => {
+                return (!function.generator(context.ast)).then_some(OUTSIDE_GENERATOR);
+            }
+            _ => {}
+        }
+        child = ancestor;
+    }
+    Some(OUTSIDE_GENERATOR)
 }
 
 pub(super) fn check_meta_property(checker: &mut Checker<'_, '_>, property: MetaProperty) {

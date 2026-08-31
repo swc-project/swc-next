@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1628/1743 (93.40%)
+Negative Passed: 1630/1743 (93.52%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
@@ -52,7 +52,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditiona
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-const/input.ts - typescript/declare/invalid-definite-pattern-assignment-const: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-let/input.ts - typescript/declare/invalid-definite-pattern-assignment-let: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-var/input.ts - typescript/declare/invalid-definite-pattern-assignment-var: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-await-using/input.ts - typescript/declare/invalid-namespace-await-using: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-class-method-implementation/input.ts - typescript/declare/invalid-namespace-class-method-implementation: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-using/input.ts - typescript/declare/invalid-namespace-using: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-var/input.ts - typescript/declare/invalid-namespace-var: expected a parse or early error, but pipeline succeeded
@@ -93,7 +92,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-nam
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-global-redeclare-block-level-variable-in-module/input.ts - typescript/module-namespace/invalid-global-redeclare-block-level-variable-in-module: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-global-redeclare-block-level-variable/input.ts - typescript/module-namespace/invalid-global-redeclare-block-level-variable: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/module-identifier-invalid/input.ts - typescript/module-namespace/module-identifier-invalid: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/top-level-await/input.ts - typescript/module-namespace/top-level-await: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-alias/invalid-within-single-statement-context/input.ts - typescript/type-alias/invalid-within-single-statement-context: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-property-access/input.ts - typescript/type-arguments/instantiation-expression-property-access: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/export-invalid-type-in-type/input.ts - typescript/type-only-import-export-specifiers/export-invalid-type-in-type: expected a parse or early error, but pipeline succeeded
