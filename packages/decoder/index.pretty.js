@@ -150,6 +150,7 @@ export function decode(buffer, source) {
   const stringPoolLength = _u32[2];
   const sourceLength = _u32[3];
   const commentCount = _u32[4];
+  const diagnosticCount = _u32[6];
   const programIndex = _u32[7];
   const flags = _u32[8];
   const isTs = (flags & 1) !== 0;
@@ -160,6 +161,7 @@ export function decode(buffer, source) {
   const extra = payloads + nodeCount * 16;
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
+  const diagnostics = comments + commentCount * 16;
   const positions =
     source.length === sourceLength ? null : buildPosMap(source, sourceLength);
 
@@ -205,6 +207,42 @@ export function decode(buffer, source) {
         start: pos(start),
         end: pos(end),
       };
+    }
+    return result;
+  };
+
+  const _decodeErrors = () => {
+    let offset = diagnostics;
+    const readU32 = () => {
+      const value = _u32[offset >> 2];
+      offset += 4;
+      return value;
+    };
+    const readString = () => {
+      const length = readU32();
+      if (length === NULL) return undefined;
+      const value = textDecoder.decode(bytes.subarray(offset, offset + length));
+      offset += (length + 3) & ~3;
+      return value;
+    };
+    const severities = ["error", "warning", "hint", "info"];
+    const result = new Array(diagnosticCount);
+    for (let index = 0; index < diagnosticCount; index++) {
+      const severity = severities[readU32()];
+      const start = pos(readU32());
+      const end = pos(readU32());
+      const labelCount = readU32();
+      const message = readString();
+      const help = readString();
+      const labels = new Array(labelCount);
+      for (let label = 0; label < labelCount; label++) {
+        labels[label] = {
+          start: pos(readU32()),
+          end: pos(readU32()),
+          message: readString(),
+        };
+      }
+      result[index] = { severity, message, start, end, help, labels };
     }
     return result;
   };
@@ -1874,7 +1912,7 @@ export function decode(buffer, source) {
     return result;
   }
 
-  let _program, _comments;
+  let _program, _comments, _errors;
   return {
     get program() {
       return _program !== undefined
@@ -1885,6 +1923,11 @@ export function decode(buffer, source) {
       return _comments !== undefined
         ? _comments
         : (_comments = _decodeComments());
+    },
+    get errors() {
+      return _errors !== undefined
+        ? _errors
+        : (_errors = _decodeErrors());
     },
   };
 }

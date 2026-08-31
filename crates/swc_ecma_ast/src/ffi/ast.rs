@@ -15,9 +15,14 @@
 //! - `comment_count` 16-byte [`Comment`] records in source order.
 //!   Each record contains the full start, full end, attachment offset,
 //!   kind (`0` line, `1` block), and attachment position.
+//! - `diag_count` variable-length diagnostic records: severity (`0` error,
+//!   `1` warning, `2` hint, `3` info), start, end, label count, message, help,
+//!   then labels (start, end, message). Integers are little-endian `u32`;
+//!   strings are a byte length followed by UTF-8 bytes padded to four bytes.
+//!   Absent help is encoded as a `u32::MAX` length with no bytes.
 //!
-//! Attached comments and diagnostics are intentionally omitted for now. Their
-//! counts in the header are always zero.
+//! Attached comments are intentionally omitted for now. Their count in the
+//! header is always zero.
 //!
 //! All multi-byte integers are little-endian, independent of the host target.
 
@@ -30,8 +35,8 @@ use std::{
 use swc_next_allocator::Allocator;
 
 use crate::{
-    Ast, Comment, CommentKind, CommentPosition, ExtraData, Lang, NodeId, NodeKind, NodePayload,
-    SourceType, Span,
+    Ast, Comment, CommentKind, CommentPosition, Diagnostic, ExtraData, Lang, NodeId, NodeKind,
+    NodePayload, Severity, SourceType, Span,
 };
 
 const HEADER_SIZE: usize = 36;
@@ -57,8 +62,8 @@ const _: () = {
     assert!(offset_of!(Comment, position) == 14);
 };
 
-/// Return the exact number of bytes required to serialize `tree`.
-pub fn buffer_size(tree: &Ast<'_>) -> usize {
+/// Return the exact number of bytes required to serialize `tree` and `diagnostics`.
+pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
     HEADER_SIZE
         + tree.node_count() * SPAN_SIZE
         + align_to_four(tree.node_count() * NODE_KIND_SIZE)
@@ -66,14 +71,29 @@ pub fn buffer_size(tree: &Ast<'_>) -> usize {
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra.len())
         + tree.comments().len() * COMMENT_SIZE
+        + diagnostics
+            .iter()
+            .map(|diagnostic| {
+                24 + align_to_four(diagnostic.message.len())
+                    + diagnostic
+                        .help
+                        .as_ref()
+                        .map_or(0, |help| align_to_four(help.len()))
+                    + diagnostic
+                        .labels
+                        .iter()
+                        .map(|label| 12 + align_to_four(label.message.len()))
+                        .sum::<usize>()
+            })
+            .sum::<usize>()
 }
 
-/// Serialize an AST into `buf` and return the required number of bytes.
+/// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
 ///
 /// When `buf` is too small, including when it is empty, this returns the
 /// required size without writing a partial payload.
-pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
-    let required = buffer_size(tree);
+pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut [u8]) -> usize {
+    let required = buffer_size(tree, diagnostics);
     if buf.len() < required {
         return required;
     }
@@ -86,6 +106,7 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
         u32::try_from(tree.strings.extra.len()).expect("AST string pool exceeds u32");
     let source_len = u32::try_from(tree.source().len()).expect("AST source length exceeds u32");
     let comment_count = u32::try_from(tree.comments().len()).expect("comment count exceeds u32");
+    let diag_count = u32::try_from(diagnostics.len()).expect("diagnostic count exceeds u32");
 
     let mut pos = 0;
     for value in [
@@ -95,7 +116,7 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
         source_len,
         comment_count,
         0, // attached_comment_count
-        0, // diag_count
+        diag_count,
         tree.root_node_id().index() as u32,
         (if tree.is_ts() { FLAG_TS } else { 0 })
             | ((tree.source_type() as u32) << FLAG_SOURCE_TYPE_SHIFT),
@@ -182,6 +203,37 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
             write_u32(buf, &mut pos, comment.attached_to);
             write_u16(buf, &mut pos, comment.kind as u16);
             write_u16(buf, &mut pos, comment.position as u16);
+        }
+    }
+
+    // =================== Diagnostics ====================
+    for diagnostic in diagnostics {
+        let severity = match diagnostic.severity {
+            Severity::Error => 0,
+            Severity::Warning => 1,
+            Severity::Hint => 2,
+            Severity::Info => 3,
+        };
+        let label_count =
+            u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
+        for value in [
+            severity,
+            diagnostic.span.start,
+            diagnostic.span.end,
+            label_count,
+        ] {
+            write_u32(buf, &mut pos, value);
+        }
+        write_string(buf, &mut pos, &diagnostic.message);
+        if let Some(help) = &diagnostic.help {
+            write_string(buf, &mut pos, help);
+        } else {
+            write_u32(buf, &mut pos, u32::MAX);
+        }
+        for label in &diagnostic.labels {
+            write_u32(buf, &mut pos, label.span.start);
+            write_u32(buf, &mut pos, label.span.end);
+            write_string(buf, &mut pos, &label.message);
         }
     }
 
@@ -415,6 +467,17 @@ fn read_u128(buf: &[u8], pos: usize) -> u128 {
     u128::from_le_bytes(buf[pos..pos + size_of::<u128>()].try_into().unwrap())
 }
 
+fn write_string(buf: &mut [u8], pos: &mut usize, value: &str) {
+    write_u32(
+        buf,
+        pos,
+        u32::try_from(value.len()).expect("diagnostic string length exceeds u32"),
+    );
+    buf[*pos..*pos + value.len()].copy_from_slice(value.as_bytes());
+    *pos += value.len();
+    pad_to_four(buf, pos);
+}
+
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
@@ -431,8 +494,8 @@ mod tests {
         let program = ast.program(Span::new(0, 0), TypedSubRange::empty(), body, None);
         ast.set_root_program(program);
 
-        let mut buffer = vec![0; buffer_size(&ast)];
-        assert_eq!(serialize_into(&ast, &mut buffer), buffer.len());
+        let mut buffer = vec![0; buffer_size(&ast, &[])];
+        assert_eq!(serialize_into(&ast, &[], &mut buffer), buffer.len());
         assert_eq!(buffer.len(), 104);
 
         assert_eq!(u32_at(&buffer, 0), 2); // node count
@@ -459,8 +522,8 @@ mod tests {
         let program = ast.program(Span::new(1, 4), TypedSubRange::empty(), body, None);
         ast.set_root_program(program);
 
-        let mut buffer = vec![0; buffer_size(&ast)];
-        serialize_into(&ast, &mut buffer);
+        let mut buffer = vec![0; buffer_size(&ast, &[])];
+        serialize_into(&ast, &[], &mut buffer);
 
         let decoded_allocator = Allocator::new();
         let decoded = deserialize_from(&buffer, &decoded_allocator).unwrap();

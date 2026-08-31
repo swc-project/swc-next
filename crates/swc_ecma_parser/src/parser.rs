@@ -12766,8 +12766,8 @@ mod tests {
 
     fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
         use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
-        let mut buffer = vec![0; buffer_size(ast)];
-        serialize_into(ast, &mut buffer);
+        let mut buffer = vec![0; buffer_size(ast, &[])];
+        serialize_into(ast, &[], &mut buffer);
         buffer
     }
 

@@ -17,8 +17,8 @@ pub fn parse_to_buffer(source: &str, options: Option<ParserOptions>) -> Vec<u8> 
     )
     .parse();
 
-    let buffer_size = buffer_size(&result.ast);
+    let buffer_size = buffer_size(&result.ast, &result.diagnostics);
     let mut buffer = vec![0; buffer_size];
-    serialize_into(&result.ast, &mut buffer);
+    serialize_into(&result.ast, &result.diagnostics, &mut buffer);
     buffer
 }
