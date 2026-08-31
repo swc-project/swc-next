@@ -31,6 +31,7 @@ pub use module_record::{
     ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
     ModuleRecord,
 };
+pub use swc_next_ecma_ast::GeneratedName;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use used_names::{GeneratedNameState, UsedNameState};
 

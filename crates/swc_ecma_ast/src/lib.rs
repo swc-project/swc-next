@@ -32,7 +32,9 @@ pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
-pub use strings::{AstInternedUtf8, AstUtf8, AstWtf8, GeneratedUtf8State, Utf8Chunks};
+pub use strings::{
+    AstInternedUtf8, AstUtf8, AstWtf8, GeneratedName, GeneratedUtf8State, Utf8Chunks,
+};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};
 
@@ -406,8 +408,24 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
+    #[doc(hidden)]
+    pub fn skip_observed_generated_suffixes(
+        &mut self,
+        state: &mut GeneratedUtf8State,
+        suffix: u64,
+    ) -> u64 {
+        self.strings.skip_observed_generated_suffixes(state, suffix)
+    }
+
+    #[inline]
     pub fn reserve_name(&mut self, name: AstInternedUtf8) -> bool {
         self.strings.reserve_name(name)
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    pub fn observe_name(&mut self, name: AstInternedUtf8) -> bool {
+        self.strings.observe_name(name)
     }
 
     #[inline]

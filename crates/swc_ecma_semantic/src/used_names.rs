@@ -2,7 +2,7 @@ use swc_next_allocator::{
     Allocator,
     hash_map::{Entry, HashMap as ArenaHashMap},
 };
-use swc_next_ecma_ast::{Ast, AstInternedUtf8, GeneratedUtf8State};
+use swc_next_ecma_ast::{Ast, AstInternedUtf8, GeneratedName, GeneratedUtf8State};
 
 /// Tracks interned names used in one collision domain.
 ///
@@ -10,6 +10,7 @@ use swc_next_ecma_ast::{Ast, AstInternedUtf8, GeneratedUtf8State};
 /// suffix cursor and current compact prefix associated with each generated-name base.
 pub struct UsedNameState<'a> {
     next_names: ArenaHashMap<'a, AstInternedUtf8, NextNameState>,
+    generated_names: [Option<GeneratedNameState>; GeneratedName::COUNT],
 }
 
 #[derive(Debug)]
@@ -23,6 +24,7 @@ struct NextNameState {
 /// The base is interned and looked up once. Subsequent allocations keep their
 /// suffix cursor and cached physical prefix here while [`UsedNameState`]
 /// remains the source of truth for collisions.
+#[derive(Debug)]
 pub struct GeneratedNameState {
     strings: GeneratedUtf8State,
     next_suffix: u64,
@@ -34,6 +36,7 @@ impl std::fmt::Debug for UsedNameState<'_> {
         formatter
             .debug_struct("UsedNameState")
             .field("next_names", &self.next_names)
+            .field("generated_names", &self.generated_names)
             .finish()
     }
 }
@@ -43,12 +46,13 @@ impl<'a> UsedNameState<'a> {
     pub fn new(allocator: &'a Allocator) -> Self {
         Self {
             next_names: ArenaHashMap::new_in(allocator),
+            generated_names: [const { None }; GeneratedName::COUNT],
         }
     }
 
     /// Records an interned name in the AST string pool's UID collision domain.
     pub fn observe(&mut self, ast: &mut Ast<'_>, name: AstInternedUtf8) {
-        ast.reserve_name(name);
+        ast.observe_name(name);
     }
 
     /// Returns whether an interned name is observed or reserved.
@@ -56,12 +60,32 @@ impl<'a> UsedNameState<'a> {
         ast.is_name_reserved(name)
     }
 
+    /// Reserves and returns an available fixed transform-generated name.
+    pub fn next_name(&mut self, ast: &mut Ast<'_>, name: GeneratedName) -> AstInternedUtf8 {
+        let index = name.index();
+        if self.generated_names[index].is_none() {
+            self.generated_names[index] =
+                Some(Self::create_generated_name_state(ast, name.base(), 2));
+        }
+        Self::allocate_from_state(
+            ast,
+            self.generated_names[index]
+                .as_mut()
+                .expect("generated name state was initialized"),
+        )
+    }
+
     /// Reserves and returns an available generated name based on `base`.
     ///
     /// The unsuffixed base is preferred. If it is occupied, suffixes start at
-    /// `min_suffix`, for example `next_name(ast, "_temp", 2)` produces
+    /// `min_suffix`, for example `next_name_with_base(ast, "_temp", 2)` produces
     /// `_temp2`.
-    pub fn next_name(&mut self, ast: &mut Ast<'_>, base: &str, min_suffix: u64) -> AstInternedUtf8 {
+    pub fn next_name_with_base(
+        &mut self,
+        ast: &mut Ast<'_>,
+        base: &str,
+        min_suffix: u64,
+    ) -> AstInternedUtf8 {
         assert!(min_suffix > 0, "generated name suffix must be positive");
         let strings = ast.generated_utf8_state(base);
         let base_name = Ast::generated_utf8_base(&strings);
@@ -80,6 +104,7 @@ impl<'a> UsedNameState<'a> {
         let mut suffix = state.next_suffix.max(min_suffix);
 
         loop {
+            suffix = ast.skip_observed_generated_suffixes(&mut state.strings, suffix);
             let next_suffix = suffix
                 .checked_add(1)
                 .expect("generated name suffix overflow");
@@ -101,6 +126,24 @@ impl<'a> UsedNameState<'a> {
         base: &str,
         min_suffix: u64,
     ) -> GeneratedNameState {
+        Self::create_generated_name_state(ast, base, min_suffix)
+    }
+
+    /// Reserves and returns the next name from a reusable generated-name
+    /// series.
+    pub fn next_name_from_state(
+        &mut self,
+        ast: &mut Ast<'_>,
+        state: &mut GeneratedNameState,
+    ) -> AstInternedUtf8 {
+        Self::allocate_from_state(ast, state)
+    }
+
+    fn create_generated_name_state(
+        ast: &mut Ast<'_>,
+        base: &str,
+        min_suffix: u64,
+    ) -> GeneratedNameState {
         assert!(min_suffix > 0, "generated name suffix must be positive");
         let strings = ast.generated_utf8_state(base);
         let base_name = Ast::generated_utf8_base(&strings);
@@ -112,20 +155,15 @@ impl<'a> UsedNameState<'a> {
         }
     }
 
-    /// Reserves and returns the next name from a reusable generated-name
-    /// series.
-    pub fn next_name_from_state(
-        &mut self,
-        ast: &mut Ast<'_>,
-        state: &mut GeneratedNameState,
-    ) -> AstInternedUtf8 {
+    fn allocate_from_state(ast: &mut Ast<'_>, state: &mut GeneratedNameState) -> AstInternedUtf8 {
         if state.return_base {
             state.return_base = false;
             return Ast::generated_utf8_base(&state.strings);
         }
 
         loop {
-            let suffix = state.next_suffix;
+            let suffix =
+                ast.skip_observed_generated_suffixes(&mut state.strings, state.next_suffix);
             state.next_suffix = suffix
                 .checked_add(1)
                 .expect("generated name suffix overflow");
@@ -141,7 +179,7 @@ impl<'a> UsedNameState<'a> {
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, Lang};
+    use swc_next_ecma_ast::{Ast, GeneratedName, Lang};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::UsedNameState;
@@ -165,7 +203,7 @@ mod tests {
         assert!(result.diagnostics.is_empty());
 
         let mut names = UsedNameState::new(&allocator);
-        let generated = names.next_name(&mut ast, "_temp", 2);
+        let generated = names.next_name_with_base(&mut ast, "_temp", 2);
         assert_eq!(generated, ast.intern_utf8("_temp3"));
     }
 
@@ -177,8 +215,8 @@ mod tests {
         let temp = ast.intern_utf8("_temp");
         names.observe(&mut ast, temp);
 
-        let second = names.next_name(&mut ast, "_temp", 2);
-        let third = names.next_name(&mut ast, "_temp", 2);
+        let second = names.next_name_with_base(&mut ast, "_temp", 2);
+        let third = names.next_name_with_base(&mut ast, "_temp", 2);
 
         assert_eq!(second, ast.intern_utf8("_temp2"));
         assert_eq!(third, ast.intern_utf8("_temp3"));
@@ -194,7 +232,7 @@ mod tests {
         names.observe(&mut ast, temp);
         names.observe(&mut ast, temp2);
 
-        let name = names.next_name(&mut ast, "_temp", 2);
+        let name = names.next_name_with_base(&mut ast, "_temp", 2);
 
         assert_eq!(name, ast.intern_utf8("_temp3"));
     }
@@ -282,7 +320,33 @@ mod tests {
         let base_name = ast.intern_utf8(base);
         names.observe(&mut ast, base_name);
 
-        let generated = names.next_name(&mut ast, base, 0x10);
+        let generated = names.next_name_with_base(&mut ast, base, 0x10);
         assert_eq!(generated, ast.intern_utf8(&format!("{base}10")));
+    }
+
+    #[test]
+    fn fixed_generated_names_skip_semantic_collisions() {
+        let allocator = Allocator::new();
+        let mut source = String::from("_staticBlock;");
+        for suffix in 2..=0x100 {
+            source.push_str(&format!("_staticBlock{suffix:x};"));
+        }
+        let mut ast = Parser::init_copying(
+            &allocator,
+            &source,
+            Options {
+                lang: Lang::Js,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse()
+        .ast;
+        let result = analyze(&mut ast, AnalyzeOptions::default());
+        assert!(result.diagnostics.is_empty());
+
+        let mut names = UsedNameState::new(&allocator);
+        let generated = names.next_name(&mut ast, GeneratedName::StaticBlock);
+        assert_eq!(generated, ast.intern_utf8("_staticBlock101"));
     }
 }

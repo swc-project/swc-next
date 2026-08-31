@@ -22,6 +22,54 @@ const FLAT_OFFSET_MASK: u32 = (1 << 31) - 1;
 const COMPACT_OFFSET_MASK: u32 = (1 << 29) - 1;
 const HEX_DIGITS: &[u8; 16] = b"0123456789abcdef";
 
+/// A fixed name prefix used by transforms when introducing bindings.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[repr(u8)]
+pub enum GeneratedName {
+    Private = 0,
+    StaticBlock,
+    This,
+    Arguments,
+    NewTarget,
+}
+
+impl GeneratedName {
+    pub const COUNT: usize = 5;
+
+    #[inline]
+    pub const fn index(self) -> usize {
+        self as usize
+    }
+
+    #[inline]
+    pub const fn base(self) -> &'static str {
+        match self {
+            Self::Private => "_",
+            Self::StaticBlock => "_staticBlock",
+            Self::This => "_this",
+            Self::Arguments => "_arguments",
+            Self::NewTarget => "_newtarget",
+        }
+    }
+
+    fn from_base(base: &str) -> Option<Self> {
+        match base {
+            "_" => Some(Self::Private),
+            "_staticBlock" => Some(Self::StaticBlock),
+            "_this" => Some(Self::This),
+            "_arguments" => Some(Self::Arguments),
+            "_newtarget" => Some(Self::NewTarget),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct ObservedGeneratedSuffix {
+    name: GeneratedName,
+    suffix: u64,
+}
+
 macro_rules! define_ast_string {
     ($name:ident) => {
         #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -97,6 +145,9 @@ pub struct GeneratedUtf8State {
     block: u64,
     prefix: Option<AstUtf8>,
     initialized: bool,
+    observed_name: Option<GeneratedName>,
+    observed_cursor: usize,
+    observed_version: u32,
 }
 
 impl From<AstInternedUtf8> for AstUtf8 {
@@ -420,6 +471,9 @@ pub(crate) struct StringPool<'a> {
     dedup: ArenaHashMap<'a, InternEntry, (), InternBuildHasher>,
     generated_names: ArenaHashMap<'a, AstInternedUtf8, u32>,
     oversized_compact_prefixes: ArenaHashMap<'a, AstInternedUtf8, AstInternedUtf8>,
+    observed_generated_suffixes: ArenaVec<'a, ObservedGeneratedSuffix>,
+    observed_generated_suffixes_sorted: bool,
+    observed_generated_version: u32,
 }
 
 impl<'a> StringPool<'a> {
@@ -439,6 +493,9 @@ impl<'a> StringPool<'a> {
             dedup: ArenaHashMap::with_hasher_in(InternBuildHasher::default(), allocator),
             generated_names: ArenaHashMap::new_in(allocator),
             oversized_compact_prefixes: ArenaHashMap::new_in(allocator),
+            observed_generated_suffixes: ArenaVec::new_in(allocator),
+            observed_generated_suffixes_sorted: true,
+            observed_generated_version: 0,
         }
     }
 
@@ -703,15 +760,23 @@ impl<'a> StringPool<'a> {
         let source = unsafe { source_bytes_from(self.source, self.source_len) };
         let parts = logical_bytes_from(source, &self.extra, string);
         let hash = parts.hash();
-        let (entry, ()) = self
-            .dedup
-            .raw_entry_mut()
-            .from_hash(hash, |entry| {
-                entry.hash == hash && logical_bytes_from(source, &self.extra, entry.id()).eq(parts)
-            })
-            .or_insert(InternEntry::new(hash, string, true), ());
-        entry.reserve_name();
-        entry.id()
+        let (id, first_observation) = match self.dedup.raw_entry_mut().from_hash(hash, |entry| {
+            entry.hash == hash && logical_bytes_from(source, &self.extra, entry.id()).eq(parts)
+        }) {
+            RawEntryMut::Occupied(entry) => {
+                let entry = entry.into_key_value().0;
+                let first_observation = entry.reserve_name();
+                (entry.id(), first_observation)
+            }
+            RawEntryMut::Vacant(entry) => {
+                entry.insert(InternEntry::new(hash, string, true), ());
+                (string, true)
+            }
+        };
+        if first_observation {
+            self.observe_generated_name(id);
+        }
+        id
     }
 
     /// Canonicalizes a WTF-8 range already stored in this pool.
@@ -744,6 +809,9 @@ impl<'a> StringPool<'a> {
             block: 0,
             prefix: None,
             initialized: false,
+            observed_name: GeneratedName::from_base(base),
+            observed_cursor: 0,
+            observed_version: self.observed_generated_version,
         }
     }
 
@@ -782,6 +850,45 @@ impl<'a> StringPool<'a> {
             state.initialized = true;
         }
         self.reserve_generated_name(state.base, state.prefix, suffix)
+    }
+
+    /// Skips source names that semantic analysis already classified for this
+    /// generated-name sequence.
+    pub fn skip_observed_generated_suffixes(
+        &mut self,
+        state: &mut GeneratedUtf8State,
+        mut suffix: u64,
+    ) -> u64 {
+        let Some(name) = state.observed_name else {
+            return suffix;
+        };
+        if !self.observed_generated_suffixes_sorted {
+            self.observed_generated_suffixes.sort_unstable();
+            self.observed_generated_suffixes_sorted = true;
+        }
+        if state.observed_version != self.observed_generated_version {
+            state.observed_cursor = 0;
+            state.observed_version = self.observed_generated_version;
+        }
+
+        while let Some(observed) = self
+            .observed_generated_suffixes
+            .get(state.observed_cursor)
+            .copied()
+        {
+            if observed.name < name || observed.name == name && observed.suffix < suffix {
+                state.observed_cursor += 1;
+                continue;
+            }
+            if observed.name != name || observed.suffix > suffix {
+                break;
+            }
+            suffix = suffix
+                .checked_add(1)
+                .expect("generated name suffix overflow");
+            state.observed_cursor += 1;
+        }
+        suffix
     }
 
     /// Builds or reuses the physical prefix for one block of 16 generated names.
@@ -888,6 +995,16 @@ impl<'a> StringPool<'a> {
         Self::find_intern_entry_mut(&mut self.dedup, source, &self.extra, parts, hash)
             .expect("interned UTF-8 has a dedup entry")
             .reserve_name()
+    }
+
+    /// Records an existing interned name as source-observed and makes its
+    /// generated-name suffix available to allocation cursors.
+    pub fn observe_name(&mut self, name: AstInternedUtf8) -> bool {
+        let was_free = self.reserve_name(name);
+        if was_free {
+            self.observe_generated_name(name);
+        }
+        was_free
     }
 
     /// Returns whether a canonical string is occupied by generated-name
@@ -1051,10 +1168,12 @@ impl<'a> StringPool<'a> {
         if let Some(entry) =
             Self::find_intern_entry_mut(&mut self.dedup, source, &self.extra, parts, hash)
         {
-            if used_as_name {
-                entry.reserve_name();
+            let first_observation = used_as_name && entry.reserve_name();
+            let id = entry.id();
+            if first_observation {
+                self.observe_generated_name(id);
             }
-            return entry.id();
+            return id;
         }
         if string.is_generated() {
             let nibble = string.suffix().unwrap();
@@ -1063,16 +1182,37 @@ impl<'a> StringPool<'a> {
                 .generated_names
                 .entry(string.generated_prefix())
                 .or_insert(0);
+            let first_observation = used_as_name && *flags & (bit << 16) == 0;
             *flags |= bit | if used_as_name { bit << 16 } else { 0 };
+            if first_observation {
+                self.observe_generated_name(string);
+            }
             return string;
         }
         if let Some(id) = self.generated_utf8_for_flat_bytes(parts.prefix) {
-            if used_as_name {
-                self.reserve_name(id);
+            if used_as_name && self.reserve_name(id) {
+                self.observe_generated_name(id);
             }
             return id;
         }
-        self.insert_utf8(hash, string, used_as_name)
+        let id = self.insert_utf8(hash, string, used_as_name);
+        if used_as_name {
+            self.observe_generated_name(id);
+        }
+        id
+    }
+
+    fn observe_generated_name(&mut self, name: AstInternedUtf8) {
+        let bytes = self.logical_bytes(name);
+        let Some(observed) = classify_generated_name(bytes) else {
+            return;
+        };
+        self.observed_generated_suffixes_sorted &= self
+            .observed_generated_suffixes
+            .last()
+            .is_none_or(|previous| previous <= &observed);
+        self.observed_generated_suffixes.push(observed);
+        self.observed_generated_version = self.observed_generated_version.wrapping_add(1);
     }
 
     #[inline]
@@ -1086,6 +1226,36 @@ impl<'a> StringPool<'a> {
             .insert(InternEntry::new(hash, string, used_as_name), ());
         string
     }
+}
+
+fn classify_generated_name(bytes: LogicalBytes<'_>) -> Option<ObservedGeneratedSuffix> {
+    let bytes = bytes.suffix.is_none().then_some(bytes.prefix)?;
+    if bytes.len() < 2 || bytes[0] != b'_' {
+        return None;
+    }
+
+    let (name, suffix_bytes) = if let Some(suffix) = bytes.strip_prefix(b"_staticBlock") {
+        (GeneratedName::StaticBlock, suffix)
+    } else if let Some(suffix) = bytes.strip_prefix(b"_this") {
+        (GeneratedName::This, suffix)
+    } else if let Some(suffix) = bytes.strip_prefix(b"_arguments") {
+        (GeneratedName::Arguments, suffix)
+    } else if let Some(suffix) = bytes.strip_prefix(b"_newtarget") {
+        (GeneratedName::NewTarget, suffix)
+    } else {
+        (GeneratedName::Private, &bytes[1..])
+    };
+    let (&first, suffix_bytes) = suffix_bytes.split_first()?;
+    if first == b'0' {
+        return None;
+    }
+    let mut suffix = u64::from(hex_nibble(first)?);
+    for &byte in suffix_bytes {
+        suffix = suffix
+            .checked_mul(16)?
+            .checked_add(u64::from(hex_nibble(byte)?))?;
+    }
+    (suffix >= 2).then_some(ObservedGeneratedSuffix { name, suffix })
 }
 
 #[inline]

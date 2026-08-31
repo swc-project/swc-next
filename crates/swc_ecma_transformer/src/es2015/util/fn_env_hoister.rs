@@ -3,7 +3,7 @@ use swc_next_ecma_ast::{
     IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut,
     VisitMutWith,
 };
-use swc_next_ecma_semantic::{ReferenceSpace, Semantic, UsedNameState};
+use swc_next_ecma_semantic::{GeneratedName, ReferenceSpace, Semantic, UsedNameState};
 
 #[derive(Default)]
 pub struct CaptureFrame {
@@ -53,15 +53,15 @@ impl<'semantic, 'semantic_data, 'ast> FnEnvHoister<'semantic, 'semantic_data, 'a
             .expect("a function environment frame exists")
     }
 
-    fn fresh_name(&mut self, base: &str, ast: &mut Ast<'_>) -> AstUtf8 {
-        self.used_names.next_name(ast, base, 2).into()
+    fn fresh_name(&mut self, name: GeneratedName, ast: &mut Ast<'_>) -> AstUtf8 {
+        self.used_names.next_name(ast, name).into()
     }
 
     fn capture_this(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.this) {
             return name;
         }
-        let name = self.fresh_name("_this", ast);
+        let name = self.fresh_name(GeneratedName::This, ast);
         self.frames.last_mut().expect("a capture frame exists").this = Some(name);
         name
     }
@@ -70,7 +70,7 @@ impl<'semantic, 'semantic_data, 'ast> FnEnvHoister<'semantic, 'semantic_data, 'a
         if let Some(name) = self.frames.last().and_then(|frame| frame.arguments) {
             return name;
         }
-        let name = self.fresh_name("_arguments", ast);
+        let name = self.fresh_name(GeneratedName::Arguments, ast);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -82,7 +82,7 @@ impl<'semantic, 'semantic_data, 'ast> FnEnvHoister<'semantic, 'semantic_data, 'a
         if let Some(name) = self.frames.last().and_then(|frame| frame.new_target) {
             return name;
         }
-        let name = self.fresh_name("_newtarget", ast);
+        let name = self.fresh_name(GeneratedName::NewTarget, ast);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
