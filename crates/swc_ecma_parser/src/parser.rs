@@ -159,6 +159,9 @@ bitflags! {
         /// Whether module-only syntax at the current position can classify an
         /// unambiguous Program as a Module.
         const CAN_BE_MODULE = 1 << 1;
+        /// Whether CommonJS-wrapper syntax at the current position can classify
+        /// an unambiguous Program as CommonJS.
+        const CAN_BE_COMMONJS = 1 << 2;
     }
 }
 
@@ -169,6 +172,10 @@ impl BoundaryContext {
 
     fn can_be_module(self) -> bool {
         self.contains(Self::CAN_BE_MODULE)
+    }
+
+    fn can_be_commonjs(self) -> bool {
+        self.contains(Self::CAN_BE_COMMONJS)
     }
 }
 
@@ -235,6 +242,9 @@ bitflags! {
         /// Whether a module-sensitive `await` may have a different Script
         /// interpretation.
         const AMBIGUOUS_SCRIPT_DIFFERENT_AST = 1 << 2;
+        /// Whether the source contains wrapper-level `return` or a `new.target`
+        /// expression which depends on a CommonJS wrapper.
+        const HAS_COMMONJS_SYNTAX = 1 << 3;
     }
 }
 
@@ -675,6 +685,7 @@ enum ArrowHead {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UnambiguousParseAction {
     KeepModule,
+    RelabelAsCommonJs,
     RelabelAsScript,
     RetryAsScript,
 }
@@ -710,6 +721,9 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     boundary_context: BoundaryContext,
     lexer: Lexer<'a, C>,
     diagnostics: Vec<Diagnostic<'static>>,
+    /// Indices into `diagnostics` for errors which only apply when the final
+    /// source type is not CommonJS.
+    commonjs_conditional_diagnostic_indices: Vec<usize>,
     current_token: Token,
     scratch_statements: ScratchBuffer,
     scratch_cover: ScratchBuffer,
@@ -757,6 +771,7 @@ struct Checkpoint {
     nodes_len: usize,
     extra_len: usize,
     diagnostics_len: usize,
+    commonjs_conditional_diagnostic_indices_len: usize,
     // Parser flags, copied by value.
     context: Context,
     statement_context: StatementContext,
@@ -864,6 +879,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             boundary_context: BoundaryContext::default(),
             lexer,
             diagnostics: Vec::new(),
+            commonjs_conditional_diagnostic_indices: Vec::new(),
             current_token: initial_token,
             scratch_statements: ScratchBuffer::default(),
             scratch_cover: ScratchBuffer::default(),
@@ -892,7 +908,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         match self.source_type {
             SourceType::Unambiguous => self.parse_unambiguous_program(),
             source_type => {
-                self.enter_program_context(source_type, false);
+                self.enter_program_context(source_type, false, false);
                 let body = self.parse_body(None, self.source_type.into());
                 self.finish_program(body)
             }
@@ -900,10 +916,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_unambiguous_program(mut self) -> ParseReturn<'a> {
-        self.enter_program_context(SourceType::Module, true);
+        let can_be_commonjs = self.lang != Lang::Dts;
+        self.enter_program_context(SourceType::Module, true, can_be_commonjs);
         let body = self.parse_body(None, self.source_type.into());
         match self.unambiguous_parse_action() {
             UnambiguousParseAction::KeepModule => {}
+            UnambiguousParseAction::RelabelAsCommonJs => {
+                self.set_source_type(SourceType::CommonJs);
+            }
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
@@ -924,12 +944,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     if parser.advance().is_none() {
                         parser.current_token = Token::eof(0);
                     }
-                    parser.enter_program_context(SourceType::Script, false);
+                    parser.enter_program_context(SourceType::Script, false, can_be_commonjs);
                     parser.parse_body(None, SourceType::Script.into())
                 };
-                if parser.diagnostics.is_empty()
+                if !parser.has_unconditional_diagnostics()
                     && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
                 {
+                    parser.relabel_as_script_or_commonjs();
                     return parser.finish_program(body);
                 }
             }
@@ -937,7 +958,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.finish_program(body)
     }
 
-    fn enter_program_context(&mut self, source_type: SourceType, can_be_module: bool) {
+    fn enter_program_context(
+        &mut self,
+        source_type: SourceType,
+        can_be_module: bool,
+        can_be_commonjs: bool,
+    ) {
         self.set_source_type(source_type);
         self.context = Context::from(source_type);
         self.boundary_context.set(
@@ -946,11 +972,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
         self.boundary_context
             .set(BoundaryContext::CAN_BE_MODULE, can_be_module);
+        self.boundary_context
+            .set(BoundaryContext::CAN_BE_COMMONJS, can_be_commonjs);
         self.statement_context = source_type.into();
     }
 
     fn finish_program(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
         let ParsedBody { directives, body } = parsed_body;
+        self.discard_commonjs_conditional_diagnostics();
 
         // Create the root node and set it as the AST's root.
         let end = self.current_token.span.end;
@@ -1013,7 +1042,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         match self.source_type {
             SourceType::Unambiguous => self.parse_unambiguous_expression_fragment(fragment_context),
             source_type => {
-                self.enter_fragment_context(source_type, fragment_context, false);
+                self.enter_fragment_context(source_type, fragment_context, false, false);
                 let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
                 self.finish_expression_fragment(expr)
             }
@@ -1024,10 +1053,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         fragment_context: FragmentContext,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        self.enter_fragment_context(SourceType::Module, fragment_context, true);
+        let can_be_commonjs =
+            self.lang != Lang::Dts && fragment_context == FragmentContext::TopLevel;
+        self.enter_fragment_context(SourceType::Module, fragment_context, true, can_be_commonjs);
         let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         match self.unambiguous_parse_action() {
             UnambiguousParseAction::KeepModule => {}
+            UnambiguousParseAction::RelabelAsCommonJs => {
+                self.set_source_type(SourceType::CommonJs);
+            }
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
@@ -1048,10 +1082,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     if parser.advance().is_none() {
                         parser.current_token = Token::eof(0);
                     }
-                    parser.enter_fragment_context(SourceType::Script, fragment_context, false);
+                    parser.enter_fragment_context(
+                        SourceType::Script,
+                        fragment_context,
+                        false,
+                        can_be_commonjs,
+                    );
                     parser.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())
                 };
-                if !parser.state.contains(ParserState::HAS_MODULE_SYNTAX) {
+                if !parser.has_unconditional_diagnostics()
+                    && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
+                {
+                    parser.relabel_as_script_or_commonjs();
                     let result = parser.finish_expression_fragment(expr);
                     if result.is_ok() {
                         return result;
@@ -1067,6 +1109,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         source_type: SourceType,
         fragment_context: FragmentContext,
         can_be_module: bool,
+        can_be_commonjs: bool,
     ) -> StatementContext {
         let statement_context = fragment_context.statement_context(source_type);
         self.set_source_type(source_type);
@@ -1079,6 +1122,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             BoundaryContext::CAN_BE_MODULE,
             can_be_module && statement_context == StatementContext::ModuleItem,
         );
+        self.boundary_context.set(
+            BoundaryContext::CAN_BE_COMMONJS,
+            can_be_commonjs && !fragment_context.is_function(),
+        );
         self.statement_context = statement_context;
         statement_context
     }
@@ -1087,6 +1134,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         expr: Option<Expr>,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+        self.discard_commonjs_conditional_diagnostics();
         if self.current_token.tag != TokenTag::Eof {
             self.report_expected(
                 self.current_token.span,
@@ -1138,11 +1186,51 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return UnambiguousParseAction::RetryAsScript;
         }
 
-        if !self.diagnostics.is_empty() {
-            UnambiguousParseAction::RetryAsScript
+        if self.has_unconditional_diagnostics() {
+            return UnambiguousParseAction::RetryAsScript;
+        }
+
+        if self.state.contains(ParserState::HAS_COMMONJS_SYNTAX) {
+            UnambiguousParseAction::RelabelAsCommonJs
         } else {
             UnambiguousParseAction::RelabelAsScript
         }
+    }
+
+    fn has_unconditional_diagnostics(&self) -> bool {
+        self.diagnostics.len() != self.commonjs_conditional_diagnostic_indices.len()
+    }
+
+    fn relabel_as_script_or_commonjs(&mut self) {
+        let source_type = if self.state.contains(ParserState::HAS_COMMONJS_SYNTAX) {
+            SourceType::CommonJs
+        } else {
+            SourceType::Script
+        };
+        self.set_source_type(source_type);
+    }
+
+    fn discard_commonjs_conditional_diagnostics(&mut self) {
+        if self.source_type != SourceType::CommonJs
+            || self.commonjs_conditional_diagnostic_indices.is_empty()
+        {
+            return;
+        }
+
+        let conditional_diagnostic_indices = &self.commonjs_conditional_diagnostic_indices;
+        let mut conditional_index = 0;
+        let mut diagnostic_index = 0;
+        self.diagnostics.retain(|_| {
+            let discard =
+                conditional_diagnostic_indices.get(conditional_index) == Some(&diagnostic_index);
+            if discard {
+                conditional_index += 1;
+            }
+            diagnostic_index += 1;
+            !discard
+        });
+        debug_assert_eq!(conditional_index, conditional_diagnostic_indices.len());
+        self.commonjs_conditional_diagnostic_indices.clear();
     }
 
     fn set_source_type(&mut self, source_type: SourceType) {
@@ -1353,6 +1441,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             nodes_len: self.ast.node_count(),
             extra_len: self.ast.extra_data_count(),
             diagnostics_len: self.diagnostics.len(),
+            commonjs_conditional_diagnostic_indices_len: self
+                .commonjs_conditional_diagnostic_indices
+                .len(),
             context: self.context,
             statement_context: self.statement_context,
             ts_context: self.ts_context,
@@ -1377,6 +1468,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ast
             .truncate(checkpoint.nodes_len, checkpoint.extra_len);
         self.diagnostics.truncate(checkpoint.diagnostics_len);
+        self.commonjs_conditional_diagnostic_indices
+            .truncate(checkpoint.commonjs_conditional_diagnostic_indices_len);
         self.context = checkpoint.context;
         self.statement_context = checkpoint.statement_context;
         self.ts_context = checkpoint.ts_context;
@@ -1888,6 +1981,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         if !self.boundary_context.in_function() {
+            let diagnostic_index = self.diagnostics.len();
             self.report(
                 Span::new(start, self.lexer.state.prev_token_end),
                 "'return' statement is only valid inside a function",
@@ -1898,6 +1992,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ..ReportOptions::default()
                 },
             );
+            if self.boundary_context.can_be_commonjs() {
+                self.state.insert(ParserState::HAS_COMMONJS_SYNTAX);
+                self.commonjs_conditional_diagnostic_indices
+                    .push(diagnostic_index);
+            }
         }
         let argument = if self.current_token.has_line_terminator_before()
             || matches!(
@@ -3138,7 +3237,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let value = if self.eat(TokenTag::Assign)? {
             let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
             let boundary_context = self.boundary_context;
-            self.boundary_context.remove(BoundaryContext::CAN_BE_MODULE);
+            self.boundary_context
+                .remove(BoundaryContext::CAN_BE_MODULE | BoundaryContext::CAN_BE_COMMONJS);
             let value = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
             self.context = context;
             self.boundary_context = boundary_context;
@@ -8726,8 +8826,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         // Non-async arrow parameters inherit [Await] from the surrounding grammar.
         let module_sensitive_await = !is_async && self.boundary_context.can_be_module();
+        let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
         let mut arrow_boundary_context = BoundaryContext::IN_FUNCTION;
         arrow_boundary_context.set(BoundaryContext::CAN_BE_MODULE, module_sensitive_await);
+        arrow_boundary_context.set(
+            BoundaryContext::CAN_BE_COMMONJS,
+            commonjs_sensitive_new_target,
+        );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
         let result = self.parse_arrow_inner(is_async, start);
         self.context = context;
@@ -8770,8 +8875,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<Expr> {
         self.advance()?;
         let context = enter_function_grammar_context(&mut self.context, false, async_function);
-        let boundary_context =
-            mem::replace(&mut self.boundary_context, BoundaryContext::IN_FUNCTION);
+        let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
+        let mut arrow_boundary_context = BoundaryContext::IN_FUNCTION;
+        arrow_boundary_context.set(
+            BoundaryContext::CAN_BE_COMMONJS,
+            commonjs_sensitive_new_target,
+        );
+        let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
         let body = self.parse_arrow_body();
         self.context = context;
         self.boundary_context = boundary_context;
@@ -10683,6 +10793,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             };
         }
         let property = self.parse_identifier_name()?;
+        if self.boundary_context.can_be_commonjs() {
+            self.state.insert(ParserState::HAS_COMMONJS_SYNTAX);
+        }
         Some(self.ast.expr_meta_property(
             Span::new(meta.span(&self.ast).start, property.span(&self.ast).end),
             meta,
@@ -12651,6 +12764,13 @@ mod tests {
         .diagnostics
     }
 
+    fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
+        use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
+        let mut buffer = vec![0; buffer_size(ast)];
+        serialize_into(ast, &mut buffer);
+        buffer
+    }
+
     #[test]
     fn parse_expression_fragment() {
         fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
@@ -12676,6 +12796,83 @@ mod tests {
 
         let ast = parse(&allocator, "value", unambiguous);
         assert_eq!(ast.source_type(), SourceType::Script);
+    }
+
+    #[test]
+    fn unambiguous_commonjs_expression_fragments() {
+        fn parse<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            lang: Lang,
+            source_type: SourceType,
+            context: FragmentContext,
+        ) -> Ast<'a> {
+            Parser::init(
+                allocator,
+                source,
+                Options {
+                    lang,
+                    source_type,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse_expression_fragment(context)
+            .unwrap()
+        }
+
+        fn assert_resolves_as(
+            source: &str,
+            lang: Lang,
+            context: FragmentContext,
+            expected: SourceType,
+        ) {
+            let unambiguous_allocator = Allocator::new();
+            let unambiguous = parse(
+                &unambiguous_allocator,
+                source,
+                lang,
+                SourceType::Unambiguous,
+                context,
+            );
+            assert_eq!(unambiguous.source_type(), expected, "{source}");
+
+            let explicit_allocator = Allocator::new();
+            let explicit = parse(&explicit_allocator, source, lang, expected, context);
+            assert_eq!(
+                serialize_ast(&unambiguous),
+                serialize_ast(&explicit),
+                "{source}"
+            );
+        }
+
+        assert_resolves_as(
+            "new.target",
+            Lang::Js,
+            FragmentContext::TopLevel,
+            SourceType::CommonJs,
+        );
+
+        assert_resolves_as(
+            "new.target + await + 0",
+            Lang::Js,
+            FragmentContext::TopLevel,
+            SourceType::CommonJs,
+        );
+
+        assert_resolves_as(
+            "new.target",
+            Lang::Js,
+            FragmentContext::Function,
+            SourceType::Script,
+        );
+
+        assert_resolves_as(
+            "new.target",
+            Lang::Dts,
+            FragmentContext::TopLevel,
+            SourceType::Script,
+        );
     }
 
     #[test]
@@ -12771,13 +12968,6 @@ mod tests {
             lang: Lang,
             expected: SourceType,
         ) {
-            fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
-                use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
-                let mut buffer = vec![0; buffer_size(ast)];
-                serialize_into(ast, &mut buffer);
-                buffer
-            }
-
             let unambiguous_allocator = Allocator::new();
             let unambiguous_options = Options {
                 source_type: SourceType::Unambiguous,
@@ -12938,6 +13128,200 @@ mod tests {
         let result = parse(&allocator, "value\n<!-- comment\nexport {};");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
+    }
+
+    #[test]
+    fn unambiguous_commonjs() {
+        use crate::TokenParserConfig;
+
+        fn parse<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            lang: Lang,
+            source_type: SourceType,
+        ) -> ParseReturn<'a> {
+            Parser::init(
+                allocator,
+                source,
+                Options {
+                    source_type,
+                    lang,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse()
+        }
+
+        fn assert_resolves_as(source: &str, lang: Lang, expected: SourceType) {
+            let unambiguous_allocator = Allocator::new();
+            let unambiguous = parse(
+                &unambiguous_allocator,
+                source,
+                lang,
+                SourceType::Unambiguous,
+            );
+            assert!(
+                unambiguous.diagnostics.is_empty(),
+                "{:#?}",
+                unambiguous.diagnostics
+            );
+            assert_eq!(unambiguous.ast.source_type(), expected, "{source}");
+
+            let explicit_allocator = Allocator::new();
+            let explicit = parse(&explicit_allocator, source, lang, expected);
+            assert!(
+                explicit.diagnostics.is_empty(),
+                "{:#?}",
+                explicit.diagnostics
+            );
+
+            let unambiguous_ast = serialize_ast(&unambiguous.ast);
+            let explicit_ast = serialize_ast(&explicit.ast);
+            assert_eq!(unambiguous_ast, explicit_ast, "{source}");
+        }
+
+        fn assert_rejects_as_module(source: &str, lang: Lang) {
+            let allocator = Allocator::new();
+            let result = parse(&allocator, source, lang, SourceType::Unambiguous);
+            assert_eq!(result.ast.source_type(), SourceType::Module, "{source}");
+            assert!(!result.diagnostics.is_empty(), "{source}");
+        }
+
+        fn assert_tokens_and_comments_match(source: &str) {
+            let unambiguous_allocator = Allocator::new();
+            let unambiguous = Parser::init(
+                &unambiguous_allocator,
+                source,
+                Options {
+                    source_type: SourceType::Unambiguous,
+                    ..Options::default()
+                },
+                TokenParserConfig,
+            )
+            .parse();
+            assert!(
+                unambiguous.diagnostics.is_empty(),
+                "{:#?}",
+                unambiguous.diagnostics
+            );
+            assert_eq!(unambiguous.ast.source_type(), SourceType::CommonJs);
+
+            let explicit_allocator = Allocator::new();
+            let explicit = Parser::init(
+                &explicit_allocator,
+                source,
+                Options {
+                    source_type: SourceType::CommonJs,
+                    ..Options::default()
+                },
+                TokenParserConfig,
+            )
+            .parse();
+            assert!(
+                explicit.diagnostics.is_empty(),
+                "{:#?}",
+                explicit.diagnostics
+            );
+            assert!(unambiguous.tokens.iter().eq(explicit.tokens.iter()));
+            assert_eq!(unambiguous.ast.comments(), explicit.ast.comments());
+        }
+
+        assert_resolves_as("return;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("{ return; }", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("if (condition) return;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("'use strict'; return;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("return;\nreturn;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("return; import('value');", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("with (object) return;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("return;\n<!-- comment", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("return; await + 0;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("return await + 0;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("new.target;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("{ new.target; }", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("() => new.target;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as("async () => new.target;", Lang::Js, SourceType::CommonJs);
+
+        assert_resolves_as(
+            "const f = (value = new.target) => value;",
+            Lang::Js,
+            SourceType::CommonJs,
+        );
+
+        assert_resolves_as("new.target; await + 0;", Lang::Js, SourceType::CommonJs);
+
+        assert_tokens_and_comments_match("/* leading */ return; await + 0; // trailing");
+
+        assert_resolves_as("function f() { return; }", Lang::Js, SourceType::Script);
+
+        assert_resolves_as("() => { return; }", Lang::Js, SourceType::Script);
+
+        assert_resolves_as("function f() { new.target; }", Lang::Js, SourceType::Script);
+
+        assert_resolves_as(
+            "function f() { return () => new.target; }",
+            Lang::Js,
+            SourceType::Script,
+        );
+
+        assert_resolves_as(
+            "class C { field = new.target; }",
+            Lang::Js,
+            SourceType::Script,
+        );
+
+        assert_resolves_as(
+            "class C { static { new.target; } }",
+            Lang::Js,
+            SourceType::Script,
+        );
+
+        assert_resolves_as("namespace N { new.target; }", Lang::Ts, SourceType::Script);
+
+        assert_rejects_as_module("return;", Lang::Dts);
+
+        assert_resolves_as("new.target;", Lang::Dts, SourceType::Script);
+
+        assert_rejects_as_module("export {}; return;", Lang::Js);
+
+        assert_rejects_as_module("return; export {};", Lang::Js);
+
+        assert_rejects_as_module("return; import.meta;", Lang::Js);
+
+        assert_rejects_as_module("return await value;", Lang::Js);
+
+        let allocator = Allocator::new();
+        let result = parse(
+            &allocator,
+            "return; export {}; return;",
+            Lang::Js,
+            SourceType::Unambiguous,
+        );
+        assert_eq!(result.ast.source_type(), SourceType::Module);
+        assert_eq!(result.diagnostics.len(), 2);
+
+        assert_resolves_as("export {}; new.target;", Lang::Js, SourceType::Module);
+
+        assert_resolves_as("new.target; import.meta;", Lang::Js, SourceType::Module);
+
+        assert_resolves_as("new.target; await value;", Lang::Js, SourceType::Module);
+
+        assert_rejects_as_module("class C { static { return; } }", Lang::Js);
+
+        assert_rejects_as_module("namespace N { return; }", Lang::Ts);
     }
 
     #[test]

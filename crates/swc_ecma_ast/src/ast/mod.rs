@@ -22,7 +22,9 @@ pub enum SourceType {
     Module = 0,
     Script = 1,
     CommonJs = 2,
-    /// Resolve to a module when module syntax is present, otherwise a script.
+    /// Resolve to a module when module syntax is present, a CommonJS module when
+    /// syntax depends on a CommonJS wrapper (such as wrapper-level `return` or
+    /// `new.target`), otherwise a script.
     Unambiguous = 3,
 }
 

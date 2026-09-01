@@ -18,6 +18,19 @@ test("parseSync exposes the program lazily", () => {
   assert.equal(result.program, program);
 });
 
+test("parseSync resolves unambiguous CommonJS wrapper syntax", () => {
+  const options = { sourceType: SourceType.Unambiguous };
+
+  const topLevelReturn = parseSync("return;", options);
+  assert.equal(topLevelReturn.program.sourceType, SourceType.CommonJs);
+
+  const newTarget = parseSync("() => new.target;", options);
+  assert.equal(newTarget.program.sourceType, SourceType.CommonJs);
+
+  const module = parseSync("export {}; new.target;", options);
+  assert.equal(module.program.sourceType, SourceType.Module);
+});
+
 test("parseSync exposes flat comments lazily", () => {
   const source = '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
   const result = parseSync(source, { comments: CommentMode.Flat });
