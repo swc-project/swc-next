@@ -62,6 +62,7 @@ jobs:
         env:
           COMPARE_SHA: ${{ github.sha }}
           GUNGRAUN_COLOR: never
+          GUNGRAUN_SHOW_INTERMEDIATE: true
         run: |
           git checkout --detach "$COMPARE_SHA"
 

@@ -116,7 +116,11 @@ fn type_strip_options(lang: Lang) -> Options {
     }
 }
 
-#[library_benchmark]
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default().tool(
+        Callgrind::with_args(["--dump-before=*benchmark_parse_boundary"]),
+    )
+)]
 #[bench::astro_config(ASTRO_CONFIG, type_strip_options(Lang::Ts))]
 #[bench::effect_schema_ast(EFFECT_SCHEMA_AST, type_strip_options(Lang::Ts))]
 #[bench::hono_types(HONO_TYPES, type_strip_options(Lang::Ts))]

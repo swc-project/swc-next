@@ -48,12 +48,7 @@ function instructionCount(metric, side, benchmark) {
   return count;
 }
 
-function instructionComparison(summary) {
-  const benchmark = benchmarkName(summary);
-  const callgrind = summary.profiles.find(
-    (profile) => profile.tool === "Callgrind",
-  );
-  const metrics = callgrind?.summaries?.total?.summary?.Callgrind;
+function instructionComparison(metrics, benchmark) {
   const instruction = metrics?.Ir;
   const values = instruction?.metrics;
   if (!values || typeof values !== "object") {
@@ -103,7 +98,7 @@ function instructionComparison(summary) {
   throw new Error(`Unsupported instruction values for ${benchmark}`);
 }
 
-function summaryRow(summary) {
+function summaryRows(summary) {
   if (String(summary.version) !== "6") {
     throw new Error(
       `Unsupported Gungraun summary schema version: ${summary.version}`,
@@ -113,12 +108,32 @@ function summaryRow(summary) {
     throw new Error("Gungraun summary is missing profiles");
   }
 
-  const comparison = instructionComparison(summary);
-  return {
-    benchmark: benchmarkName(summary),
-    caseName: summary.id ?? summary.details ?? "default",
-    ...comparison,
-  };
+  const benchmark = benchmarkName(summary);
+  const callgrind = summary.profiles.find(
+    (profile) => profile.tool === "Callgrind",
+  );
+  const profile = callgrind?.summaries;
+  if (!profile || !Array.isArray(profile.parts)) {
+    throw new Error(`Missing Callgrind profile for ${benchmark}`);
+  }
+
+  const caseName = summary.id ?? summary.details ?? "default";
+  const row = (label, metrics) => ({
+    benchmark,
+    caseName: label ? `${caseName}/${label}` : caseName,
+    ...instructionComparison(metrics, benchmark),
+  });
+  const total = profile.total?.summary?.Callgrind;
+  if (profile.parts.length <= 1) {
+    return [row(null, total)];
+  }
+
+  const parts = profile.parts.map((part) => {
+    const info = part.details.Left ?? part.details.Right ?? part.details.Both[0];
+    return row(`Part ${info.part}`, part.metrics_summary?.Callgrind);
+  });
+  parts.push(row("Total", total));
+  return parts;
 }
 
 function compareRows(left, right) {
@@ -298,7 +313,7 @@ export async function loadSummaries(inputPath) {
 }
 
 export function renderSummary(summaries) {
-  const rows = summaries.map(summaryRow).sort(compareRows);
+  const rows = summaries.flatMap(summaryRows).sort(compareRows);
   if (rows.length === 0) {
     throw new Error("No instruction comparisons to summarize");
   }
@@ -311,7 +326,7 @@ export function renderSummary(summaries) {
   return [
     "### Instruction-count changes",
     "",
-    "Exact Callgrind instruction counts for the merge and base revisions. New and Removed identify benchmarks that exist on only one side; the missing count is shown as a dash. Percentages use the same precision as the Gungraun text report. Markers: 🟢 fewer instructions, 🔴 more instructions, ⚪ unchanged.",
+    "Exact Callgrind instruction counts for the merge and base revisions. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing count is shown as a dash. Percentages use the same precision as the Gungraun text report. Markers: 🟢 fewer instructions, 🔴 more instructions, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");

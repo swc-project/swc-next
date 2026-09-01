@@ -60,6 +60,7 @@ pub struct StripResult<'source> {
 /// Parentheses are preserved regardless of [`Options::preserve_parens`]. Diagnostics
 /// do not prevent recovery output. Comments are preserved from the original source,
 /// so [`Options::comments`] does not affect the result.
+#[cfg_attr(feature = "benchmarking", inline(never))]
 pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     if !matches!(options.lang, Lang::Ts | Lang::Tsx) {
         return StripResult {
@@ -73,6 +74,8 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     parser_options.comments = CommentMode::None;
     let allocator = Allocator::default();
     let parse = Parser::init(&allocator, source, parser_options, TokenParserConfig).parse();
+    #[cfg(feature = "benchmarking")]
+    let parse = benchmark_parse_boundary(parse);
     let ParseReturn {
         ast,
         tokens,
@@ -98,6 +101,12 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
         code: edits.render(source),
         diagnostics,
     }
+}
+
+#[cfg(feature = "benchmarking")]
+#[inline(never)]
+fn benchmark_parse_boundary(parse: ParseReturn<'_>) -> ParseReturn<'_> {
+    std::hint::black_box(parse)
 }
 
 #[derive(Clone, Copy, Default)]
