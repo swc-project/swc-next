@@ -7,17 +7,19 @@
 //!
 //! Layout, in order:
 //! - 36-byte header;
-//! - `node_count` raw UTF-8 byte spans (`start: u32`, `end: u32`);
+//! - `node_count` UTF-8 byte spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to four bytes;
-//! - `node_count` raw 16-byte `NodePayload` values;
-//! - `extra_count` raw 8-byte `ExtraData` values;
+//! - `node_count` 16-byte `NodePayload` values;
+//! - `extra_count` 8-byte `ExtraData` values;
 //! - the raw extra string pool, padded to four bytes;
-//! - `comment_count` raw 16-byte [`Comment`] records in source order.
+//! - `comment_count` 16-byte [`Comment`] records in source order.
 //!   Each record contains the full start, full end, attachment offset,
 //!   kind (`0` line, `1` block), and attachment position.
 //!
 //! Attached comments and diagnostics are intentionally omitted for now. Their
 //! counts in the header are always zero.
+//!
+//! All multi-byte integers are little-endian, independent of the host target.
 
 use std::{
     mem::{offset_of, size_of},
@@ -36,7 +38,6 @@ const FLAG_TS: u32 = 1 << 0;
 const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
 
 const _: () = {
-    assert!(cfg!(target_endian = "little"));
     assert!(size_of::<Span>() == SPAN_SIZE);
     assert!(size_of::<NodeKind>() == NODE_KIND_SIZE);
     assert!(size_of::<NodePayload>() == NODE_PAYLOAD_SIZE);
@@ -103,8 +104,14 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
             tree.node_count() * SPAN_SIZE,
         )
     };
-    buf[pos..pos + spans.len()].copy_from_slice(spans);
-    pos += spans.len();
+    if cfg!(target_endian = "little") {
+        write_slice(buf, &mut pos, spans);
+    } else {
+        for span in unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) } {
+            write_u32(buf, &mut pos, span.start);
+            write_u32(buf, &mut pos, span.end);
+        }
+    }
 
     // ==================== Kinds =====================
     let kinds = unsafe {
@@ -113,8 +120,7 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
             tree.node_count() * NODE_KIND_SIZE,
         )
     };
-    buf[pos..pos + kinds.len()].copy_from_slice(kinds);
-    pos += kinds.len();
+    write_slice(buf, &mut pos, kinds);
     pad_to_four(buf, &mut pos);
 
     // =================== Payloads ====================
@@ -124,8 +130,14 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
             tree.node_count() * NODE_PAYLOAD_SIZE,
         )
     };
-    buf[pos..pos + payloads.len()].copy_from_slice(payloads);
-    pos += payloads.len();
+    if cfg!(target_endian = "little") {
+        write_slice(buf, &mut pos, payloads);
+    } else {
+        for payload in unsafe { slice::from_raw_parts(tree.nodes.data.as_ptr(), tree.node_count()) }
+        {
+            write_bytes(buf, &mut pos, &payload.0.to_le_bytes());
+        }
+    }
 
     // =================== Extra Data ====================
     let extra_data = unsafe {
@@ -134,8 +146,13 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
             tree.extra_data_count() * EXTRA_DATA_SIZE,
         )
     };
-    buf[pos..pos + extra_data.len()].copy_from_slice(extra_data);
-    pos += extra_data.len();
+    if cfg!(target_endian = "little") {
+        write_slice(buf, &mut pos, extra_data);
+    } else {
+        for data in tree.extra_data.as_slice() {
+            write_bytes(buf, &mut pos, &data.raw().to_le_bytes());
+        }
+    }
 
     // =================== String Pool ====================
     let string_pool = &tree.strings.extra;
@@ -150,8 +167,17 @@ pub fn serialize_into(tree: &Ast<'_>, buf: &mut [u8]) -> usize {
             tree.comments().len() * COMMENT_SIZE,
         )
     };
-    buf[pos..pos + comments.len()].copy_from_slice(comments);
-    pos += comments.len();
+    if cfg!(target_endian = "little") {
+        write_slice(buf, &mut pos, comments);
+    } else {
+        for comment in tree.comments() {
+            write_u32(buf, &mut pos, comment.span.start);
+            write_u32(buf, &mut pos, comment.span.end);
+            write_u32(buf, &mut pos, comment.attached_to);
+            write_u16(buf, &mut pos, comment.kind as u16);
+            write_u16(buf, &mut pos, comment.position as u16);
+        }
+    }
 
     debug_assert_eq!(pos, required);
     required
@@ -171,6 +197,61 @@ fn pad_to_four(buf: &mut [u8], pos: &mut usize) {
 
 #[inline]
 fn write_u32(buf: &mut [u8], pos: &mut usize, value: u32) {
-    buf[*pos..*pos + size_of::<u32>()].copy_from_slice(&value.to_le_bytes());
-    *pos += size_of::<u32>();
+    write_bytes(buf, pos, &value.to_le_bytes());
+}
+
+#[inline]
+fn write_u16(buf: &mut [u8], pos: &mut usize, value: u16) {
+    write_bytes(buf, pos, &value.to_le_bytes());
+}
+
+#[inline]
+fn write_bytes<const N: usize>(buf: &mut [u8], pos: &mut usize, bytes: &[u8; N]) {
+    write_slice(buf, pos, bytes);
+}
+
+#[inline]
+fn write_slice(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
+    buf[*pos..*pos + bytes.len()].copy_from_slice(bytes);
+    *pos += bytes.len();
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+
+    use super::{buffer_size, serialize_into};
+    use crate::{Ast, Span, TypedSubRange};
+
+    #[test]
+    fn canonical_little_endian_format() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let statement = ast.stmt_empty_statement(Span::new(0, 0));
+        let body = ast.add_typed_sub_range([statement]);
+        let program = ast.program(Span::new(0, 0), TypedSubRange::empty(), body, None);
+        ast.set_root_program(program);
+
+        let mut buffer = vec![0; buffer_size(&ast)];
+        assert_eq!(serialize_into(&ast, &mut buffer), buffer.len());
+        assert_eq!(buffer.len(), 104);
+
+        assert_eq!(u32_at(&buffer, 0), 2); // node count
+        assert_eq!(u32_at(&buffer, 4), 2); // extra-data count
+        assert_eq!(u32_at(&buffer, 28), 1); // root node ID
+
+        assert_eq!(u32_at(&buffer, 72), u32::MAX); // no hashbang
+        assert_eq!(u32_at(&buffer, 76), 0); // inline directives start
+        assert_eq!(u32_at(&buffer, 80), 0); // inline directives end
+        assert_eq!(u32_at(&buffer, 84), 1); // out-of-line body field
+
+        assert_eq!(u32_at(&buffer, 88), 0); // body element node ID
+        assert_eq!(u32_at(&buffer, 92), 0); // node ID padding
+        assert_eq!(u32_at(&buffer, 96), 0); // body range start
+        assert_eq!(u32_at(&buffer, 100), 1); // body range end
+    }
+
+    fn u32_at(buffer: &[u8], offset: usize) -> u32 {
+        u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap())
+    }
 }

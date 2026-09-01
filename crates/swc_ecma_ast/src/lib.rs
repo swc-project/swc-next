@@ -79,28 +79,47 @@ multi_index_vec! {
 #[derive(Clone, Copy)]
 pub struct NodePayload(pub(crate) u128);
 
-/// Compact values stored in the flattening AST's extra-data table.
+/// Canonical 64-bit value stored in the flattening AST's extra-data table.
+///
+/// Logical fields are packed by numeric bit position rather than native memory
+/// layout, so this representation is identical on little- and big-endian
+/// targets. The field's schema determines how to interpret the value.
+#[repr(transparent)]
 #[derive(Clone, Copy)]
-pub union ExtraData {
-    node_id: NodeId,
-
-    sub_range: SubRange,
-
-    /// Any scalar enum or other value representable within eight bytes.
-    other: u64,
-}
+pub struct ExtraData(u64);
 
 impl ExtraData {
-    /// Construct a fully initialized extra-data word containing a node ID.
-    ///
-    /// `ExtraData` is copied byte-for-byte across the JavaScript FFI. Writing
-    /// the four-byte union field directly would leave the high four bytes
-    /// uninitialized.
+    #[inline]
+    pub(crate) fn from_raw(raw: u64) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) fn raw(self) -> u64 {
+        self.0
+    }
+
     #[inline]
     pub(crate) fn from_node_id(node_id: NodeId) -> Self {
-        let mut data = Self { other: 0 };
-        data.node_id = node_id;
-        data
+        Self(node_id.index() as u64)
+    }
+
+    #[inline]
+    pub(crate) fn node_id(self) -> NodeId {
+        NodeId::from_raw_unchecked(self.0 as u32)
+    }
+
+    #[inline]
+    pub(crate) fn from_sub_range(range: SubRange) -> Self {
+        Self(range.start.index() as u64 | ((range.end.index() as u64) << 32))
+    }
+
+    #[inline]
+    pub(crate) fn sub_range(self) -> SubRange {
+        SubRange {
+            start: ExtraDataId::from_raw(self.0 as u32),
+            end: ExtraDataId::from_raw((self.0 >> 32) as u32),
+        }
     }
 }
 

@@ -23,7 +23,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
                         #[inline]
                         unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-                            Self(unsafe { data.node_id })
+                            Self(data.node_id())
                         }
                    }
                 });
@@ -40,7 +40,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
                         #[inline]
                         unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-                            Self(unsafe { data.node_id })
+                            Self(data.node_id())
                         }
                    }
                 });
@@ -68,7 +68,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
                         #[inline]
                         unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-                            let node_id = unsafe { data.node_id };
+                            let node_id = data.node_id();
                             (node_id.index() != u32::MAX as usize).then_some(#inner_ident(node_id))
                         }
                    }

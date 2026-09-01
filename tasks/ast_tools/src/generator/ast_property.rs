@@ -357,7 +357,7 @@ fn generate_extra_data_setter(
             let previous = unsafe {
                 *ast.extra_data.as_slice().get_unchecked(offset.index())
             };
-            if unsafe { previous.other } == unsafe { field_value.other } {
+            if previous.raw() == field_value.raw() {
                 return;
             }
             unsafe {

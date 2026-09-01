@@ -10,11 +10,11 @@ macro_rules! impl_extra_data_compact {
         $(
             impl<'a> ExtraDataCompact<'a> for $ty {
                 fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                    ExtraData { other: self as u64 }
+                    ExtraData::from_raw(self as u64)
                 }
 
                 unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-                    unsafe { mem::transmute(data.other as u8) }
+                    unsafe { mem::transmute(data.raw() as u8) }
                 }
             }
         )+

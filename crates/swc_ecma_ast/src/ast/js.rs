@@ -10,11 +10,11 @@ macro_rules! impl_extra_data_compact {
         $(
             impl<'a> ExtraDataCompact<'a> for $ty {
                 fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                    ExtraData { other: self as u64 }
+                    ExtraData::from_raw(self as u64)
                 }
 
                 unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-                    unsafe { mem::transmute(data.other as u8) }
+                    unsafe { mem::transmute(data.raw() as u8) }
                 }
             }
         )+
@@ -310,13 +310,11 @@ impl_extra_data_compact!(
 
 impl<'a> ExtraDataCompact<'a> for Option<ImportPhase> {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            other: self.map_or(u8::MAX as u64, |phase| phase as u64),
-        }
+        ExtraData::from_raw(self.map_or(u8::MAX as u64, |phase| phase as u64))
     }
 
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let value = unsafe { data.other as u8 };
+        let value = data.raw() as u8;
         (value != u8::MAX).then(|| unsafe { mem::transmute(value) })
     }
 }

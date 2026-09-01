@@ -16,42 +16,38 @@ pub trait ExtraDataCompact<'a>: Sized {
 impl<'a, T> ExtraDataCompact<'a> for TypedSubRange<T> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            sub_range: self.inner,
-        }
+        ExtraData::from_sub_range(self.inner)
     }
 
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        unsafe { data.sub_range.cast_to_typed() }
+        unsafe { data.sub_range().cast_to_typed() }
     }
 }
 
 impl<'a> ExtraDataCompact<'a> for AstUtf8 {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData { other: self.raw() }
+        ExtraData::from_raw(self.raw())
     }
 
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self::from_raw(unsafe { data.other })
+        Self::from_raw(data.raw())
     }
 }
 
 impl<'a> ExtraDataCompact<'a> for Option<AstUtf8> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            // `AstUtf8` ranges always satisfy `start <= end`, so `(u32::MAX, 0)`
-            // is available as an unambiguous `None` sentinel.
-            other: self.map_or(u64::from(u32::MAX), AstUtf8::raw),
-        }
+        // `AstUtf8` ranges always satisfy `start <= end`, so `(u32::MAX, 0)`
+        // is available as an unambiguous `None` sentinel.
+        ExtraData::from_raw(self.map_or(u64::from(u32::MAX), AstUtf8::raw))
     }
 
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let raw = unsafe { data.other };
+        let raw = data.raw();
         (raw != u64::from(u32::MAX)).then(|| AstUtf8::from_raw(raw))
     }
 }
@@ -59,25 +55,45 @@ impl<'a> ExtraDataCompact<'a> for Option<AstUtf8> {
 impl<'a> ExtraDataCompact<'a> for f64 {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            other: self.to_bits(),
-        }
+        ExtraData::from_raw(self.to_bits())
     }
 
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self::from_bits(unsafe { data.other })
+        Self::from_bits(data.raw())
     }
 }
 
 impl<'a> ExtraDataCompact<'a> for AstWtf8 {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData { other: self.raw() }
+        ExtraData::from_raw(self.raw())
     }
 
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self::from_raw(unsafe { data.other })
+        Self::from_raw(data.raw())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{ExtraData, ExtraDataId, NodeId, SubRange};
+
+    #[test]
+    fn canonical_storage() {
+        let node_id = NodeId::from_raw_unchecked(0x1122_3344);
+        let data = ExtraData::from_node_id(node_id);
+        assert_eq!(data.raw(), 0x1122_3344);
+        assert_eq!(data.node_id().index(), 0x1122_3344);
+
+        let range = SubRange {
+            start: ExtraDataId::from_raw(0x1122_3344),
+            end: ExtraDataId::from_raw(0x5566_7788),
+        };
+        let data = ExtraData::from_sub_range(range);
+        assert_eq!(data.raw(), 0x5566_7788_1122_3344);
+        assert_eq!(data.sub_range().start.index(), 0x1122_3344);
+        assert_eq!(data.sub_range().end.index(), 0x5566_7788);
     }
 }

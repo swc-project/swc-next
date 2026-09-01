@@ -219,9 +219,9 @@ pub fn generate_field_to_u64(
         AstType::Enum(_) | AstType::Vec(_) | AstType::Option(_) | AstType::Primitive(_)
     ));
 
-    // Every eight-byte representation is defined by ExtraDataCompact. Reading
-    // the union's raw word observes the same bits that will be stored inline.
-    quote!(unsafe { #field_name.to_extra_data(#ast).other })
+    // Every eight-byte representation is defined by ExtraDataCompact and uses
+    // the same canonical numeric word in inline and out-of-line storage.
+    quote!(#field_name.to_extra_data(#ast).raw())
 }
 
 /// Generate expression to convert u32 to a field type (for inline storage)
@@ -292,6 +292,6 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
 /// Generate an expression that reconstructs an eight-byte field from inline data.
 pub fn generate_u64_to_field(_field_ty: &AstType, _schema: &Schema) -> TokenStream {
     quote! {
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
 }

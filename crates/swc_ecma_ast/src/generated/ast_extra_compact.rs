@@ -9,7 +9,7 @@ impl<'a> ExtraDataCompact<'a> for Program {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Stmt {
@@ -19,7 +19,7 @@ impl<'a> ExtraDataCompact<'a> for Stmt {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Decl {
@@ -29,7 +29,7 @@ impl<'a> ExtraDataCompact<'a> for Decl {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Expr {
@@ -39,7 +39,7 @@ impl<'a> ExtraDataCompact<'a> for Expr {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BindingPattern {
@@ -49,7 +49,7 @@ impl<'a> ExtraDataCompact<'a> for BindingPattern {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for AssignmentTarget {
@@ -59,7 +59,7 @@ impl<'a> ExtraDataCompact<'a> for AssignmentTarget {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for SimpleAssignmentTarget {
@@ -69,7 +69,7 @@ impl<'a> ExtraDataCompact<'a> for SimpleAssignmentTarget {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for PropertyKey {
@@ -79,7 +79,7 @@ impl<'a> ExtraDataCompact<'a> for PropertyKey {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ModuleExportName {
@@ -89,7 +89,7 @@ impl<'a> ExtraDataCompact<'a> for ModuleExportName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Argument {
@@ -99,7 +99,7 @@ impl<'a> ExtraDataCompact<'a> for Argument {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ObjectPropertyKind {
@@ -109,7 +109,7 @@ impl<'a> ExtraDataCompact<'a> for ObjectPropertyKind {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ForStatementInit {
@@ -119,7 +119,7 @@ impl<'a> ExtraDataCompact<'a> for ForStatementInit {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ForStatementLeft {
@@ -129,7 +129,7 @@ impl<'a> ExtraDataCompact<'a> for ForStatementLeft {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ArrowFunctionBody {
@@ -139,7 +139,7 @@ impl<'a> ExtraDataCompact<'a> for ArrowFunctionBody {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for FormalParameterItem {
@@ -149,7 +149,7 @@ impl<'a> ExtraDataCompact<'a> for FormalParameterItem {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for FormalParameterPattern {
@@ -159,7 +159,7 @@ impl<'a> ExtraDataCompact<'a> for FormalParameterPattern {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ClassElement {
@@ -169,7 +169,7 @@ impl<'a> ExtraDataCompact<'a> for ClassElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportDeclarationSpecifier {
@@ -179,7 +179,7 @@ impl<'a> ExtraDataCompact<'a> for ImportDeclarationSpecifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ExportDefaultDeclarationKind {
@@ -189,7 +189,7 @@ impl<'a> ExtraDataCompact<'a> for ExportDefaultDeclarationKind {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Super {
@@ -199,7 +199,7 @@ impl<'a> ExtraDataCompact<'a> for Super {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ThisExpression {
@@ -209,7 +209,7 @@ impl<'a> ExtraDataCompact<'a> for ThisExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for StringLiteral {
@@ -219,7 +219,7 @@ impl<'a> ExtraDataCompact<'a> for StringLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for NumericLiteral {
@@ -229,7 +229,7 @@ impl<'a> ExtraDataCompact<'a> for NumericLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BigIntLiteral {
@@ -239,7 +239,7 @@ impl<'a> ExtraDataCompact<'a> for BigIntLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BooleanLiteral {
@@ -249,7 +249,7 @@ impl<'a> ExtraDataCompact<'a> for BooleanLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for NullLiteral {
@@ -259,7 +259,7 @@ impl<'a> ExtraDataCompact<'a> for NullLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for RegExpLiteral {
@@ -269,7 +269,7 @@ impl<'a> ExtraDataCompact<'a> for RegExpLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TemplateLiteral {
@@ -279,7 +279,7 @@ impl<'a> ExtraDataCompact<'a> for TemplateLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TemplateElement {
@@ -289,7 +289,7 @@ impl<'a> ExtraDataCompact<'a> for TemplateElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for IdentifierReference {
@@ -299,7 +299,7 @@ impl<'a> ExtraDataCompact<'a> for IdentifierReference {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for PrivateIdentifier {
@@ -309,7 +309,7 @@ impl<'a> ExtraDataCompact<'a> for PrivateIdentifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BindingIdentifier {
@@ -319,7 +319,7 @@ impl<'a> ExtraDataCompact<'a> for BindingIdentifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for IdentifierName {
@@ -329,7 +329,7 @@ impl<'a> ExtraDataCompact<'a> for IdentifierName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for LabelIdentifier {
@@ -339,7 +339,7 @@ impl<'a> ExtraDataCompact<'a> for LabelIdentifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for AssignmentPattern {
@@ -349,7 +349,7 @@ impl<'a> ExtraDataCompact<'a> for AssignmentPattern {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BindingRestElement {
@@ -359,7 +359,7 @@ impl<'a> ExtraDataCompact<'a> for BindingRestElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ArrayPattern {
@@ -369,7 +369,7 @@ impl<'a> ExtraDataCompact<'a> for ArrayPattern {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ObjectPattern {
@@ -379,7 +379,7 @@ impl<'a> ExtraDataCompact<'a> for ObjectPattern {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BindingProperty {
@@ -389,7 +389,7 @@ impl<'a> ExtraDataCompact<'a> for BindingProperty {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BinaryExpression {
@@ -399,7 +399,7 @@ impl<'a> ExtraDataCompact<'a> for BinaryExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for LogicalExpression {
@@ -409,7 +409,7 @@ impl<'a> ExtraDataCompact<'a> for LogicalExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ConditionalExpression {
@@ -419,7 +419,7 @@ impl<'a> ExtraDataCompact<'a> for ConditionalExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for UnaryExpression {
@@ -429,7 +429,7 @@ impl<'a> ExtraDataCompact<'a> for UnaryExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for UpdateExpression {
@@ -439,7 +439,7 @@ impl<'a> ExtraDataCompact<'a> for UpdateExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for AssignmentExpression {
@@ -449,7 +449,7 @@ impl<'a> ExtraDataCompact<'a> for AssignmentExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for VariableDeclaration {
@@ -459,7 +459,7 @@ impl<'a> ExtraDataCompact<'a> for VariableDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for VariableDeclarator {
@@ -469,7 +469,7 @@ impl<'a> ExtraDataCompact<'a> for VariableDeclarator {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for IfStatement {
@@ -479,7 +479,7 @@ impl<'a> ExtraDataCompact<'a> for IfStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for SwitchStatement {
@@ -489,7 +489,7 @@ impl<'a> ExtraDataCompact<'a> for SwitchStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for SwitchCase {
@@ -499,7 +499,7 @@ impl<'a> ExtraDataCompact<'a> for SwitchCase {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ForStatement {
@@ -509,7 +509,7 @@ impl<'a> ExtraDataCompact<'a> for ForStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ForInStatement {
@@ -519,7 +519,7 @@ impl<'a> ExtraDataCompact<'a> for ForInStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ForOfStatement {
@@ -529,7 +529,7 @@ impl<'a> ExtraDataCompact<'a> for ForOfStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TryStatement {
@@ -539,7 +539,7 @@ impl<'a> ExtraDataCompact<'a> for TryStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for CatchClause {
@@ -549,7 +549,7 @@ impl<'a> ExtraDataCompact<'a> for CatchClause {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BreakStatement {
@@ -559,7 +559,7 @@ impl<'a> ExtraDataCompact<'a> for BreakStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ContinueStatement {
@@ -569,7 +569,7 @@ impl<'a> ExtraDataCompact<'a> for ContinueStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for LabeledStatement {
@@ -579,7 +579,7 @@ impl<'a> ExtraDataCompact<'a> for LabeledStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ExpressionStatement {
@@ -589,7 +589,7 @@ impl<'a> ExtraDataCompact<'a> for ExpressionStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ReturnStatement {
@@ -599,7 +599,7 @@ impl<'a> ExtraDataCompact<'a> for ReturnStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ThrowStatement {
@@ -609,7 +609,7 @@ impl<'a> ExtraDataCompact<'a> for ThrowStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for DebuggerStatement {
@@ -619,7 +619,7 @@ impl<'a> ExtraDataCompact<'a> for DebuggerStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for EmptyStatement {
@@ -629,7 +629,7 @@ impl<'a> ExtraDataCompact<'a> for EmptyStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Directive {
@@ -639,7 +639,7 @@ impl<'a> ExtraDataCompact<'a> for Directive {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Decorator {
@@ -649,7 +649,7 @@ impl<'a> ExtraDataCompact<'a> for Decorator {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Class {
@@ -659,7 +659,7 @@ impl<'a> ExtraDataCompact<'a> for Class {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ClassBody {
@@ -669,7 +669,7 @@ impl<'a> ExtraDataCompact<'a> for ClassBody {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for MethodDefinition {
@@ -679,7 +679,7 @@ impl<'a> ExtraDataCompact<'a> for MethodDefinition {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for PropertyDefinition {
@@ -689,7 +689,7 @@ impl<'a> ExtraDataCompact<'a> for PropertyDefinition {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for StaticBlock {
@@ -699,7 +699,7 @@ impl<'a> ExtraDataCompact<'a> for StaticBlock {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Function {
@@ -709,7 +709,7 @@ impl<'a> ExtraDataCompact<'a> for Function {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for FunctionBody {
@@ -719,7 +719,7 @@ impl<'a> ExtraDataCompact<'a> for FunctionBody {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for BlockStatement {
@@ -729,7 +729,7 @@ impl<'a> ExtraDataCompact<'a> for BlockStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for WhileStatement {
@@ -739,7 +739,7 @@ impl<'a> ExtraDataCompact<'a> for WhileStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for DoWhileStatement {
@@ -749,7 +749,7 @@ impl<'a> ExtraDataCompact<'a> for DoWhileStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for WithStatement {
@@ -759,7 +759,7 @@ impl<'a> ExtraDataCompact<'a> for WithStatement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for FormalParameters {
@@ -769,7 +769,7 @@ impl<'a> ExtraDataCompact<'a> for FormalParameters {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for FormalParameter {
@@ -779,7 +779,7 @@ impl<'a> ExtraDataCompact<'a> for FormalParameter {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ArrayExpression {
@@ -789,7 +789,7 @@ impl<'a> ExtraDataCompact<'a> for ArrayExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ObjectExpression {
@@ -799,7 +799,7 @@ impl<'a> ExtraDataCompact<'a> for ObjectExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for SpreadElement {
@@ -809,7 +809,7 @@ impl<'a> ExtraDataCompact<'a> for SpreadElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ObjectProperty {
@@ -819,7 +819,7 @@ impl<'a> ExtraDataCompact<'a> for ObjectProperty {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ParenthesizedExpression {
@@ -829,7 +829,7 @@ impl<'a> ExtraDataCompact<'a> for ParenthesizedExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ArrowFunctionExpression {
@@ -839,7 +839,7 @@ impl<'a> ExtraDataCompact<'a> for ArrowFunctionExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for SequenceExpression {
@@ -849,7 +849,7 @@ impl<'a> ExtraDataCompact<'a> for SequenceExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for MemberExpression {
@@ -859,7 +859,7 @@ impl<'a> ExtraDataCompact<'a> for MemberExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for CallExpression {
@@ -869,7 +869,7 @@ impl<'a> ExtraDataCompact<'a> for CallExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ChainExpression {
@@ -879,7 +879,7 @@ impl<'a> ExtraDataCompact<'a> for ChainExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TaggedTemplateExpression {
@@ -889,7 +889,7 @@ impl<'a> ExtraDataCompact<'a> for TaggedTemplateExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for NewExpression {
@@ -899,7 +899,7 @@ impl<'a> ExtraDataCompact<'a> for NewExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for AwaitExpression {
@@ -909,7 +909,7 @@ impl<'a> ExtraDataCompact<'a> for AwaitExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for YieldExpression {
@@ -919,7 +919,7 @@ impl<'a> ExtraDataCompact<'a> for YieldExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for MetaProperty {
@@ -929,7 +929,7 @@ impl<'a> ExtraDataCompact<'a> for MetaProperty {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportExpression {
@@ -939,7 +939,7 @@ impl<'a> ExtraDataCompact<'a> for ImportExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportDeclaration {
@@ -949,7 +949,7 @@ impl<'a> ExtraDataCompact<'a> for ImportDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportSpecifier {
@@ -959,7 +959,7 @@ impl<'a> ExtraDataCompact<'a> for ImportSpecifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportDefaultSpecifier {
@@ -969,7 +969,7 @@ impl<'a> ExtraDataCompact<'a> for ImportDefaultSpecifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportNamespaceSpecifier {
@@ -979,7 +979,7 @@ impl<'a> ExtraDataCompact<'a> for ImportNamespaceSpecifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ImportAttribute {
@@ -989,7 +989,7 @@ impl<'a> ExtraDataCompact<'a> for ImportAttribute {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ExportNamedDeclaration {
@@ -999,7 +999,7 @@ impl<'a> ExtraDataCompact<'a> for ExportNamedDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ExportDefaultDeclaration {
@@ -1009,7 +1009,7 @@ impl<'a> ExtraDataCompact<'a> for ExportDefaultDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ExportAllDeclaration {
@@ -1019,7 +1019,7 @@ impl<'a> ExtraDataCompact<'a> for ExportAllDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for ExportSpecifier {
@@ -1029,7 +1029,7 @@ impl<'a> ExtraDataCompact<'a> for ExportSpecifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Hashbang {
@@ -1039,7 +1039,7 @@ impl<'a> ExtraDataCompact<'a> for Hashbang {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsType {
@@ -1049,7 +1049,7 @@ impl<'a> ExtraDataCompact<'a> for TsType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeName {
@@ -1059,7 +1059,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsQualifiedNameLeft {
@@ -1069,7 +1069,7 @@ impl<'a> ExtraDataCompact<'a> for TsQualifiedNameLeft {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsImportTypeQualifier {
@@ -1079,7 +1079,7 @@ impl<'a> ExtraDataCompact<'a> for TsImportTypeQualifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeQueryExprName {
@@ -1089,7 +1089,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeQueryExprName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsLiteral {
@@ -1099,7 +1099,7 @@ impl<'a> ExtraDataCompact<'a> for TsLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTupleElement {
@@ -1109,7 +1109,7 @@ impl<'a> ExtraDataCompact<'a> for TsTupleElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeElement {
@@ -1119,7 +1119,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypePredicateName {
@@ -1129,7 +1129,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypePredicateName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsEnumMemberName {
@@ -1139,7 +1139,7 @@ impl<'a> ExtraDataCompact<'a> for TsEnumMemberName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsModuleName {
@@ -1149,7 +1149,7 @@ impl<'a> ExtraDataCompact<'a> for TsModuleName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsModuleBody {
@@ -1159,7 +1159,7 @@ impl<'a> ExtraDataCompact<'a> for TsModuleBody {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsModuleReference {
@@ -1169,7 +1169,7 @@ impl<'a> ExtraDataCompact<'a> for TsModuleReference {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsFunction {
@@ -1179,7 +1179,7 @@ impl<'a> ExtraDataCompact<'a> for TsFunction {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsMethodDefinition {
@@ -1189,7 +1189,7 @@ impl<'a> ExtraDataCompact<'a> for TsMethodDefinition {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeAnnotation {
@@ -1199,7 +1199,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeAnnotation {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsAnyKeyword {
@@ -1209,7 +1209,7 @@ impl<'a> ExtraDataCompact<'a> for TsAnyKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsUnknownKeyword {
@@ -1219,7 +1219,7 @@ impl<'a> ExtraDataCompact<'a> for TsUnknownKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsNeverKeyword {
@@ -1229,7 +1229,7 @@ impl<'a> ExtraDataCompact<'a> for TsNeverKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsVoidKeyword {
@@ -1239,7 +1239,7 @@ impl<'a> ExtraDataCompact<'a> for TsVoidKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsNullKeyword {
@@ -1249,7 +1249,7 @@ impl<'a> ExtraDataCompact<'a> for TsNullKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsUndefinedKeyword {
@@ -1259,7 +1259,7 @@ impl<'a> ExtraDataCompact<'a> for TsUndefinedKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsStringKeyword {
@@ -1269,7 +1269,7 @@ impl<'a> ExtraDataCompact<'a> for TsStringKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsNumberKeyword {
@@ -1279,7 +1279,7 @@ impl<'a> ExtraDataCompact<'a> for TsNumberKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsBigIntKeyword {
@@ -1289,7 +1289,7 @@ impl<'a> ExtraDataCompact<'a> for TsBigIntKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsBooleanKeyword {
@@ -1299,7 +1299,7 @@ impl<'a> ExtraDataCompact<'a> for TsBooleanKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsSymbolKeyword {
@@ -1309,7 +1309,7 @@ impl<'a> ExtraDataCompact<'a> for TsSymbolKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsObjectKeyword {
@@ -1319,7 +1319,7 @@ impl<'a> ExtraDataCompact<'a> for TsObjectKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsIntrinsicKeyword {
@@ -1329,7 +1329,7 @@ impl<'a> ExtraDataCompact<'a> for TsIntrinsicKeyword {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsThisType {
@@ -1339,7 +1339,7 @@ impl<'a> ExtraDataCompact<'a> for TsThisType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeReference {
@@ -1349,7 +1349,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeReference {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsQualifiedName {
@@ -1359,7 +1359,7 @@ impl<'a> ExtraDataCompact<'a> for TsQualifiedName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeQuery {
@@ -1369,7 +1369,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeQuery {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsImportType {
@@ -1379,7 +1379,7 @@ impl<'a> ExtraDataCompact<'a> for TsImportType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeParameter {
@@ -1389,7 +1389,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeParameter {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeParameterDeclaration {
@@ -1399,7 +1399,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeParameterDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeParameterInstantiation {
@@ -1409,7 +1409,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeParameterInstantiation {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsLiteralType {
@@ -1419,7 +1419,7 @@ impl<'a> ExtraDataCompact<'a> for TsLiteralType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTemplateLiteralType {
@@ -1429,7 +1429,7 @@ impl<'a> ExtraDataCompact<'a> for TsTemplateLiteralType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsArrayType {
@@ -1439,7 +1439,7 @@ impl<'a> ExtraDataCompact<'a> for TsArrayType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsIndexedAccessType {
@@ -1449,7 +1449,7 @@ impl<'a> ExtraDataCompact<'a> for TsIndexedAccessType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTupleType {
@@ -1459,7 +1459,7 @@ impl<'a> ExtraDataCompact<'a> for TsTupleType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsNamedTupleMember {
@@ -1469,7 +1469,7 @@ impl<'a> ExtraDataCompact<'a> for TsNamedTupleMember {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsOptionalType {
@@ -1479,7 +1479,7 @@ impl<'a> ExtraDataCompact<'a> for TsOptionalType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsRestType {
@@ -1489,7 +1489,7 @@ impl<'a> ExtraDataCompact<'a> for TsRestType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsJsDocNullableType {
@@ -1499,7 +1499,7 @@ impl<'a> ExtraDataCompact<'a> for TsJsDocNullableType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsJsDocNonNullableType {
@@ -1509,7 +1509,7 @@ impl<'a> ExtraDataCompact<'a> for TsJsDocNonNullableType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsJsDocUnknownType {
@@ -1519,7 +1519,7 @@ impl<'a> ExtraDataCompact<'a> for TsJsDocUnknownType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsUnionType {
@@ -1529,7 +1529,7 @@ impl<'a> ExtraDataCompact<'a> for TsUnionType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsIntersectionType {
@@ -1539,7 +1539,7 @@ impl<'a> ExtraDataCompact<'a> for TsIntersectionType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsConditionalType {
@@ -1549,7 +1549,7 @@ impl<'a> ExtraDataCompact<'a> for TsConditionalType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsInferType {
@@ -1559,7 +1559,7 @@ impl<'a> ExtraDataCompact<'a> for TsInferType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeOperator {
@@ -1569,7 +1569,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeOperator {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsParenthesizedType {
@@ -1579,7 +1579,7 @@ impl<'a> ExtraDataCompact<'a> for TsParenthesizedType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsFunctionType {
@@ -1589,7 +1589,7 @@ impl<'a> ExtraDataCompact<'a> for TsFunctionType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsConstructorType {
@@ -1599,7 +1599,7 @@ impl<'a> ExtraDataCompact<'a> for TsConstructorType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypePredicate {
@@ -1609,7 +1609,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypePredicate {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeLiteral {
@@ -1619,7 +1619,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeLiteral {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsMappedType {
@@ -1629,7 +1629,7 @@ impl<'a> ExtraDataCompact<'a> for TsMappedType {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsPropertySignature {
@@ -1639,7 +1639,7 @@ impl<'a> ExtraDataCompact<'a> for TsPropertySignature {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsMethodSignature {
@@ -1649,7 +1649,7 @@ impl<'a> ExtraDataCompact<'a> for TsMethodSignature {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsCallSignatureDeclaration {
@@ -1659,7 +1659,7 @@ impl<'a> ExtraDataCompact<'a> for TsCallSignatureDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsConstructSignatureDeclaration {
@@ -1669,7 +1669,7 @@ impl<'a> ExtraDataCompact<'a> for TsConstructSignatureDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsIndexSignature {
@@ -1679,7 +1679,7 @@ impl<'a> ExtraDataCompact<'a> for TsIndexSignature {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeAliasDeclaration {
@@ -1689,7 +1689,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeAliasDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsInterfaceDeclaration {
@@ -1699,7 +1699,7 @@ impl<'a> ExtraDataCompact<'a> for TsInterfaceDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsInterfaceBody {
@@ -1709,7 +1709,7 @@ impl<'a> ExtraDataCompact<'a> for TsInterfaceBody {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsInterfaceHeritage {
@@ -1719,7 +1719,7 @@ impl<'a> ExtraDataCompact<'a> for TsInterfaceHeritage {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsClassImplements {
@@ -1729,7 +1729,7 @@ impl<'a> ExtraDataCompact<'a> for TsClassImplements {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsEnumDeclaration {
@@ -1739,7 +1739,7 @@ impl<'a> ExtraDataCompact<'a> for TsEnumDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsEnumBody {
@@ -1749,7 +1749,7 @@ impl<'a> ExtraDataCompact<'a> for TsEnumBody {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsEnumMember {
@@ -1759,7 +1759,7 @@ impl<'a> ExtraDataCompact<'a> for TsEnumMember {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsModuleDeclaration {
@@ -1769,7 +1769,7 @@ impl<'a> ExtraDataCompact<'a> for TsModuleDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsModuleBlock {
@@ -1779,7 +1779,7 @@ impl<'a> ExtraDataCompact<'a> for TsModuleBlock {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsGlobalDeclaration {
@@ -1789,7 +1789,7 @@ impl<'a> ExtraDataCompact<'a> for TsGlobalDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsParameterProperty {
@@ -1799,7 +1799,7 @@ impl<'a> ExtraDataCompact<'a> for TsParameterProperty {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsThisParameter {
@@ -1809,7 +1809,7 @@ impl<'a> ExtraDataCompact<'a> for TsThisParameter {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsAsExpression {
@@ -1819,7 +1819,7 @@ impl<'a> ExtraDataCompact<'a> for TsAsExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsSatisfiesExpression {
@@ -1829,7 +1829,7 @@ impl<'a> ExtraDataCompact<'a> for TsSatisfiesExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsTypeAssertion {
@@ -1839,7 +1839,7 @@ impl<'a> ExtraDataCompact<'a> for TsTypeAssertion {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsNonNullExpression {
@@ -1849,7 +1849,7 @@ impl<'a> ExtraDataCompact<'a> for TsNonNullExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsInstantiationExpression {
@@ -1859,7 +1859,7 @@ impl<'a> ExtraDataCompact<'a> for TsInstantiationExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsExportAssignment {
@@ -1869,7 +1869,7 @@ impl<'a> ExtraDataCompact<'a> for TsExportAssignment {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsNamespaceExportDeclaration {
@@ -1879,7 +1879,7 @@ impl<'a> ExtraDataCompact<'a> for TsNamespaceExportDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsImportEqualsDeclaration {
@@ -1889,7 +1889,7 @@ impl<'a> ExtraDataCompact<'a> for TsImportEqualsDeclaration {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for TsExternalModuleReference {
@@ -1899,7 +1899,7 @@ impl<'a> ExtraDataCompact<'a> for TsExternalModuleReference {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxElementName {
@@ -1909,7 +1909,7 @@ impl<'a> ExtraDataCompact<'a> for JsxElementName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxMemberExpressionObject {
@@ -1919,7 +1919,7 @@ impl<'a> ExtraDataCompact<'a> for JsxMemberExpressionObject {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxAttributeName {
@@ -1929,7 +1929,7 @@ impl<'a> ExtraDataCompact<'a> for JsxAttributeName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxAttributeItem {
@@ -1939,7 +1939,7 @@ impl<'a> ExtraDataCompact<'a> for JsxAttributeItem {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxAttributeValue {
@@ -1949,7 +1949,7 @@ impl<'a> ExtraDataCompact<'a> for JsxAttributeValue {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxExpression {
@@ -1959,7 +1959,7 @@ impl<'a> ExtraDataCompact<'a> for JsxExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxChild {
@@ -1969,7 +1969,7 @@ impl<'a> ExtraDataCompact<'a> for JsxChild {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxElement {
@@ -1979,7 +1979,7 @@ impl<'a> ExtraDataCompact<'a> for JsxElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxOpeningElement {
@@ -1989,7 +1989,7 @@ impl<'a> ExtraDataCompact<'a> for JsxOpeningElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxClosingElement {
@@ -1999,7 +1999,7 @@ impl<'a> ExtraDataCompact<'a> for JsxClosingElement {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxFragment {
@@ -2009,7 +2009,7 @@ impl<'a> ExtraDataCompact<'a> for JsxFragment {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxOpeningFragment {
@@ -2019,7 +2019,7 @@ impl<'a> ExtraDataCompact<'a> for JsxOpeningFragment {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxClosingFragment {
@@ -2029,7 +2029,7 @@ impl<'a> ExtraDataCompact<'a> for JsxClosingFragment {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxIdentifier {
@@ -2039,7 +2039,7 @@ impl<'a> ExtraDataCompact<'a> for JsxIdentifier {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxNamespacedName {
@@ -2049,7 +2049,7 @@ impl<'a> ExtraDataCompact<'a> for JsxNamespacedName {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxMemberExpression {
@@ -2059,7 +2059,7 @@ impl<'a> ExtraDataCompact<'a> for JsxMemberExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxAttribute {
@@ -2069,7 +2069,7 @@ impl<'a> ExtraDataCompact<'a> for JsxAttribute {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxSpreadAttribute {
@@ -2079,7 +2079,7 @@ impl<'a> ExtraDataCompact<'a> for JsxSpreadAttribute {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxExpressionContainer {
@@ -2089,7 +2089,7 @@ impl<'a> ExtraDataCompact<'a> for JsxExpressionContainer {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxEmptyExpression {
@@ -2099,7 +2099,7 @@ impl<'a> ExtraDataCompact<'a> for JsxEmptyExpression {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxText {
@@ -2109,7 +2109,7 @@ impl<'a> ExtraDataCompact<'a> for JsxText {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for JsxSpreadChild {
@@ -2119,7 +2119,7 @@ impl<'a> ExtraDataCompact<'a> for JsxSpreadChild {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
+        Self(data.node_id())
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Hashbang> {
@@ -2131,7 +2131,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Hashbang> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(Hashbang(node_id))
     }
 }
@@ -2144,7 +2144,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeAnnotation> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(TsTypeAnnotation(node_id))
     }
 }
@@ -2157,7 +2157,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BindingPattern> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(BindingPattern(node_id))
     }
 }
@@ -2170,7 +2170,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BindingRestElement> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(BindingRestElement(node_id))
     }
 }
@@ -2183,7 +2183,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Expr> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(Expr(node_id))
     }
 }
@@ -2196,7 +2196,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Stmt> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(Stmt(node_id))
     }
 }
@@ -2209,7 +2209,7 @@ impl<'a> ExtraDataCompact<'a> for Option<ForStatementInit> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(ForStatementInit(node_id))
     }
 }
@@ -2222,7 +2222,7 @@ impl<'a> ExtraDataCompact<'a> for Option<CatchClause> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(CatchClause(node_id))
     }
 }
@@ -2235,7 +2235,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BlockStatement> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(BlockStatement(node_id))
     }
 }
@@ -2248,7 +2248,7 @@ impl<'a> ExtraDataCompact<'a> for Option<LabelIdentifier> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(LabelIdentifier(node_id))
     }
 }
@@ -2261,7 +2261,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BindingIdentifier> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(BindingIdentifier(node_id))
     }
 }
@@ -2274,7 +2274,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterDeclaration> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterDeclaration(node_id))
     }
 }
@@ -2287,7 +2287,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterInstantiation> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterInstantiation(node_id))
     }
 }
@@ -2300,7 +2300,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Argument> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(Argument(node_id))
     }
 }
@@ -2313,7 +2313,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Decl> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(Decl(node_id))
     }
 }
@@ -2326,7 +2326,7 @@ impl<'a> ExtraDataCompact<'a> for Option<StringLiteral> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(StringLiteral(node_id))
     }
 }
@@ -2339,7 +2339,7 @@ impl<'a> ExtraDataCompact<'a> for Option<ModuleExportName> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(ModuleExportName(node_id))
     }
 }
@@ -2352,7 +2352,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsImportTypeQualifier> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(TsImportTypeQualifier(node_id))
     }
 }
@@ -2365,7 +2365,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsType> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(TsType(node_id))
     }
 }
@@ -2378,7 +2378,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsModuleBody> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(TsModuleBody(node_id))
     }
 }
@@ -2391,7 +2391,7 @@ impl<'a> ExtraDataCompact<'a> for Option<JsxClosingElement> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(JsxClosingElement(node_id))
     }
 }
@@ -2404,7 +2404,7 @@ impl<'a> ExtraDataCompact<'a> for Option<JsxAttributeValue> {
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
+        let node_id = data.node_id();
         (node_id.index() != u32::MAX as usize).then_some(JsxAttributeValue(node_id))
     }
 }

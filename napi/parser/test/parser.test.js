@@ -1,7 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { decode } from "../src-js/decode.js";
 import { CommentMode, parseSync, SourceType } from "../src-js/index.js";
+
+test("decoder reads little-endian words from unaligned buffers", () => {
+  const backing = new ArrayBuffer(73);
+  const buffer = new Uint8Array(backing, 1, 72);
+  const view = new DataView(backing, 1, 72);
+  view.setUint32(0, 1, true); // node count
+  view.setUint32(4, 1, true); // extra-data count
+  view.setUint32(48, 0xffffffff, true); // no hashbang
+
+  const result = decode(buffer, "");
+  assert.deepEqual(result.program, {
+    type: "Program",
+    start: 0,
+    end: 0,
+    sourceType: "module",
+    hashbang: null,
+    body: [],
+  });
+  assert.deepEqual(result.comments, []);
+});
 
 test("parseSync exposes the program lazily", () => {
   const result = parseSync("const answer = 42;");
