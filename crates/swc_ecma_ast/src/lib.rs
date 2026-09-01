@@ -102,6 +102,36 @@ impl ExtraData {
         data.node_id = node_id;
         data
     }
+
+    /// Encode an optional node ID using the full extra-data word.
+    ///
+    /// The low 32 bits contain a stable presence tag (`0` for `None`, `1` for
+    /// `Some`) and the high 32 bits contain the node ID. Both halves are
+    /// initialized so the word can be copied byte-for-byte across the FFI.
+    #[inline]
+    pub(crate) fn from_optional_node_id(node_id: Option<NodeId>) -> Self {
+        Self {
+            other: node_id.map_or(0, |node_id| ((node_id.index() as u64) << 32) | 1),
+        }
+    }
+
+    /// Decode an optional node ID written by [`Self::from_optional_node_id`].
+    ///
+    /// # Safety
+    ///
+    /// This extra-data word must have been encoded as an optional node ID.
+    #[inline]
+    pub(crate) unsafe fn optional_node_id(self) -> Option<NodeId> {
+        let raw = unsafe { self.other };
+        let tag = raw as u32;
+        debug_assert!(tag <= 1, "invalid optional node ID tag");
+        // SAFETY: The method's contract requires a word written by
+        // `from_optional_node_id`, whose tag is always zero or one. Preserving
+        // this fact after debug assertions are removed lets codegen reuse the
+        // tag directly as `Option`'s discriminant.
+        unsafe { std::hint::assert_unchecked(tag <= 1) };
+        (tag != 0).then(|| NodeId::from_raw_unchecked((raw >> 32) as u32))
+    }
 }
 
 impl<'a> Ast<'a> {

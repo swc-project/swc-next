@@ -81,3 +81,32 @@ impl<'a> ExtraDataCompact<'a> for AstWtf8 {
         Self::from_raw(unsafe { data.other })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AstNode, BindingIdentifier, Decorator, Span};
+    use swc_next_allocator::Allocator;
+
+    #[test]
+    fn optional_node_uses_explicit_eight_byte_encoding() {
+        let allocator = Allocator::default();
+        let mut ast = Ast::new("", &allocator);
+        let decorators = ast.add_typed_sub_range(std::iter::empty::<Decorator>());
+        let binding =
+            ast.binding_identifier(Span::new(0, 0), AstUtf8::EMPTY, decorators, None, false);
+        let node_id = binding.node_id();
+
+        let some = Some(binding).to_extra_data(&ast);
+        assert_eq!(unsafe { some.other }, ((node_id.index() as u64) << 32) | 1);
+        let decoded =
+            unsafe { <Option<BindingIdentifier> as ExtraDataCompact>::from_extra_data(some, &ast) };
+        assert_eq!(decoded.map(AstNode::node_id), Some(node_id));
+
+        let none = Option::<BindingIdentifier>::None.to_extra_data(&ast);
+        assert_eq!(unsafe { none.other }, 0);
+        let decoded =
+            unsafe { <Option<BindingIdentifier> as ExtraDataCompact>::from_extra_data(none, &ast) };
+        assert!(decoded.is_none());
+    }
+}

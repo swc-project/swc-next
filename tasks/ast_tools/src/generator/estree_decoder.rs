@@ -141,23 +141,27 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
     for (field_index, field) in ast.fields.iter().enumerate() {
         let skip = field.attrs.estree_skip;
         let field_ty = &schema.types[field.type_id];
-        let (location, aligned_u32) = if let Some((_, byte_offset, _)) =
+        let (location, aligned_u32, in_extra_data) = if let Some((_, byte_offset, _)) =
             layout.as_ref().and_then(|layout| {
                 layout
                     .fields
                     .iter()
                     .find(|(index, _, _)| *index == field_index)
             }) {
-            (format!("payload + {byte_offset}"), byte_offset % 4 == 0)
+            (
+                format!("payload + {byte_offset}"),
+                byte_offset % 4 == 0,
+                false,
+            )
         } else {
             let location = format!("extra + (extraId + {extra_offset}) * 8");
             extra_offset += 1;
-            (location, true)
+            (location, true, true)
         };
         if skip {
             continue;
         }
-        let expression = read_expression(field_ty, schema, &location, aligned_u32);
+        let expression = read_expression(field_ty, schema, &location, aligned_u32, in_extra_data);
         let field_name = estree_field_name(&ast.name, &field.name);
         fields.push(DecodedField {
             name: field_name,
@@ -179,7 +183,13 @@ struct DecodedField {
     expression: String,
 }
 
-fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: bool) -> String {
+fn read_expression(
+    ty: &AstType,
+    schema: &Schema,
+    location: &str,
+    aligned_u32: bool,
+    in_extra_data: bool,
+) -> String {
     match ty {
         AstType::Struct(_) | AstType::Enum(_) => {
             format!("node({})", read_u32(location, aligned_u32))
@@ -193,7 +203,11 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
         }
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(_) | AstType::Enum(_) => {
-                format!("optionalNode({})", read_u32(location, aligned_u32))
+                if in_extra_data {
+                    format!("optionalExtraNode({location})")
+                } else {
+                    format!("optionalNode({})", read_u32(location, aligned_u32))
+                }
             }
             AstType::Primitive(primitive) if primitive.name == "ImportPhase" => {
                 format!("optionalEnum(\"ImportPhase\", _dv.getUint8({location}))")
@@ -914,11 +928,24 @@ export function decode(buffer, source) {
   const optionalEnum = (name, value) =>
     value === 0xff ? null : enumValue(name, value);
   const optionalNode = index => index === NULL ? null : node(index);
+  const optionalExtraNode = offset => {
+    const index = offset >> 2;
+    return _u32[index] === 0 ? null : node(_u32[index + 1]);
+  };
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
-    for (let i = start; i < end; i++) {
-      const index = _u32[(extra >> 2) + i * 2];
-      result[i - start] = holes && index === NULL ? null : node(index);
+    const base = extra >> 2;
+    if (holes) {
+      for (let i = start; i < end; i++) {
+        const offset = base + i * 2;
+        result[i - start] = _u32[offset] === 0
+          ? null
+          : node(_u32[offset + 1]);
+      }
+    } else {
+      for (let i = start; i < end; i++) {
+        result[i - start] = node(_u32[base + i * 2]);
+      }
     }
     return result;
   };

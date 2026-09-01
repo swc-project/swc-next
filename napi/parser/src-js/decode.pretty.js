@@ -132,11 +132,24 @@ export function decode(buffer, source) {
   const optionalEnum = (name, value) =>
     value === 0xff ? null : enumValue(name, value);
   const optionalNode = index => index === NULL ? null : node(index);
+  const optionalExtraNode = offset => {
+    const index = offset >> 2;
+    return _u32[index] === 0 ? null : node(_u32[index + 1]);
+  };
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
-    for (let i = start; i < end; i++) {
-      const index = _u32[(extra >> 2) + i * 2];
-      result[i - start] = holes && index === NULL ? null : node(index);
+    const base = extra >> 2;
+    if (holes) {
+      for (let i = start; i < end; i++) {
+        const offset = base + i * 2;
+        result[i - start] = _u32[offset] === 0
+          ? null
+          : node(_u32[offset + 1]);
+      }
+    } else {
+      for (let i = start; i < end; i++) {
+        result[i - start] = node(_u32[base + i * 2]);
+      }
     }
     return result;
   };
@@ -625,8 +638,8 @@ export function decode(buffer, source) {
         const f_decorators = nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
         const f_id = optionalNode(_dv.getUint32(payload + 3, true));
         const f_typeParameters = optionalNode(_dv.getUint32(payload + 7, true));
-        const f_superClass = optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]);
-        const f_superTypeArguments = optionalNode(_u32[(extra + (extraId + 2) * 8) >> 2]);
+        const f_superClass = optionalExtraNode(extra + (extraId + 1) * 8);
+        const f_superTypeArguments = optionalExtraNode(extra + (extraId + 2) * 8);
         const f_implements = nodeArray(_u32[(extra + (extraId + 3) * 8) >> 2], _u32[(extra + (extraId + 3) * 8 + 4) >> 2], false);
         const f_body = node(_u32[(extra + (extraId + 4) * 8) >> 2]);
         const f_abstract = _dv.getUint8(payload + 1) !== 0;
@@ -687,8 +700,8 @@ export function decode(buffer, source) {
         const extraId = _u32[(payload + 12) >> 2];
         const f_decorators = nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
         const f_key = node(_u32[(extra + (extraId + 1) * 8) >> 2]);
-        const f_typeAnnotation = optionalNode(_u32[(extra + (extraId + 2) * 8) >> 2]);
-        const f_value = optionalNode(_u32[(extra + (extraId + 3) * 8) >> 2]);
+        const f_typeAnnotation = optionalExtraNode(extra + (extraId + 2) * 8);
+        const f_value = optionalExtraNode(extra + (extraId + 3) * 8);
         const f_computed = _dv.getUint8(payload + 0) !== 0;
         const f_static = _dv.getUint8(payload + 1) !== 0;
         const f_accessor = _dv.getUint8(payload + 2) !== 0;
@@ -737,7 +750,7 @@ export function decode(buffer, source) {
         const f_id = optionalNode(_dv.getUint32(payload + 3, true));
         const f_typeParameters = optionalNode(_dv.getUint32(payload + 7, true));
         const f_params = node(_u32[(extra + (extraId + 0) * 8) >> 2]);
-        const f_returnType = optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]);
+        const f_returnType = optionalExtraNode(extra + (extraId + 1) * 8);
         const f_body = node(_u32[(extra + (extraId + 2) * 8) >> 2]);
         const f_generator = _dv.getUint8(payload + 1) !== 0;
         const f_async = _dv.getUint8(payload + 2) !== 0;
@@ -855,7 +868,7 @@ export function decode(buffer, source) {
         const f_async = _dv.getUint8(payload + 1) !== 0;
         const f_typeParameters = optionalNode(_dv.getUint32(payload + 2, true));
         const f_params = node(_dv.getUint32(payload + 6, true));
-        const f_returnType = optionalNode(_u32[(extra + (extraId + 0) * 8) >> 2]);
+        const f_returnType = optionalExtraNode(extra + (extraId + 0) * 8);
         const f_body = node(_u32[(extra + (extraId + 1) * 8) >> 2]);
         result = {
           type: "ArrowFunctionExpression", start, end,
@@ -1098,7 +1111,7 @@ export function decode(buffer, source) {
         const f_id = optionalNode(_dv.getUint32(payload + 3, true));
         const f_typeParameters = optionalNode(_dv.getUint32(payload + 7, true));
         const f_params = node(_u32[(extra + (extraId + 0) * 8) >> 2]);
-        const f_returnType = optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]);
+        const f_returnType = optionalExtraNode(extra + (extraId + 1) * 8);
         const f_generator = _dv.getUint8(payload + 0) !== 0;
         const f_async = _dv.getUint8(payload + 1) !== 0;
         const f_declare = _dv.getUint8(payload + 2) !== 0;
@@ -1432,8 +1445,8 @@ export function decode(buffer, source) {
         const extraId = _u32[(payload + 12) >> 2];
         const f_key = node(_dv.getUint32(payload + 2, true));
         const f_constraint = node(_dv.getUint32(payload + 6, true));
-        const f_nameType = optionalNode(_u32[(extra + (extraId + 0) * 8) >> 2]);
-        const f_typeAnnotation = optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]);
+        const f_nameType = optionalExtraNode(extra + (extraId + 0) * 8);
+        const f_typeAnnotation = optionalExtraNode(extra + (extraId + 1) * 8);
         const f_optional = enumValue("TsMappedTypeModifier", _dv.getUint8(payload + 0));
         const f_readonly = enumValue("TsMappedTypeModifier", _dv.getUint8(payload + 1));
         result = {
@@ -1472,7 +1485,7 @@ export function decode(buffer, source) {
         const f_key = node(_dv.getUint32(payload + 3, true));
         const f_typeParameters = optionalNode(_dv.getUint32(payload + 7, true));
         const f_params = node(_u32[(extra + (extraId + 0) * 8) >> 2]);
-        const f_returnType = optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]);
+        const f_returnType = optionalExtraNode(extra + (extraId + 1) * 8);
         const f_kind = enumValue("TsMethodSignatureKind", _dv.getUint8(payload + 0));
         const f_computed = _dv.getUint8(payload + 1) !== 0;
         const f_optional = _dv.getUint8(payload + 2) !== 0;

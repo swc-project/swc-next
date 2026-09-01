@@ -72,3 +72,14 @@ test("parseSync can disable comment collection", () => {
 
   assert.deepEqual(result.comments, []);
 });
+
+test("parseSync decodes tagged optional nodes from extra data", () => {
+  const program = parseSync(
+    "class Plain {} class Derived extends Base {} const values = [, item];",
+  ).program;
+
+  assert.equal(program.body[0].superClass, null);
+  assert.equal(program.body[1].superClass.name, "Base");
+  assert.equal(program.body[2].declarations[0].init.elements[0], null);
+  assert.equal(program.body[2].declarations[0].init.elements[1].name, "item");
+});
