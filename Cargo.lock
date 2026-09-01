@@ -2782,7 +2782,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_codegen_napi"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "napi",
  "napi-build",

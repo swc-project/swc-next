@@ -11,7 +11,7 @@ use crate::{
     util::{InlineStorageMode, calculate_inline_layout},
 };
 
-use super::estree_decoder::minify;
+use super::js_minifier::minify;
 
 const CORE_PRETTY_OUTPUT_PATH: &str = "napi/core/src-js/encode.pretty.js";
 const CORE_MINIFIED_OUTPUT_PATH: &str = "napi/core/src-js/encode.js";
@@ -39,7 +39,7 @@ pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
     write_contextual_encoders(&mut output, &dispatch);
 
     output.push_str(POSTAMBLE);
-    let minified = minify(&output);
+    let minified = minify(&output, CORE_PRETTY_OUTPUT_PATH);
     (
         RawOutput {
             path: CORE_PRETTY_OUTPUT_PATH.into(),
@@ -799,19 +799,20 @@ const ENUMS = Object.freeze({
 });
 
 function encode(program) {
-  let nodeCapacity = 512;
+  const sizeHint = program.end || 0;
+  let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
   let spans = new Uint32Array(nodeCapacity * 2);
   let kinds = new Uint8Array(nodeCapacity);
   let payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
   let payload = new DataView(payloadBuffer);
   let nodeCount = 0;
 
-  let extraCapacity = 512;
+  let extraCapacity = Math.max(512, (sizeHint / 20) | 0);
   let extraBuffer = new ArrayBuffer(extraCapacity * 8);
   let extra = new DataView(extraBuffer);
   let extraCount = 0;
 
-  let poolCapacity = 4096;
+  let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
   const strings = new Map();

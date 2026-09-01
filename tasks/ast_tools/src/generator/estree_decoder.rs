@@ -1,26 +1,14 @@
 use std::fmt::Write;
 
 use convert_case::{Case, Casing};
-use swc_core::{
-    common::{FileName, GLOBALS, Globals, Mark, SourceMap, sync::Lrc},
-    ecma::{
-        ast::{EsVersion, Program},
-        codegen::{Config, Emitter, text_writer::JsWriter},
-        minifier::{
-            optimize,
-            option::{ExtraOptions, MinifyOptions},
-        },
-        parser::{EsSyntax, Parser, StringInput, Syntax, lexer::Lexer},
-        transforms::base::{fixer::fixer, resolver},
-        visit::VisitMutWith,
-    },
-};
 
 use crate::{
     output::RawOutput,
     schema::{AstStruct, AstType, Schema},
     util::{InlineStorageMode, calculate_inline_layout},
 };
+
+use super::js_minifier::minify;
 
 const CORE_PRETTY_OUTPUT_PATH: &str = "napi/core/src-js/decode.pretty.js";
 const CORE_MINIFIED_OUTPUT_PATH: &str = "napi/core/src-js/decode.js";
@@ -44,7 +32,7 @@ pub fn estree_decoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
     }
 
     output.push_str(POSTAMBLE);
-    let minified = minify(&output);
+    let minified = minify(&output, CORE_PRETTY_OUTPUT_PATH);
     (
         RawOutput {
             path: CORE_PRETTY_OUTPUT_PATH.into(),
@@ -63,66 +51,6 @@ pub fn estree_decoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
             content: minified.into_bytes(),
         },
     )
-}
-
-pub(super) fn minify(source: &str) -> String {
-    GLOBALS.set(&Globals::new(), || {
-        let source_map = Lrc::new(SourceMap::default());
-        let source_file = source_map.new_source_file(
-            FileName::Custom(CORE_PRETTY_OUTPUT_PATH.into()).into(),
-            source.to_owned(),
-        );
-        let lexer = Lexer::new(
-            Syntax::Es(EsSyntax::default()),
-            EsVersion::EsNext,
-            StringInput::from(&*source_file),
-            None,
-        );
-        let mut parser = Parser::new_from(lexer);
-        let module = parser
-            .parse_module()
-            .unwrap_or_else(|error| panic!("failed to parse generated decoder: {error:?}"));
-        let recoverable_errors = parser.take_errors();
-        assert!(
-            recoverable_errors.is_empty(),
-            "generated decoder has parse errors: {recoverable_errors:?}"
-        );
-
-        let unresolved_mark = Mark::new();
-        let top_level_mark = Mark::new();
-        let mut program = Program::Module(module);
-        program.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-        let mut program = optimize(
-            program,
-            source_map.clone(),
-            None,
-            None,
-            &MinifyOptions {
-                compress: Some(Default::default()),
-                mangle: Some(Default::default()),
-                ..Default::default()
-            },
-            &ExtraOptions {
-                unresolved_mark,
-                top_level_mark,
-                mangle_name_cache: None,
-            },
-        );
-        program.visit_mut_with(&mut fixer(None));
-
-        let mut output = Vec::new();
-        Emitter {
-            cfg: Config::default()
-                .with_minify(true)
-                .with_omit_last_semi(true),
-            cm: source_map.clone(),
-            comments: None,
-            wr: JsWriter::new(source_map, "\n", &mut output, None),
-        }
-        .emit_program(&program)
-        .expect("failed to print minified decoder");
-        String::from_utf8(output).expect("SWC emitted invalid UTF-8")
-    })
 }
 
 fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &Schema) {

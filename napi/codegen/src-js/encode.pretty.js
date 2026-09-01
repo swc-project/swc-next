@@ -27,19 +27,20 @@ const ENUMS = Object.freeze({
 });
 
 function encode(program) {
-  let nodeCapacity = 512;
+  const sizeHint = program.end || 0;
+  let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
   let spans = new Uint32Array(nodeCapacity * 2);
   let kinds = new Uint8Array(nodeCapacity);
   let payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
   let payload = new DataView(payloadBuffer);
   let nodeCount = 0;
 
-  let extraCapacity = 512;
+  let extraCapacity = Math.max(512, (sizeHint / 20) | 0);
   let extraBuffer = new ArrayBuffer(extraCapacity * 8);
   let extra = new DataView(extraBuffer);
   let extraCount = 0;
 
-  let poolCapacity = 4096;
+  let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
   const strings = new Map();
