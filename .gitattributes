@@ -1,1 +1,9 @@
 tasks/testsuite/snapshots/*.snap text=auto eol=lf
+
+# Generated files
+crates/swc_ecma_ast/src/generated/** linguist-generated=true
+crates/swc_ecma_parser/src/unicode_id_tables.rs linguist-generated=true
+napi/*/src-js/binding.js linguist-generated=true
+napi/*/src-js/binding.d.ts linguist-generated=true
+napi/*/src-js/decode.js linguist-generated=true
+napi/*/src-js/decode.pretty.js linguist-generated=true
