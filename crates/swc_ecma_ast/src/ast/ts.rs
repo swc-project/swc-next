@@ -248,7 +248,7 @@ pub struct TsFunction {
 #[ast]
 pub struct TsMethodDefinition {
     /// `decorator[]`
-    decorators: Vec<Decorator>,
+    decorators: TypedSubRange<Decorator>,
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
@@ -581,7 +581,7 @@ pub struct TsTypeParameter {
 #[ast]
 pub struct TsTypeParameterDeclaration {
     /// `ts_type_parameter[]`
-    params: Vec<TsTypeParameter>,
+    params: TypedSubRange<TsTypeParameter>,
 }
 
 /// The `<T, U>` type argument list applied to a type reference, call site,
@@ -597,7 +597,7 @@ pub struct TsTypeParameterDeclaration {
 #[ast]
 pub struct TsTypeParameterInstantiation {
     /// any ts type
-    params: Vec<TsType>,
+    params: TypedSubRange<TsType>,
 }
 
 /// A literal value used in type position. Wraps a string, numeric, bigint,
@@ -656,9 +656,9 @@ pub struct TsLiteralType {
 #[ast]
 pub struct TsTemplateLiteralType {
     /// `template_element[]`. Always `types.len() + 1` elements.
-    quasis: Vec<TemplateElement>,
+    quasis: TypedSubRange<TemplateElement>,
     /// any ts type. One entry per `${...}` slot.
-    types: Vec<TsType>,
+    types: TypedSubRange<TsType>,
 }
 
 /// An array type. Applies the postfix `[]` suffix to an element type.
@@ -728,7 +728,7 @@ pub struct TsIndexedAccessType {
 #[ast]
 pub struct TsTupleType {
     /// any ts type, `ts_optional_type`, `ts_rest_type`, or `ts_named_tuple_member`.
-    element_types: Vec<TsTupleElement>,
+    element_types: TypedSubRange<TsTupleElement>,
 }
 
 /// A labeled element inside a tuple type. Carries a name that appears only
@@ -866,7 +866,7 @@ pub struct TsJsDocUnknownType {}
 #[ast]
 pub struct TsUnionType {
     /// any ts type
-    types: Vec<TsType>,
+    types: TypedSubRange<TsType>,
 }
 
 /// An intersection type. Combines two or more types with `&`, representing
@@ -881,7 +881,7 @@ pub struct TsUnionType {
 #[ast]
 pub struct TsIntersectionType {
     /// any ts type
-    types: Vec<TsType>,
+    types: TypedSubRange<TsType>,
 }
 
 /// A conditional type. Selects between two branches based on whether
@@ -1064,7 +1064,7 @@ pub struct TsTypeLiteral {
     /// `ts_property_signature`, `ts_method_signature`,
     /// `ts_call_signature_declaration`, `ts_construct_signature_declaration`,
     /// or `ts_index_signature`
-    members: Vec<TsTypeElement>,
+    members: TypedSubRange<TsTypeElement>,
 }
 
 /// A TypeScript mapped type. Projects every key in a union to a new
@@ -1233,7 +1233,7 @@ pub struct TsConstructSignatureDeclaration {
 pub struct TsIndexSignature {
     /// `binding_identifier[]`. Each entry carries its own
     /// `type_annotation`.
-    parameters: Vec<BindingIdentifier>,
+    parameters: TypedSubRange<BindingIdentifier>,
     /// `ts_type_annotation`
     type_annotation: TsTypeAnnotation,
     /// true when preceded by the `readonly` modifier.
@@ -1298,7 +1298,7 @@ pub struct TsInterfaceDeclaration {
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// `ts_interface_heritage[]`. Empty when the interface has no `extends`
     /// clause.
-    extends: Vec<TsInterfaceHeritage>,
+    extends: TypedSubRange<TsInterfaceHeritage>,
     /// `ts_interface_body`
     body: TsInterfaceBody,
     /// true when preceded by the `declare` modifier.
@@ -1319,7 +1319,7 @@ pub struct TsInterfaceBody {
     /// `ts_property_signature`, `ts_method_signature`,
     /// `ts_call_signature_declaration`, `ts_construct_signature_declaration`,
     /// or `ts_index_signature`
-    body: Vec<TsTypeElement>,
+    body: TypedSubRange<TsTypeElement>,
 }
 
 /// One entry in an interface's `extends` clause. The parent interface is
@@ -1406,7 +1406,7 @@ pub struct TsEnumDeclaration {
 #[ast]
 pub struct TsEnumBody {
     /// `ts_enum_member[]`
-    members: Vec<TsEnumMember>,
+    members: TypedSubRange<TsEnumMember>,
 }
 
 /// A single member in an enum body. The name is an identifier, a string
@@ -1469,8 +1469,8 @@ pub struct TsModuleDeclaration {
 /// ```
 #[ast]
 pub struct TsModuleBlock {
-    directives: Vec<Directive>,
-    body: Vec<Stmt>,
+    directives: TypedSubRange<Directive>,
+    body: TypedSubRange<Stmt>,
 }
 
 /// A TypeScript `declare global { ... }` augmentation block.
@@ -1514,7 +1514,7 @@ pub struct TsGlobalDeclaration {
 #[ast]
 pub struct TsParameterProperty {
     /// `decorator[]`. Decorators preceding the modifier, in source order.
-    decorators: Vec<Decorator>,
+    decorators: TypedSubRange<Decorator>,
     /// `binding_identifier` or `assignment_pattern`.
     parameter: BindingPattern,
     r#override: bool,

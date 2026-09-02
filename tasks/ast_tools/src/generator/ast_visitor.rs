@@ -188,7 +188,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     let getter_name = safe_ident(&field.name.to_case(Case::Snake));
                     let setter_name = format_ident!("set_{}", field.name.to_case(Case::Snake));
                     let replacement = wrap_replacement(field.type_id, quote!(replacement), schema);
-                    let replace_arm = if matches!(field_ty, AstType::Vec(_)) {
+                    let replace_arm = if matches!(field_ty, AstType::TypedSubRange(_)) {
                         quote! {
                             TraverseAction::Replace(_) => {
                                 unreachable!("sub-range traversal consumes child replacements")
@@ -505,8 +505,8 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 let inner_type = &schema.types[ast.inner_type_id];
                 let inner_ty_ident = inner_type.repr_ident(schema);
                 let (fn_name, fn_mut_name) = match inner_type {
-                    AstType::Vec(vec) => {
-                        let inner_type = &schema.types[vec.inner_type_id];
+                    AstType::TypedSubRange(range) => {
+                        let inner_type = &schema.types[range.inner_type_id];
                         let fn_name =
                             format_ident!("visit_opt_{}s", &inner_type.name().to_case(Case::Snake));
                         let fn_mut_name = format_ident!(
@@ -595,7 +595,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     }
                 });
             }
-            AstType::Vec(ast) => {
+            AstType::TypedSubRange(ast) => {
                 if !should_visit_type(ast.inner_type_id, schema) {
                     continue;
                 }
@@ -791,7 +791,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 fn should_visit_type(type_id: TypeId, schema: &Schema) -> bool {
     match &schema.types[type_id] {
         AstType::Struct(_) | AstType::Enum(_) => true,
-        AstType::Vec(ast) => should_visit_type(ast.inner_type_id, schema),
+        AstType::TypedSubRange(ast) => should_visit_type(ast.inner_type_id, schema),
         AstType::Option(ast) => should_visit_type(ast.inner_type_id, schema),
         AstType::Primitive(_) => false,
     }
@@ -803,7 +803,7 @@ fn wrap_replacement(type_id: TypeId, replacement: TokenStream, schema: &Schema) 
             let replacement = wrap_replacement(ast.inner_type_id, replacement, schema);
             quote!(Some(#replacement))
         }
-        AstType::Struct(_) | AstType::Enum(_) | AstType::Vec(_) => replacement,
+        AstType::Struct(_) | AstType::Enum(_) | AstType::TypedSubRange(_) => replacement,
         AstType::Primitive(_) => unreachable!("primitive fields are not traversed"),
     }
 }

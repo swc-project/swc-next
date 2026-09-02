@@ -13,7 +13,7 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstType, AstVec, Schema, TypeId,
+    AstStructField, AstType, AstTypedSubRange, Schema, TypeId,
 };
 
 struct Parser {
@@ -130,7 +130,7 @@ impl Parser {
         match &mut item {
             AstType::Struct(ast) => ast.type_id = type_id,
             AstType::Enum(ast) => ast.type_id = type_id,
-            AstType::Vec(ast) => ast.type_id = type_id,
+            AstType::TypedSubRange(ast) => ast.type_id = type_id,
             AstType::Option(ast) => ast.type_id = type_id,
             AstType::Primitive(ast) => ast.type_id = type_id,
         }
@@ -142,7 +142,7 @@ impl Parser {
         type_id
     }
 
-    /// Get type id of the simple type which is not wrapped by `Option`, `Box` or `Vec`
+    /// Get type id of the simple type which is not wrapped by `Option` or `TypedSubRange`
     fn simple_type_id(&mut self, name: &str) -> TypeId {
         if let Some(type_id) = self.type_names.get_index_of(name) {
             return TypeId::from_usize(type_id);
@@ -374,7 +374,7 @@ impl Parser {
 
         let inner_type_id = self.parse_type_name(ty_arg)?;
         let type_id = match wrapper_name {
-            "Vec" => {
+            "TypedSubRange" => {
                 let name = format!(
                     "{}<{}>",
                     wrapper_name,
@@ -384,7 +384,7 @@ impl Parser {
                     return Some(TypeId::from(type_id));
                 }
 
-                let ast_type = AstType::Vec(AstVec {
+                let ast_type = AstType::TypedSubRange(AstTypedSubRange {
                     type_id: TypeId::DUMMY,
                     name,
                     inner_type_id,
@@ -408,7 +408,6 @@ impl Parser {
                 });
                 self.create_new_type(ast_type)
             }
-            "Cell" => inner_type_id,
             _ => return None,
         };
         Some(type_id)

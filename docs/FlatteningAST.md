@@ -92,7 +92,7 @@ What `#[ast]` macro in the following example does is only to make the definition
 ```rs
 #[ast]
 pub struct Module {
-    body: Vec<ModuleItem>,
+    body: TypedSubRange<ModuleItem>,
     shebang: OptionalAtomRef,
 }
 
@@ -220,9 +220,9 @@ impl VisitMut for ExampleVisitor {
 }
 ```
 
-Other changes in AST definictions include:
+Storage-specific changes in AST definitions include:
 
 1. `Box<T>` in ASTs are unnecessary, since all nodes are referred with `NodeId`.
-2. `Vec<T>` is replaced with `TypedSubRange<T>`. It only stores the start and the end `ExtraDataId`, with which we can query the list of `NodeId`s from the AST context.
+2. Variable-length fields are declared as `TypedSubRange<T>`. It only stores the start and the end `ExtraDataId`, with which we can query the list of `NodeId`s from the AST context.
 3. `Atom` is replaced with `Utf8Ref`, and `Wtf8Atom` is replaced with `Wtf8Ref`. Both of them are two `u32`s to represent the start index and the end index of shared string pools, which are just a rust `String` and `Wtf8Buf`.
 4. `Option<T>` is specialized for the primitives, such as `OptionalNodeId` and `OptionUtf8Ref`. This is a manual null pointer optimization as `u32::MAX` is used to represent `None` in `Option<T>`.

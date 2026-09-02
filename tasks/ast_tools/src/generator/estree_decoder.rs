@@ -102,8 +102,8 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
         AstType::Struct(_) | AstType::Enum(_) => {
             format!("node({})", read_u32(location, aligned_u32))
         }
-        AstType::Vec(vec) => {
-            let inner = &schema.types[vec.inner_type_id];
+        AstType::TypedSubRange(range) => {
+            let inner = &schema.types[range.inner_type_id];
             let holes = matches!(inner, AstType::Option(_));
             let start = read_u32(location, aligned_u32);
             let end = read_u32(&format!("{location} + 4"), aligned_u32);

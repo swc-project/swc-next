@@ -48,7 +48,10 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
             AstType::Option(ast_option) => {
                 let inner_type = &schema.types[ast_option.inner_type_id];
                 // Option<TypedSubRange<T>> is implemented manually
-                if matches!(inner_type, AstType::Vec(_) | AstType::Primitive(_)) {
+                if matches!(
+                    inner_type,
+                    AstType::TypedSubRange(_) | AstType::Primitive(_)
+                ) {
                     continue;
                 }
 
