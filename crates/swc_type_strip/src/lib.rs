@@ -13,14 +13,14 @@ use swc_next_ecma_ast::{
     DoWhileStatement, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, Expr,
     ForInStatement, ForOfStatement, ForStatement, FormalParameters, FunctionBody, GetSpan,
     IfStatement, ImportDeclaration, ImportOrExportKind, LabeledStatement, MethodDefinition,
-    ObjectPattern, Program, PropertyDefinition, Stmt, TsAsExpression, TsClassImplements,
+    ObjectPattern, Program, PropertyDefinition, Stmt, SubRange, TsAsExpression, TsClassImplements,
     TsEnumDeclaration, TsExportAssignment, TsFunction, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsIndexSignature, TsInterfaceDeclaration, TsMethodDefinition,
     TsModuleBlock, TsModuleDeclaration, TsModuleDeclarationKind, TsNamespaceExportDeclaration,
     TsNonNullExpression, TsParameterProperty, TsSatisfiesExpression, TsThisParameter,
     TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeParameterDeclaration,
-    TsTypeParameterInstantiation, TypedSubRange, VariableDeclaration, VariableDeclarator, Visit,
-    VisitWith, WhileStatement, WithStatement,
+    TsTypeParameterInstantiation, VariableDeclaration, VariableDeclarator, Visit, VisitWith,
+    WhileStatement, WithStatement,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, Span};
 pub use swc_next_ecma_parser::Options;
@@ -420,7 +420,7 @@ impl TypeEraser<'_, '_, '_> {
 
     fn visit_statement_list(
         &mut self,
-        statements: TypedSubRange<Stmt>,
+        statements: SubRange<Stmt>,
         terminates_directive_prologue: bool,
     ) {
         let saved_context = self.item_context;
@@ -441,7 +441,7 @@ impl TypeEraser<'_, '_, '_> {
         self.item_context = saved_context;
     }
 
-    fn visit_class_element_list(&mut self, elements: TypedSubRange<ClassElement>) {
+    fn visit_class_element_list(&mut self, elements: SubRange<ClassElement>) {
         let saved_context = self.item_context;
         let mut previous_retained = None;
         for element in elements.iter() {
@@ -497,11 +497,11 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         self.visit_statement_list(node.body(self.ast), true);
     }
 
-    fn visit_stmts(&mut self, node: TypedSubRange<Stmt>) {
+    fn visit_stmts(&mut self, node: SubRange<Stmt>) {
         self.visit_statement_list(node, false);
     }
 
-    fn visit_class_elements(&mut self, node: TypedSubRange<ClassElement>) {
+    fn visit_class_elements(&mut self, node: SubRange<ClassElement>) {
         self.visit_class_element_list(node);
     }
 
@@ -968,7 +968,7 @@ fn earliest_position(current: Option<u32>, candidate: Option<u32>) -> Option<u32
     }
 }
 
-fn modifiers_start(member_start: u32, decorators: TypedSubRange<Decorator>, ast: &Ast<'_>) -> u32 {
+fn modifiers_start(member_start: u32, decorators: SubRange<Decorator>, ast: &Ast<'_>) -> u32 {
     let Some(decorator) = decorators.last() else {
         return member_start;
     };

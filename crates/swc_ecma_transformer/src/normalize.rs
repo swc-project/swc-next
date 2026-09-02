@@ -101,7 +101,7 @@ impl NormalizePass<'_, '_> {
         }
 
         if changed {
-            let expressions = self.ast.add_typed_sub_range(flattened);
+            let expressions = self.ast.add_sub_range(flattened);
             sequence.set_expressions(self.ast, expressions);
         }
 

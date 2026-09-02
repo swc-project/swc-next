@@ -23,7 +23,7 @@ pub struct Schema {
 pub enum AstType {
     Struct(AstStruct),
     Enum(AstEnum),
-    TypedSubRange(AstTypedSubRange),
+    SubRange(AstSubRange),
     Option(AstOption),
     Primitive(AstPrimitive),
 }
@@ -33,7 +33,7 @@ impl AstType {
         match self {
             AstType::Struct(ast) => &ast.name,
             AstType::Enum(ast) => &ast.name,
-            AstType::TypedSubRange(ast) => &ast.name,
+            AstType::SubRange(ast) => &ast.name,
             AstType::Option(ast) => &ast.name,
             AstType::Primitive(ast) => ast.name,
         }
@@ -43,8 +43,8 @@ impl AstType {
         match self {
             AstType::Struct(ast) => format_ident!("{}", &ast.name).into_token_stream(),
             AstType::Enum(ast) => format_ident!("{}", &ast.name).into_token_stream(),
-            AstType::TypedSubRange(ast) => {
-                let name = format_ident!("TypedSubRange");
+            AstType::SubRange(ast) => {
+                let name = format_ident!("SubRange");
                 let inner_name = schema.types[ast.inner_type_id].repr_ident(schema);
                 quote!( #name<#inner_name> )
             }
@@ -88,7 +88,7 @@ pub struct AstEnumVariant {
 }
 
 #[derive(Debug)]
-pub struct AstTypedSubRange {
+pub struct AstSubRange {
     pub type_id: TypeId,
     pub name: String,
     pub inner_type_id: TypeId,

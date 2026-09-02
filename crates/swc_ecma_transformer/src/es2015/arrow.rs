@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use swc_next_ecma_ast::{
     Ast, Class, DUMMY_SP, Expr, FormalParameterKind, Function, FunctionType, GetSpan,
-    IdentifierReference, MethodDefinition, MethodDefinitionKind, StaticBlock, Stmt, TypedSubRange,
+    IdentifierReference, MethodDefinition, MethodDefinitionKind, StaticBlock, Stmt, SubRange,
     VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
@@ -76,9 +76,9 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
             let return_statement = self.ast.return_statement(DUMMY_SP, Some(expression));
             let body_items = self
                 .ast
-                .add_typed_sub_range([Stmt::ReturnStatement(return_statement)]);
+                .add_sub_range([Stmt::ReturnStatement(return_statement)]);
             self.ast
-                .function_body(DUMMY_SP, TypedSubRange::empty(), body_items)
+                .function_body(DUMMY_SP, SubRange::empty(), body_items)
         };
 
         self.ast.function(

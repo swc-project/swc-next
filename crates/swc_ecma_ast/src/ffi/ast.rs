@@ -484,15 +484,15 @@ mod tests {
     use swc_next_allocator::Allocator;
 
     use super::{buffer_size, deserialize_from, serialize_into};
-    use crate::{Ast, Diagnostic, GetSpan, Label, Severity, Span, TypedSubRange};
+    use crate::{Ast, Diagnostic, GetSpan, Label, Severity, Span, SubRange};
 
     #[test]
     fn canonical_little_endian_format() {
         let allocator = Allocator::new();
         let mut ast = Ast::new("", &allocator);
         let statement = ast.stmt_empty_statement(Span::new(0, 0));
-        let body = ast.add_typed_sub_range([statement]);
-        let program = ast.program(Span::new(0, 0), TypedSubRange::empty(), body, None);
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(Span::new(0, 0), SubRange::empty(), body, None);
         ast.set_root_program(program);
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
@@ -519,8 +519,8 @@ mod tests {
         let allocator = Allocator::new();
         let mut ast = Ast::new("", &allocator);
         let statement = ast.stmt_empty_statement(Span::new(2, 3));
-        let body = ast.add_typed_sub_range([statement]);
-        let program = ast.program(Span::new(1, 4), TypedSubRange::empty(), body, None);
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(Span::new(1, 4), SubRange::empty(), body, None);
         ast.set_root_program(program);
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];

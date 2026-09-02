@@ -1,9 +1,9 @@
 use crate::{
     Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, ClassType,
     FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
-    MethodDefinitionKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
-    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
-    UnaryOperator, UpdateOperator, VariableKind, node_id::ExtraDataCompact,
+    MethodDefinitionKind, PropertyKind, SourceType, Span, SubRange, TsMappedTypeModifier,
+    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
+    UpdateOperator, VariableKind, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn<'a>: Sized {
@@ -66,12 +66,12 @@ impl<'a, C, T: CloneIn<'a, Cloned = C>> CloneIn<'a> for Option<T> {
     }
 }
 
-impl<'a, C, T> CloneIn<'a> for TypedSubRange<T>
+impl<'a, C, T> CloneIn<'a> for SubRange<T>
 where
     C: ExtraDataCompact<'a>,
     T: CloneIn<'a, Cloned = C> + ExtraDataCompact<'a>,
 {
-    type Cloned = TypedSubRange<C>;
+    type Cloned = SubRange<C>;
 
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let mut ids = Vec::with_capacity(self.len());
@@ -79,7 +79,7 @@ where
             let node = ast.get_node_in_sub_range(id);
             ids.push(node.clone_in(ast));
         }
-        ast.add_typed_sub_range(ids)
+        ast.add_sub_range(ids)
     }
 }
 

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use swc_next_ecma_ast::{
     AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
-    IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut,
+    IdentifierReference, Program, StaticBlock, Stmt, SubRange, VariableKind, VisitMut,
     VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
@@ -174,7 +174,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
             let id = ast.binding_pattern_binding_identifier(
                 DUMMY_SP,
                 name,
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 None,
                 false,
             );
@@ -185,7 +185,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
             let id = ast.binding_pattern_binding_identifier(
                 DUMMY_SP,
                 name,
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 None,
                 false,
             );
@@ -197,7 +197,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
             let id = ast.binding_pattern_binding_identifier(
                 DUMMY_SP,
                 name,
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 None,
                 false,
             );
@@ -209,7 +209,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
             declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
         }
 
-        let declarators = ast.add_typed_sub_range(declarators);
+        let declarators = ast.add_sub_range(declarators);
         Some(ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false))
     }
 
@@ -264,15 +264,11 @@ impl<'semantic> FnEnvHoister<'semantic> {
     }
 }
 
-fn prepend_statement(
-    old: TypedSubRange<Stmt>,
-    statement: Stmt,
-    ast: &mut Ast<'_>,
-) -> TypedSubRange<Stmt> {
+fn prepend_statement(old: SubRange<Stmt>, statement: Stmt, ast: &mut Ast<'_>) -> SubRange<Stmt> {
     let mut items = Vec::with_capacity(old.len() + 1);
     items.push(statement);
     items.extend(old.iter().map(|id| ast.get_node_in_sub_range(id)));
-    ast.add_typed_sub_range(items)
+    ast.add_sub_range(items)
 }
 
 fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut Ast<'_>) {
@@ -325,7 +321,7 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
                 this,
                 AssignmentOperator::Assign,
             );
-            let expressions = self.ast.add_typed_sub_range([call_copy, assignment]);
+            let expressions = self.ast.add_sub_range([call_copy, assignment]);
             let sequence = self
                 .ast
                 .sequence_expression(call.span(self.ast), expressions);

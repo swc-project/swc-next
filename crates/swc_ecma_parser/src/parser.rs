@@ -227,8 +227,8 @@ impl TsContext {
 }
 
 struct ParsedBody {
-    directives: TypedSubRange<Directive>,
-    body: TypedSubRange<Stmt>,
+    directives: SubRange<Directive>,
+    body: SubRange<Stmt>,
 }
 
 bitflags! {
@@ -432,21 +432,21 @@ struct ArrowBodyResult {
 
 #[derive(Clone, Copy, Debug)]
 struct ArrayCover {
-    elements: TypedSubRange<Option<Argument>>,
+    elements: SubRange<Option<Argument>>,
     start: u32,
     end: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct ObjectCover {
-    properties: TypedSubRange<ObjectPropertyKind>,
+    properties: SubRange<ObjectPropertyKind>,
     start: u32,
     end: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct ParenthesizedCover {
-    elements: TypedSubRange<Argument>,
+    elements: SubRange<Argument>,
     start: u32,
     end: u32,
     has_trailing_comma: bool,
@@ -610,8 +610,8 @@ enum HeritageKind {
 
 #[derive(Clone, Copy, Debug)]
 enum HeritageClause {
-    Interface(TypedSubRange<TsInterfaceHeritage>),
-    Class(TypedSubRange<TsClassImplements>),
+    Interface(SubRange<TsInterfaceHeritage>),
+    Class(SubRange<TsClassImplements>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -639,7 +639,7 @@ enum JsxExprContext {
 }
 
 struct ExportSpecifiersResult {
-    specifiers: TypedSubRange<ExportSpecifier>,
+    specifiers: SubRange<ExportSpecifier>,
     local_tags: Vec<TokenTag>,
 }
 
@@ -1332,12 +1332,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     // field-specific helpers avoid allocating scratch copies while splitting mutable borrows
-    fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
+    fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_a.items.len());
-        let range = self.ast.add_typed_sub_range(
+        let range = self.ast.add_sub_range(
             self.scratch_a.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
@@ -1346,12 +1346,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         range
     }
 
-    fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
+    fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_b.items.len());
-        let range = self.ast.add_typed_sub_range(
+        let range = self.ast.add_sub_range(
             self.scratch_b.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
@@ -1360,12 +1360,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         range
     }
 
-    fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
+    fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_cover.items.len());
-        let range = self.ast.add_typed_sub_range(
+        let range = self.ast.add_sub_range(
             self.scratch_cover.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
@@ -1377,15 +1377,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         range
     }
 
-    fn add_extra_from_scratch_decorators<N>(
-        &mut self,
-        scratch_checkpoint: usize,
-    ) -> TypedSubRange<N>
+    fn add_extra_from_scratch_decorators<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_decorators.items.len());
-        let range = self.ast.add_typed_sub_range(
+        let range = self.ast.add_sub_range(
             self.scratch_decorators.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
@@ -1397,10 +1394,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         range
     }
 
-    fn add_extra_from_scratch_statements<N>(
-        &mut self,
-        scratch_checkpoint: usize,
-    ) -> TypedSubRange<N>
+    fn add_extra_from_scratch_statements<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
@@ -1412,13 +1406,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         scratch_start: usize,
         scratch_end: usize,
-    ) -> TypedSubRange<N>
+    ) -> SubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_start <= scratch_end);
         debug_assert!(scratch_end <= self.scratch_statements.items.len());
-        let range = self.ast.add_typed_sub_range(
+        let range = self.ast.add_sub_range(
             self.scratch_statements.items[scratch_start..scratch_end]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
@@ -1676,7 +1670,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_export_decorated(decorators)
     }
 
-    fn parse_export_decorated(&mut self, decorators: TypedSubRange<Decorator>) -> Option<Stmt> {
+    fn parse_export_decorated(&mut self, decorators: SubRange<Decorator>) -> Option<Stmt> {
         self.enter_module_context();
         let export_start = self.current_token.span.start;
         self.advance()?;
@@ -1696,8 +1690,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ExportDefaultDeclarationKind::Class(class),
             ))
         } else {
-            let specifiers = TypedSubRange::empty();
-            let attributes = TypedSubRange::empty();
+            let specifiers = SubRange::empty();
+            let attributes = SubRange::empty();
             Some(self.ast.stmt_export_named_declaration(
                 Span::new(export_start, end),
                 Some(Decl::Class(class)),
@@ -2435,7 +2429,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let decorators = TypedSubRange::empty();
+        let decorators = SubRange::empty();
         Some(
             self.ast
                 .binding_pattern_assignment_pattern(span, decorators, left, None, right, false),
@@ -2623,7 +2617,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         opts: ParseClassOpts,
         start_from_param: Option<u32>,
     ) -> Option<Class> {
-        let decorators = TypedSubRange::empty();
+        let decorators = SubRange::empty();
         self.parse_class_decorated(opts, start_from_param, decorators)
     }
 
@@ -2631,7 +2625,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         opts: ParseClassOpts,
         start_from_param: Option<u32>,
-        decorators: TypedSubRange<Decorator>,
+        decorators: SubRange<Decorator>,
     ) -> Option<Class> {
         let start = start_from_param.unwrap_or(self.current_token.span.start);
         let mut is_abstract = opts.is_abstract;
@@ -2712,7 +2706,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let implements = if self.lang.is_typescript() {
             self.parse_implements_clause()?
         } else {
-            TypedSubRange::empty()
+            SubRange::empty()
         };
         let body = self.parse_class_body()?;
         let end = body.span(&self.ast).end;
@@ -2745,7 +2739,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         true
     }
 
-    fn parse_implements_clause(&mut self) -> Option<TypedSubRange<TsClassImplements>> {
+    fn parse_implements_clause(&mut self) -> Option<SubRange<TsClassImplements>> {
         match self.parse_heritage_clause(TokenTag::Implements, HeritageKind::Class)? {
             HeritageClause::Class(implements) => Some(implements),
             HeritageClause::Interface(_) => unreachable!(),
@@ -2800,7 +2794,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let decorators = if self.current_token.tag == TokenTag::At {
             self.parse_decorators()?.1
         } else {
-            TypedSubRange::empty()
+            SubRange::empty()
         };
 
         if let Some(block) = self.try_static_block(decorators) {
@@ -2937,7 +2931,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_index_signature_element(
         &mut self,
         start: u32,
-        _decorators: TypedSubRange<Decorator>,
+        _decorators: SubRange<Decorator>,
         modifiers: ClassElementModifiers,
     ) -> Option<ClassElement> {
         let element = self.parse_index_signature(start, modifiers.readonly, modifiers.is_static)?;
@@ -2986,7 +2980,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(ClassModifierStep::Consumed)
     }
 
-    fn try_static_block(&mut self, decorators: TypedSubRange<Decorator>) -> Option<ClassElement> {
+    fn try_static_block(&mut self, decorators: SubRange<Decorator>) -> Option<ClassElement> {
         if self.current_token.tag != TokenTag::Static {
             return None;
         }
@@ -3170,7 +3164,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_method_definition(
         &mut self,
         start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: SubRange<Decorator>,
         key: PropertyKey,
         modifiers: ClassElementModifiers,
         optional: bool,
@@ -3286,7 +3280,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_property_definition(
         &mut self,
         start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: SubRange<Decorator>,
         key: PropertyKey,
         modifiers: ClassElementModifiers,
         optional: bool,
@@ -3364,7 +3358,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_decorators(&mut self) -> Option<(u32, TypedSubRange<Decorator>)> {
+    fn parse_decorators(&mut self) -> Option<(u32, SubRange<Decorator>)> {
         let start = self.current_token.span.start;
         let checkpoint = self.scratch_decorators.begin();
         let result = (|| {
@@ -3509,7 +3503,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     if self.lang.is_typescript() && self.current_token.tag == TokenTag::At {
                         self.parse_decorators()?.1
                     } else {
-                        TypedSubRange::empty()
+                        SubRange::empty()
                     };
 
                 if self.current_token.tag == TokenTag::Spread {
@@ -3562,7 +3556,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_formal_parameter(
         &mut self,
         allow_parameter_properties: bool,
-        decorators: TypedSubRange<Decorator>,
+        decorators: SubRange<Decorator>,
         start: u32,
     ) -> Option<FormalParameterItem> {
         if self.lang.is_typescript() && self.current_token.tag == TokenTag::This {
@@ -3628,7 +3622,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_binding_rest_element(
         &mut self,
-        decorators: TypedSubRange<Decorator>,
+        decorators: SubRange<Decorator>,
     ) -> Option<BindingRestElement> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Spread);
         let start = self.current_token.span.start;
@@ -3685,7 +3679,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn apply_decorators_to_pattern(
         &mut self,
         pattern: BindingPattern,
-        decorators: TypedSubRange<Decorator>,
+        decorators: SubRange<Decorator>,
     ) {
         if decorators.is_empty() {
             return;
@@ -3856,7 +3850,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let source = self.parse_module_specifier()?;
         let attributes = self.parse_with_clause();
         let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
-        let specifiers = TypedSubRange::empty();
+        let specifiers = SubRange::empty();
         Some(self.ast.stmt_import_declaration(
             Span::new(start, end),
             specifiers,
@@ -3867,7 +3861,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_import_clause(&mut self) -> Option<TypedSubRange<ImportDeclarationSpecifier>> {
+    fn parse_import_clause(&mut self) -> Option<SubRange<ImportDeclarationSpecifier>> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             if self.current_token.tag == TokenTag::Star {
@@ -3949,7 +3943,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_named_imports(&mut self) -> Option<TypedSubRange<ImportDeclarationSpecifier>> {
+    fn parse_named_imports(&mut self) -> Option<SubRange<ImportDeclarationSpecifier>> {
         if !self.expect(
             TokenTag::LeftBrace,
             "Expected '{' to start named imports",
@@ -4011,7 +4005,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let name = identifier.name(&self.ast);
         self.validate_identifier(parts.name_token, "an imported binding");
-        let decorators = TypedSubRange::empty();
+        let decorators = SubRange::empty();
         let local = self
             .ast
             .binding_identifier(local_span, name, decorators, None, false);
@@ -4474,8 +4468,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             };
             let export_kind = self.export_kind_for_declaration(declaration);
             let end = declaration.span(&self.ast).end;
-            let specifiers = TypedSubRange::empty();
-            let attributes = TypedSubRange::empty();
+            let specifiers = SubRange::empty();
+            let attributes = SubRange::empty();
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, end),
                 Some(declaration),
@@ -4501,9 +4495,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, declaration.span(&self.ast).end),
                 Some(declaration),
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 None,
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 ImportOrExportKind::Value,
             ));
         }
@@ -4526,9 +4520,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, declaration.span(&self.ast).end),
                 Some(declaration),
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 None,
-                TypedSubRange::empty(),
+                SubRange::empty(),
                 ImportOrExportKind::Value,
             ));
         }
@@ -4539,8 +4533,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let declaration =
                 self.parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)?;
             let end = declaration.span(&self.ast).end;
-            let specifiers = TypedSubRange::empty();
-            let attributes = TypedSubRange::empty();
+            let specifiers = SubRange::empty();
+            let attributes = SubRange::empty();
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, end),
                 Some(Decl::VariableDeclaration(declaration)),
@@ -4582,8 +4576,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 .into_declaration()
             };
             let end = declaration.span(&self.ast).end;
-            let specifiers = TypedSubRange::empty();
-            let attributes = TypedSubRange::empty();
+            let specifiers = SubRange::empty();
+            let attributes = SubRange::empty();
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, end),
                 Some(declaration),
@@ -4643,7 +4637,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             (Some(source), attributes)
         } else {
             self.resolve_local_export_specifiers(&result)?;
-            (None, TypedSubRange::empty())
+            (None, SubRange::empty())
         };
         let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_export_named_declaration(
@@ -4737,21 +4731,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(())
     }
 
-    fn parse_with_clause(&mut self) -> TypedSubRange<ImportAttribute> {
+    fn parse_with_clause(&mut self) -> SubRange<ImportAttribute> {
         match self.current_token.tag {
             TokenTag::With => {}
             TokenTag::Assert if !self.current_token.has_line_terminator_before() => {}
-            _ => return TypedSubRange::empty(),
+            _ => return SubRange::empty(),
         }
         if self.advance().is_none() {
-            return TypedSubRange::empty();
+            return SubRange::empty();
         }
         if !self.expect(
             TokenTag::LeftBrace,
             "Expected '{' after 'with' in import attributes",
             None,
         ) {
-            return TypedSubRange::empty();
+            return SubRange::empty();
         }
         let checkpoint = self.scratch_a.begin();
         while self.current_token.tag != TokenTag::RightBrace
@@ -4761,14 +4755,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Some(attribute) => attribute,
                 None => {
                     self.scratch_a.reset(checkpoint);
-                    return TypedSubRange::empty();
+                    return SubRange::empty();
                 }
             };
             self.scratch_a.append(attribute);
             if self.current_token.tag == TokenTag::Comma {
                 if self.advance().is_none() {
                     self.scratch_a.reset(checkpoint);
-                    return TypedSubRange::empty();
+                    return SubRange::empty();
                 }
             } else {
                 break;
@@ -4780,7 +4774,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None,
         ) {
             self.scratch_a.reset(checkpoint);
-            return TypedSubRange::empty();
+            return SubRange::empty();
         }
         let attributes = self.add_extra_from_scratch_a(checkpoint);
         self.scratch_a.reset(checkpoint);
@@ -5109,8 +5103,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<HeritageClause> {
         if !self.eat(keyword)? {
             return Some(match kind {
-                HeritageKind::Interface => HeritageClause::Interface(TypedSubRange::empty()),
-                HeritageKind::Class => HeritageClause::Class(TypedSubRange::empty()),
+                HeritageKind::Interface => HeritageClause::Interface(SubRange::empty()),
+                HeritageKind::Class => HeritageClause::Class(SubRange::empty()),
             });
         }
         let checkpoint = self.scratch_a.begin();
@@ -6597,7 +6591,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_object_type_members(&mut self) -> Option<(TypedSubRange<TsTypeElement>, u32)> {
+    fn parse_object_type_members(&mut self) -> Option<(SubRange<TsTypeElement>, u32)> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         self.advance()?;
         let checkpoint = self.scratch_a.begin();
@@ -6756,7 +6750,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None
             };
         }
-        let parameters = self.ast.add_typed_sub_range([parameter]);
+        let parameters = self.ast.add_sub_range([parameter]);
         if !self.expect(
             TokenTag::RightBracket,
             "Expected ']' to close an index signature parameter list",
@@ -7625,7 +7619,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_switch_cases(&mut self) -> TypedSubRange<SwitchCase> {
+    fn parse_switch_cases(&mut self) -> SubRange<SwitchCase> {
         let checkpoint = self.scratch_a.begin();
         while matches!(self.current_token.tag, TokenTag::Case | TokenTag::Default) {
             match self.parse_switch_case() {
@@ -7673,7 +7667,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_case_consequent(&mut self) -> TypedSubRange<Stmt> {
+    fn parse_case_consequent(&mut self) -> SubRange<Stmt> {
         let checkpoint = self.scratch_b.begin();
         while !matches!(
             self.current_token.tag,
@@ -8251,8 +8245,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let token = self.current_token;
         let quasi = self.add_template_element(token, true, tagged);
         self.advance()?;
-        let quasis = self.ast.add_typed_sub_range([quasi]);
-        let expressions = TypedSubRange::empty();
+        let quasis = self.ast.add_sub_range([quasi]);
+        let expressions = SubRange::empty();
         Some(self.ast.template_literal(token.span, quasis, expressions))
     }
 
@@ -8660,7 +8654,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let temporary = self.ast.binding_rest_element(
                             spread.span(&self.ast),
-                            TypedSubRange::empty(),
+                            SubRange::empty(),
                             argument,
                             None,
                             false,
@@ -8794,7 +8788,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<Expr> {
         let parameter = self.expression_to_parameter(identifier)?;
         let parameter_span = parameter.span(&self.ast);
-        let parameters = self.ast.add_typed_sub_range([parameter]);
+        let parameters = self.ast.add_sub_range([parameter]);
         let parameters = self.ast.formal_parameters(
             parameter_span,
             parameters,
@@ -9063,7 +9057,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ))
             }
             ExprData::IdentifierReference(identifier) => {
-                let decorators = TypedSubRange::empty();
+                let decorators = SubRange::empty();
                 let binding = self.ast.binding_identifier(
                     identifier.span(&self.ast),
                     identifier.name(&self.ast),
@@ -9168,7 +9162,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let left =
                     self.assignment_target_to_pattern(assignment.left(&self.ast), context)?;
                 let right = assignment.right(&self.ast);
-                let decorators = TypedSubRange::empty();
+                let decorators = SubRange::empty();
                 let pattern = self.ast.assignment_pattern(
                     assignment.span(&self.ast),
                     decorators,
@@ -9294,7 +9288,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn convert_array_pattern_impl(
         &mut self,
         mutate_node: Option<ArrayExpression>,
-        elements_range: TypedSubRange<Option<Argument>>,
+        elements_range: SubRange<Option<Argument>>,
         span: Span,
         context: PatternContext,
     ) -> Option<BindingPattern> {
@@ -9356,7 +9350,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let temporary = self.ast.binding_rest_element(
                             spread.span(&self.ast),
-                            TypedSubRange::empty(),
+                            SubRange::empty(),
                             argument,
                             None,
                             false,
@@ -9370,15 +9364,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             let elements =
                 self.ast
-                    .add_typed_sub_range(self.scratch_cover.items[checkpoint..].iter().map(
-                        |node| {
-                            (*node != none)
-                                .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
-                        },
-                    ));
+                    .add_sub_range(self.scratch_cover.items[checkpoint..].iter().map(|node| {
+                        (*node != none)
+                            .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
+                    }));
             let temporary =
                 self.ast
-                    .array_pattern(span, TypedSubRange::empty(), elements, rest, None, false);
+                    .array_pattern(span, SubRange::empty(), elements, rest, None, false);
             let pattern = if let Some(array) = mutate_node {
                 // SAFETY: `temporary` is the unattached last node, and `array`
                 // is retired in favor of the returned handle.
@@ -9421,7 +9413,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn convert_object_pattern_impl(
         &mut self,
         mutate_node: Option<ObjectExpression>,
-        properties_range: TypedSubRange<ObjectPropertyKind>,
+        properties_range: SubRange<ObjectPropertyKind>,
         span: Span,
         context: PatternContext,
     ) -> Option<BindingPattern> {
@@ -9530,7 +9522,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let temporary = self.ast.binding_rest_element(
                             spread.span(&self.ast),
-                            TypedSubRange::empty(),
+                            SubRange::empty(),
                             argument,
                             None,
                             false,
@@ -9543,14 +9535,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
             }
             let properties = self.add_extra_from_scratch_cover(checkpoint);
-            let temporary = self.ast.object_pattern(
-                span,
-                TypedSubRange::empty(),
-                properties,
-                rest,
-                None,
-                false,
-            );
+            let temporary =
+                self.ast
+                    .object_pattern(span, SubRange::empty(), properties, rest, None, false);
             let pattern = if let Some(object) = mutate_node {
                 // SAFETY: `temporary` is the unattached last node, and `object`
                 // is retired in favor of the returned handle.
@@ -9579,7 +9566,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 match self.ast.simple_assignment_target_data(target) {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                        let decorators = TypedSubRange::empty();
+                        let decorators = SubRange::empty();
                         let binding = self.ast.binding_identifier(
                             identifier.span(&self.ast),
                             identifier.name(&self.ast),
@@ -9849,72 +9836,71 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let result =
-            (|| {
-                let mut end = start + 1;
-                while self.current_token.tag != TokenTag::RightBracket
-                    && self.current_token.tag != TokenTag::Eof
-                {
-                    if self.eat(TokenTag::Comma)? {
-                        self.scratch_cover
-                            .items
-                            .push(NodeId::from_raw_unchecked(u32::MAX));
-                        continue;
-                    }
-                    let argument = if self.eat(TokenTag::Spread)? {
-                        let spread_start = self.lexer.state.prev_token_end - 3;
-                        let expression = self.parse_assignment_expression_in_cover()?;
-                        let span = Span::new(spread_start, expression.span(&self.ast).end);
-                        Argument::SpreadElement(self.ast.spread_element(span, expression))
-                    } else {
-                        Argument::Expr(self.parse_assignment_expression_in_cover()?)
-                    };
-                    end = argument.span(&self.ast).end;
-                    self.scratch_cover.append(argument);
-                    if self.eat(TokenTag::Comma)? {
-                        if self.current_token.tag == TokenTag::RightBracket {
-                            self.cover_has_trailing_comma = Some(start);
-                        }
-                    } else if self.current_token.tag != TokenTag::RightBracket {
-                        self.report_expected(
-                            self.current_token.span,
-                            "Expected ',' or ']' in array",
-                            ReportOptions {
-                                help: Some(Cow::Borrowed(
-                                    "Add a comma between elements or close the array with ']'.",
-                                )),
-                                ..ReportOptions::default()
-                            },
-                        );
-                        return None;
-                    }
+        let result = (|| {
+            let mut end = start + 1;
+            while self.current_token.tag != TokenTag::RightBracket
+                && self.current_token.tag != TokenTag::Eof
+            {
+                if self.eat(TokenTag::Comma)? {
+                    self.scratch_cover
+                        .items
+                        .push(NodeId::from_raw_unchecked(u32::MAX));
+                    continue;
                 }
-                if self.current_token.tag != TokenTag::RightBracket {
-                    self.report(
-                        Span::new(start, end),
-                        "Unterminated array",
+                let argument = if self.eat(TokenTag::Spread)? {
+                    let spread_start = self.lexer.state.prev_token_end - 3;
+                    let expression = self.parse_assignment_expression_in_cover()?;
+                    let span = Span::new(spread_start, expression.span(&self.ast).end);
+                    Argument::SpreadElement(self.ast.spread_element(span, expression))
+                } else {
+                    Argument::Expr(self.parse_assignment_expression_in_cover()?)
+                };
+                end = argument.span(&self.ast).end;
+                self.scratch_cover.append(argument);
+                if self.eat(TokenTag::Comma)? {
+                    if self.current_token.tag == TokenTag::RightBracket {
+                        self.cover_has_trailing_comma = Some(start);
+                    }
+                } else if self.current_token.tag != TokenTag::RightBracket {
+                    self.report_expected(
+                        self.current_token.span,
+                        "Expected ',' or ']' in array",
                         ReportOptions {
-                            help: Some(Cow::Borrowed("Add a closing ']' to complete the array.")),
-                            labels: vec![self.label(Span::new(start, start + 1), "Opened here")],
+                            help: Some(Cow::Borrowed(
+                                "Add a comma between elements or close the array with ']'.",
+                            )),
                             ..ReportOptions::default()
                         },
                     );
                     return None;
                 }
-                end = self.current_token.span.end;
-                self.advance()?;
-                let none = NodeId::from_raw_unchecked(u32::MAX);
-                let elements = self.ast.add_typed_sub_range(
-                    self.scratch_cover.items[checkpoint..].iter().map(|node| {
-                        (*node != none).then(|| unsafe { Argument::from_node_id_unchecked(*node) })
-                    }),
+            }
+            if self.current_token.tag != TokenTag::RightBracket {
+                self.report(
+                    Span::new(start, end),
+                    "Unterminated array",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed("Add a closing ']' to complete the array.")),
+                        labels: vec![self.label(Span::new(start, start + 1), "Opened here")],
+                        ..ReportOptions::default()
+                    },
                 );
-                Some(ArrayCover {
-                    elements,
-                    start,
-                    end,
-                })
-            })();
+                return None;
+            }
+            end = self.current_token.span.end;
+            self.advance()?;
+            let none = NodeId::from_raw_unchecked(u32::MAX);
+            let elements =
+                self.ast
+                    .add_sub_range(self.scratch_cover.items[checkpoint..].iter().map(|node| {
+                        (*node != none).then(|| unsafe { Argument::from_node_id_unchecked(*node) })
+                    }));
+            Some(ArrayCover {
+                elements,
+                start,
+                end,
+            })
+        })();
         self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
@@ -10732,7 +10718,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   `...` AssignmentExpression[+In, ?Yield, ?Await]
     //   ArgumentList[?Yield, ?Await] `,` AssignmentExpression[+In, ?Yield, ?Await]
     //   ArgumentList[?Yield, ?Await] `,` `...` AssignmentExpression[+In, ?Yield, ?Await]
-    fn parse_arguments(&mut self) -> Option<TypedSubRange<Argument>> {
+    fn parse_arguments(&mut self) -> Option<SubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let result = (|| {
@@ -10852,7 +10838,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
             arguments
         } else {
-            TypedSubRange::empty()
+            SubRange::empty()
         };
         let end = self
             .lexer
@@ -11012,7 +10998,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let opening = self.parse_jsx_opening_element(context)?;
         if opening.self_closing(&self.ast) {
-            let children = TypedSubRange::empty();
+            let children = SubRange::empty();
             return Some(Expr::JsxElement(self.ast.jsx_element(
                 Span::new(start, opening.span(&self.ast).end),
                 opening,
@@ -11272,7 +11258,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_jsx_children(&mut self) -> Option<TypedSubRange<JsxChild>> {
+    fn parse_jsx_children(&mut self) -> Option<SubRange<JsxChild>> {
         let checkpoint = self.scratch_b.begin();
         self.exit_jsx_tag();
         let result = (|| {
@@ -11456,7 +11442,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(element_name)
     }
 
-    fn parse_jsx_attributes(&mut self) -> Option<TypedSubRange<JsxAttributeItem>> {
+    fn parse_jsx_attributes(&mut self) -> Option<SubRange<JsxAttributeItem>> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             while matches!(
@@ -12246,7 +12232,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.validate_identifier(token, "a binding identifier");
         self.advance_without_escape_check()?;
         let name = self.identifier_name(token);
-        let decorators = TypedSubRange::empty();
+        let decorators = SubRange::empty();
         Some(
             self.ast
                 .binding_identifier(token.span, name, decorators, None, false),

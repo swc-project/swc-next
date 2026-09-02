@@ -1,6 +1,6 @@
-use crate::{Ast, AstUtf8, AstWtf8, ExtraData, TypedSubRange};
+use crate::{Ast, AstUtf8, AstWtf8, ExtraData, SubRange};
 
-use super::{NodeId, SubRange};
+use super::NodeId;
 
 oxc_index::define_index_type! {
     #[repr(transparent)]
@@ -30,16 +30,6 @@ impl ExtraData {
     pub(crate) fn node_id(self) -> NodeId {
         unsafe { self.node_id }
     }
-
-    #[inline]
-    pub(crate) fn from_sub_range(range: SubRange) -> Self {
-        Self { sub_range: range }
-    }
-
-    #[inline]
-    pub(crate) fn sub_range(self) -> SubRange {
-        unsafe { self.sub_range }
-    }
 }
 
 #[cfg(target_endian = "big")]
@@ -63,19 +53,6 @@ impl ExtraData {
     pub(crate) fn node_id(self) -> NodeId {
         NodeId::from_raw_unchecked(self.0 as u32)
     }
-
-    #[inline]
-    pub(crate) fn from_sub_range(range: SubRange) -> Self {
-        Self(range.start.index() as u64 | ((range.end.index() as u64) << 32))
-    }
-
-    #[inline]
-    pub(crate) fn sub_range(self) -> SubRange {
-        SubRange {
-            start: ExtraDataId::from_raw(self.0 as u32),
-            end: ExtraDataId::from_raw((self.0 >> 32) as u32),
-        }
-    }
 }
 
 /// Converts compact AST fields to and from the flattening AST's extra-data table.
@@ -87,15 +64,15 @@ pub trait ExtraDataCompact<'a>: Sized {
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self;
 }
 
-impl<'a, T> ExtraDataCompact<'a> for TypedSubRange<T> {
+impl<'a, T> ExtraDataCompact<'a> for SubRange<T> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_sub_range(self.inner)
+        ExtraData::from_raw(self.raw())
     }
 
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        unsafe { data.sub_range().cast_to_typed() }
+        Self::from_raw(data.raw())
     }
 }
 
@@ -161,13 +138,15 @@ mod tests {
         assert_eq!(data.raw(), 0x1122_3344);
         assert_eq!(data.node_id().index(), 0x1122_3344);
 
-        let range = SubRange {
+        let range = SubRange::<()> {
             start: ExtraDataId::from_raw(0x1122_3344),
             end: ExtraDataId::from_raw(0x5566_7788),
+            _phantom: std::marker::PhantomData,
         };
-        let data = ExtraData::from_sub_range(range);
+        let data = ExtraData::from_raw(range.raw());
         assert_eq!(data.raw(), 0x5566_7788_1122_3344);
-        assert_eq!(data.sub_range().start.index(), 0x1122_3344);
-        assert_eq!(data.sub_range().end.index(), 0x5566_7788);
+        let decoded = SubRange::<()>::from_raw(data.raw());
+        assert_eq!(decoded.start.index(), 0x1122_3344);
+        assert_eq!(decoded.end.index(), 0x5566_7788);
     }
 }

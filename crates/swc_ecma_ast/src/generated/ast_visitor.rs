@@ -1204,28 +1204,28 @@ pub trait Visit<'a> {
         self.leave_node(NodeKindData::JsxSpreadChild(node));
     }
     #[inline]
-    fn visit_directives(&mut self, node: TypedSubRange<Directive>) {
-        <TypedSubRange<Directive> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_directives(&mut self, node: SubRange<Directive>) {
+        <SubRange<Directive> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_stmts(&mut self, node: TypedSubRange<Stmt>) {
-        <TypedSubRange<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_stmts(&mut self, node: SubRange<Stmt>) {
+        <SubRange<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_hashbang(&mut self, node: Option<Hashbang>) {
         <Option<Hashbang> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_template_elements(&mut self, node: TypedSubRange<TemplateElement>) {
-        <TypedSubRange<TemplateElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_template_elements(&mut self, node: SubRange<TemplateElement>) {
+        <SubRange<TemplateElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_exprs(&mut self, node: TypedSubRange<Expr>) {
-        <TypedSubRange<Expr> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_exprs(&mut self, node: SubRange<Expr>) {
+        <SubRange<Expr> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_decorators(&mut self, node: TypedSubRange<Decorator>) {
-        <TypedSubRange<Decorator> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_decorators(&mut self, node: SubRange<Decorator>) {
+        <SubRange<Decorator> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_ts_type_annotation(&mut self, node: Option<TsTypeAnnotation>) {
@@ -1236,22 +1236,20 @@ pub trait Visit<'a> {
         <Option<BindingPattern> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_opt_vec_binding_patterns(&mut self, node: TypedSubRange<Option<BindingPattern>>) {
-        <TypedSubRange<Option<BindingPattern>> as VisitWith<'a, Self>>::visit_children_with(
-            node, self,
-        )
+    fn visit_opt_vec_binding_patterns(&mut self, node: SubRange<Option<BindingPattern>>) {
+        <SubRange<Option<BindingPattern>> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_binding_rest_element(&mut self, node: Option<BindingRestElement>) {
         <Option<BindingRestElement> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_binding_propertys(&mut self, node: TypedSubRange<BindingProperty>) {
-        <TypedSubRange<BindingProperty> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_binding_propertys(&mut self, node: SubRange<BindingProperty>) {
+        <SubRange<BindingProperty> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_variable_declarators(&mut self, node: TypedSubRange<VariableDeclarator>) {
-        <TypedSubRange<VariableDeclarator> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_variable_declarators(&mut self, node: SubRange<VariableDeclarator>) {
+        <SubRange<VariableDeclarator> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_expr(&mut self, node: Option<Expr>) {
@@ -1262,8 +1260,8 @@ pub trait Visit<'a> {
         <Option<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_switch_cases(&mut self, node: TypedSubRange<SwitchCase>) {
-        <TypedSubRange<SwitchCase> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_switch_cases(&mut self, node: SubRange<SwitchCase>) {
+        <SubRange<SwitchCase> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_for_statement_init(&mut self, node: Option<ForStatementInit>) {
@@ -1304,53 +1302,50 @@ pub trait Visit<'a> {
         );
     }
     #[inline]
-    fn visit_ts_class_implementss(&mut self, node: TypedSubRange<TsClassImplements>) {
-        <TypedSubRange<TsClassImplements> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_class_implementss(&mut self, node: SubRange<TsClassImplements>) {
+        <SubRange<TsClassImplements> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_class_elements(&mut self, node: TypedSubRange<ClassElement>) {
-        <TypedSubRange<ClassElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_class_elements(&mut self, node: SubRange<ClassElement>) {
+        <SubRange<ClassElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_formal_parameter_items(&mut self, node: TypedSubRange<FormalParameterItem>) {
-        <TypedSubRange<FormalParameterItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_formal_parameter_items(&mut self, node: SubRange<FormalParameterItem>) {
+        <SubRange<FormalParameterItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_argument(&mut self, node: Option<Argument>) {
         <Option<Argument> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_opt_vec_arguments(&mut self, node: TypedSubRange<Option<Argument>>) {
-        <TypedSubRange<Option<Argument>> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_vec_arguments(&mut self, node: SubRange<Option<Argument>>) {
+        <SubRange<Option<Argument>> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_object_property_kinds(&mut self, node: TypedSubRange<ObjectPropertyKind>) {
-        <TypedSubRange<ObjectPropertyKind> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_object_property_kinds(&mut self, node: SubRange<ObjectPropertyKind>) {
+        <SubRange<ObjectPropertyKind> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_arguments(&mut self, node: TypedSubRange<Argument>) {
-        <TypedSubRange<Argument> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_arguments(&mut self, node: SubRange<Argument>) {
+        <SubRange<Argument> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_import_declaration_specifiers(
-        &mut self,
-        node: TypedSubRange<ImportDeclarationSpecifier>,
-    ) {
-        <TypedSubRange<ImportDeclarationSpecifier> as VisitWith<'a, Self>>::visit_children_with(
+    fn visit_import_declaration_specifiers(&mut self, node: SubRange<ImportDeclarationSpecifier>) {
+        <SubRange<ImportDeclarationSpecifier> as VisitWith<'a, Self>>::visit_children_with(
             node, self,
         )
     }
     #[inline]
-    fn visit_import_attributes(&mut self, node: TypedSubRange<ImportAttribute>) {
-        <TypedSubRange<ImportAttribute> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_import_attributes(&mut self, node: SubRange<ImportAttribute>) {
+        <SubRange<ImportAttribute> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_decl(&mut self, node: Option<Decl>) {
         <Option<Decl> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_export_specifiers(&mut self, node: TypedSubRange<ExportSpecifier>) {
-        <TypedSubRange<ExportSpecifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_export_specifiers(&mut self, node: SubRange<ExportSpecifier>) {
+        <SubRange<ExportSpecifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_string_literal(&mut self, node: Option<StringLiteral>) {
@@ -1369,48 +1364,48 @@ pub trait Visit<'a> {
         <Option<TsType> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_ts_type_parameters(&mut self, node: TypedSubRange<TsTypeParameter>) {
-        <TypedSubRange<TsTypeParameter> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_type_parameters(&mut self, node: SubRange<TsTypeParameter>) {
+        <SubRange<TsTypeParameter> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_ts_types(&mut self, node: TypedSubRange<TsType>) {
-        <TypedSubRange<TsType> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_types(&mut self, node: SubRange<TsType>) {
+        <SubRange<TsType> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_ts_tuple_elements(&mut self, node: TypedSubRange<TsTupleElement>) {
-        <TypedSubRange<TsTupleElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_tuple_elements(&mut self, node: SubRange<TsTupleElement>) {
+        <SubRange<TsTupleElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_ts_type_elements(&mut self, node: TypedSubRange<TsTypeElement>) {
-        <TypedSubRange<TsTypeElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_type_elements(&mut self, node: SubRange<TsTypeElement>) {
+        <SubRange<TsTypeElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_binding_identifiers(&mut self, node: TypedSubRange<BindingIdentifier>) {
-        <TypedSubRange<BindingIdentifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_binding_identifiers(&mut self, node: SubRange<BindingIdentifier>) {
+        <SubRange<BindingIdentifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_ts_interface_heritages(&mut self, node: TypedSubRange<TsInterfaceHeritage>) {
-        <TypedSubRange<TsInterfaceHeritage> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_interface_heritages(&mut self, node: SubRange<TsInterfaceHeritage>) {
+        <SubRange<TsInterfaceHeritage> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_ts_enum_members(&mut self, node: TypedSubRange<TsEnumMember>) {
-        <TypedSubRange<TsEnumMember> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_enum_members(&mut self, node: SubRange<TsEnumMember>) {
+        <SubRange<TsEnumMember> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_ts_module_body(&mut self, node: Option<TsModuleBody>) {
         <Option<TsModuleBody> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_jsx_childs(&mut self, node: TypedSubRange<JsxChild>) {
-        <TypedSubRange<JsxChild> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_jsx_childs(&mut self, node: SubRange<JsxChild>) {
+        <SubRange<JsxChild> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_jsx_closing_element(&mut self, node: Option<JsxClosingElement>) {
         <Option<JsxClosingElement> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_jsx_attribute_items(&mut self, node: TypedSubRange<JsxAttributeItem>) {
-        <TypedSubRange<JsxAttributeItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_jsx_attribute_items(&mut self, node: SubRange<JsxAttributeItem>) {
+        <SubRange<JsxAttributeItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_jsx_attribute_value(&mut self, node: Option<JsxAttributeValue>) {
@@ -1431,8 +1426,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Program {
         let field_value_0 = self.directives(visitor.ast());
         let field_value_1 = self.body(visitor.ast());
         let field_value_2 = self.hashbang(visitor.ast());
-        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
@@ -2478,8 +2473,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TemplateLiteral {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.quasis(visitor.ast());
         let field_value_1 = self.expressions(visitor.ast());
-        <TypedSubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TemplateElement {
@@ -2515,7 +2510,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingIdentifier {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_1 = self.decorators(visitor.ast());
         let field_value_2 = self.type_annotation(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
@@ -2546,7 +2541,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentPattern {
         let field_value_1 = self.left(visitor.ast());
         let field_value_2 = self.type_annotation(visitor.ast());
         let field_value_3 = self.right(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -2562,7 +2557,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingRestElement {
         let field_value_0 = self.decorators(visitor.ast());
         let field_value_1 = self.argument(visitor.ast());
         let field_value_2 = self.type_annotation(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -2578,11 +2573,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayPattern {
         let field_value_1 = self.elements(visitor.ast());
         let field_value_2 = self.rest(visitor.ast());
         let field_value_3 = self.type_annotation(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Option<BindingPattern>> as VisitWith<'a, V>>::visit_with(
-            field_value_1,
-            visitor,
-        );
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Option<BindingPattern>> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
@@ -2598,8 +2590,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPattern {
         let field_value_1 = self.properties(visitor.ast());
         let field_value_2 = self.rest(visitor.ast());
         let field_value_3 = self.type_annotation(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<BindingProperty> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<BindingProperty> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
@@ -2701,7 +2693,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VariableDeclaration {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_1 = self.declarators(visitor.ast());
-        <TypedSubRange<VariableDeclarator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<VariableDeclarator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VariableDeclarator {
@@ -2742,7 +2734,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchStatement {
         let field_value_0 = self.discriminant(visitor.ast());
         let field_value_1 = self.cases(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<SwitchCase> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<SwitchCase> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
@@ -2755,7 +2747,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
         let field_value_0 = self.test(visitor.ast());
         let field_value_1 = self.consequent(visitor.ast());
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatement {
@@ -2953,7 +2945,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
         let field_value_5 = self.super_type_arguments(visitor.ast());
         let field_value_6 = self.implements(visitor.ast());
         let field_value_7 = self.body(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_3,
@@ -2964,7 +2956,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
             field_value_5,
             visitor,
         );
-        <TypedSubRange<TsClassImplements> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
+        <SubRange<TsClassImplements> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
         <ClassBody as VisitWith<'a, V>>::visit_with(field_value_7, visitor);
     }
 }
@@ -2976,7 +2968,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassBody {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<ClassElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<ClassElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodDefinition {
@@ -2989,7 +2981,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodDefinition {
         let field_value_0 = self.decorators(visitor.ast());
         let field_value_1 = self.key(visitor.ast());
         let field_value_2 = self.value(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -3005,7 +2997,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyDefinition {
         let field_value_1 = self.key(visitor.ast());
         let field_value_2 = self.type_annotation(visitor.ast());
         let field_value_3 = self.value(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -3019,7 +3011,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StaticBlock {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
@@ -3053,8 +3045,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionBody {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.directives(visitor.ast());
         let field_value_1 = self.body(visitor.ast());
-        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStatement {
@@ -3065,7 +3057,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStatement {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WhileStatement {
@@ -3116,10 +3108,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameters {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.items(visitor.ast());
         let field_value_1 = self.rest(visitor.ast());
-        <TypedSubRange<FormalParameterItem> as VisitWith<'a, V>>::visit_with(
-            field_value_0,
-            visitor,
-        );
+        <SubRange<FormalParameterItem> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
@@ -3142,7 +3131,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayExpression {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.elements(visitor.ast());
-        <TypedSubRange<Option<Argument>> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Option<Argument>> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectExpression {
@@ -3153,7 +3142,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectExpression {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.properties(visitor.ast());
-        <TypedSubRange<ObjectPropertyKind> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<ObjectPropertyKind> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SpreadElement {
@@ -3219,7 +3208,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SequenceExpression {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.expressions(visitor.ast());
-        <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberExpression {
@@ -3250,7 +3239,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CallExpression {
             field_value_1,
             visitor,
         );
-        <TypedSubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <SubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ChainExpression {
@@ -3297,7 +3286,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NewExpression {
             field_value_1,
             visitor,
         );
-        <TypedSubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <SubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AwaitExpression {
@@ -3358,12 +3347,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDeclaration {
         let field_value_0 = self.specifiers(visitor.ast());
         let field_value_1 = self.source(visitor.ast());
         let field_value_2 = self.attributes(visitor.ast());
-        <TypedSubRange<ImportDeclarationSpecifier> as VisitWith<'a, V>>::visit_with(
+        <SubRange<ImportDeclarationSpecifier> as VisitWith<'a, V>>::visit_with(
             field_value_0,
             visitor,
         );
         <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <SubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportSpecifier {
@@ -3426,9 +3415,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamedDeclaration {
         let field_value_2 = self.source(visitor.ast());
         let field_value_3 = self.attributes(visitor.ast());
         <Option<Decl> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<ExportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<ExportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<StringLiteral> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-        <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <SubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclaration {
@@ -3454,7 +3443,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportAllDeclaration {
         let field_value_2 = self.attributes(visitor.ast());
         <Option<ModuleExportName> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <SubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportSpecifier {
@@ -4055,7 +4044,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMethodDefinition {
         let field_value_0 = self.decorators(visitor.ast());
         let field_value_1 = self.key(visitor.ast());
         let field_value_2 = self.value(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TsFunction as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -4271,7 +4260,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameterDeclaration 
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.params(visitor.ast());
-        <TypedSubRange<TsTypeParameter> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsTypeParameter> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameterInstantiation {
@@ -4282,7 +4271,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameterInstantiatio
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.params(visitor.ast());
-        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsLiteralType {
@@ -4305,8 +4294,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTemplateLiteralType {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.quasis(visitor.ast());
         let field_value_1 = self.types(visitor.ast());
-        <TypedSubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsArrayType {
@@ -4341,7 +4330,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTupleType {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.element_types(visitor.ast());
-        <TypedSubRange<TsTupleElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsTupleElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNamedTupleMember {
@@ -4417,7 +4406,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsUnionType {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.types(visitor.ast());
-        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIntersectionType {
@@ -4428,7 +4417,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIntersectionType {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.types(visitor.ast());
-        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConditionalType {
@@ -4538,7 +4527,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeLiteral {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.members(visitor.ast());
-        <TypedSubRange<TsTypeElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsTypeElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMappedType {
@@ -4636,7 +4625,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIndexSignature {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.parameters(visitor.ast());
         let field_value_1 = self.type_annotation(visitor.ast());
-        <TypedSubRange<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TsTypeAnnotation as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
@@ -4674,10 +4663,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceDeclaration {
             field_value_1,
             visitor,
         );
-        <TypedSubRange<TsInterfaceHeritage> as VisitWith<'a, V>>::visit_with(
-            field_value_2,
-            visitor,
-        );
+        <SubRange<TsInterfaceHeritage> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <TsInterfaceBody as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
@@ -4689,7 +4675,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceBody {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<TsTypeElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsTypeElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceHeritage {
@@ -4745,7 +4731,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumBody {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.members(visitor.ast());
-        <TypedSubRange<TsEnumMember> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<TsEnumMember> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMember {
@@ -4783,8 +4769,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBlock {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.directives(visitor.ast());
         let field_value_1 = self.body(visitor.ast());
-        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsGlobalDeclaration {
@@ -4809,7 +4795,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsParameterProperty {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.decorators(visitor.ast());
         let field_value_1 = self.parameter(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
@@ -5154,7 +5140,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxElement {
         let field_value_1 = self.children(visitor.ast());
         let field_value_2 = self.closing_element(visitor.ast());
         <JsxOpeningElement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<JsxClosingElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
@@ -5173,7 +5159,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxOpeningElement {
             field_value_1,
             visitor,
         );
-        <TypedSubRange<JsxAttributeItem> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <SubRange<JsxAttributeItem> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxClosingElement {
@@ -5198,7 +5184,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxFragment {
         let field_value_1 = self.children(visitor.ast());
         let field_value_2 = self.closing_fragment(visitor.ast());
         <JsxOpeningFragment as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <SubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <JsxClosingFragment as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
@@ -5314,7 +5300,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxSpreadChild {
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Directive> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Directive> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_directives(visitor, self)
@@ -5327,7 +5313,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Directive> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Stmt> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Stmt> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_stmts(visitor, self)
@@ -5353,7 +5339,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Hashbang> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TemplateElement> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TemplateElement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_template_elements(visitor, self)
@@ -5366,7 +5352,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TemplateEleme
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Expr> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Expr> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_exprs(visitor, self)
@@ -5379,7 +5365,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Expr> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Decorator> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Decorator> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_decorators(visitor, self)
@@ -5418,7 +5404,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BindingPattern> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<BindingPattern>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Option<BindingPattern>> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_opt_vec_binding_patterns(visitor, self)
@@ -5444,7 +5430,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BindingRestElement> 
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<BindingProperty> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<BindingProperty> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_binding_propertys(visitor, self)
@@ -5457,7 +5443,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<BindingProper
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<VariableDeclarator> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<VariableDeclarator> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_variable_declarators(visitor, self)
@@ -5496,7 +5482,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Stmt> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<SwitchCase> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<SwitchCase> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_switch_cases(visitor, self)
@@ -5600,7 +5586,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeParameterInsta
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsClassImplements> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsClassImplements> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_class_implementss(visitor, self)
@@ -5613,7 +5599,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsClassImplem
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ClassElement> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<ClassElement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_class_elements(visitor, self)
@@ -5626,7 +5612,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ClassElement>
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<FormalParameterItem> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<FormalParameterItem> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_formal_parameter_items(visitor, self)
@@ -5652,7 +5638,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Argument> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<Argument>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Option<Argument>> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_opt_vec_arguments(visitor, self)
@@ -5665,7 +5651,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<Argume
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ObjectPropertyKind> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<ObjectPropertyKind> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_object_property_kinds(visitor, self)
@@ -5678,7 +5664,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ObjectPropert
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Argument> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Argument> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_arguments(visitor, self)
@@ -5691,7 +5677,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Argument> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ImportDeclarationSpecifier> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<ImportDeclarationSpecifier> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_import_declaration_specifiers(visitor, self)
@@ -5704,7 +5690,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ImportDeclara
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ImportAttribute> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<ImportAttribute> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_import_attributes(visitor, self)
@@ -5730,7 +5716,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Decl> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ExportSpecifier> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<ExportSpecifier> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_export_specifiers(visitor, self)
@@ -5795,7 +5781,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsType> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTypeParameter> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsTypeParameter> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_type_parameters(visitor, self)
@@ -5808,7 +5794,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTypeParamet
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsType> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsType> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_types(visitor, self)
@@ -5821,7 +5807,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsType> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTupleElement> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsTupleElement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_tuple_elements(visitor, self)
@@ -5834,7 +5820,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTupleElemen
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTypeElement> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsTypeElement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_type_elements(visitor, self)
@@ -5847,7 +5833,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTypeElement
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<BindingIdentifier> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<BindingIdentifier> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_binding_identifiers(visitor, self)
@@ -5860,7 +5846,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<BindingIdenti
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsInterfaceHeritage> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsInterfaceHeritage> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_interface_heritages(visitor, self)
@@ -5873,7 +5859,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsInterfaceHe
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsEnumMember> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<TsEnumMember> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_ts_enum_members(visitor, self)
@@ -5899,7 +5885,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsModuleBody> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JsxChild> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<JsxChild> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_childs(visitor, self)
@@ -5925,7 +5911,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JsxClosingElement> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JsxAttributeItem> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<JsxAttributeItem> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_attribute_items(visitor, self)
@@ -7061,15 +7047,12 @@ pub trait VisitMut<'a> {
         <JsxSpreadChild as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_directives(
-        &mut self,
-        node: TypedSubRange<Directive>,
-    ) -> Option<TypedSubRange<Directive>> {
-        <TypedSubRange<Directive> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_directives(&mut self, node: SubRange<Directive>) -> Option<SubRange<Directive>> {
+        <SubRange<Directive> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_stmts(&mut self, node: TypedSubRange<Stmt>) -> Option<TypedSubRange<Stmt>> {
-        <TypedSubRange<Stmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_stmts(&mut self, node: SubRange<Stmt>) -> Option<SubRange<Stmt>> {
+        <SubRange<Stmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_hashbang(&mut self, node: Option<Hashbang>) -> Option<Option<Hashbang>> {
@@ -7078,22 +7061,17 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_template_elements(
         &mut self,
-        node: TypedSubRange<TemplateElement>,
-    ) -> Option<TypedSubRange<TemplateElement>> {
-        <TypedSubRange<TemplateElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<TemplateElement>,
+    ) -> Option<SubRange<TemplateElement>> {
+        <SubRange<TemplateElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_exprs(&mut self, node: TypedSubRange<Expr>) -> Option<TypedSubRange<Expr>> {
-        <TypedSubRange<Expr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_exprs(&mut self, node: SubRange<Expr>) -> Option<SubRange<Expr>> {
+        <SubRange<Expr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_decorators(
-        &mut self,
-        node: TypedSubRange<Decorator>,
-    ) -> Option<TypedSubRange<Decorator>> {
-        <TypedSubRange<Decorator> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_decorators(&mut self, node: SubRange<Decorator>) -> Option<SubRange<Decorator>> {
+        <SubRange<Decorator> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_ts_type_annotation(
@@ -7112,9 +7090,9 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_opt_vec_binding_patterns(
         &mut self,
-        node: TypedSubRange<Option<BindingPattern>>,
-    ) -> Option<TypedSubRange<Option<BindingPattern>>> {
-        <TypedSubRange<Option<BindingPattern>> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+        node: SubRange<Option<BindingPattern>>,
+    ) -> Option<SubRange<Option<BindingPattern>>> {
+        <SubRange<Option<BindingPattern>> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         )
     }
@@ -7128,18 +7106,16 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_binding_propertys(
         &mut self,
-        node: TypedSubRange<BindingProperty>,
-    ) -> Option<TypedSubRange<BindingProperty>> {
-        <TypedSubRange<BindingProperty> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<BindingProperty>,
+    ) -> Option<SubRange<BindingProperty>> {
+        <SubRange<BindingProperty> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_variable_declarators(
         &mut self,
-        node: TypedSubRange<VariableDeclarator>,
-    ) -> Option<TypedSubRange<VariableDeclarator>> {
-        <TypedSubRange<VariableDeclarator> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+        node: SubRange<VariableDeclarator>,
+    ) -> Option<SubRange<VariableDeclarator>> {
+        <SubRange<VariableDeclarator> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         )
     }
@@ -7154,9 +7130,9 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_switch_cases(
         &mut self,
-        node: TypedSubRange<SwitchCase>,
-    ) -> Option<TypedSubRange<SwitchCase>> {
-        <TypedSubRange<SwitchCase> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+        node: SubRange<SwitchCase>,
+    ) -> Option<SubRange<SwitchCase>> {
+        <SubRange<SwitchCase> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_for_statement_init(
@@ -7214,25 +7190,23 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_ts_class_implementss(
         &mut self,
-        node: TypedSubRange<TsClassImplements>,
-    ) -> Option<TypedSubRange<TsClassImplements>> {
-        <TypedSubRange<TsClassImplements> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<TsClassImplements>,
+    ) -> Option<SubRange<TsClassImplements>> {
+        <SubRange<TsClassImplements> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_class_elements(
         &mut self,
-        node: TypedSubRange<ClassElement>,
-    ) -> Option<TypedSubRange<ClassElement>> {
-        <TypedSubRange<ClassElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+        node: SubRange<ClassElement>,
+    ) -> Option<SubRange<ClassElement>> {
+        <SubRange<ClassElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_formal_parameter_items(
         &mut self,
-        node: TypedSubRange<FormalParameterItem>,
-    ) -> Option<TypedSubRange<FormalParameterItem>> {
-        <TypedSubRange<FormalParameterItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+        node: SubRange<FormalParameterItem>,
+    ) -> Option<SubRange<FormalParameterItem>> {
+        <SubRange<FormalParameterItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         )
     }
@@ -7243,45 +7217,38 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_opt_vec_arguments(
         &mut self,
-        node: TypedSubRange<Option<Argument>>,
-    ) -> Option<TypedSubRange<Option<Argument>>> {
-        <TypedSubRange<Option<Argument>> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<Option<Argument>>,
+    ) -> Option<SubRange<Option<Argument>>> {
+        <SubRange<Option<Argument>> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_object_property_kinds(
         &mut self,
-        node: TypedSubRange<ObjectPropertyKind>,
-    ) -> Option<TypedSubRange<ObjectPropertyKind>> {
-        <TypedSubRange<ObjectPropertyKind> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+        node: SubRange<ObjectPropertyKind>,
+    ) -> Option<SubRange<ObjectPropertyKind>> {
+        <SubRange<ObjectPropertyKind> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         )
     }
     #[inline]
-    fn visit_mut_arguments(
-        &mut self,
-        node: TypedSubRange<Argument>,
-    ) -> Option<TypedSubRange<Argument>> {
-        <TypedSubRange<Argument> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_arguments(&mut self, node: SubRange<Argument>) -> Option<SubRange<Argument>> {
+        <SubRange<Argument> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_import_declaration_specifiers(
         &mut self,
-        node: TypedSubRange<ImportDeclarationSpecifier>,
-    ) -> Option<TypedSubRange<ImportDeclarationSpecifier>> {
-        <TypedSubRange<
-            ImportDeclarationSpecifier,
-        > as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+        node: SubRange<ImportDeclarationSpecifier>,
+    ) -> Option<SubRange<ImportDeclarationSpecifier>> {
+        <SubRange<ImportDeclarationSpecifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
     }
     #[inline]
     fn visit_mut_import_attributes(
         &mut self,
-        node: TypedSubRange<ImportAttribute>,
-    ) -> Option<TypedSubRange<ImportAttribute>> {
-        <TypedSubRange<ImportAttribute> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<ImportAttribute>,
+    ) -> Option<SubRange<ImportAttribute>> {
+        <SubRange<ImportAttribute> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_decl(&mut self, node: Option<Decl>) -> Option<Option<Decl>> {
@@ -7290,11 +7257,9 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_export_specifiers(
         &mut self,
-        node: TypedSubRange<ExportSpecifier>,
-    ) -> Option<TypedSubRange<ExportSpecifier>> {
-        <TypedSubRange<ExportSpecifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<ExportSpecifier>,
+    ) -> Option<SubRange<ExportSpecifier>> {
+        <SubRange<ExportSpecifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_string_literal(
@@ -7326,58 +7291,50 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_ts_type_parameters(
         &mut self,
-        node: TypedSubRange<TsTypeParameter>,
-    ) -> Option<TypedSubRange<TsTypeParameter>> {
-        <TypedSubRange<TsTypeParameter> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<TsTypeParameter>,
+    ) -> Option<SubRange<TsTypeParameter>> {
+        <SubRange<TsTypeParameter> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_ts_types(&mut self, node: TypedSubRange<TsType>) -> Option<TypedSubRange<TsType>> {
-        <TypedSubRange<TsType> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_types(&mut self, node: SubRange<TsType>) -> Option<SubRange<TsType>> {
+        <SubRange<TsType> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_ts_tuple_elements(
         &mut self,
-        node: TypedSubRange<TsTupleElement>,
-    ) -> Option<TypedSubRange<TsTupleElement>> {
-        <TypedSubRange<TsTupleElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<TsTupleElement>,
+    ) -> Option<SubRange<TsTupleElement>> {
+        <SubRange<TsTupleElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_ts_type_elements(
         &mut self,
-        node: TypedSubRange<TsTypeElement>,
-    ) -> Option<TypedSubRange<TsTypeElement>> {
-        <TypedSubRange<TsTypeElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<TsTypeElement>,
+    ) -> Option<SubRange<TsTypeElement>> {
+        <SubRange<TsTypeElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_binding_identifiers(
         &mut self,
-        node: TypedSubRange<BindingIdentifier>,
-    ) -> Option<TypedSubRange<BindingIdentifier>> {
-        <TypedSubRange<BindingIdentifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<BindingIdentifier>,
+    ) -> Option<SubRange<BindingIdentifier>> {
+        <SubRange<BindingIdentifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_ts_interface_heritages(
         &mut self,
-        node: TypedSubRange<TsInterfaceHeritage>,
-    ) -> Option<TypedSubRange<TsInterfaceHeritage>> {
-        <TypedSubRange<TsInterfaceHeritage> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+        node: SubRange<TsInterfaceHeritage>,
+    ) -> Option<SubRange<TsInterfaceHeritage>> {
+        <SubRange<TsInterfaceHeritage> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         )
     }
     #[inline]
     fn visit_mut_ts_enum_members(
         &mut self,
-        node: TypedSubRange<TsEnumMember>,
-    ) -> Option<TypedSubRange<TsEnumMember>> {
-        <TypedSubRange<TsEnumMember> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+        node: SubRange<TsEnumMember>,
+    ) -> Option<SubRange<TsEnumMember>> {
+        <SubRange<TsEnumMember> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_ts_module_body(
@@ -7387,11 +7344,8 @@ pub trait VisitMut<'a> {
         <Option<TsModuleBody> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_childs(
-        &mut self,
-        node: TypedSubRange<JsxChild>,
-    ) -> Option<TypedSubRange<JsxChild>> {
-        <TypedSubRange<JsxChild> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_jsx_childs(&mut self, node: SubRange<JsxChild>) -> Option<SubRange<JsxChild>> {
+        <SubRange<JsxChild> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_jsx_closing_element(
@@ -7403,11 +7357,9 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_jsx_attribute_items(
         &mut self,
-        node: TypedSubRange<JsxAttributeItem>,
-    ) -> Option<TypedSubRange<JsxAttributeItem>> {
-        <TypedSubRange<JsxAttributeItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        )
+        node: SubRange<JsxAttributeItem>,
+    ) -> Option<SubRange<JsxAttributeItem>> {
+        <SubRange<JsxAttributeItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_jsx_attribute_value(
@@ -7431,13 +7383,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Program {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.directives(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_directives(visitor.ast(), field_value);
         }
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -8627,16 +8579,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TemplateLiteral {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.quasis(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TemplateElement> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TemplateElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_quasis(visitor.ast(), field_value);
         }
         let field_value = self.expressions(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_expressions(visitor.ast(), field_value);
         }
@@ -8682,7 +8631,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingIdentifier {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -8724,7 +8673,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentPattern {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -8758,7 +8707,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingRestElement {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -8786,13 +8735,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayPattern {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
         let field_value = self.elements(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Option<BindingPattern>> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<Option<BindingPattern>> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -8826,16 +8775,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPattern {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
         let field_value = self.properties(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<BindingProperty> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<BindingProperty> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_properties(visitor.ast(), field_value);
         }
@@ -9014,7 +8960,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VariableDeclaration {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.declarators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<VariableDeclarator> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<VariableDeclarator> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -9089,7 +9035,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SwitchStatement {
         }
         let field_value = self.cases(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<SwitchCase> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<SwitchCase> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_cases(visitor.ast(), field_value);
         }
@@ -9111,7 +9057,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SwitchCase {
         }
         let field_value = self.consequent(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_consequent(visitor.ast(), field_value);
         }
@@ -9421,7 +9367,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Class {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -9457,7 +9403,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Class {
         }
         let field_value = self.implements(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsClassImplements> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<TsClassImplements> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -9482,10 +9428,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassBody {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<ClassElement> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<ClassElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -9501,7 +9444,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MethodDefinition {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -9529,7 +9472,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyDefinition {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -9563,7 +9506,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StaticBlock {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -9622,13 +9565,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FunctionBody {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.directives(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_directives(visitor.ast(), field_value);
         }
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -9644,7 +9587,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStatement {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -9726,7 +9669,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameters {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.items(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<FormalParameterItem> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<FormalParameterItem> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -9770,7 +9713,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayExpression {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.elements(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Option<Argument>> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<Option<Argument>> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -9789,7 +9732,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectExpression {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.properties(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<ObjectPropertyKind> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<ObjectPropertyKind> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -9899,7 +9842,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SequenceExpression {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.expressions(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_expressions(visitor.ast(), field_value);
         }
@@ -9952,7 +9895,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CallExpression {
         }
         let field_value = self.arguments(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Argument> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Argument> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_arguments(visitor.ast(), field_value);
         }
@@ -10030,7 +9973,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NewExpression {
         }
         let field_value = self.arguments(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Argument> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Argument> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_arguments(visitor.ast(), field_value);
         }
@@ -10121,10 +10064,11 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDeclaration {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.specifiers(visitor.ast());
-        if let Some(field_value) = <TypedSubRange<ImportDeclarationSpecifier> as VisitMutWith<
-            'a,
-            V,
-        >>::visit_mut_with(field_value, visitor)
+        if let Some(field_value) =
+            <SubRange<ImportDeclarationSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(
+                field_value,
+                visitor,
+            )
         {
             self.set_specifiers(visitor.ast(), field_value);
         }
@@ -10136,10 +10080,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDeclaration {
         }
         let field_value = self.attributes(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_attributes(visitor.ast(), field_value);
         }
@@ -10237,10 +10178,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportNamedDeclaratio
         }
         let field_value = self.specifiers(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<ExportSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<ExportSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_specifiers(visitor.ast(), field_value);
         }
@@ -10252,10 +10190,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportNamedDeclaratio
         }
         let field_value = self.attributes(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_attributes(visitor.ast(), field_value);
         }
@@ -10302,10 +10237,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportAllDeclaration 
         }
         let field_value = self.attributes(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_attributes(visitor.ast(), field_value);
         }
@@ -11015,7 +10947,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsMethodDefinition {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -11339,10 +11271,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeParameterDeclar
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.params(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsTypeParameter> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TsTypeParameter> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_params(visitor.ast(), field_value);
         }
@@ -11358,7 +11287,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeParameterInstan
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.params(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_params(visitor.ast(), field_value);
         }
@@ -11390,16 +11319,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTemplateLiteralType
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.quasis(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TemplateElement> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TemplateElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_quasis(visitor.ast(), field_value);
         }
         let field_value = self.types(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_types(visitor.ast(), field_value);
         }
@@ -11453,10 +11379,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTupleType {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.element_types(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsTupleElement> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TsTupleElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_element_types(visitor.ast(), field_value);
         }
@@ -11568,7 +11491,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsUnionType {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.types(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_types(visitor.ast(), field_value);
         }
@@ -11584,7 +11507,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsIntersectionType {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.types(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_types(visitor.ast(), field_value);
         }
@@ -11766,10 +11689,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeLiteral {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.members(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsTypeElement> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TsTypeElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_members(visitor.ast(), field_value);
         }
@@ -11940,7 +11860,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsIndexSignature {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.parameters(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -12011,7 +11931,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInterfaceDeclaratio
         }
         let field_value = self.extends(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsInterfaceHeritage> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<TsInterfaceHeritage> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -12036,10 +11956,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInterfaceBody {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsTypeElement> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TsTypeElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -12127,10 +12044,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumBody {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.members(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<TsEnumMember> as VisitMutWith<'a, V>>::visit_mut_with(
-                field_value,
-                visitor,
-            )
+            <SubRange<TsEnumMember> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_members(visitor.ast(), field_value);
         }
@@ -12190,13 +12104,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleBlock {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.directives(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_directives(visitor.ast(), field_value);
         }
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_body(visitor.ast(), field_value);
         }
@@ -12234,7 +12148,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsParameterProperty {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.decorators(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_decorators(visitor.ast(), field_value);
         }
@@ -12683,7 +12597,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxElement {
         }
         let field_value = self.children(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<JsxChild> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<JsxChild> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_children(visitor.ast(), field_value);
         }
@@ -12720,7 +12634,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxOpeningElement {
         }
         let field_value = self.attributes(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<JsxAttributeItem> as VisitMutWith<'a, V>>::visit_mut_with(
+            <SubRange<JsxAttributeItem> as VisitMutWith<'a, V>>::visit_mut_with(
                 field_value,
                 visitor,
             )
@@ -12761,7 +12675,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxFragment {
         }
         let field_value = self.children(visitor.ast());
         if let Some(field_value) =
-            <TypedSubRange<JsxChild> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <SubRange<JsxChild> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_children(visitor.ast(), field_value);
         }
@@ -12938,7 +12852,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxSpreadChild {
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Directive> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Directive> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_directives(visitor, self)
@@ -12954,7 +12868,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Directi
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Stmt> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Stmt> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_stmts(visitor, self)
@@ -12980,7 +12894,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Hashbang> {
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TemplateElement> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TemplateElement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_template_elements(visitor, self)
@@ -12996,7 +12910,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Templat
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Expr> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Expr> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_exprs(visitor, self)
@@ -13012,7 +12926,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Expr> {
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Decorator> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Decorator> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_decorators(visitor, self)
@@ -13048,7 +12962,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BindingPattern
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<BindingPattern>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Option<BindingPattern>> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_opt_vec_binding_patterns(visitor, self)
@@ -13074,7 +12988,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BindingRestEle
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<BindingProperty> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<BindingProperty> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_binding_propertys(visitor, self)
@@ -13090,7 +13004,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Binding
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<VariableDeclarator> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<VariableDeclarator> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_variable_declarators(visitor, self)
@@ -13126,7 +13040,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Stmt> {
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<SwitchCase> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<SwitchCase> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_switch_cases(visitor, self)
@@ -13212,7 +13126,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeParamete
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsClassImplements> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsClassImplements> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_class_implementss(visitor, self)
@@ -13228,7 +13142,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsClass
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ClassElement> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<ClassElement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_class_elements(visitor, self)
@@ -13244,7 +13158,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ClassEl
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<FormalParameterItem> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<FormalParameterItem> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_formal_parameter_items(visitor, self)
@@ -13270,7 +13184,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Argument> {
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<Argument>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Option<Argument>> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_opt_vec_arguments(visitor, self)
@@ -13286,7 +13200,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ObjectPropertyKind> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<ObjectPropertyKind> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_object_property_kinds(visitor, self)
@@ -13302,7 +13216,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ObjectP
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Argument> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Argument> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_arguments(visitor, self)
@@ -13318,9 +13232,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Argumen
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V>
-    for TypedSubRange<ImportDeclarationSpecifier>
-{
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<ImportDeclarationSpecifier> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_import_declaration_specifiers(visitor, self)
@@ -13336,7 +13248,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V>
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ImportAttribute> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<ImportAttribute> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_import_attributes(visitor, self)
@@ -13362,7 +13274,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Decl> {
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ExportSpecifier> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<ExportSpecifier> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_export_specifiers(visitor, self)
@@ -13418,7 +13330,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsType> {
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTypeParameter> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsTypeParameter> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_type_parameters(visitor, self)
@@ -13434,7 +13346,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTypeP
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsType> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsType> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_types(visitor, self)
@@ -13450,7 +13362,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsType>
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTupleElement> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsTupleElement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_tuple_elements(visitor, self)
@@ -13466,7 +13378,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTuple
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTypeElement> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsTypeElement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_type_elements(visitor, self)
@@ -13482,7 +13394,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTypeE
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<BindingIdentifier> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<BindingIdentifier> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_binding_identifiers(visitor, self)
@@ -13498,7 +13410,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Binding
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsInterfaceHeritage> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsInterfaceHeritage> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_interface_heritages(visitor, self)
@@ -13514,7 +13426,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsInter
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsEnumMember> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<TsEnumMember> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_ts_enum_members(visitor, self)
@@ -13540,7 +13452,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsModuleBody> 
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JsxChild> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<JsxChild> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_jsx_childs(visitor, self)
@@ -13566,7 +13478,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JsxClosingElem
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JsxAttributeItem> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<JsxAttributeItem> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_jsx_attribute_items(visitor, self)
@@ -21469,7 +21381,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxSpreadChild {
         walk_jsx_spread_child(self, traverser, ctx)
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Directive> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Directive> {
     type Node = <Directive as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21490,7 +21402,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Directive> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Stmt> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Stmt> {
     type Node = <Stmt as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21525,7 +21437,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<Hashbang> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TemplateElement> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TemplateElement> {
     type Node = <TemplateElement as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21547,7 +21459,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TemplateElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Expr> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Expr> {
     type Node = <Expr as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21568,7 +21480,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Expr> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Decorator> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Decorator> {
     type Node = <Decorator as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21619,7 +21531,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<BindingPattern> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Option<BindingPattern>> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Option<BindingPattern>> {
     type Node = <Option<BindingPattern> as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21658,7 +21570,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<BindingRestElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<BindingProperty> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<BindingProperty> {
     type Node = <BindingProperty as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21680,7 +21592,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<BindingProperty> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<VariableDeclarator> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<VariableDeclarator> {
     type Node = <VariableDeclarator as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21731,7 +21643,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<Stmt> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<SwitchCase> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<SwitchCase> {
     type Node = <SwitchCase as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21858,7 +21770,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsTypeParameterInstantiation>
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsClassImplements> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsClassImplements> {
     type Node = <TsClassImplements as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21881,7 +21793,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsClassImplements> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ClassElement> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<ClassElement> {
     type Node = <ClassElement as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21902,7 +21814,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ClassElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<FormalParameterItem> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<FormalParameterItem> {
     type Node = <FormalParameterItem as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21939,7 +21851,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<Argument> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Option<Argument>> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Option<Argument>> {
     type Node = <Option<Argument> as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21962,7 +21874,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Option<Argument>> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ObjectPropertyKind> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<ObjectPropertyKind> {
     type Node = <ObjectPropertyKind as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -21985,7 +21897,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ObjectPropertyKind> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Argument> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<Argument> {
     type Node = <Argument as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22006,7 +21918,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Argument> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ImportDeclarationSpecifier> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<ImportDeclarationSpecifier> {
     type Node = <ImportDeclarationSpecifier as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22029,7 +21941,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ImportDeclarationSpeci
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ImportAttribute> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<ImportAttribute> {
     type Node = <ImportAttribute as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22065,7 +21977,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<Decl> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ExportSpecifier> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<ExportSpecifier> {
     type Node = <ExportSpecifier as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22147,7 +22059,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsType> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsTypeParameter> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsTypeParameter> {
     type Node = <TsTypeParameter as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22169,7 +22081,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsTypeParameter> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsType> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsType> {
     type Node = <TsType as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22190,7 +22102,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsType> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsTupleElement> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsTupleElement> {
     type Node = <TsTupleElement as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22212,7 +22124,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsTupleElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsTypeElement> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsTypeElement> {
     type Node = <TsTypeElement as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22233,7 +22145,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsTypeElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<BindingIdentifier> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<BindingIdentifier> {
     type Node = <BindingIdentifier as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22256,7 +22168,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<BindingIdentifier> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsInterfaceHeritage> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsInterfaceHeritage> {
     type Node = <TsInterfaceHeritage as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22279,7 +22191,7 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsInterfaceHeritage> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<TsEnumMember> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<TsEnumMember> {
     type Node = <TsEnumMember as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22314,7 +22226,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsModuleBody> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<JsxChild> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<JsxChild> {
     type Node = <JsxChild as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22351,7 +22263,7 @@ impl<'a, State> TraverseWith<'a, State> for Option<JsxClosingElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<JsxAttributeItem> {
+impl<'a, State> TraverseWith<'a, State> for SubRange<JsxAttributeItem> {
     type Node = <JsxAttributeItem as TraverseWith<'a, State>>::Node;
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -22419,9 +22331,8 @@ fn walk_program<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.directives(ctx.ast);
-        match <TypedSubRange<Directive> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Directive> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -22431,8 +22342,7 @@ fn walk_program<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.body(ctx.ast);
-        match <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -22787,7 +22697,7 @@ fn walk_template_literal<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.quasis(ctx.ast);
-        match <TypedSubRange<TemplateElement> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TemplateElement> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -22799,8 +22709,7 @@ fn walk_template_literal<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.expressions(ctx.ast);
-        match <TypedSubRange<Expr> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Expr> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -22960,9 +22869,8 @@ fn walk_binding_identifier<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -23097,9 +23005,8 @@ fn walk_assignment_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -23180,9 +23087,8 @@ fn walk_binding_rest_element<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -23253,9 +23159,8 @@ fn walk_array_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -23265,7 +23170,7 @@ fn walk_array_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.elements(ctx.ast);
-        match <TypedSubRange<Option<BindingPattern>> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<Option<BindingPattern>> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -23340,9 +23245,8 @@ fn walk_object_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -23352,7 +23256,7 @@ fn walk_object_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.properties(ctx.ast);
-        match <TypedSubRange<BindingProperty> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<BindingProperty> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -23832,7 +23736,7 @@ fn walk_variable_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.declarators(ctx.ast);
-        match <TypedSubRange<VariableDeclarator> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<VariableDeclarator> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -24021,7 +23925,7 @@ fn walk_switch_statement<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.cases(ctx.ast);
-        match <TypedSubRange<SwitchCase> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<SwitchCase> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -24082,8 +23986,7 @@ fn walk_switch_case<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.consequent(ctx.ast);
-        match <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -24964,9 +24867,8 @@ fn walk_class<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25022,7 +24924,7 @@ fn walk_class<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.implements(ctx.ast);
-        match <TypedSubRange<TsClassImplements> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsClassImplements> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -25083,7 +24985,7 @@ fn walk_class_body<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.body(ctx.ast);
-        match <TypedSubRange<ClassElement> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ClassElement> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -25134,9 +25036,8 @@ fn walk_method_definition<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25205,9 +25106,8 @@ fn walk_property_definition<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25288,8 +25188,7 @@ fn walk_static_block<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.body(ctx.ast);
-        match <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25433,9 +25332,8 @@ fn walk_function_body<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.directives(ctx.ast);
-        match <TypedSubRange<Directive> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Directive> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25445,8 +25343,7 @@ fn walk_function_body<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.body(ctx.ast);
-        match <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25495,8 +25392,7 @@ fn walk_block_statement<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.body(ctx.ast);
-        match <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -25722,7 +25618,7 @@ fn walk_formal_parameters<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.items(ctx.ast);
-        match <TypedSubRange<FormalParameterItem> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<FormalParameterItem> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -25836,7 +25732,7 @@ fn walk_array_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.elements(ctx.ast);
-        match <TypedSubRange<Option<Argument>> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<Option<Argument>> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -25887,7 +25783,7 @@ fn walk_object_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.properties(ctx.ast);
-        match <TypedSubRange<ObjectPropertyKind> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ObjectPropertyKind> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -26178,8 +26074,7 @@ fn walk_sequence_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.expressions(ctx.ast);
-        match <TypedSubRange<Expr> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Expr> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -26309,9 +26204,8 @@ fn walk_call_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.arguments(ctx.ast);
-        match <TypedSubRange<Argument> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Argument> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -26502,9 +26396,8 @@ fn walk_new_expression<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.arguments(ctx.ast);
-        match <TypedSubRange<Argument> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Argument> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -26769,7 +26662,7 @@ fn walk_import_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.specifiers(ctx.ast);
-        match <TypedSubRange<ImportDeclarationSpecifier> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ImportDeclarationSpecifier> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -26791,7 +26684,7 @@ fn walk_import_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.attributes(ctx.ast);
-        match <TypedSubRange<ImportAttribute> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ImportAttribute> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -27068,7 +26961,7 @@ fn walk_export_named_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.specifiers(ctx.ast);
-        match <TypedSubRange<ExportSpecifier> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ExportSpecifier> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -27092,7 +26985,7 @@ fn walk_export_named_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.attributes(ctx.ast);
-        match <TypedSubRange<ImportAttribute> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ImportAttribute> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -27216,7 +27109,7 @@ fn walk_export_all_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.attributes(ctx.ast);
-        match <TypedSubRange<ImportAttribute> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<ImportAttribute> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -27448,9 +27341,8 @@ fn walk_ts_method_definition<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -28421,7 +28313,7 @@ fn walk_ts_type_parameter_declaration<'a, State, T: ?Sized + Traverse<'a, State>
     }
     let children_stopped = 'traverse_children: {
         let child = node.params(ctx.ast);
-        match <TypedSubRange<TsTypeParameter> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsTypeParameter> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -28472,9 +28364,7 @@ fn walk_ts_type_parameter_instantiation<'a, State, T: ?Sized + Traverse<'a, Stat
     }
     let children_stopped = 'traverse_children: {
         let child = node.params(ctx.ast);
-        match <TypedSubRange<TsType> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<TsType> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -28572,7 +28462,7 @@ fn walk_ts_template_literal_type<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.quasis(ctx.ast);
-        match <TypedSubRange<TemplateElement> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TemplateElement> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -28584,9 +28474,7 @@ fn walk_ts_template_literal_type<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.types(ctx.ast);
-        match <TypedSubRange<TsType> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<TsType> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -28743,7 +28631,7 @@ fn walk_ts_tuple_type<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.element_types(ctx.ast);
-        match <TypedSubRange<TsTupleElement> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsTupleElement> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -29086,9 +28974,7 @@ fn walk_ts_union_type<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.types(ctx.ast);
-        match <TypedSubRange<TsType> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<TsType> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -29137,9 +29023,7 @@ fn walk_ts_intersection_type<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.types(ctx.ast);
-        match <TypedSubRange<TsType> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<TsType> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -29618,7 +29502,7 @@ fn walk_ts_type_literal<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.members(ctx.ast);
-        match <TypedSubRange<TsTypeElement> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsTypeElement> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -30038,7 +29922,7 @@ fn walk_ts_index_signature<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.parameters(ctx.ast);
-        match <TypedSubRange<BindingIdentifier> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<BindingIdentifier> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -30192,7 +30076,7 @@ fn walk_ts_interface_declaration<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.extends(ctx.ast);
-        match <TypedSubRange<TsInterfaceHeritage> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsInterfaceHeritage> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -30253,7 +30137,7 @@ fn walk_ts_interface_body<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.body(ctx.ast);
-        match <TypedSubRange<TsTypeElement> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsTypeElement> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -30485,7 +30369,7 @@ fn walk_ts_enum_body<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.members(ctx.ast);
-        match <TypedSubRange<TsEnumMember> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<TsEnumMember> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -30656,9 +30540,8 @@ fn walk_ts_module_block<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.directives(ctx.ast);
-        match <TypedSubRange<Directive> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Directive> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -30668,8 +30551,7 @@ fn walk_ts_module_block<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.body(ctx.ast);
-        match <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-        {
+        match <SubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx) {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -30777,9 +30659,8 @@ fn walk_ts_parameter_property<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     let children_stopped = 'traverse_children: {
         let child = node.decorators(ctx.ast);
-        match <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -31392,9 +31273,8 @@ fn walk_jsx_element<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.children(ctx.ast);
-        match <TypedSubRange<JsxChild> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<JsxChild> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }
@@ -31477,7 +31357,7 @@ fn walk_jsx_opening_element<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.attributes(ctx.ast);
-        match <TypedSubRange<JsxAttributeItem> as TraverseWith<'a, State>>::traverse_with(
+        match <SubRange<JsxAttributeItem> as TraverseWith<'a, State>>::traverse_with(
             child, traverser, ctx,
         ) {
             TraverseAction::Stop => {
@@ -31588,9 +31468,8 @@ fn walk_jsx_fragment<'a, State, T: ?Sized + Traverse<'a, State>>(
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }
         let child = node.children(ctx.ast);
-        match <TypedSubRange<JsxChild> as TraverseWith<'a, State>>::traverse_with(
-            child, traverser, ctx,
-        ) {
+        match <SubRange<JsxChild> as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+        {
             TraverseAction::Stop => {
                 break 'traverse_children true;
             }

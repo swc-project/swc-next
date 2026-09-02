@@ -13,7 +13,7 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstType, AstTypedSubRange, Schema, TypeId,
+    AstStructField, AstSubRange, AstType, Schema, TypeId,
 };
 
 struct Parser {
@@ -130,7 +130,7 @@ impl Parser {
         match &mut item {
             AstType::Struct(ast) => ast.type_id = type_id,
             AstType::Enum(ast) => ast.type_id = type_id,
-            AstType::TypedSubRange(ast) => ast.type_id = type_id,
+            AstType::SubRange(ast) => ast.type_id = type_id,
             AstType::Option(ast) => ast.type_id = type_id,
             AstType::Primitive(ast) => ast.type_id = type_id,
         }
@@ -142,7 +142,7 @@ impl Parser {
         type_id
     }
 
-    /// Get type id of the simple type which is not wrapped by `Option` or `TypedSubRange`
+    /// Get type id of the simple type which is not wrapped by `Option` or `SubRange`
     fn simple_type_id(&mut self, name: &str) -> TypeId {
         if let Some(type_id) = self.type_names.get_index_of(name) {
             return TypeId::from_usize(type_id);
@@ -374,7 +374,7 @@ impl Parser {
 
         let inner_type_id = self.parse_type_name(ty_arg)?;
         let type_id = match wrapper_name {
-            "TypedSubRange" => {
+            "SubRange" => {
                 let name = format!(
                     "{}<{}>",
                     wrapper_name,
@@ -384,7 +384,7 @@ impl Parser {
                     return Some(TypeId::from(type_id));
                 }
 
-                let ast_type = AstType::TypedSubRange(AstTypedSubRange {
+                let ast_type = AstType::SubRange(AstSubRange {
                     type_id: TypeId::DUMMY,
                     name,
                     inner_type_id,
@@ -529,4 +529,28 @@ fn validate_invalidation_cycles(
         validate_invalidation_cycles(ast, fields, target_index, states);
     }
     states[field_index] = 2;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collection_types_are_not_translated() {
+        let mut parser = Parser {
+            type_names: IndexSet::from(["Stmt".to_string()]),
+            extra_types: IndexVec::new(),
+        };
+
+        let ty = syn::parse_str::<Type>("SubRange<Stmt>").unwrap();
+        let type_id = parser.parse_type_name(&ty).unwrap();
+        let AstType::SubRange(range) = parser.extra_types.first().unwrap() else {
+            panic!("expected SubRange schema type");
+        };
+        assert_eq!(range.type_id, type_id);
+        assert_eq!(range.name, "SubRange<Stmt>");
+
+        let ty = syn::parse_str::<Type>("Vec<Stmt>").unwrap();
+        assert!(parser.parse_type_name(&ty).is_none());
+    }
 }

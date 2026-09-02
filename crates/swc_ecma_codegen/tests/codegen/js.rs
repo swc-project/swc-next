@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind,
-    TypedSubRange,
+    SubRange,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 
@@ -75,8 +75,8 @@ fn numeric_literal_value_invalidates_raw() {
     assert_eq!(literal.raw(&ast), None);
 
     let statement = ast.stmt_expression_statement(DUMMY_SP, expression);
-    let body = ast.add_typed_sub_range([statement]);
-    let program = ast.program(DUMMY_SP, TypedSubRange::empty(), body, None);
+    let body = ast.add_sub_range([statement]);
+    let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
     assert_eq!(
@@ -99,8 +99,8 @@ fn numeric_literal_value_compares_float_bits() {
     assert_eq!(literal.raw(&ast), None);
 
     let statement = ast.stmt_expression_statement(DUMMY_SP, expression);
-    let body = ast.add_typed_sub_range([statement]);
-    let program = ast.program(DUMMY_SP, TypedSubRange::empty(), body, None);
+    let body = ast.add_sub_range([statement]);
+    let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
     assert_eq!(
@@ -176,11 +176,11 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
         computed,
     );
     let property = ObjectPropertyKind::ObjectProperty(property);
-    let properties = ast.add_typed_sub_range([property]);
+    let properties = ast.add_sub_range([property]);
     let expression = ast.expr_object_expression(DUMMY_SP, properties);
     let statement = ast.stmt_expression_statement(DUMMY_SP, expression);
-    let body = ast.add_typed_sub_range([statement]);
-    let program = ast.program(DUMMY_SP, TypedSubRange::empty(), body, None);
+    let body = ast.add_sub_range([statement]);
+    let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
     print(
@@ -221,8 +221,8 @@ fn print_negative_number_contexts(number_format: NumberFormat) -> String {
     );
     let exponent_statement = ast.stmt_expression_statement(DUMMY_SP, exponent);
 
-    let body = ast.add_typed_sub_range([member_statement, exponent_statement]);
-    let program = ast.program(DUMMY_SP, TypedSubRange::empty(), body, None);
+    let body = ast.add_sub_range([member_statement, exponent_statement]);
+    let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
     print(

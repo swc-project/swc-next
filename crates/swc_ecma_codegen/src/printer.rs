@@ -562,11 +562,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn has_direct_argument_comments(
-        &self,
-        args: TypedSubRange<Argument>,
-        close_offset: u32,
-    ) -> bool {
+    fn has_direct_argument_comments(&self, args: SubRange<Argument>, close_offset: u32) -> bool {
         self.comments[self.next_comment..]
             .iter()
             .take_while(|comment| comment.span.end <= close_offset)
@@ -2449,7 +2445,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_arguments(&mut self, args: TypedSubRange<Argument>, close_offset: u32) {
+    fn print_arguments(&mut self, args: SubRange<Argument>, close_offset: u32) {
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         self.print("(");
@@ -3069,7 +3065,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_decorators(&mut self, decorators: TypedSubRange<Decorator>) {
+    fn print_decorators(&mut self, decorators: SubRange<Decorator>) {
         fn need_wrap(ast: &Ast<'_>, mut expression: Expr) -> bool {
             loop {
                 match ast.expr_data(expression) {
@@ -3566,7 +3562,7 @@ impl<'a> Printer<'a> {
         self.print_import_attributes(d.attributes(self.ast), d.span(self.ast));
     }
 
-    fn print_import_attributes(&mut self, attrs: TypedSubRange<ImportAttribute>, span: Span) {
+    fn print_import_attributes(&mut self, attrs: SubRange<ImportAttribute>, span: Span) {
         if attrs.is_empty() {
             return;
         }
@@ -4109,7 +4105,7 @@ impl<'a> Printer<'a> {
 
     fn print_ts_type_list(
         &mut self,
-        types: TypedSubRange<TsType>,
+        types: SubRange<TsType>,
         sep: &str,
         precedence: TsTypePrecedence,
         level: TsTypePrecedence,
@@ -4248,7 +4244,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
-    fn print_ts_type_members(&mut self, m: TypedSubRange<TsTypeElement>) {
+    fn print_ts_type_members(&mut self, m: SubRange<TsTypeElement>) {
         self.print("{");
         if !m.is_empty() {
             self.print_newline();

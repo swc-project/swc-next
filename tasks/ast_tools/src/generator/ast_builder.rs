@@ -210,9 +210,9 @@ fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<Token
         values => (
             quote! {
                 let _extra_data = [#(#values),*];
-                let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+                let _extra_data_start = self.add_extra_data_slice(&_extra_data);
             },
-            Some(quote!(_extra_data_range.start)),
+            Some(quote!(_extra_data_start)),
         ),
     }
 }

@@ -343,7 +343,7 @@ impl<'ast> Resolver<'ast> {
         }
     }
 
-    fn has_use_strict(&self, directives: TypedSubRange<Directive>) -> bool {
+    fn has_use_strict(&self, directives: SubRange<Directive>) -> bool {
         directives.iter().any(|id| {
             let directive = self.ast.get_node_in_sub_range(id);
             self.name(directive.value(self.ast)) == b"use strict"
@@ -392,7 +392,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         program.body(self.ast).visit_with(self);
     }
 
-    fn visit_stmts(&mut self, statements: TypedSubRange<Stmt>) {
+    fn visit_stmts(&mut self, statements: SubRange<Stmt>) {
         {
             let kind = self.decl_kind;
             let mut hoister = Hoister {
@@ -822,7 +822,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
         }
     }
 
-    fn visit_stmts(&mut self, statements: TypedSubRange<Stmt>) {
+    fn visit_stmts(&mut self, statements: SubRange<Stmt>) {
         for id in statements.iter() {
             let statement = self.resolver.ast.get_node_in_sub_range(id);
             if let StmtData::Declaration(declaration) = self.resolver.ast.stmt_data(statement)

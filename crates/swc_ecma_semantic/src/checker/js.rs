@@ -852,7 +852,7 @@ impl<'a> CheckerState<'a> {
 
     fn check_duplicate_with_attributes(
         &mut self,
-        attributes: swc_next_ecma_ast::TypedSubRange<swc_next_ecma_ast::ImportAttribute>,
+        attributes: swc_next_ecma_ast::SubRange<swc_next_ecma_ast::ImportAttribute>,
         context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         for index in 0..attributes.len() {

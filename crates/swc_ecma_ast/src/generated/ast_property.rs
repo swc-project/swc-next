@@ -9,7 +9,7 @@ use crate::*;
 use oxc_index::Idx;
 impl Program {
     #[inline]
-    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Directive> {
+    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -20,7 +20,7 @@ impl Program {
         (raw != u32::MAX).then(|| Hashbang(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -36,11 +36,7 @@ impl Program {
         }
     }
     #[inline]
-    pub fn set_directives<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        directives: TypedSubRange<Directive>,
-    ) {
+    pub fn set_directives<'a>(self, ast: &mut crate::Ast<'a>, directives: SubRange<Directive>) {
         let field_val: u64 = directives.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366841710300949110269842519228415u128)
@@ -54,7 +50,7 @@ impl Program {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2410,24 +2406,24 @@ impl RegExpLiteral {
 }
 impl TemplateLiteral {
     #[inline]
-    pub fn quasis<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TemplateElement> {
+    pub fn quasis<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TemplateElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn expressions<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Expr> {
+    pub fn expressions<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Expr> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_quasis<'a>(self, ast: &mut crate::Ast<'a>, quasis: TypedSubRange<TemplateElement>) {
+    pub fn set_quasis<'a>(self, ast: &mut crate::Ast<'a>, quasis: SubRange<TemplateElement>) {
         let field_val: u64 = quasis.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
-    pub fn set_expressions<'a>(self, ast: &mut crate::Ast<'a>, expressions: TypedSubRange<Expr>) {
+    pub fn set_expressions<'a>(self, ast: &mut crate::Ast<'a>, expressions: SubRange<Expr>) {
         let field_val: u64 = expressions.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 18446744073709551615u128)
@@ -2560,7 +2556,7 @@ impl BindingIdentifier {
         }
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2609,11 +2605,7 @@ impl BindingIdentifier {
         };
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2675,7 +2667,7 @@ impl AssignmentPattern {
         raw != 0
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2732,11 +2724,7 @@ impl AssignmentPattern {
             | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2785,7 +2773,7 @@ impl BindingRestElement {
         raw != 0
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2826,11 +2814,7 @@ impl BindingRestElement {
             | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2864,7 +2848,7 @@ impl ArrayPattern {
         raw != 0
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2880,7 +2864,7 @@ impl ArrayPattern {
         }
     }
     #[inline]
-    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Option<BindingPattern>> {
+    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2921,11 +2905,7 @@ impl ArrayPattern {
             | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2943,7 +2923,7 @@ impl ArrayPattern {
     pub fn set_elements<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        elements: TypedSubRange<Option<BindingPattern>>,
+        elements: SubRange<Option<BindingPattern>>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -2978,7 +2958,7 @@ impl ObjectPattern {
         raw != 0
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -2994,7 +2974,7 @@ impl ObjectPattern {
         }
     }
     #[inline]
-    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<BindingProperty> {
+    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -3035,11 +3015,7 @@ impl ObjectPattern {
             | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -3057,7 +3033,7 @@ impl ObjectPattern {
     pub fn set_properties<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        properties: TypedSubRange<BindingProperty>,
+        properties: SubRange<BindingProperty>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -3359,7 +3335,7 @@ impl VariableDeclaration {
         unsafe { std::mem::transmute::<u8, VariableKind>(raw as u8) }
     }
     #[inline]
-    pub fn declarators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<VariableDeclarator> {
+    pub fn declarators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<VariableDeclarator> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -3379,7 +3355,7 @@ impl VariableDeclaration {
     pub fn set_declarators<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        declarators: TypedSubRange<VariableDeclarator>,
+        declarators: SubRange<VariableDeclarator>,
     ) {
         let field_val: u64 = declarators.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
@@ -3483,7 +3459,7 @@ impl SwitchStatement {
         Expr(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
-    pub fn cases<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<SwitchCase> {
+    pub fn cases<'a>(self, ast: &crate::Ast<'a>) -> SubRange<SwitchCase> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -3495,7 +3471,7 @@ impl SwitchStatement {
             | (((field_val as u128) & 4294967295u128) << 64usize);
     }
     #[inline]
-    pub fn set_cases<'a>(self, ast: &mut crate::Ast<'a>, cases: TypedSubRange<SwitchCase>) {
+    pub fn set_cases<'a>(self, ast: &mut crate::Ast<'a>, cases: SubRange<SwitchCase>) {
         let field_val: u64 = cases.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -3510,7 +3486,7 @@ impl SwitchCase {
         (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn consequent<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+    pub fn consequent<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -3522,7 +3498,7 @@ impl SwitchCase {
             | (((field_val as u128) & 4294967295u128) << 64usize);
     }
     #[inline]
-    pub fn set_consequent<'a>(self, ast: &mut crate::Ast<'a>, consequent: TypedSubRange<Stmt>) {
+    pub fn set_consequent<'a>(self, ast: &mut crate::Ast<'a>, consequent: SubRange<Stmt>) {
         let field_val: u64 = consequent.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -3922,7 +3898,7 @@ impl Class {
         raw != 0
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -3973,7 +3949,7 @@ impl Class {
         }
     }
     #[inline]
-    pub fn implements<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsClassImplements> {
+    pub fn implements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsClassImplements> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -4044,11 +4020,7 @@ impl Class {
             | (((field_val as u128) & 255u128) << 16usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -4100,7 +4072,7 @@ impl Class {
     pub fn set_implements<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        implements: TypedSubRange<TsClassImplements>,
+        implements: SubRange<TsClassImplements>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -4133,12 +4105,12 @@ impl Class {
 }
 impl ClassBody {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ClassElement> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ClassElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<ClassElement>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<ClassElement>) {
         let field_val: u64 = body.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -4188,7 +4160,7 @@ impl MethodDefinition {
         unsafe { std::mem::transmute::<u8, Accessibility>(raw as u8) }
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -4276,11 +4248,7 @@ impl MethodDefinition {
             | (((field_val as u128) & 255u128) << 48usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -4362,7 +4330,7 @@ impl PropertyDefinition {
         unsafe { std::mem::transmute::<u8, Accessibility>(raw as u8) }
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -4496,11 +4464,7 @@ impl PropertyDefinition {
             | (((field_val as u128) & 255u128) << 72usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -4566,12 +4530,12 @@ impl PropertyDefinition {
 }
 impl StaticBlock {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
         let field_val: u64 = body.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -4745,28 +4709,24 @@ impl Function {
 }
 impl FunctionBody {
     #[inline]
-    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Directive> {
+    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_directives<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        directives: TypedSubRange<Directive>,
-    ) {
+    pub fn set_directives<'a>(self, ast: &mut crate::Ast<'a>, directives: SubRange<Directive>) {
         let field_val: u64 = directives.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
         let field_val: u64 = body.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 18446744073709551615u128)
@@ -4775,12 +4735,12 @@ impl FunctionBody {
 }
 impl BlockStatement {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
         let field_val: u64 = body.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -4873,7 +4833,7 @@ impl WithStatement {
 }
 impl FormalParameters {
     #[inline]
-    pub fn items<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<FormalParameterItem> {
+    pub fn items<'a>(self, ast: &crate::Ast<'a>) -> SubRange<FormalParameterItem> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -4889,11 +4849,7 @@ impl FormalParameters {
         unsafe { std::mem::transmute::<u8, FormalParameterKind>(raw as u8) }
     }
     #[inline]
-    pub fn set_items<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        items: TypedSubRange<FormalParameterItem>,
-    ) {
+    pub fn set_items<'a>(self, ast: &mut crate::Ast<'a>, items: SubRange<FormalParameterItem>) {
         let field_val: u64 = items.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -4931,16 +4887,12 @@ impl FormalParameter {
 }
 impl ArrayExpression {
     #[inline]
-    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Option<Argument>> {
+    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<Argument>> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_elements<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        elements: TypedSubRange<Option<Argument>>,
-    ) {
+    pub fn set_elements<'a>(self, ast: &mut crate::Ast<'a>, elements: SubRange<Option<Argument>>) {
         let field_val: u64 = elements.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -4949,7 +4901,7 @@ impl ArrayExpression {
 }
 impl ObjectExpression {
     #[inline]
-    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ObjectPropertyKind> {
+    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ObjectPropertyKind> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -4957,7 +4909,7 @@ impl ObjectExpression {
     pub fn set_properties<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        properties: TypedSubRange<ObjectPropertyKind>,
+        properties: SubRange<ObjectPropertyKind>,
     ) {
         let field_val: u64 = properties.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
@@ -5195,12 +5147,12 @@ impl ArrowFunctionExpression {
 }
 impl SequenceExpression {
     #[inline]
-    pub fn expressions<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Expr> {
+    pub fn expressions<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Expr> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_expressions<'a>(self, ast: &mut crate::Ast<'a>, expressions: TypedSubRange<Expr>) {
+    pub fn set_expressions<'a>(self, ast: &mut crate::Ast<'a>, expressions: SubRange<Expr>) {
         let field_val: u64 = expressions.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -5278,7 +5230,7 @@ impl CallExpression {
         raw != 0
     }
     #[inline]
-    pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Argument> {
+    pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Argument> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5319,7 +5271,7 @@ impl CallExpression {
             | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
-    pub fn set_arguments<'a>(self, ast: &mut crate::Ast<'a>, arguments: TypedSubRange<Argument>) {
+    pub fn set_arguments<'a>(self, ast: &mut crate::Ast<'a>, arguments: SubRange<Argument>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5408,7 +5360,7 @@ impl NewExpression {
         (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Argument> {
+    pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Argument> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -5431,7 +5383,7 @@ impl NewExpression {
             | (((field_val as u128) & 4294967295u128) << 96usize);
     }
     #[inline]
-    pub fn set_arguments<'a>(self, ast: &mut crate::Ast<'a>, arguments: TypedSubRange<Argument>) {
+    pub fn set_arguments<'a>(self, ast: &mut crate::Ast<'a>, arguments: SubRange<Argument>) {
         let field_val: u64 = arguments.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -5592,7 +5544,7 @@ impl ImportDeclaration {
         unsafe { std::mem::transmute::<u8, ImportOrExportKind>(raw as u8) }
     }
     #[inline]
-    pub fn specifiers<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ImportDeclarationSpecifier> {
+    pub fn specifiers<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportDeclarationSpecifier> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5608,7 +5560,7 @@ impl ImportDeclaration {
         }
     }
     #[inline]
-    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ImportAttribute> {
+    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportAttribute> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5657,7 +5609,7 @@ impl ImportDeclaration {
     pub fn set_specifiers<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        specifiers: TypedSubRange<ImportDeclarationSpecifier>,
+        specifiers: SubRange<ImportDeclarationSpecifier>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5676,7 +5628,7 @@ impl ImportDeclaration {
     pub fn set_attributes<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        attributes: TypedSubRange<ImportAttribute>,
+        attributes: SubRange<ImportAttribute>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5824,7 +5776,7 @@ impl ExportNamedDeclaration {
         unsafe { std::mem::transmute::<u8, ImportOrExportKind>(raw as u8) }
     }
     #[inline]
-    pub fn specifiers<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ExportSpecifier> {
+    pub fn specifiers<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ExportSpecifier> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5840,7 +5792,7 @@ impl ExportNamedDeclaration {
         }
     }
     #[inline]
-    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ImportAttribute> {
+    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportAttribute> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5880,7 +5832,7 @@ impl ExportNamedDeclaration {
     pub fn set_specifiers<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        specifiers: TypedSubRange<ExportSpecifier>,
+        specifiers: SubRange<ExportSpecifier>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5899,7 +5851,7 @@ impl ExportNamedDeclaration {
     pub fn set_attributes<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        attributes: TypedSubRange<ImportAttribute>,
+        attributes: SubRange<ImportAttribute>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5953,7 +5905,7 @@ impl ExportAllDeclaration {
         unsafe { std::mem::transmute::<u8, ImportOrExportKind>(raw as u8) }
     }
     #[inline]
-    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<ImportAttribute> {
+    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ImportAttribute> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -5993,7 +5945,7 @@ impl ExportAllDeclaration {
     pub fn set_attributes<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        attributes: TypedSubRange<ImportAttribute>,
+        attributes: SubRange<ImportAttribute>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -7437,7 +7389,7 @@ impl TsMethodDefinition {
         unsafe { std::mem::transmute::<u8, Accessibility>(raw as u8) }
     }
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -7525,11 +7477,7 @@ impl TsMethodDefinition {
             | (((field_val as u128) & 255u128) << 48usize);
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -7821,12 +7769,12 @@ impl TsTypeParameter {
 }
 impl TsTypeParameterDeclaration {
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsTypeParameter> {
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTypeParameter> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: TypedSubRange<TsTypeParameter>) {
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: SubRange<TsTypeParameter>) {
         let field_val: u64 = params.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -7835,12 +7783,12 @@ impl TsTypeParameterDeclaration {
 }
 impl TsTypeParameterInstantiation {
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsType> {
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: TypedSubRange<TsType>) {
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: SubRange<TsType>) {
         let field_val: u64 = params.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -7864,24 +7812,24 @@ impl TsLiteralType {
 }
 impl TsTemplateLiteralType {
     #[inline]
-    pub fn quasis<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TemplateElement> {
+    pub fn quasis<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TemplateElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn types<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsType> {
+    pub fn types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_quasis<'a>(self, ast: &mut crate::Ast<'a>, quasis: TypedSubRange<TemplateElement>) {
+    pub fn set_quasis<'a>(self, ast: &mut crate::Ast<'a>, quasis: SubRange<TemplateElement>) {
         let field_val: u64 = quasis.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
-    pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: TypedSubRange<TsType>) {
+    pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: SubRange<TsType>) {
         let field_val: u64 = types.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 18446744073709551615u128)
@@ -7933,7 +7881,7 @@ impl TsIndexedAccessType {
 }
 impl TsTupleType {
     #[inline]
-    pub fn element_types<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsTupleElement> {
+    pub fn element_types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTupleElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -7941,7 +7889,7 @@ impl TsTupleType {
     pub fn set_element_types<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        element_types: TypedSubRange<TsTupleElement>,
+        element_types: SubRange<TsTupleElement>,
     ) {
         let field_val: u64 = element_types.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
@@ -8076,12 +8024,12 @@ impl TsJsDocNonNullableType {
 impl TsJsDocUnknownType {}
 impl TsUnionType {
     #[inline]
-    pub fn types<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsType> {
+    pub fn types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: TypedSubRange<TsType>) {
+    pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: SubRange<TsType>) {
         let field_val: u64 = types.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -8090,12 +8038,12 @@ impl TsUnionType {
 }
 impl TsIntersectionType {
     #[inline]
-    pub fn types<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsType> {
+    pub fn types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: TypedSubRange<TsType>) {
+    pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: SubRange<TsType>) {
         let field_val: u64 = types.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -8365,12 +8313,12 @@ impl TsTypePredicate {
 }
 impl TsTypeLiteral {
     #[inline]
-    pub fn members<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsTypeElement> {
+    pub fn members<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTypeElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_members<'a>(self, ast: &mut crate::Ast<'a>, members: TypedSubRange<TsTypeElement>) {
+    pub fn set_members<'a>(self, ast: &mut crate::Ast<'a>, members: SubRange<TsTypeElement>) {
         let field_val: u64 = members.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -8797,7 +8745,7 @@ impl TsConstructSignatureDeclaration {
 }
 impl TsIndexSignature {
     #[inline]
-    pub fn parameters<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<BindingIdentifier> {
+    pub fn parameters<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingIdentifier> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -8821,7 +8769,7 @@ impl TsIndexSignature {
     pub fn set_parameters<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        parameters: TypedSubRange<BindingIdentifier>,
+        parameters: SubRange<BindingIdentifier>,
     ) {
         let field_val: u64 = parameters.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
@@ -8930,7 +8878,7 @@ impl TsInterfaceDeclaration {
         raw != 0
     }
     #[inline]
-    pub fn extends<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsInterfaceHeritage> {
+    pub fn extends<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsInterfaceHeritage> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -8987,11 +8935,7 @@ impl TsInterfaceDeclaration {
             | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
-    pub fn set_extends<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        extends: TypedSubRange<TsInterfaceHeritage>,
-    ) {
+    pub fn set_extends<'a>(self, ast: &mut crate::Ast<'a>, extends: SubRange<TsInterfaceHeritage>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -9023,12 +8967,12 @@ impl TsInterfaceDeclaration {
 }
 impl TsInterfaceBody {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsTypeElement> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTypeElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<TsTypeElement>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<TsTypeElement>) {
         let field_val: u64 = body.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -9153,12 +9097,12 @@ impl TsEnumDeclaration {
 }
 impl TsEnumBody {
     #[inline]
-    pub fn members<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<TsEnumMember> {
+    pub fn members<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsEnumMember> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_members<'a>(self, ast: &mut crate::Ast<'a>, members: TypedSubRange<TsEnumMember>) {
+    pub fn set_members<'a>(self, ast: &mut crate::Ast<'a>, members: SubRange<TsEnumMember>) {
         let field_val: u64 = members.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -9259,28 +9203,24 @@ impl TsModuleDeclaration {
 }
 impl TsModuleBlock {
     #[inline]
-    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Directive> {
+    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
     #[inline]
-    pub fn set_directives<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        directives: TypedSubRange<Directive>,
-    ) {
+    pub fn set_directives<'a>(self, ast: &mut crate::Ast<'a>, directives: SubRange<Directive>) {
         let field_val: u64 = directives.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
         let field_val: u64 = body.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 18446744073709551615u128)
@@ -9329,7 +9269,7 @@ impl TsGlobalDeclaration {
 }
 impl TsParameterProperty {
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -9355,11 +9295,7 @@ impl TsParameterProperty {
         unsafe { std::mem::transmute::<u8, Accessibility>(raw as u8) }
     }
     #[inline]
-    pub fn set_decorators<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        decorators: TypedSubRange<Decorator>,
-    ) {
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
         let field_val: u64 = decorators.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -9999,7 +9935,7 @@ impl JsxElement {
         JsxOpeningElement(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
-    pub fn children<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<JsxChild> {
+    pub fn children<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxChild> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -10021,7 +9957,7 @@ impl JsxElement {
             | (((field_val as u128) & 4294967295u128) << 64usize);
     }
     #[inline]
-    pub fn set_children<'a>(self, ast: &mut crate::Ast<'a>, children: TypedSubRange<JsxChild>) {
+    pub fn set_children<'a>(self, ast: &mut crate::Ast<'a>, children: SubRange<JsxChild>) {
         let field_val: u64 = children.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -10058,7 +9994,7 @@ impl JsxOpeningElement {
         raw != 0
     }
     #[inline]
-    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<JsxAttributeItem> {
+    pub fn attributes<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxAttributeItem> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
@@ -10102,7 +10038,7 @@ impl JsxOpeningElement {
     pub fn set_attributes<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        attributes: TypedSubRange<JsxAttributeItem>,
+        attributes: SubRange<JsxAttributeItem>,
     ) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10141,7 +10077,7 @@ impl JsxFragment {
         JsxOpeningFragment(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
-    pub fn children<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<JsxChild> {
+    pub fn children<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxChild> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData::from_raw(raw), ast) }
     }
@@ -10163,7 +10099,7 @@ impl JsxFragment {
             | (((field_val as u128) & 4294967295u128) << 64usize);
     }
     #[inline]
-    pub fn set_children<'a>(self, ast: &mut crate::Ast<'a>, children: TypedSubRange<JsxChild>) {
+    pub fn set_children<'a>(self, ast: &mut crate::Ast<'a>, children: SubRange<JsxChild>) {
         let field_val: u64 = children.to_extra_data(ast).raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)

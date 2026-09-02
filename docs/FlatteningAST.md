@@ -52,7 +52,7 @@ The `ExtraData` is used to represent the fields of AST node. It's usally another
 
 - For data smaller than 8 bytes, such as `bool` and `number`, they are directly stored in the `ExtraData`.
 - For data larger than 8 bytes, such as `BigIntValue`, `ExtraData` stores their Ids, while their values are stored in another typed arena of AST context.
-- For data with undetermined length, such as `Vec<Expr>`, only their start and end `ExtraDataId` are stored in `ExtraData`.
+- For data with undetermined length, such as `SubRange<Expr>`, their start and end `ExtraDataId` values are packed into `ExtraData`.
 
 ```rs
 assert!(size_of::<ExtraData>() == 8);
@@ -70,8 +70,6 @@ pub union ExtraData {
     span: Span,
     bool: bool,
     number: f64,
-    sub_range: SubRange,
-
     /// Any other data (usually enum) that can be representated within 8 bytes
     other: u64,
 }
@@ -92,7 +90,7 @@ What `#[ast]` macro in the following example does is only to make the definition
 ```rs
 #[ast]
 pub struct Module {
-    body: TypedSubRange<ModuleItem>,
+    body: SubRange<ModuleItem>,
     shebang: OptionalAtomRef,
 }
 
@@ -117,10 +115,8 @@ The builder functions are used for creating new typed AST nodes.
 ```rs
 impl Ast {
     #[inline]
-    pub fn module(&mut self, span: Span, body: TypedSubRange<ModuleItem>, shebang: OptionalUtf8Ref) -> Module {
-        let _f0 = self.add_extra(ExtraData {
-            sub_range: body.into(),
-        });
+    pub fn module(&mut self, span: Span, body: SubRange<ModuleItem>, shebang: OptionalUtf8Ref) -> Module {
+        let _f0 = self.add_extra(body.to_extra_data(self));
         let _f1 = self.add_extra(ExtraData {
             optional_atom: shebang.into(),
         });
@@ -223,6 +219,6 @@ impl VisitMut for ExampleVisitor {
 Storage-specific changes in AST definitions include:
 
 1. `Box<T>` in ASTs are unnecessary, since all nodes are referred with `NodeId`.
-2. Variable-length fields are declared as `TypedSubRange<T>`. It only stores the start and the end `ExtraDataId`, with which we can query the list of `NodeId`s from the AST context.
+2. Variable-length fields are declared as `SubRange<T>`. It only stores the start and the end `ExtraDataId`, with which we can query the list of `NodeId`s from the AST context.
 3. `Atom` is replaced with `Utf8Ref`, and `Wtf8Atom` is replaced with `Wtf8Ref`. Both of them are two `u32`s to represent the start index and the end index of shared string pools, which are just a rust `String` and `Wtf8Buf`.
 4. `Option<T>` is specialized for the primitives, such as `OptionalNodeId` and `OptionUtf8Ref`. This is a manual null pointer optimization as `u32::MAX` is used to represent `None` in `Option<T>`.

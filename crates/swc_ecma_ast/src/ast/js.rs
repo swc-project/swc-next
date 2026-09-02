@@ -339,9 +339,9 @@ impl<'a> ExtraDataCompact<'a> for Option<ImportPhase> {
 /// prologue (`"use strict";`), while `body` contains imports and statements.
 #[ast]
 pub struct Program {
-    directives: TypedSubRange<Directive>,
+    directives: SubRange<Directive>,
     /// Import and export declarations are classified as statements.
-    body: TypedSubRange<Stmt>,
+    body: SubRange<Stmt>,
     /// `null` when the file has no `#!` line.
     hashbang: Option<Hashbang>,
 }
@@ -664,9 +664,9 @@ pub struct RegExpLiteral {
 #[ast]
 pub struct TemplateLiteral {
     /// `template_element[]`. Always `expressions.len() + 1` elements.
-    quasis: TypedSubRange<TemplateElement>,
+    quasis: SubRange<TemplateElement>,
     /// any expression
-    expressions: TypedSubRange<Expr>,
+    expressions: SubRange<Expr>,
 }
 
 /// A single quasi span inside a template literal.
@@ -739,7 +739,7 @@ pub struct BindingIdentifier {
     name: AstUtf8,
     /// `decorator[]`. Decorators on a parameter binding (legacy
     /// `experimentalDecorators`). Empty for non-parameter bindings.
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// `ts_type_annotation`. `None` when absent.
     type_annotation: Option<TsTypeAnnotation>,
     /// true when marked optional (`x?: T`).
@@ -787,7 +787,7 @@ pub struct LabelIdentifier {
 pub struct AssignmentPattern {
     /// `decorator[]`. Decorators on a parameter binding (legacy
     /// `experimentalDecorators`).
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// any binding pattern
     left: BindingPattern,
     /// `ts_type_annotation`. `None` when absent.
@@ -810,7 +810,7 @@ pub struct AssignmentPattern {
 pub struct BindingRestElement {
     /// `decorator[]`. Decorators on a parameter rest element (legacy
     /// `experimentalDecorators`).
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// any binding pattern
     argument: BindingPattern,
     /// `ts_type_annotation`. `None` when absent.
@@ -834,9 +834,9 @@ pub struct BindingRestElement {
 pub struct ArrayPattern {
     /// `decorator[]`. Decorators on a parameter binding (legacy
     /// `experimentalDecorators`).
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// any binding pattern. Entries are `None` for holes.
-    elements: TypedSubRange<Option<BindingPattern>>,
+    elements: SubRange<Option<BindingPattern>>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
     /// `ts_type_annotation`. `None` when absent.
@@ -858,9 +858,9 @@ pub struct ArrayPattern {
 pub struct ObjectPattern {
     /// `decorator[]`. Decorators on a parameter binding (legacy
     /// `experimentalDecorators`).
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// `binding_property[]`
-    properties: TypedSubRange<BindingProperty>,
+    properties: SubRange<BindingProperty>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
     /// `ts_type_annotation`. `None` when absent.
@@ -1010,7 +1010,7 @@ pub struct AssignmentExpression {
 pub struct VariableDeclaration {
     kind: VariableKind,
     /// `variable_declarator[]`
-    declarators: TypedSubRange<VariableDeclarator>,
+    declarators: SubRange<VariableDeclarator>,
     /// true for `declare var x: T`.
     declare: bool,
 }
@@ -1066,7 +1066,7 @@ pub struct SwitchStatement {
     /// any expression
     discriminant: Expr,
     /// `switch_case[]`
-    cases: TypedSubRange<SwitchCase>,
+    cases: SubRange<SwitchCase>,
 }
 
 /// A single `case` or `default` clause inside a `switch`.
@@ -1081,7 +1081,7 @@ pub struct SwitchStatement {
 pub struct SwitchCase {
     test: Option<Expr>,
     /// any statement
-    consequent: TypedSubRange<Stmt>,
+    consequent: SubRange<Stmt>,
 }
 
 /// A `for (init; test; update)` loop.
@@ -1335,7 +1335,7 @@ pub struct Decorator {
 pub struct Class {
     class_type: ClassType,
     /// `decorator[]`
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// `binding_identifier`. `None` for anonymous class expressions.
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when the class has no `<T, U>`
@@ -1348,7 +1348,7 @@ pub struct Class {
     super_type_arguments: Option<TsTypeParameterInstantiation>,
     /// `ts_class_implements[]`. Empty when the class has no `implements`
     /// clause.
-    implements: TypedSubRange<TsClassImplements>,
+    implements: SubRange<TsClassImplements>,
     /// `class_body`
     body: ClassBody,
     r#abstract: bool,
@@ -1369,7 +1369,7 @@ pub struct Class {
 #[ast]
 pub struct ClassBody {
     /// `method_definition`, `property_definition`, `static_block`, or `ts_index_signature`
-    body: TypedSubRange<ClassElement>,
+    body: SubRange<ClassElement>,
 }
 
 /// A method, getter, setter, or constructor in a class body.
@@ -1386,7 +1386,7 @@ pub struct ClassBody {
 #[ast]
 pub struct MethodDefinition {
     /// `decorator[]`
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
@@ -1419,7 +1419,7 @@ pub struct MethodDefinition {
 #[ast]
 pub struct PropertyDefinition {
     /// `decorator[]`
-    decorators: TypedSubRange<Decorator>,
+    decorators: SubRange<Decorator>,
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
@@ -1459,7 +1459,7 @@ pub struct PropertyDefinition {
 #[ast]
 pub struct StaticBlock {
     /// any statement
-    body: TypedSubRange<Stmt>,
+    body: SubRange<Stmt>,
 }
 
 /// A function declaration or expression.
@@ -1498,8 +1498,8 @@ pub struct Function {
 /// See: <https://tc39.es/ecma262/#prod-FunctionBody>
 #[ast]
 pub struct FunctionBody {
-    directives: TypedSubRange<Directive>,
-    body: TypedSubRange<Stmt>,
+    directives: SubRange<Directive>,
+    body: SubRange<Stmt>,
 }
 
 /// A braced block statement.
@@ -1512,7 +1512,7 @@ pub struct FunctionBody {
 #[ast]
 pub struct BlockStatement {
     /// any statement
-    body: TypedSubRange<Stmt>,
+    body: SubRange<Stmt>,
 }
 
 /// A `while` statement.
@@ -1573,7 +1573,7 @@ pub struct WithStatement {
 pub struct FormalParameters {
     /// `formal_parameter[]`. May also include `ts_parameter_property` entries
     /// (constructors only) and a leading `ts_this_parameter` (TypeScript).
-    items: TypedSubRange<FormalParameterItem>,
+    items: SubRange<FormalParameterItem>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
     kind: FormalParameterKind,
@@ -1603,7 +1603,7 @@ pub struct FormalParameter {
 #[ast]
 pub struct ArrayExpression {
     /// any expression or `spread_element`. Entries are `None` for holes.
-    elements: TypedSubRange<Option<Argument>>,
+    elements: SubRange<Option<Argument>>,
 }
 
 /// An object literal expression.
@@ -1618,7 +1618,7 @@ pub struct ArrayExpression {
 #[ast]
 pub struct ObjectExpression {
     /// `object_property` or `spread_element`.
-    properties: TypedSubRange<ObjectPropertyKind>,
+    properties: SubRange<ObjectPropertyKind>,
 }
 
 /// A `...argument` element inside an array or object literal, or in a call
@@ -1718,7 +1718,7 @@ pub struct ArrowFunctionExpression {
 #[ast]
 pub struct SequenceExpression {
     /// any expression
-    expressions: TypedSubRange<Expr>,
+    expressions: SubRange<Expr>,
 }
 
 /// Property access, in static, computed, or optional form.
@@ -1763,7 +1763,7 @@ pub struct CallExpression {
     /// `ts_type_parameter_instantiation`. `None` when absent.
     type_arguments: Option<TsTypeParameterInstantiation>,
     /// any expression or `spread_element`.
-    arguments: TypedSubRange<Argument>,
+    arguments: SubRange<Argument>,
     /// true for `foo?.()`.
     optional: bool,
 }
@@ -1823,7 +1823,7 @@ pub struct NewExpression {
     /// `ts_type_parameter_instantiation`. `None` when absent.
     type_arguments: Option<TsTypeParameterInstantiation>,
     /// any expression or `spread_element`.
-    arguments: TypedSubRange<Argument>,
+    arguments: SubRange<Argument>,
 }
 
 /// An `await` expression.
@@ -1925,11 +1925,11 @@ pub struct ImportExpression {
 pub struct ImportDeclaration {
     /// `import_specifier`, `import_default_specifier`, or
     /// `import_namespace_specifier`. Empty for side-effect-only imports.
-    specifiers: TypedSubRange<ImportDeclarationSpecifier>,
+    specifiers: SubRange<ImportDeclarationSpecifier>,
     /// `string_literal`
     source: StringLiteral,
     /// `import_attribute[]`
-    attributes: TypedSubRange<ImportAttribute>,
+    attributes: SubRange<ImportAttribute>,
     /// `null` for a regular import.
     phase: Option<ImportPhase>,
     /// `Type` for `import type { ... }`.
@@ -2018,11 +2018,11 @@ pub struct ExportNamedDeclaration {
     /// `ts_module_declaration`. `None` for the `export { ... }` form.
     declaration: Option<Decl>,
     /// `export_specifier[]`
-    specifiers: TypedSubRange<ExportSpecifier>,
+    specifiers: SubRange<ExportSpecifier>,
     /// `string_literal`. `None` when there is no `from` clause.
     source: Option<StringLiteral>,
     /// `import_attribute[]`
-    attributes: TypedSubRange<ImportAttribute>,
+    attributes: SubRange<ImportAttribute>,
     /// `Type` for `export type { ... }`.
     export_kind: ImportOrExportKind,
 }
@@ -2060,7 +2060,7 @@ pub struct ExportAllDeclaration {
     /// `string_literal`
     source: StringLiteral,
     /// `import_attribute[]`
-    attributes: TypedSubRange<ImportAttribute>,
+    attributes: SubRange<ImportAttribute>,
     /// `Type` for `export type * from "..."`.
     export_kind: ImportOrExportKind,
 }

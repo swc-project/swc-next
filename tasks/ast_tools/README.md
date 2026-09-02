@@ -21,7 +21,7 @@ The input list is defined in `src/main.rs` and currently contains:
 - [`jsx.rs`](../../crates/swc_ecma_ast/src/ast/jsx.rs)
 
 Only structs and enums marked with `#[ast]` become AST schema types. The schema
-also records field types, enum variants, `Option<T>`/`TypedSubRange<T>` wrappers,
+also records field types, enum variants, `Option<T>`/`SubRange<T>` wrappers,
 and integer `#[repr(uN)]` sizes needed to lay values out in the compact node
 payload. Field declarations use their actual storage types; the generator does
 not translate collection types.

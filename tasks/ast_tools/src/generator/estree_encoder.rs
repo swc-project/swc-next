@@ -145,7 +145,7 @@ fn write_value(
         AstType::Struct(_) | AstType::Enum(_) => {
             writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
         }
-        AstType::Vec(_) => {
+        AstType::SubRange(_) => {
             writeln!(
                 output,
                 "    {}",
@@ -248,8 +248,8 @@ fn encode_expression(
         AstType::Enum(ast) => {
             child_expression(node, field, &dispatch.encoder_name(&ast.name), source)
         }
-        AstType::Vec(vec) => {
-            let inner = &schema.types[vec.inner_type_id];
+        AstType::SubRange(range) => {
+            let inner = &schema.types[range.inner_type_id];
             let (inner, holes) = match inner {
                 AstType::Option(option) => (&schema.types[option.inner_type_id], true),
                 inner => (inner, false),

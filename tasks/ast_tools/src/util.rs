@@ -27,14 +27,14 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
         AstType::Struct(_) => Some(4),
         // All typed AST values are represented by a NodeId wrapper.
         AstType::Enum(_) => Some(4),
-        // TypedSubRange stores an 8-byte SubRange.
-        AstType::TypedSubRange(_) => Some(8),
+        // SubRange stores an 8-byte SubRange.
+        AstType::SubRange(_) => Some(8),
         // Optional typed inline AST IDs are 4 bytes.
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             match inner_ty {
-                // Option<TypedSubRange<T>> has an 8-byte compact representation.
-                AstType::TypedSubRange(_) => Some(8),
+                // Option<SubRange<T>> has an 8-byte compact representation.
+                AstType::SubRange(_) => Some(8),
                 // Option<Struct> uses u32::MAX as its absent sentinel.
                 AstType::Struct(_) => Some(4),
                 // Option<Enum> uses u32::MAX as its absent sentinel.
@@ -216,7 +216,7 @@ pub fn generate_field_to_u64(
 ) -> TokenStream {
     debug_assert!(matches!(
         field_ty,
-        AstType::Enum(_) | AstType::TypedSubRange(_) | AstType::Option(_) | AstType::Primitive(_)
+        AstType::Enum(_) | AstType::SubRange(_) | AstType::Option(_) | AstType::Primitive(_)
     ));
 
     // Every eight-byte representation is defined by ExtraDataCompact and uses
