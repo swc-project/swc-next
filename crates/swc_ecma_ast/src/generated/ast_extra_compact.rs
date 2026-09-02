@@ -2125,286 +2125,220 @@ impl<'a> ExtraDataCompact<'a> for JsxSpreadChild {
 impl<'a> ExtraDataCompact<'a> for Option<Hashbang> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(Hashbang(node_id))
+        data.optional_node_id().map(Hashbang)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsTypeAnnotation> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(TsTypeAnnotation(node_id))
+        data.optional_node_id().map(TsTypeAnnotation)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BindingPattern> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(BindingPattern(node_id))
+        data.optional_node_id().map(BindingPattern)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BindingRestElement> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(BindingRestElement(node_id))
+        data.optional_node_id().map(BindingRestElement)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Expr> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(Expr(node_id))
+        data.optional_node_id().map(Expr)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Stmt> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(Stmt(node_id))
+        data.optional_node_id().map(Stmt)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<ForStatementInit> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(ForStatementInit(node_id))
+        data.optional_node_id().map(ForStatementInit)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<CatchClause> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(CatchClause(node_id))
+        data.optional_node_id().map(CatchClause)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BlockStatement> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(BlockStatement(node_id))
+        data.optional_node_id().map(BlockStatement)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<LabelIdentifier> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(LabelIdentifier(node_id))
+        data.optional_node_id().map(LabelIdentifier)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BindingIdentifier> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(BindingIdentifier(node_id))
+        data.optional_node_id().map(BindingIdentifier)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterDeclaration> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterDeclaration(node_id))
+        data.optional_node_id().map(TsTypeParameterDeclaration)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterInstantiation> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterInstantiation(node_id))
+        data.optional_node_id().map(TsTypeParameterInstantiation)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Argument> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(Argument(node_id))
+        data.optional_node_id().map(Argument)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Decl> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(Decl(node_id))
+        data.optional_node_id().map(Decl)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<StringLiteral> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(StringLiteral(node_id))
+        data.optional_node_id().map(StringLiteral)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<ModuleExportName> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(ModuleExportName(node_id))
+        data.optional_node_id().map(ModuleExportName)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsImportTypeQualifier> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(TsImportTypeQualifier(node_id))
+        data.optional_node_id().map(TsImportTypeQualifier)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsType> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(TsType(node_id))
+        data.optional_node_id().map(TsType)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsModuleBody> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(TsModuleBody(node_id))
+        data.optional_node_id().map(TsModuleBody)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<JsxClosingElement> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(JsxClosingElement(node_id))
+        data.optional_node_id().map(JsxClosingElement)
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<JsxAttributeValue> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData::from_node_id(
-            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        )
+        ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
     }
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = data.node_id();
-        (node_id.index() != u32::MAX as usize).then_some(JsxAttributeValue(node_id))
+        data.optional_node_id().map(JsxAttributeValue)
     }
 }

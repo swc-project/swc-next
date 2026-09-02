@@ -17,7 +17,7 @@ impl Program {
     pub fn hashbang<'a>(self, ast: &crate::Ast<'a>) -> Option<Hashbang> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Hashbang(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Hashbang(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
@@ -2532,7 +2532,7 @@ impl BindingIdentifier {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -2653,13 +2653,13 @@ impl AssignmentPattern {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        BindingPattern(NodeId::from_raw_unchecked(raw))
+        BindingPattern(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -2759,13 +2759,13 @@ impl BindingRestElement {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        BindingPattern(NodeId::from_raw_unchecked(raw))
+        BindingPattern(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -2834,13 +2834,13 @@ impl ArrayPattern {
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingRestElement(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -2944,13 +2944,13 @@ impl ObjectPattern {
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingRestElement(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -3054,13 +3054,13 @@ impl BindingProperty {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        BindingPattern(NodeId::from_raw_unchecked(raw))
+        BindingPattern(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn shorthand<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -3106,13 +3106,13 @@ impl BinaryExpression {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn operator<'a>(self, ast: &crate::Ast<'a>) -> BinaryOperator {
@@ -3146,13 +3146,13 @@ impl LogicalExpression {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn operator<'a>(self, ast: &crate::Ast<'a>) -> LogicalOperator {
@@ -3186,19 +3186,19 @@ impl ConditionalExpression {
     pub fn test<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn consequent<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn alternate<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_test<'a>(self, ast: &mut crate::Ast<'a>, test: Expr) {
@@ -3227,7 +3227,7 @@ impl UnaryExpression {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn operator<'a>(self, ast: &crate::Ast<'a>) -> UnaryOperator {
@@ -3254,7 +3254,7 @@ impl UpdateExpression {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> SimpleAssignmentTarget {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        SimpleAssignmentTarget(NodeId::from_raw_unchecked(raw))
+        SimpleAssignmentTarget(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn operator<'a>(self, ast: &crate::Ast<'a>) -> UpdateOperator {
@@ -3293,13 +3293,13 @@ impl AssignmentExpression {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> AssignmentTarget {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        AssignmentTarget(NodeId::from_raw_unchecked(raw))
+        AssignmentTarget(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn operator<'a>(self, ast: &crate::Ast<'a>) -> AssignmentOperator {
@@ -3375,13 +3375,13 @@ impl VariableDeclarator {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingPattern(NodeId::from_raw_unchecked(raw))
+        BindingPattern(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn init<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn definite<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -3415,19 +3415,19 @@ impl IfStatement {
     pub fn test<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn consequent<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn alternate<'a>(self, ast: &crate::Ast<'a>) -> Option<Stmt> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Stmt(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Stmt(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_test<'a>(self, ast: &mut crate::Ast<'a>, test: Expr) {
@@ -3456,7 +3456,7 @@ impl SwitchStatement {
     pub fn discriminant<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn cases<'a>(self, ast: &crate::Ast<'a>) -> SubRange<SwitchCase> {
@@ -3483,7 +3483,7 @@ impl SwitchCase {
     pub fn test<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn consequent<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
@@ -3510,25 +3510,25 @@ impl ForStatement {
     pub fn init<'a>(self, ast: &crate::Ast<'a>) -> Option<ForStatementInit> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| ForStatementInit(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { ForStatementInit(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn test<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn update<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_init<'a>(self, ast: &mut crate::Ast<'a>, init: Option<ForStatementInit>) {
@@ -3564,19 +3564,19 @@ impl ForInStatement {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> ForStatementLeft {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        ForStatementLeft(NodeId::from_raw_unchecked(raw))
+        ForStatementLeft(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_left<'a>(self, ast: &mut crate::Ast<'a>, left: ForStatementLeft) {
@@ -3605,19 +3605,19 @@ impl ForOfStatement {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> ForStatementLeft {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        ForStatementLeft(NodeId::from_raw_unchecked(raw))
+        ForStatementLeft(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn r#await<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -3658,19 +3658,19 @@ impl TryStatement {
     pub fn block<'a>(self, ast: &crate::Ast<'a>) -> BlockStatement {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BlockStatement(NodeId::from_raw_unchecked(raw))
+        BlockStatement(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn handler<'a>(self, ast: &crate::Ast<'a>) -> Option<CatchClause> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| CatchClause(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { CatchClause(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn finalizer<'a>(self, ast: &crate::Ast<'a>) -> Option<BlockStatement> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BlockStatement(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BlockStatement(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_block<'a>(self, ast: &mut crate::Ast<'a>, block: BlockStatement) {
@@ -3699,13 +3699,13 @@ impl CatchClause {
     pub fn param<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingPattern> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingPattern(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingPattern(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> BlockStatement {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        BlockStatement(NodeId::from_raw_unchecked(raw))
+        BlockStatement(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_param<'a>(self, ast: &mut crate::Ast<'a>, param: Option<BindingPattern>) {
@@ -3727,7 +3727,7 @@ impl BreakStatement {
     pub fn label<'a>(self, ast: &crate::Ast<'a>) -> Option<LabelIdentifier> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| LabelIdentifier(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { LabelIdentifier(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_label<'a>(self, ast: &mut crate::Ast<'a>, label: Option<LabelIdentifier>) {
@@ -3742,7 +3742,7 @@ impl ContinueStatement {
     pub fn label<'a>(self, ast: &crate::Ast<'a>) -> Option<LabelIdentifier> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| LabelIdentifier(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { LabelIdentifier(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_label<'a>(self, ast: &mut crate::Ast<'a>, label: Option<LabelIdentifier>) {
@@ -3757,13 +3757,13 @@ impl LabeledStatement {
     pub fn label<'a>(self, ast: &crate::Ast<'a>) -> LabelIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        LabelIdentifier(NodeId::from_raw_unchecked(raw))
+        LabelIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_label<'a>(self, ast: &mut crate::Ast<'a>, label: LabelIdentifier) {
@@ -3785,7 +3785,7 @@ impl ExpressionStatement {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -3800,7 +3800,7 @@ impl ReturnStatement {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: Option<Expr>) {
@@ -3815,7 +3815,7 @@ impl ThrowStatement {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: Expr) {
@@ -3832,7 +3832,7 @@ impl Directive {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        StringLiteral(NodeId::from_raw_unchecked(raw))
+        StringLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
@@ -3859,7 +3859,7 @@ impl Decorator {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -3879,13 +3879,14 @@ impl Class {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 24usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingIdentifier(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn r#abstract<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -4122,7 +4123,7 @@ impl MethodDefinition {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> MethodDefinitionKind {
@@ -4552,13 +4553,14 @@ impl Function {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 24usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingIdentifier(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn generator<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -4752,13 +4754,13 @@ impl WhileStatement {
     pub fn test<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_test<'a>(self, ast: &mut crate::Ast<'a>, test: Expr) {
@@ -4780,13 +4782,13 @@ impl DoWhileStatement {
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn test<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: Stmt) {
@@ -4808,13 +4810,13 @@ impl WithStatement {
     pub fn object<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Stmt(NodeId::from_raw_unchecked(raw))
+        Stmt(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_object<'a>(self, ast: &mut crate::Ast<'a>, object: Expr) {
@@ -4841,7 +4843,7 @@ impl FormalParameters {
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingRestElement(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterKind {
@@ -4875,7 +4877,7 @@ impl FormalParameter {
     pub fn pattern<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterPattern {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        FormalParameterPattern(NodeId::from_raw_unchecked(raw))
+        FormalParameterPattern(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_pattern<'a>(self, ast: &mut crate::Ast<'a>, pattern: FormalParameterPattern) {
@@ -4922,7 +4924,7 @@ impl SpreadElement {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: Expr) {
@@ -4937,13 +4939,13 @@ impl ObjectProperty {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> PropertyKind {
@@ -5013,7 +5015,7 @@ impl ParenthesizedExpression {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -5038,13 +5040,14 @@ impl ArrowFunctionExpression {
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 48usize) as u32) & 4294967295u32;
-        FormalParameters(NodeId::from_raw_unchecked(raw))
+        FormalParameters(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
@@ -5164,13 +5167,13 @@ impl MemberExpression {
     pub fn object<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn property<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn computed<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -5216,13 +5219,14 @@ impl CallExpression {
     pub fn callee<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -5291,7 +5295,7 @@ impl ChainExpression {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -5306,19 +5310,20 @@ impl TaggedTemplateExpression {
     pub fn tag<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn quasi<'a>(self, ast: &crate::Ast<'a>) -> TemplateLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        TemplateLiteral(NodeId::from_raw_unchecked(raw))
+        TemplateLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_tag<'a>(self, ast: &mut crate::Ast<'a>, tag: Expr) {
@@ -5351,13 +5356,14 @@ impl NewExpression {
     pub fn callee<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Argument> {
@@ -5395,7 +5401,7 @@ impl AwaitExpression {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: Expr) {
@@ -5410,7 +5416,7 @@ impl YieldExpression {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn delegate<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -5437,13 +5443,13 @@ impl MetaProperty {
     pub fn meta<'a>(self, ast: &crate::Ast<'a>) -> IdentifierName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        IdentifierName(NodeId::from_raw_unchecked(raw))
+        IdentifierName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn property<'a>(self, ast: &crate::Ast<'a>) -> IdentifierName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        IdentifierName(NodeId::from_raw_unchecked(raw))
+        IdentifierName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_meta<'a>(self, ast: &mut crate::Ast<'a>, meta: IdentifierName) {
@@ -5465,13 +5471,13 @@ impl ImportExpression {
     pub fn source<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn options<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn sync<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -5536,7 +5542,7 @@ impl ImportDeclaration {
     pub fn source<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        StringLiteral(NodeId::from_raw_unchecked(raw))
+        StringLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn import_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -5664,13 +5670,13 @@ impl ImportSpecifier {
     pub fn imported<'a>(self, ast: &crate::Ast<'a>) -> ModuleExportName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        ModuleExportName(NodeId::from_raw_unchecked(raw))
+        ModuleExportName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn local<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn import_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -5704,7 +5710,7 @@ impl ImportDefaultSpecifier {
     pub fn local<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_local<'a>(self, ast: &mut crate::Ast<'a>, local: BindingIdentifier) {
@@ -5719,7 +5725,7 @@ impl ImportNamespaceSpecifier {
     pub fn local<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_local<'a>(self, ast: &mut crate::Ast<'a>, local: BindingIdentifier) {
@@ -5734,13 +5740,13 @@ impl ImportAttribute {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> ModuleExportName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        ModuleExportName(NodeId::from_raw_unchecked(raw))
+        ModuleExportName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        StringLiteral(NodeId::from_raw_unchecked(raw))
+        StringLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: ModuleExportName) {
@@ -5762,13 +5768,13 @@ impl ExportNamedDeclaration {
     pub fn declaration<'a>(self, ast: &crate::Ast<'a>) -> Option<Decl> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Decl(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Decl(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn source<'a>(self, ast: &crate::Ast<'a>) -> Option<StringLiteral> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| StringLiteral(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { StringLiteral(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn export_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -5872,7 +5878,7 @@ impl ExportDefaultDeclaration {
     pub fn declaration<'a>(self, ast: &crate::Ast<'a>) -> ExportDefaultDeclarationKind {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        ExportDefaultDeclarationKind(NodeId::from_raw_unchecked(raw))
+        ExportDefaultDeclarationKind(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_declaration<'a>(
@@ -5891,13 +5897,13 @@ impl ExportAllDeclaration {
     pub fn exported<'a>(self, ast: &crate::Ast<'a>) -> Option<ModuleExportName> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| ModuleExportName(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { ModuleExportName(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn source<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        StringLiteral(NodeId::from_raw_unchecked(raw))
+        StringLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn export_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -5966,13 +5972,13 @@ impl ExportSpecifier {
     pub fn local<'a>(self, ast: &crate::Ast<'a>) -> ModuleExportName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        ModuleExportName(NodeId::from_raw_unchecked(raw))
+        ModuleExportName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn exported<'a>(self, ast: &crate::Ast<'a>) -> ModuleExportName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        ModuleExportName(NodeId::from_raw_unchecked(raw))
+        ModuleExportName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn export_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -7217,13 +7223,14 @@ impl TsFunction {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingIdentifier> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 24usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingIdentifier(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { BindingIdentifier(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn generator<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -7351,7 +7358,7 @@ impl TsMethodDefinition {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> MethodDefinitionKind {
@@ -7512,7 +7519,7 @@ impl TsTypeAnnotation {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_annotation<'a>(self, ast: &mut crate::Ast<'a>, type_annotation: TsType) {
@@ -7541,13 +7548,14 @@ impl TsTypeReference {
     pub fn type_name<'a>(self, ast: &crate::Ast<'a>) -> TsTypeName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsTypeName(NodeId::from_raw_unchecked(raw))
+        TsTypeName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_type_name<'a>(self, ast: &mut crate::Ast<'a>, type_name: TsTypeName) {
@@ -7573,13 +7581,13 @@ impl TsQualifiedName {
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> TsQualifiedNameLeft {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsQualifiedNameLeft(NodeId::from_raw_unchecked(raw))
+        TsQualifiedNameLeft(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> IdentifierName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        IdentifierName(NodeId::from_raw_unchecked(raw))
+        IdentifierName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_left<'a>(self, ast: &mut crate::Ast<'a>, left: TsQualifiedNameLeft) {
@@ -7601,13 +7609,14 @@ impl TsTypeQuery {
     pub fn expr_name<'a>(self, ast: &crate::Ast<'a>) -> TsTypeQueryExprName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsTypeQueryExprName(NodeId::from_raw_unchecked(raw))
+        TsTypeQueryExprName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_expr_name<'a>(self, ast: &mut crate::Ast<'a>, expr_name: TsTypeQueryExprName) {
@@ -7633,25 +7642,26 @@ impl TsImportType {
     pub fn source<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        StringLiteral(NodeId::from_raw_unchecked(raw))
+        StringLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn options<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn qualifier<'a>(self, ast: &crate::Ast<'a>) -> Option<TsImportTypeQualifier> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsImportTypeQualifier(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsImportTypeQualifier(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_source<'a>(self, ast: &mut crate::Ast<'a>, source: StringLiteral) {
@@ -7695,19 +7705,19 @@ impl TsTypeParameter {
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn constraint<'a>(self, ast: &crate::Ast<'a>) -> Option<TsType> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsType(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsType(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn default<'a>(self, ast: &crate::Ast<'a>) -> Option<TsType> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsType(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsType(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn r#in<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -7800,7 +7810,7 @@ impl TsLiteralType {
     pub fn literal<'a>(self, ast: &crate::Ast<'a>) -> TsLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsLiteral(NodeId::from_raw_unchecked(raw))
+        TsLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_literal<'a>(self, ast: &mut crate::Ast<'a>, literal: TsLiteral) {
@@ -7841,7 +7851,7 @@ impl TsArrayType {
     pub fn element_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_element_type<'a>(self, ast: &mut crate::Ast<'a>, element_type: TsType) {
@@ -7856,13 +7866,13 @@ impl TsIndexedAccessType {
     pub fn object_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn index_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_object_type<'a>(self, ast: &mut crate::Ast<'a>, object_type: TsType) {
@@ -7902,13 +7912,13 @@ impl TsNamedTupleMember {
     pub fn label<'a>(self, ast: &crate::Ast<'a>) -> IdentifierName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        IdentifierName(NodeId::from_raw_unchecked(raw))
+        IdentifierName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn element_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -7942,7 +7952,7 @@ impl TsOptionalType {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_annotation<'a>(self, ast: &mut crate::Ast<'a>, type_annotation: TsType) {
@@ -7957,7 +7967,7 @@ impl TsRestType {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_annotation<'a>(self, ast: &mut crate::Ast<'a>, type_annotation: TsType) {
@@ -7972,7 +7982,7 @@ impl TsJsDocNullableType {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn postfix<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -7999,7 +8009,7 @@ impl TsJsDocNonNullableType {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn postfix<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8055,25 +8065,25 @@ impl TsConditionalType {
     pub fn check_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn extends_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn true_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn false_type<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_check_type<'a>(self, ast: &mut crate::Ast<'a>, check_type: TsType) {
@@ -8109,7 +8119,7 @@ impl TsInferType {
     pub fn type_parameter<'a>(self, ast: &crate::Ast<'a>) -> TsTypeParameter {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsTypeParameter(NodeId::from_raw_unchecked(raw))
+        TsTypeParameter(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_parameter<'a>(self, ast: &mut crate::Ast<'a>, type_parameter: TsTypeParameter) {
@@ -8129,7 +8139,7 @@ impl TsTypeOperator {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_operator<'a>(self, ast: &mut crate::Ast<'a>, operator: TsTypeOperatorKind) {
@@ -8151,7 +8161,7 @@ impl TsParenthesizedType {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_annotation<'a>(self, ast: &mut crate::Ast<'a>, type_annotation: TsType) {
@@ -8166,19 +8176,20 @@ impl TsFunctionType {
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        FormalParameters(NodeId::from_raw_unchecked(raw))
+        FormalParameters(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> TsTypeAnnotation {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+        TsTypeAnnotation(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_parameters<'a>(
@@ -8211,19 +8222,20 @@ impl TsConstructorType {
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        FormalParameters(NodeId::from_raw_unchecked(raw))
+        FormalParameters(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> TsTypeAnnotation {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+        TsTypeAnnotation(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn r#abstract<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8268,13 +8280,13 @@ impl TsTypePredicate {
     pub fn parameter_name<'a>(self, ast: &crate::Ast<'a>) -> TsTypePredicateName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsTypePredicateName(NodeId::from_raw_unchecked(raw))
+        TsTypePredicateName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn asserts<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8330,13 +8342,13 @@ impl TsMappedType {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn constraint<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 48usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> TsMappedTypeModifier {
@@ -8448,13 +8460,13 @@ impl TsPropertySignature {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn computed<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8516,13 +8528,14 @@ impl TsMethodSignature {
     pub fn key<'a>(self, ast: &crate::Ast<'a>) -> PropertyKey {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 24usize) as u32) & 4294967295u32;
-        PropertyKey(NodeId::from_raw_unchecked(raw))
+        PropertyKey(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 56usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> TsMethodSignatureKind {
@@ -8650,19 +8663,20 @@ impl TsCallSignatureDeclaration {
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        FormalParameters(NodeId::from_raw_unchecked(raw))
+        FormalParameters(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_type_parameters<'a>(
@@ -8699,19 +8713,20 @@ impl TsConstructSignatureDeclaration {
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        FormalParameters(NodeId::from_raw_unchecked(raw))
+        FormalParameters(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_type_parameters<'a>(
@@ -8753,7 +8768,7 @@ impl TsIndexSignature {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsTypeAnnotation {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+        TsTypeAnnotation(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn readonly<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8807,19 +8822,20 @@ impl TsTypeAliasDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn declare<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8864,13 +8880,14 @@ impl TsInterfaceDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_parameters<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterDeclaration> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn declare<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8984,13 +9001,14 @@ impl TsInterfaceHeritage {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9016,13 +9034,14 @@ impl TsClassImplements {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9048,13 +9067,13 @@ impl TsEnumDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TsEnumBody {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsEnumBody(NodeId::from_raw_unchecked(raw))
+        TsEnumBody(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn is_const<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -9114,13 +9133,13 @@ impl TsEnumMember {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> TsEnumMemberName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsEnumMemberName(NodeId::from_raw_unchecked(raw))
+        TsEnumMemberName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn initializer<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { Expr(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn computed<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -9154,13 +9173,13 @@ impl TsModuleDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> TsModuleName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsModuleName(NodeId::from_raw_unchecked(raw))
+        TsModuleName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Option<TsModuleBody> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsModuleBody(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsModuleBody(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> TsModuleDeclarationKind {
@@ -9232,13 +9251,13 @@ impl TsGlobalDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> IdentifierName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        IdentifierName(NodeId::from_raw_unchecked(raw))
+        IdentifierName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TsModuleBlock {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsModuleBlock(NodeId::from_raw_unchecked(raw))
+        TsModuleBlock(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn declare<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -9277,7 +9296,7 @@ impl TsParameterProperty {
     pub fn parameter<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        BindingPattern(NodeId::from_raw_unchecked(raw))
+        BindingPattern(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn r#override<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -9335,7 +9354,7 @@ impl TsThisParameter {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { TsTypeAnnotation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_type_annotation<'a>(
@@ -9354,13 +9373,13 @@ impl TsAsExpression {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9382,13 +9401,13 @@ impl TsSatisfiesExpression {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9410,13 +9429,13 @@ impl TsTypeAssertion {
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsType(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_type_annotation<'a>(self, ast: &mut crate::Ast<'a>, type_annotation: TsType) {
@@ -9438,7 +9457,7 @@ impl TsNonNullExpression {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9453,13 +9472,13 @@ impl TsInstantiationExpression {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> TsTypeParameterInstantiation {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw))
+        TsTypeParameterInstantiation(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9485,7 +9504,7 @@ impl TsExportAssignment {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {
@@ -9500,7 +9519,7 @@ impl TsNamespaceExportDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> IdentifierName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        IdentifierName(NodeId::from_raw_unchecked(raw))
+        IdentifierName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: IdentifierName) {
@@ -9515,13 +9534,13 @@ impl TsImportEqualsDeclaration {
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+        BindingIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn module_reference<'a>(self, ast: &crate::Ast<'a>) -> TsModuleReference {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        TsModuleReference(NodeId::from_raw_unchecked(raw))
+        TsModuleReference(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn import_kind<'a>(self, ast: &crate::Ast<'a>) -> ImportOrExportKind {
@@ -9559,7 +9578,7 @@ impl TsExternalModuleReference {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> StringLiteral {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        StringLiteral(NodeId::from_raw_unchecked(raw))
+        StringLiteral(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: StringLiteral) {
@@ -9932,7 +9951,7 @@ impl JsxElement {
     pub fn opening_element<'a>(self, ast: &crate::Ast<'a>) -> JsxOpeningElement {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        JsxOpeningElement(NodeId::from_raw_unchecked(raw))
+        JsxOpeningElement(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn children<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxChild> {
@@ -9943,7 +9962,7 @@ impl JsxElement {
     pub fn closing_element<'a>(self, ast: &crate::Ast<'a>) -> Option<JsxClosingElement> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| JsxClosingElement(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { JsxClosingElement(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_opening_element<'a>(
@@ -9980,13 +9999,14 @@ impl JsxOpeningElement {
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> JsxElementName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        JsxElementName(NodeId::from_raw_unchecked(raw))
+        JsxElementName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn type_arguments<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeParameterInstantiation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX)
+            .then(|| unsafe { TsTypeParameterInstantiation(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn self_closing<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -10059,7 +10079,7 @@ impl JsxClosingElement {
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> JsxElementName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        JsxElementName(NodeId::from_raw_unchecked(raw))
+        JsxElementName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: JsxElementName) {
@@ -10074,7 +10094,7 @@ impl JsxFragment {
     pub fn opening_fragment<'a>(self, ast: &crate::Ast<'a>) -> JsxOpeningFragment {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        JsxOpeningFragment(NodeId::from_raw_unchecked(raw))
+        JsxOpeningFragment(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn children<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxChild> {
@@ -10085,7 +10105,7 @@ impl JsxFragment {
     pub fn closing_fragment<'a>(self, ast: &crate::Ast<'a>) -> JsxClosingFragment {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
-        JsxClosingFragment(NodeId::from_raw_unchecked(raw))
+        JsxClosingFragment(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_opening_fragment<'a>(
@@ -10138,13 +10158,13 @@ impl JsxNamespacedName {
     pub fn namespace<'a>(self, ast: &crate::Ast<'a>) -> JsxIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        JsxIdentifier(NodeId::from_raw_unchecked(raw))
+        JsxIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> JsxIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        JsxIdentifier(NodeId::from_raw_unchecked(raw))
+        JsxIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_namespace<'a>(self, ast: &mut crate::Ast<'a>, namespace: JsxIdentifier) {
@@ -10166,13 +10186,13 @@ impl JsxMemberExpression {
     pub fn object<'a>(self, ast: &crate::Ast<'a>) -> JsxMemberExpressionObject {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        JsxMemberExpressionObject(NodeId::from_raw_unchecked(raw))
+        JsxMemberExpressionObject(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn property<'a>(self, ast: &crate::Ast<'a>) -> JsxIdentifier {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        JsxIdentifier(NodeId::from_raw_unchecked(raw))
+        JsxIdentifier(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_object<'a>(self, ast: &mut crate::Ast<'a>, object: JsxMemberExpressionObject) {
@@ -10194,13 +10214,13 @@ impl JsxAttribute {
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> JsxAttributeName {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        JsxAttributeName(NodeId::from_raw_unchecked(raw))
+        JsxAttributeName(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Option<JsxAttributeValue> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| JsxAttributeValue(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| unsafe { JsxAttributeValue(NodeId::from_raw_unchecked(raw)) })
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: JsxAttributeName) {
@@ -10222,7 +10242,7 @@ impl JsxSpreadAttribute {
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: Expr) {
@@ -10237,7 +10257,7 @@ impl JsxExpressionContainer {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> JsxExpression {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        JsxExpression(NodeId::from_raw_unchecked(raw))
+        JsxExpression(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: JsxExpression) {
@@ -10267,7 +10287,7 @@ impl JsxSpreadChild {
     pub fn expression<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        Expr(NodeId::from_raw_unchecked(raw))
+        Expr(unsafe { NodeId::from_raw_unchecked(raw) })
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: Expr) {

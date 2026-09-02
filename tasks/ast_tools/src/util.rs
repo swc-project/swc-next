@@ -230,7 +230,7 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
         AstType::Struct(_) | AstType::Enum(_) => {
             let field_inner_ty = field_ty.repr_ident(schema);
             quote! {
-                #field_inner_ty(NodeId::from_raw_unchecked(raw))
+                #field_inner_ty(unsafe { NodeId::from_raw_unchecked(raw) })
             }
         }
         AstType::Option(ast_option) => {
@@ -239,7 +239,7 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
             match inner_ty {
                 AstType::Struct(_) | AstType::Enum(_) => quote! {
                     (raw != u32::MAX).then(|| {
-                        #field_inner_ident(NodeId::from_raw_unchecked(raw))
+                        unsafe { #field_inner_ident(NodeId::from_raw_unchecked(raw)) }
                     })
                 },
                 AstType::Primitive(primitive)

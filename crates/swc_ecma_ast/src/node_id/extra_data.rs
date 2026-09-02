@@ -7,32 +7,6 @@ oxc_index::define_index_type! {
     pub struct ExtraDataId = u32;
 }
 
-#[cfg(target_endian = "little")]
-impl ExtraData {
-    #[inline]
-    pub(crate) fn from_raw(raw: u64) -> Self {
-        Self { other: raw }
-    }
-
-    #[inline]
-    pub(crate) fn raw(self) -> u64 {
-        unsafe { self.other }
-    }
-
-    #[inline]
-    pub(crate) fn from_node_id(node_id: NodeId) -> Self {
-        let mut data = Self { other: 0 };
-        data.node_id = node_id;
-        data
-    }
-
-    #[inline]
-    pub(crate) fn node_id(self) -> NodeId {
-        unsafe { self.node_id }
-    }
-}
-
-#[cfg(target_endian = "big")]
 impl ExtraData {
     #[inline]
     pub(crate) fn from_raw(raw: u64) -> Self {
@@ -51,7 +25,20 @@ impl ExtraData {
 
     #[inline]
     pub(crate) fn node_id(self) -> NodeId {
-        NodeId::from_raw_unchecked(self.0 as u32)
+        unsafe { NodeId::from_raw_unchecked(self.0 as u32) }
+    }
+
+    /// Store an optional node ID using `u32::MAX` as the external `None`
+    /// sentinel rather than `NodeId`'s internal non-max representation.
+    #[inline]
+    pub(crate) fn from_optional_node_id(node_id: Option<NodeId>) -> Self {
+        Self(node_id.map_or(u64::from(u32::MAX), |node_id| node_id.index() as u64))
+    }
+
+    #[inline]
+    pub(crate) fn optional_node_id(self) -> Option<NodeId> {
+        let raw = self.0 as u32;
+        (raw != u32::MAX).then(|| unsafe { NodeId::from_raw_unchecked(raw) })
     }
 }
 
@@ -133,7 +120,7 @@ mod tests {
 
     #[test]
     fn canonical_storage() {
-        let node_id = NodeId::from_raw_unchecked(0x1122_3344);
+        let node_id = unsafe { NodeId::from_raw_unchecked(0x1122_3344) };
         let data = ExtraData::from_node_id(node_id);
         assert_eq!(data.raw(), 0x1122_3344);
         assert_eq!(data.node_id().index(), 0x1122_3344);

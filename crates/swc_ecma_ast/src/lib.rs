@@ -81,24 +81,9 @@ pub struct NodePayload(pub(crate) u128);
 
 /// Compact values stored in the flattening AST's extra-data table.
 ///
-/// The AST schema determines the logical type of each value, so no runtime
-/// discriminant is stored. Little-endian targets retain the original native
-/// typed views used by hot traversal paths.
-#[cfg(target_endian = "little")]
-#[derive(Clone, Copy)]
-pub union ExtraData {
-    node_id: NodeId,
-
-    /// Any scalar enum or other value representable within eight bytes.
-    other: u64,
-}
-
-/// Compact values stored in the flattening AST's extra-data table.
-///
-/// On big-endian targets, numeric bit positions match the fixed little-endian
-/// FFI format. The AST schema determines the logical type of each value, so no
-/// runtime discriminant is stored.
-#[cfg(target_endian = "big")]
+/// The stored word uses the canonical logical bit layout on every target,
+/// independent of `NodeId`'s internal representation. Big-endian FFI code
+/// writes this word explicitly in little-endian byte order.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct ExtraData(u64);

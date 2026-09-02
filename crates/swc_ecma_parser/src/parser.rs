@@ -265,22 +265,36 @@ impl Default for ReportOptions {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct ScratchBuffer {
-    items: Vec<NodeId>,
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ScratchBuffer<T = NodeId> {
+    items: Vec<T>,
 }
 
-impl ScratchBuffer {
+impl<T> Default for ScratchBuffer<T> {
+    fn default() -> Self {
+        Self { items: Vec::new() }
+    }
+}
+
+impl<T> ScratchBuffer<T> {
     fn begin(&self) -> usize {
         self.items.len()
     }
 
+    fn reset(&mut self, checkpoint: usize) {
+        self.items.truncate(checkpoint);
+    }
+}
+
+impl ScratchBuffer<NodeId> {
     fn append(&mut self, index: impl AstNode) {
         self.items.push(index.node_id());
     }
+}
 
-    fn reset(&mut self, checkpoint: usize) {
-        self.items.truncate(checkpoint);
+impl ScratchBuffer<Option<NodeId>> {
+    fn append(&mut self, index: impl AstNode) {
+        self.items.push(Some(index.node_id()));
     }
 }
 
@@ -725,7 +739,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     commonjs_conditional_diagnostic_indices: Vec<usize>,
     current_token: Token,
     scratch_statements: ScratchBuffer,
-    scratch_cover: ScratchBuffer,
+    scratch_cover: ScratchBuffer<Option<NodeId>>,
     scratch_decorators: ScratchBuffer,
     /// General-purpose scratch buffers used when two extra-data lists are
     /// assembled at the same time.
@@ -1368,7 +1382,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let range = self.ast.add_sub_range(
             self.scratch_cover.items[scratch_checkpoint..]
                 .iter()
-                .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
+                .map(|node| unsafe { N::from_node_id_unchecked(node.unwrap()) }),
         );
         debug_assert_eq!(
             range.len(),
@@ -8534,16 +8548,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
             }
             Some(if self.scratch_cover.items.len() - checkpoint == 1 {
-                unsafe { Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint]) }
+                unsafe {
+                    Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint].unwrap())
+                }
             } else {
-                let first =
-                    unsafe { Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint]) };
+                let first = unsafe {
+                    Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint].unwrap())
+                };
                 let last = unsafe {
                     Expr::from_node_id_unchecked(
-                        *self
-                            .scratch_cover
+                        self.scratch_cover
                             .items
                             .last()
+                            .copied()
+                            .flatten()
                             .expect("a sequence expression contains its last expression"),
                     )
                 };
@@ -9295,12 +9313,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.scratch_cover.begin();
         let result = (|| {
             let source_elements_len = elements_range.len();
-            let none = NodeId::from_raw_unchecked(u32::MAX);
             let mut rest = None;
             for index in 0..source_elements_len {
                 let argument = elements_range.get_node(&self.ast, index).unwrap();
                 let Some(argument) = argument else {
-                    self.scratch_cover.items.push(none);
+                    self.scratch_cover.items.push(None);
                     continue;
                 };
                 match self.ast.argument_data(argument) {
@@ -9365,8 +9382,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let elements =
                 self.ast
                     .add_sub_range(self.scratch_cover.items[checkpoint..].iter().map(|node| {
-                        (*node != none)
-                            .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
+                        node.map(|node| unsafe { BindingPattern::from_node_id_unchecked(node) })
                     }));
             let temporary =
                 self.ast
@@ -9842,9 +9858,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 && self.current_token.tag != TokenTag::Eof
             {
                 if self.eat(TokenTag::Comma)? {
-                    self.scratch_cover
-                        .items
-                        .push(NodeId::from_raw_unchecked(u32::MAX));
+                    self.scratch_cover.items.push(None);
                     continue;
                 }
                 let argument = if self.eat(TokenTag::Spread)? {
@@ -9889,11 +9903,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             end = self.current_token.span.end;
             self.advance()?;
-            let none = NodeId::from_raw_unchecked(u32::MAX);
             let elements =
                 self.ast
                     .add_sub_range(self.scratch_cover.items[checkpoint..].iter().map(|node| {
-                        (*node != none).then(|| unsafe { Argument::from_node_id_unchecked(*node) })
+                        node.map(|node| unsafe { Argument::from_node_id_unchecked(node) })
                     }));
             Some(ArrayCover {
                 elements,
@@ -12898,7 +12911,8 @@ fn assignment_operator(tag: TokenTag) -> AssignmentOperator {
 fn strip_parenthesized_nodes(ast: &mut Ast<'_>, comments: &mut [Comment]) {
     let mut trailing_comment_index = 0;
     for index in 0..ast.node_count() {
-        let node = NodeId::from_raw_unchecked(index as u32);
+        // SAFETY: `index` comes directly from the bounds of the AST node table.
+        let node = unsafe { NodeId::from_usize_unchecked(index) };
         let replacement = match ast.kind_data(node) {
             NodeKindData::ParenthesizedExpression(parenthesized) => {
                 let mut inner = parenthesized.expression(ast);
