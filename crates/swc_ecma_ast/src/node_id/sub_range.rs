@@ -13,6 +13,7 @@ pub const EMPTY_SUB_RANGE: SubRange = SubRange {
 /// [SubRange] is a cheap way to represent a undetermined range of nodes in an arena, just like a [std::vec::Vec].
 ///
 /// It only contains the start and end of the range in [crate::ast_list::NodeList].
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct SubRange {
     pub start: ExtraDataId,

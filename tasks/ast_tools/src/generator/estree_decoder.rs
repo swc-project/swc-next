@@ -133,7 +133,7 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
         .as_ref()
         .is_none_or(|layout| layout.mode == InlineStorageMode::Partial)
     {
-        writeln!(output, "        const extraId = _getU32(payload + 12);").unwrap();
+        writeln!(output, "        const extraId = _u32[(payload + 12) >> 2];").unwrap();
     }
     let mut fields = Vec::new();
 
@@ -266,7 +266,7 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
 
 fn read_u32(location: &str, aligned: bool) -> String {
     if aligned {
-        format!("_getU32({location})")
+        format!("_u32[({location}) >> 2]")
     } else {
         format!("_dv.getUint32({location}, true)")
     }
@@ -875,26 +875,30 @@ function decodePool(bytes) {
   return result;
 }
 
+function copyLittleEndianU32(view) {
+  const u32 = new Uint32Array(view.byteLength >> 2);
+  for (let offset = 0; offset + 4 <= view.byteLength; offset += 4) {
+    u32[offset >> 2] = view.getUint32(offset, true);
+  }
+  return u32;
+}
+
 export function decode(buffer, source) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;
   const byteLength = buffer.byteLength;
   const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
   const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
-  const useNativeU32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0;
-  const _u32 = useNativeU32
+  const _u32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
     ? new Uint32Array(arrayBuffer, byteOffset, byteLength >> 2)
-    : null;
-  const _getU32 = useNativeU32
-    ? offset => _u32[offset >> 2]
-    : offset => _dv.getUint32(offset, true);
-  const nodeCount = _getU32(0);
-  const extraCount = _getU32(4);
-  const stringPoolLength = _getU32(8);
-  const sourceLength = _getU32(12);
-  const commentCount = _getU32(16);
-  const programIndex = _getU32(28);
-  const flags = _getU32(32);
+    : copyLittleEndianU32(_dv);
+  const nodeCount = _u32[0];
+  const extraCount = _u32[1];
+  const stringPoolLength = _u32[2];
+  const sourceLength = _u32[3];
+  const commentCount = _u32[4];
+  const programIndex = _u32[7];
+  const flags = _u32[8];
   const isTs = (flags & 1) !== 0;
 
   const spans = HEADER_SIZE;
@@ -926,7 +930,7 @@ export function decode(buffer, source) {
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
     for (let i = start; i < end; i++) {
-      const index = _getU32(extra + i * 8);
+      const index = _u32[(extra >> 2) + i * 2];
       result[i - start] = holes && index === NULL ? null : node(index);
     }
     return result;
@@ -936,8 +940,8 @@ export function decode(buffer, source) {
     const result = new Array(commentCount);
     for (let index = 0; index < commentCount; index++) {
       const offset = comments + index * 16;
-      const start = _getU32(offset);
-      const end = _getU32(offset + 4);
+      const start = _u32[offset >> 2];
+      const end = _u32[(offset >> 2) + 1];
       const kind = _dv.getUint16(offset + 12, true);
       const first = source.charCodeAt(pos(start));
       const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
@@ -954,8 +958,8 @@ export function decode(buffer, source) {
 
   function node(index) {
     const span = spans + index * 8;
-    const start = pos(_getU32(span));
-    const end = pos(_getU32(span + 4));
+    const start = pos(_u32[span >> 2]);
+    const end = pos(_u32[(span >> 2) + 1]);
     const payload = payloads + index * 16;
     let result;
     switch (bytes[kinds + index]) {

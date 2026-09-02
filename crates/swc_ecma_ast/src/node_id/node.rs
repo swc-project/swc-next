@@ -1,4 +1,5 @@
 oxc_index::define_index_type! {
+    #[repr(transparent)]
     pub struct NodeId = u32;
 }
 

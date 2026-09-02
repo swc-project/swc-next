@@ -3,6 +3,7 @@ use crate::{Ast, AstUtf8, AstWtf8, ExtraData, TypedSubRange};
 use super::{NodeId, SubRange};
 
 oxc_index::define_index_type! {
+    #[repr(transparent)]
     pub struct ExtraDataId = u32;
 }
 
