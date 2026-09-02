@@ -23,29 +23,67 @@ macro_rules! define_ast_string {
             pub const fn is_empty(self) -> bool {
                 self.start == self.end
             }
-
-            #[inline]
-            pub(crate) const fn from_raw(raw: u64) -> Self {
-                Self {
-                    start: raw as u32,
-                    end: (raw >> 32) as u32,
-                }
-            }
-
-            #[inline]
-            pub(crate) const fn raw(self) -> u64 {
-                self.start as u64 | ((self.end as u64) << 32)
-            }
         }
     };
 }
 
 define_ast_string!(AstUtf8);
+define_ast_string!(AstInternedUtf8);
 define_ast_string!(AstWtf8);
+
+impl AstUtf8 {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u64) -> Self {
+        Self {
+            start: raw as u32,
+            end: (raw >> 32) as u32,
+        }
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u64 {
+        self.start as u64 | ((self.end as u64) << 32)
+    }
+}
+
+impl AstWtf8 {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u64) -> Self {
+        Self {
+            start: raw as u32,
+            end: (raw >> 32) as u32,
+        }
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u64 {
+        self.start as u64 | ((self.end as u64) << 32)
+    }
+}
+
+impl From<AstInternedUtf8> for AstUtf8 {
+    #[inline]
+    fn from(value: AstInternedUtf8) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
 
 impl From<AstUtf8> for AstWtf8 {
     #[inline]
     fn from(value: AstUtf8) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
+impl From<AstInternedUtf8> for AstWtf8 {
+    #[inline]
+    fn from(value: AstInternedUtf8) -> Self {
         Self {
             start: value.start,
             end: value.end,
@@ -81,6 +119,14 @@ impl<'a> StringPool<'a> {
     pub fn get_wtf8(&self, id: AstWtf8) -> &Wtf8 {
         // SAFETY: `AstWtf8` is guaranteed to reference valid WTF-8.
         unsafe { Wtf8::from_bytes_unchecked(self.get_bytes(id.start, id.end)) }
+    }
+
+    #[inline]
+    pub fn as_utf8(&self, id: AstWtf8) -> Option<AstUtf8> {
+        self.get_wtf8(id).as_str().map(|_| AstUtf8 {
+            start: id.start,
+            end: id.end,
+        })
     }
 
     #[inline]
@@ -130,6 +176,39 @@ impl<'a> StringPool<'a> {
         AstWtf8 { start, end }
     }
 
+    /// Canonicalizes a UTF-8 range already stored in this pool.
+    #[inline]
+    pub fn intern_utf8(&mut self, text: AstUtf8) -> AstInternedUtf8 {
+        let (start, end) = self.intern_range(text.start, text.end);
+        AstInternedUtf8 { start, end }
+    }
+
+    /// Canonicalizes a WTF-8 range already stored in this pool.
+    #[inline]
+    pub fn intern_wtf8(&mut self, text: AstWtf8) -> AstWtf8 {
+        let (start, end) = self.intern_range(text.start, text.end);
+        AstWtf8 { start, end }
+    }
+
+    fn intern_range(&mut self, start: u32, end: u32) -> (u32, u32) {
+        if start == end {
+            return (0, 0);
+        }
+        if let Some(id) = {
+            let text = self.get_bytes(start, end);
+            self.dedup.get(text).copied()
+        } {
+            return id;
+        }
+
+        // Keep the original range as the canonical value. Only the hash-map key needs
+        // stable owned bytes; unlike `add_bytes`, this does not append another copy to `extra`.
+        let mut key = ArenaVec::with_capacity_in((end - start) as usize, self.allocator);
+        key.extend_from_slice(self.get_bytes(start, end));
+        self.dedup.insert(key, (start, end));
+        (start, end)
+    }
+
     fn add_bytes(&mut self, text: &[u8]) -> (u32, u32) {
         if text.is_empty() {
             return (0, 0);
@@ -153,5 +232,27 @@ impl<'a> StringPool<'a> {
         key.extend_from_slice(text);
         self.dedup.insert(key, id);
         id
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+
+    use super::StringPool;
+
+    #[test]
+    fn interns_existing_ranges_without_moving_the_first_value() {
+        let allocator = Allocator::new();
+        let mut strings = StringPool::new_in(&allocator, "name name");
+        let first = strings.source_slice(0, 4);
+        let second = strings.source_slice(5, 9);
+
+        let canonical = strings.intern_utf8(first);
+        assert_eq!(canonical.start, 0);
+        assert_eq!(canonical.end, 4);
+        assert_eq!(strings.extra.len(), 0);
+        assert_eq!(strings.intern_utf8(second), canonical);
+        assert_eq!(strings.extra.len(), 0);
     }
 }

@@ -8,10 +8,12 @@
 
 use oxc_index::Idx;
 use swc_next_allocator::{
-    hash_map::{HashMap as ArenaHashMap, Values},
+    hash_map::{HashMap as ArenaHashMap, Iter, Values},
     vec::Vec as ArenaVec,
 };
-use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{
+    Ast, AstInternedUtf8, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith,
+};
 
 use crate::{binder::Range, checker::Checker, scope::ScopeTree};
 
@@ -35,7 +37,51 @@ oxc_index::define_nonmax_u32_index_type! {
     pub struct DeclarationId;
 }
 
-type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
+/// Canonical name stored for a semantic symbol and used for scope lookup.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum SymbolName {
+    Utf8(AstInternedUtf8),
+    Wtf8(AstWtf8),
+}
+
+impl From<AstInternedUtf8> for SymbolName {
+    #[inline]
+    fn from(name: AstInternedUtf8) -> Self {
+        Self::Utf8(name)
+    }
+}
+
+impl SymbolName {
+    /// Canonicalizes a WTF-8 name into the same representation used by semantic bindings.
+    #[inline]
+    pub fn intern_wtf8(ast: &mut Ast<'_>, name: AstWtf8) -> Self {
+        if let Some(name) = ast.as_utf8(name) {
+            return Self::Utf8(ast.intern_utf8(name));
+        }
+        Self::Wtf8(ast.intern_wtf8(name))
+    }
+
+    #[inline]
+    pub fn as_utf8(self) -> Option<AstInternedUtf8> {
+        match self {
+            Self::Utf8(name) => Some(name),
+            Self::Wtf8(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_wtf8(self) -> Option<AstWtf8> {
+        match self {
+            Self::Utf8(_) => None,
+            Self::Wtf8(name) => Some(name),
+        }
+    }
+}
+
+type ScopeName = SymbolName;
+
+type ScopeMap<'a> = ArenaHashMap<'a, AstInternedUtf8, SymbolId>;
+type Wtf8ScopeMap<'a> = ArenaHashMap<'a, (ScopeId, AstWtf8), SymbolId>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
 /// The complete semantic model of a tree, with every scope, symbol,
@@ -62,6 +108,7 @@ pub struct Semantic<'a> {
     use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
+    wtf8_bindings: Wtf8ScopeMap<'a>,
 
     /// The symbol declared by each node, indexed by [`NodeId`].
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
@@ -166,11 +213,18 @@ impl<'a> Semantic<'a> {
     /// //             ^ binding here finds `a`, whose symbol
     /// //               lives in the function scope
     /// ```
-    pub fn binding(&self, scope_id: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        self.scope_maps[scope_id.index()]
-            .get(name)
-            .copied()
-            .or_else(|| self.hoisting_variables[scope_id.index()].get(name).copied())
+    pub fn binding(&self, scope_id: ScopeId, name: impl Into<SymbolName>) -> Option<SymbolId> {
+        match name.into() {
+            SymbolName::Utf8(name) => self.scope_maps[scope_id.index()]
+                .get(&name)
+                .copied()
+                .or_else(|| {
+                    self.hoisting_variables[scope_id.index()]
+                        .get(&name)
+                        .copied()
+                }),
+            SymbolName::Wtf8(name) => self.wtf8_bindings.get(&(scope_id, name)).copied(),
+        }
     }
 
     /// Every symbol declared directly in `scope`. A hoisting `var`
@@ -178,6 +232,8 @@ impl<'a> Semantic<'a> {
     pub fn bindings(&self, scope_id: ScopeId) -> BindingIterator<'_> {
         BindingIterator {
             inner: self.scope_maps[scope_id.index()].values(),
+            wtf8: self.wtf8_bindings.iter(),
+            scope: scope_id,
         }
     }
 
@@ -197,11 +253,16 @@ impl<'a> Semantic<'a> {
     pub fn lookup(
         &self,
         scope_id: ScopeId,
-        name: &[u8],
+        name: impl Into<SymbolName>,
         space: ReferenceSpace,
     ) -> Option<SymbolId> {
+        let name = name.into();
         for ancestor in self.scopes.ancestors(Some(scope_id)) {
-            let Some(&id) = self.scope_maps[ancestor.index()].get(name) else {
+            let id = match name {
+                SymbolName::Utf8(name) => self.scope_maps[ancestor.index()].get(&name).copied(),
+                SymbolName::Wtf8(name) => self.wtf8_bindings.get(&(ancestor, name)).copied(),
+            };
+            let Some(id) = id else {
                 continue;
             };
             if self.symbol(id).flags.visible_in(space) {
@@ -322,14 +383,20 @@ impl Iterator for ScopeIterator<'_> {
 }
 
 pub struct BindingIterator<'a> {
-    inner: Values<'a, &'a [u8], SymbolId>,
+    inner: Values<'a, AstInternedUtf8, SymbolId>,
+    wtf8: Iter<'a, (ScopeId, AstWtf8), SymbolId>,
+    scope: ScopeId,
 }
 
 impl Iterator for BindingIterator<'_> {
     type Item = SymbolId;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().copied()
+        if let Some(id) = self.inner.next() {
+            return Some(*id);
+        }
+        self.wtf8
+            .find_map(|(&(scope, _), &id)| (scope == self.scope).then_some(id))
     }
 }
 
@@ -416,7 +483,7 @@ pub struct AnalyzeOptions {
 /// the tree's arena, so the result is valid as long as the tree is alive.
 /// When [`AnalyzeOptions::build_module_record`] is disabled, the returned
 /// module record is empty.
-pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
+pub fn analyze<'a>(ast: &mut Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
     let mut visitor = Checker::new(ast, options.check_syntax, options.build_module_record);
     root.visit_with(&mut visitor);
@@ -429,14 +496,21 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 
 #[cfg(test)]
 mod tests {
-    use swc_next_allocator::Allocator;
+    use swc_next_allocator::{Allocator, wtf8::Wtf8};
     use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::{
-        AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, Semantic, SymbolFlags, analyze,
-        scope::ScopeKind,
+        AnalyzeOptions, ExportOrigin, ExportTarget, ReferenceSpace, Semantic, SymbolFlags,
+        SymbolName, analyze, scope::ScopeKind,
     };
+
+    fn symbol_name_bytes<'b>(ast: &'b Ast<'_>, name: SymbolName) -> &'b [u8] {
+        match name {
+            SymbolName::Utf8(name) => ast.get_utf8(name.into()).as_bytes(),
+            SymbolName::Wtf8(name) => ast.get_wtf8(name).as_bytes(),
+        }
+    }
 
     fn analyze_source<'a>(
         allocator: &'a Allocator,
@@ -453,10 +527,10 @@ mod tests {
         analyze_options: AnalyzeOptions,
     ) -> (Ast<'a>, Semantic<'a>) {
         let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
-        let ast = parse.ast;
+        let mut ast = parse.ast;
         assert!(parse.diagnostics.is_empty());
 
-        let result = analyze(&ast, analyze_options);
+        let result = analyze(&mut ast, analyze_options);
         assert!(result.diagnostics.is_empty());
         (ast, result.semantic)
     }
@@ -470,10 +544,14 @@ mod tests {
             ..Options::default()
         };
 
-        let source = "interface A {} interface B {} interface A {} interface A {}";
-        let (ast, semantic) = analyze_source(&allocator, source, ts_script);
-        let a = semantic.binding(ScopeId::ROOT, b"A").unwrap();
-        let b = semantic.binding(ScopeId::ROOT, b"B").unwrap();
+        let source = "interface A {} interface B {} interface A {} interface \\u0041 {}";
+        let (mut ast, semantic) = analyze_source(&allocator, source, ts_script);
+        let a_name = ast.add_utf8("A");
+        let a_name = ast.intern_utf8(a_name);
+        let b_name = ast.add_utf8("B");
+        let b_name = ast.intern_utf8(b_name);
+        let a = semantic.binding(ScopeId::ROOT, a_name).unwrap();
+        let b = semantic.binding(ScopeId::ROOT, b_name).unwrap();
         let mut a_declarations = semantic.declaration_ids(a);
         assert_eq!(a_declarations.len(), 3);
         let first_a = a_declarations.next().unwrap();
@@ -502,6 +580,49 @@ mod tests {
         assert_eq!(
             semantic.declaration_ids(a).collect::<Vec<_>>(),
             [first.id, third.id, fourth.id]
+        );
+    }
+
+    #[test]
+    fn looks_up_wtf8_bindings() {
+        let allocator = Allocator::new();
+        let ts_script = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        let (mut ast, semantic) = analyze_source(&allocator, r#"enum E { "foo" }"#, ts_script);
+        let member = semantic
+            .iter_symbols()
+            .find(|entry| entry.symbol.flags.contains(SymbolFlags::ENUM_MEMBER))
+            .unwrap();
+        let name = ast.add_wtf8(Wtf8::from_str("foo"));
+        let name = SymbolName::intern_wtf8(&mut ast, name);
+
+        assert_eq!(name, member.symbol.name);
+        assert_eq!(semantic.binding(member.symbol.scope, name), Some(member.id));
+        assert_eq!(
+            semantic.lookup(member.symbol.scope, name, ReferenceSpace::Any),
+            Some(member.id)
+        );
+
+        let (mut ast, semantic) = analyze_source(&allocator, r#"enum E { "\ud800" }"#, ts_script);
+        let member = semantic
+            .iter_symbols()
+            .find(|entry| {
+                entry.symbol.flags.contains(SymbolFlags::ENUM_MEMBER)
+                    && matches!(entry.symbol.name, SymbolName::Wtf8(_))
+            })
+            .unwrap();
+        let name = ast.add_wtf8(Wtf8::from_bytes(b"\xed\xa0\x80").unwrap());
+        let name = SymbolName::intern_wtf8(&mut ast, name);
+
+        assert_eq!(name, member.symbol.name);
+        assert_eq!(semantic.binding(member.symbol.scope, name), Some(member.id));
+        assert_eq!(
+            semantic.lookup(member.symbol.scope, name, ReferenceSpace::Any),
+            Some(member.id)
         );
     }
 
@@ -542,13 +663,13 @@ mod tests {
         let (ast, semantic) = analyze_source(&allocator, source, ts_module);
         let symbol = semantic
             .iter_symbols()
-            .find(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == b"T")
+            .find(|entry| symbol_name_bytes(&ast, entry.symbol.name) == b"T")
             .unwrap();
         assert!(symbol.symbol.flags.contains(SymbolFlags::TYPE_IMPORT));
 
         let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"T")
+            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"T")
             .unwrap()
             .reference;
         assert_eq!(reference.flags.space, ReferenceSpace::Type);
@@ -559,7 +680,7 @@ mod tests {
         let (ast, semantic) = analyze_source(&allocator, source, ts_module);
         let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"T")
+            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"T")
             .unwrap()
             .reference;
         assert_eq!(reference.flags.space, ReferenceSpace::Value);
@@ -636,11 +757,13 @@ mod tests {
         };
 
         let source = "let value; with ({}) { value; }";
-        let (ast, semantic) = analyze_source(&allocator, source, js_script);
-        let value_symbol = semantic.binding(ScopeId::ROOT, b"value").unwrap();
+        let (mut ast, semantic) = analyze_source(&allocator, source, js_script);
+        let value_name = ast.add_utf8("value");
+        let value_name = ast.intern_utf8(value_name);
+        let value_symbol = semantic.binding(ScopeId::ROOT, value_name).unwrap();
         let value = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
+            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"value")
             .unwrap()
             .reference;
         assert!(value.flags.is_dynamic());
@@ -656,7 +779,7 @@ mod tests {
         let (ast, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
+            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"value")
             .unwrap()
             .reference;
         assert!(!reference.flags.is_dynamic());
@@ -673,7 +796,7 @@ mod tests {
         assert_eq!(reference.symbol, Some(symbol_id));
         assert_eq!(semantic.uses(symbol_id), &[reference_id]);
         assert_eq!(
-            ast.get_wtf8(semantic.symbol(symbol_id).name).as_bytes(),
+            symbol_name_bytes(&ast, semantic.symbol(symbol_id).name),
             b"value"
         );
 
@@ -694,5 +817,35 @@ mod tests {
             .unwrap();
         assert!(!function.scope.flags.contains_direct_eval());
         assert!(!semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
+    }
+
+    #[test]
+    fn canonicalizes_semantic_name_handles() {
+        let allocator = Allocator::new();
+        let (mut ast, semantic) = analyze_source(
+            &allocator,
+            "let value; value; v\\u0061lue;",
+            Options {
+                lang: Lang::Js,
+                source_type: SourceType::Script,
+                ..Options::default()
+            },
+        );
+
+        let references: Vec<_> = semantic
+            .iter_references()
+            .map(|entry| entry.reference)
+            .collect();
+        assert_eq!(references.len(), 2);
+        assert_eq!(references[0].name, references[1].name);
+        assert_eq!(ast.get_utf8(references[0].name.into()), "value");
+
+        let value_name = ast.add_utf8("value");
+        let value_name = ast.intern_utf8(value_name);
+        let symbol = semantic.binding(ScopeId::ROOT, value_name).unwrap();
+        assert_eq!(
+            semantic.symbol(symbol).name,
+            SymbolName::Utf8(references[0].name)
+        );
     }
 }

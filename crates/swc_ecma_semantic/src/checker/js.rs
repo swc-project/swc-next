@@ -385,15 +385,21 @@ fn find_formal_parameters(
 
 /// Extracts the name from a ModuleExportName: an IdentifierName,
 /// IdentifierReference, or StringLiteral.
-fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
+fn module_export_name_id(tree: &Ast<'_>, node: NodeId) -> ModuleExportNameValue {
     match tree.kind_data(node) {
-        NodeKindData::IdentifierName(identifier) => tree.get_utf8(identifier.name(tree)).as_bytes(),
-        NodeKindData::IdentifierReference(identifier) => {
-            tree.get_utf8(identifier.name(tree)).as_bytes()
+        NodeKindData::IdentifierName(identifier) => {
+            ModuleExportNameValue::Utf8(identifier.name(tree))
         }
-        NodeKindData::StringLiteral(literal) => tree.get_wtf8(literal.value(tree)).as_bytes(),
-        _ => b"",
+        NodeKindData::IdentifierReference(identifier) => {
+            ModuleExportNameValue::Utf8(identifier.name(tree))
+        }
+        NodeKindData::StringLiteral(literal) => ModuleExportNameValue::Wtf8(literal.value(tree)),
+        _ => ModuleExportNameValue::Wtf8(AstWtf8::EMPTY),
     }
+}
+
+fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
+    module_export_name_id(tree, node).bytes(tree)
 }
 
 fn has_octal_escape(value: &[u8]) -> bool {
@@ -435,7 +441,7 @@ impl<'a> CheckerState<'a> {
     /// declared bindings.
     pub fn check_unresolved_exports(
         &mut self,
-        tree: &Ast<'a>,
+        tree: &mut Ast<'a>,
         symbols: &crate::binder::SymbolTracker<'a>,
     ) {
         if !tree.is_module() {
@@ -443,13 +449,18 @@ impl<'a> CheckerState<'a> {
         }
         for index in 0..self.export_specifiers.len() {
             let specifier = &self.export_specifiers[index];
-            if symbols
-                .binding(ScopeId::MODULE, &specifier.local_name)
-                .is_none()
-            {
+            let local_name = match specifier.local_name {
+                ModuleExportNameValue::Utf8(name) => Some(tree.intern_utf8(name)),
+                ModuleExportNameValue::Wtf8(name) => {
+                    tree.as_utf8(name).map(|name| tree.intern_utf8(name))
+                }
+            };
+            let binding = local_name.and_then(|name| symbols.binding(ScopeId::MODULE, name));
+            if binding.is_none() {
+                let local_name = specifier.local_name.bytes(tree);
                 let message = self.fmt(format_args!(
                     "Export '{}' is not defined",
-                    String::from_utf8_lossy(&specifier.local_name)
+                    String::from_utf8_lossy(local_name)
                 ));
                 self.report(tree.span(specifier.node), message, ReportOptions::default());
             }
@@ -536,12 +547,11 @@ impl<'a> CheckerState<'a> {
         &mut self,
         identifier: BindingIdentifier,
         node: NodeId,
-        name: &[u8],
+        name_id: AstInternedUtf8,
         flags: SymbolFlags,
-        context: &mut SemanticVisitCtx<'_, 'a>,
+        context: &SemanticVisitCtx<'_, 'a>,
         existing_id: Option<SymbolId>,
     ) {
-        debug_assert!(!name.is_empty());
         let target = context.state.symbols.pending.scope;
         let excludes = context.state.symbols.pending.excludes;
         if let Some(existing_id) = existing_id {
@@ -624,7 +634,7 @@ impl<'a> CheckerState<'a> {
             });
             if outer_holds_parameters
                 && let Some(outer) = outer
-                && let Some(symbol_id) = context.state.symbols.own_binding(outer, name)
+                && let Some(symbol_id) = context.state.symbols.own_binding(outer, name_id)
             {
                 let existing = context.state.symbols.symbol(symbol_id);
                 if existing
@@ -655,7 +665,7 @@ impl<'a> CheckerState<'a> {
                 if scope_id == target {
                     break;
                 }
-                let Some(symbol_id) = context.state.symbols.own_binding(scope_id, name) else {
+                let Some(symbol_id) = context.state.symbols.own_binding(scope_id, name_id) else {
                     continue;
                 };
                 let existing = context.state.symbols.symbol(symbol_id);
@@ -703,7 +713,7 @@ impl<'a> CheckerState<'a> {
         &mut self,
         name: &[u8],
         node: NodeId,
-        context: &mut SemanticVisitCtx<'_, 'a>,
+        context: &SemanticVisitCtx<'_, 'a>,
         as_what: &'static str,
     ) {
         if !context.state.scope.is_strict() {
@@ -722,7 +732,7 @@ impl<'a> CheckerState<'a> {
     /// Annex B.3.5, may not have an Initializer.
     fn check_for_in_of_initializer(
         &mut self,
-        context: &mut SemanticVisitCtx<'_, 'a>,
+        context: &SemanticVisitCtx<'_, 'a>,
         left: NodeId,
         is_for_in: bool,
     ) {
@@ -921,7 +931,7 @@ impl<'a> CheckerState<'a> {
         &mut self,
         name: &[u8],
         node: NodeId,
-        context: &mut SemanticVisitCtx<'_, 'a>,
+        context: &SemanticVisitCtx<'_, 'a>,
     ) {
         // TypeScript declarations can merge across the type and value namespaces. Duplicate
         // exports are therefore checker diagnostics rather than parser-level early errors.
@@ -1068,10 +1078,11 @@ pub(super) fn check_binding_identifier(
     let checks = &mut checker.checks;
     let context = &mut checker.context;
     let node_id = identifier.node_id();
-    let name = context
-        .ast
-        .get_utf8(identifier.name(context.ast))
-        .as_bytes();
+    let name_id = context
+        .state
+        .symbols
+        .canonicalize_name(context.ast, identifier.name(context.ast));
+    let name = context.ast.get_utf8(name_id.into()).as_bytes();
     let flags = context.state.symbols.pending.flags;
     if context.state.in_type_position() && !flags.contains(SymbolFlags::TYPE_PARAMETER) {
         return;
@@ -1095,8 +1106,8 @@ pub(super) fn check_binding_identifier(
     let existing = context
         .state
         .symbols
-        .binding(context.state.symbols.pending.scope, name);
-    checks.check_redeclaration(identifier, node_id, name, flags, context, existing);
+        .binding(context.state.symbols.pending.scope, name_id);
+    checks.check_redeclaration(identifier, node_id, name_id, flags, context, existing);
     if context.state.symbols.export_state.named().is_some() {
         let skip = existing.is_some() && context.ast.is_ts();
         if !skip {
@@ -1910,9 +1921,9 @@ pub(super) fn check_export_specifier(checker: &mut Checker<'_, '_>, specifier: E
         && declaration.source(context.ast).is_none()
         && declaration.export_kind(context.ast) != ImportOrExportKind::Type
     {
-        let local = module_export_name(context.ast, specifier.local(context.ast).node_id());
+        let local_name = module_export_name_id(context.ast, specifier.local(context.ast).node_id());
         checks.export_specifiers.push(ExportSpecifierInfo {
-            local_name: local.to_vec(),
+            local_name,
             node: specifier.node_id(),
         });
     }

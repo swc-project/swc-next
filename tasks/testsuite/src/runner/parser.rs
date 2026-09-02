@@ -18,7 +18,7 @@ impl<C: Case> Runner<C> for ParserRunner {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let allocator = Allocator::new();
-            let ast = match parse_case(&allocator, case) {
+            let mut ast = match parse_case(&allocator, case) {
                 Ok(result) => result,
                 Err(_) if case.expects_error() => return Ok(()),
                 Err(error) => return Err(format!("{}: {error}", case.name())),
@@ -35,7 +35,7 @@ impl<C: Case> Runner<C> for ParserRunner {
                 }
             }
             let semantic_ret = analyze(
-                &ast,
+                &mut ast,
                 AnalyzeOptions {
                     check_syntax: true,
                     ..AnalyzeOptions::default()

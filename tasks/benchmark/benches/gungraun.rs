@@ -77,16 +77,16 @@ fn setup_program(source: &'static str, lang: Lang) -> Ast<'static> {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_semantic(ast: Ast<'static>) {
-    black_box(analyze(&ast, AnalyzeOptions::default()));
+fn bench_semantic(mut ast: Ast<'static>) {
+    black_box(analyze(&mut ast, AnalyzeOptions::default()));
 }
 
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_semantic_with_syntax_check(ast: Ast<'static>) {
+fn bench_semantic_with_syntax_check(mut ast: Ast<'static>) {
     black_box(analyze(
-        &ast,
+        &mut ast,
         AnalyzeOptions {
             check_syntax: true,
             ..AnalyzeOptions::default()

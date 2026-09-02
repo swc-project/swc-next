@@ -108,7 +108,7 @@ fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
     let allocator = Allocator::new();
     let mut ast = parse_program(source, &allocator, case)?;
     let semantic_ret = analyze(
-        &ast,
+        &mut ast,
         AnalyzeOptions {
             check_syntax: true,
             ..AnalyzeOptions::default()

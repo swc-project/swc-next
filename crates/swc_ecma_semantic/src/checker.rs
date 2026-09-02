@@ -8,28 +8,28 @@ use std::{borrow::Cow, collections::HashMap};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     ArrayPattern, ArrowFunctionExpression, AssignmentExpression, AssignmentOperator,
-    AssignmentPattern, Ast, BinaryOperator, BindingIdentifier, BindingProperty, BindingRestElement,
-    BlockStatement, CallExpression, CatchClause, Class, ClassBody, Decorator, Diagnostic,
-    Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
-    ExportSpecifier, ForInStatement, ForOfStatement, ForStatement, FormalParameters, Function,
-    FunctionBody, FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind,
-    ImportSpecifier, JsxClosingElement, JsxOpeningElement, Label, MemberExpression, NodeId,
-    NodeKind, NodeKindData, ObjectPattern, ParenthesizedExpression, PropertyDefinition,
-    PropertyKey, ScopeId, Severity, Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId,
-    TsArrayType, TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
-    TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
-    TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
-    TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
-    TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage, TsIntersectionType,
-    TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType, TsLiteralType, TsMappedType,
-    TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsNamedTupleMember,
-    TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType, TsParenthesizedType,
-    TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression, TsTemplateLiteralType,
-    TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
-    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
-    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator,
-    UpdateExpression, VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
-    WithStatement,
+    AssignmentPattern, Ast, AstInternedUtf8, AstUtf8, AstWtf8, BinaryOperator, BindingIdentifier,
+    BindingProperty, BindingRestElement, BlockStatement, CallExpression, CatchClause, Class,
+    ClassBody, Decorator, Diagnostic, Directive, ExportAllDeclaration, ExportDefaultDeclaration,
+    ExportNamedDeclaration, ExportSpecifier, ForInStatement, ForOfStatement, ForStatement,
+    FormalParameters, Function, FunctionBody, FunctionType, IdentifierReference, ImportDeclaration,
+    ImportOrExportKind, ImportSpecifier, JsxClosingElement, JsxOpeningElement, Label,
+    MemberExpression, NodeId, NodeKind, NodeKindData, ObjectPattern, ParenthesizedExpression,
+    PropertyDefinition, PropertyKey, ScopeId, Severity, Span, StaticBlock, SwitchCase,
+    SwitchStatement, SymbolId, TsArrayType, TsAsExpression, TsCallSignatureDeclaration,
+    TsClassImplements, TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType,
+    TsEnumBody, TsEnumDeclaration, TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType,
+    TsGlobalDeclaration, TsImportEqualsDeclaration, TsImportType, TsIndexSignature,
+    TsIndexedAccessType, TsInferType, TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage,
+    TsIntersectionType, TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType,
+    TsLiteralType, TsMappedType, TsMethodDefinition, TsMethodSignature, TsModuleBlock,
+    TsModuleDeclaration, TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression,
+    TsOptionalType, TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType,
+    TsSatisfiesExpression, TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration,
+    TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
+    TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
+    TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
+    VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith, WithStatement,
 };
 
 use crate::{
@@ -53,10 +53,11 @@ struct CheckerState<'a> {
 }
 
 impl<'traverse, 'a> Checker<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
+    pub fn new(ast: &'traverse mut Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
+        let state = SemanticContext::init(ast, build_module_record);
         Self {
             checks: CheckerState::new(),
-            context: SemanticVisitCtx::new(ast, SemanticContext::init(ast, build_module_record)),
+            context: SemanticVisitCtx::new(ast, state),
             check_syntax,
             in_ts_module_name: false,
         }
@@ -166,8 +167,23 @@ fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
     }
 }
 
+#[derive(Clone, Copy)]
+enum ModuleExportNameValue {
+    Utf8(AstUtf8),
+    Wtf8(AstWtf8),
+}
+
+impl ModuleExportNameValue {
+    fn bytes<'b>(self, tree: &'b Ast<'_>) -> &'b [u8] {
+        match self {
+            Self::Utf8(name) => tree.get_utf8(name).as_bytes(),
+            Self::Wtf8(name) => tree.get_wtf8(name).as_bytes(),
+        }
+    }
+}
+
 struct ExportSpecifierInfo {
-    local_name: Vec<u8>,
+    local_name: ModuleExportNameValue,
     node: NodeId,
 }
 

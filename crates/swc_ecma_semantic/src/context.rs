@@ -13,12 +13,12 @@ use crate::{
 
 pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
     pub state: SemanticContext<'ast>,
-    pub ast: &'traverse Ast<'ast>,
+    pub ast: &'traverse mut Ast<'ast>,
     path: Vec<NodeId>,
 }
 
 impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
-    pub fn new(ast: &'traverse Ast<'ast>, state: SemanticContext<'ast>) -> Self {
+    pub fn new(ast: &'traverse mut Ast<'ast>, state: SemanticContext<'ast>) -> Self {
         Self {
             state,
             ast,

@@ -41,8 +41,8 @@ fn bench_semantic(c: &mut Criterion) {
                     assert!(result.diagnostics.is_empty());
                     result.ast
                 },
-                |ast| {
-                    black_box(analyze(&ast, AnalyzeOptions::default()));
+                |mut ast| {
+                    black_box(analyze(&mut ast, AnalyzeOptions::default()));
                 },
                 BatchSize::SmallInput,
             );

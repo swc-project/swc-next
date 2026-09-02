@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
     IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut,
     VisitMutWith,
 };
-use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
+use swc_next_ecma_semantic::{ReferenceSpace, Semantic, SymbolName};
 
 #[derive(Default)]
 pub struct CaptureFrame {
@@ -35,10 +35,18 @@ impl<'semantic> FnEnvHoister<'semantic> {
     pub fn new(ast: &Ast<'_>, semantic: &'semantic Semantic<'semantic>) -> Self {
         let mut used_names = HashSet::new();
         for entry in semantic.iter_symbols() {
-            used_names.insert(ast.get_wtf8(entry.symbol.name).as_bytes().to_vec());
+            let name = match entry.symbol.name {
+                SymbolName::Utf8(name) => ast.get_utf8(name.into()).as_bytes(),
+                SymbolName::Wtf8(name) => ast.get_wtf8(name).as_bytes(),
+            };
+            used_names.insert(name.to_vec());
         }
         for entry in semantic.iter_references() {
-            used_names.insert(ast.get_utf8(entry.reference.name).as_bytes().to_vec());
+            used_names.insert(
+                ast.get_utf8(entry.reference.name.into())
+                    .as_bytes()
+                    .to_vec(),
+            );
         }
         Self {
             semantic,
