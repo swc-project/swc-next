@@ -4701,8 +4701,22 @@ impl<'a> Printer<'a> {
     fn print_jsx_attr_value(&mut self, v: JsxAttributeValue) {
         match self.ast.jsx_attribute_value_data(v) {
             JsxAttributeValueData::StringLiteral(s) => {
-                let span = s.span(self.ast);
-                self.print_bytes(&self.ast.source()[span.start as usize..span.end as usize]);
+                let raw = self.ast.get_utf8(s.raw(self.ast));
+                if raw.is_empty() {
+                    let value = self.ast.get_wtf8(s.value(self.ast));
+                    // JSX attribute strings do not interpret JavaScript escape sequences, so
+                    // print the value bytes directly instead of using `print_quoted`.
+                    let quote = if value.as_bytes().contains(&b'"') {
+                        "'"
+                    } else {
+                        "\""
+                    };
+                    self.print(quote);
+                    self.print_bytes(value.as_bytes());
+                    self.print(quote);
+                } else {
+                    self.print_bytes(raw);
+                }
             }
             JsxAttributeValueData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxAttributeValueData::JsxElement(e) => self.print_jsx_element(e),
