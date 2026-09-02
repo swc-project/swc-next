@@ -32,10 +32,10 @@ impl ES2015 {
 }
 
 impl ES2015 {
-    pub(crate) fn transform<'a>(
+    pub(crate) fn transform<'a, 'semantic_data>(
         &mut self,
         _node: Program,
-        semantic: &Semantic,
+        semantic: &Semantic<'semantic_data>,
         ctx: &mut TransformerCtx<'_, 'a>,
     ) {
         if let Some(arrow) = &mut self.arrow {

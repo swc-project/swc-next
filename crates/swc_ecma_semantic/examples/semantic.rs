@@ -11,7 +11,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, Semantic, SymbolFlags, SymbolName, analyze,
+    AnalyzeOptions, Semantic, SymbolFlags, analyze,
     scope::{Scope, ScopeKind},
 };
 
@@ -67,11 +67,14 @@ impl<'a> ScopesTextWriter<'a> {
             self.indent += 2;
             for symbol_id in bindings {
                 let symbol = self.semantic.symbol(symbol_id);
-                let bytes = match symbol.name {
-                    SymbolName::Utf8(name) => self.ast.get_utf8(name.into()).as_bytes(),
-                    SymbolName::Wtf8(name) => self.ast.get_wtf8(name).as_bytes(),
+                let name = match symbol.name {
+                    swc_next_ecma_semantic::SymbolName::Utf8(name) => {
+                        self.ast.utf8_chunks(name.into()).to_cow()
+                    }
+                    swc_next_ecma_semantic::SymbolName::Wtf8(name) => {
+                        self.ast.get_wtf8(name).to_string_lossy()
+                    }
                 };
-                let name = String::from_utf8_lossy(bytes);
                 let flags = format_symbol_flags(symbol.flags);
                 self.write_line(format_args!("{name} ({symbol_id:?} {flags})"));
             }

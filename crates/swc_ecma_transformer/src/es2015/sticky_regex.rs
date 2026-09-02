@@ -17,7 +17,7 @@ impl StickyRegex {
                 literal.span(ast),
                 literal.pattern(ast),
                 flags,
-                ast.get_utf8(flags).contains('y'),
+                ast.utf8_chunks(flags).contains_byte(b'y'),
             )
         };
         if !is_sticky {
@@ -25,11 +25,13 @@ impl StickyRegex {
         }
 
         let ast = &mut *ctx.ast;
-        let pattern = ast.argument_expr_string_literal(span, pattern.into(), ast.empty_utf8());
-        let flags = ast.argument_expr_string_literal(span, flags.into(), ast.empty_utf8());
+        let pattern = ast.utf8_to_wtf8(pattern);
+        let flags = ast.utf8_to_wtf8(flags);
+        let pattern = ast.argument_expr_string_literal(span, pattern, ast.empty_utf8());
+        let flags = ast.argument_expr_string_literal(span, flags, ast.empty_utf8());
         let arguments = ast.add_typed_sub_range([pattern, flags]);
         let reg_exp_name = ast.add_utf8("RegExp");
-        let callee = ast.expr_identifier_reference(span, reg_exp_name);
+        let callee = ast.expr_identifier_reference(span, reg_exp_name.into());
         let replacement = ast.new_expression(span, callee, None, arguments);
         // SAFETY: `replacement` is the unattached last node, and this exit hook
         // does not access `literal` after replacing it.

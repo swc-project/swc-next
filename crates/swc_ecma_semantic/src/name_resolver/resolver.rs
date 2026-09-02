@@ -217,7 +217,7 @@ struct Resolver<'ast> {
 
 impl<'ast> Resolver<'ast> {
     fn name(&self, name: AstUtf8) -> &'ast [u8] {
-        self.ast.get_utf8(name).as_bytes()
+        self.ast.get_flat_utf8(name).as_bytes()
     }
 
     fn is_declared(&self, name: &[u8], start_scope: ScopeId) -> Option<DeclKind> {
@@ -925,7 +925,7 @@ impl<'ast> Visit<'ast> for Hoister<'_, 'ast> {
         if let Some(param) = catch.param(self.resolver.ast) {
             let ast = self.resolver.ast;
             for_each_binding_id(ast, param, |identifier| {
-                let name = ast.get_utf8(identifier.name(ast)).as_bytes();
+                let name = ast.get_flat_utf8(identifier.name(ast)).as_bytes();
                 self.catch_param_decls.insert(name);
             });
         }

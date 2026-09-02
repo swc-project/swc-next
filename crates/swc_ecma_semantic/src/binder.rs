@@ -1216,18 +1216,23 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let member_name = member.id(tree).node_id();
-        let name = match tree.kind_data(member_name) {
-            NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
-            NodeKindData::StringLiteral(literal) => literal.value(tree),
-            _ => return,
-        };
         let saved = self.pending;
         self.pending = PendingBinding {
             flags: SymbolFlags::ENUM_MEMBER.with(SymbolFlags::AMBIENT, self.ambient),
             excludes: Excludes::ENUM_MEMBER,
             scope: scope.current,
         };
-        self.declare_wtf8(tree, name, member.node_id());
+        match tree.kind_data(member_name) {
+            NodeKindData::IdentifierName(identifier) => {
+                let raw = identifier.name(tree);
+                let name = tree.intern_name(raw);
+                self.declare(tree, name, member.node_id());
+            }
+            NodeKindData::StringLiteral(literal) => {
+                self.declare_wtf8(tree, literal.value(tree), member.node_id());
+            }
+            _ => {}
+        }
         self.pending = saved;
     }
 
@@ -1258,8 +1263,11 @@ impl<'a> SymbolTracker<'a> {
         let Some(identifier) = jsx_tag_root(tree, tree.jsx_element_name_data(name)) else {
             return;
         };
-        let text = tree.get_utf8(identifier.name(tree));
-        if text.as_bytes().first().is_some_and(u8::is_ascii_uppercase) {
+        if tree
+            .utf8_chunks(identifier.name(tree))
+            .first_byte()
+            .is_some_and(|byte| byte.is_ascii_uppercase())
+        {
             self.add_reference(
                 tree,
                 identifier.name(tree),
@@ -1373,7 +1381,7 @@ impl<'a> SymbolTracker<'a> {
     }
 
     pub(crate) fn canonicalize_name(&mut self, tree: &mut Ast, name: AstUtf8) -> AstInternedUtf8 {
-        tree.intern_utf8(name)
+        tree.intern_name(name)
     }
 
     /// The symbol with the given id.
@@ -1478,8 +1486,7 @@ impl<'a> SymbolTracker<'a> {
             let arguments_barrier = matches!(
                 reference.flags.space,
                 ReferenceSpace::Value | ReferenceSpace::Typeof
-            ) && tree.get_utf8(reference.name.into()).as_bytes()
-                == b"arguments";
+            ) && tree.utf8_eq_bytes(reference.name.into(), b"arguments");
             let mut resolved = None;
             for ancestor in scopes.ancestors(Some(reference.scope)) {
                 if let Some(&id) = self.scope_maps[ancestor.index()].get(&name) {
@@ -1523,7 +1530,7 @@ impl<'a> SymbolTracker<'a> {
                 let target_with = if let Some(symbol) = reference.symbol {
                     let scope = self.symbols[symbol.index()].scope;
                     with_ancestry[scope.index()].lexical
-                } else if tree.get_utf8(reference.name.into()).as_bytes() == b"arguments" {
+                } else if tree.utf8_eq_bytes(reference.name.into(), b"arguments") {
                     reference_ancestors.arguments
                 } else {
                     None

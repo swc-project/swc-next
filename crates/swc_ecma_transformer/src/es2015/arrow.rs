@@ -24,7 +24,11 @@ impl ArrowFunctions {
         Self { _options: options }
     }
 
-    pub fn transform<'a>(&mut self, ast: &mut Ast<'a>, semantic: &Semantic) {
+    pub fn transform<'ast, 'semantic_data>(
+        &mut self,
+        ast: &mut Ast<'ast>,
+        semantic: &Semantic<'semantic_data>,
+    ) {
         let program = ast.root_program();
         let mut visitor = ArrowVisitor::new(ast, semantic);
         program.visit_mut_children_with(&mut visitor);
@@ -35,15 +39,15 @@ impl ArrowFunctions {
     }
 }
 
-struct ArrowVisitor<'visit, 'ast> {
+struct ArrowVisitor<'visit, 'ast, 'semantic_data> {
     ast: &'visit mut Ast<'ast>,
-    hoister: FnEnvHoister<'visit>,
+    hoister: FnEnvHoister<'visit, 'semantic_data, 'ast>,
     in_subclass: bool,
     next_method_is_derived_constructor: Option<bool>,
 }
 
-impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
-    fn new(ast: &'visit mut Ast<'ast>, semantic: &'visit Semantic) -> Self {
+impl<'visit, 'ast, 'semantic_data> ArrowVisitor<'visit, 'ast, 'semantic_data> {
+    fn new(ast: &'visit mut Ast<'ast>, semantic: &'visit Semantic<'semantic_data>) -> Self {
         let hoister = FnEnvHoister::new(ast, semantic);
         Self {
             ast,
@@ -95,7 +99,7 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
     }
 }
 
-impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast> {
+impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast, '_> {
     fn ast(&mut self) -> &mut Ast<'ast> {
         self.ast
     }

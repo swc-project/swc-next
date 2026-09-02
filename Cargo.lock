@@ -2795,7 +2795,9 @@ dependencies = [
 name = "swc_next_ecma_ast"
 version = "0.1.3"
 dependencies = [
+ "nohash-hasher",
  "oxc_index",
+ "rustc-hash",
  "swc_next_allocator",
  "swc_next_ast_macros",
  "unicode-id-start",

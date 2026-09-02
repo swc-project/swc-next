@@ -15,7 +15,7 @@ enum PrivateElementKind {
 }
 
 /// Returns the StringValue of a class element's PrivateIdentifier key, if any.
-fn private_element_name<'a>(tree: &'a Ast<'_>, node: NodeId) -> Option<&'a [u8]> {
+fn private_element_name(tree: &Ast<'_>, node: NodeId) -> Option<AstUtf8> {
     let key = match tree.kind_data(node) {
         NodeKindData::PropertyDefinition(property) => property.key(tree).node_id(),
         NodeKindData::MethodDefinition(method) => method.key(tree).node_id(),
@@ -25,7 +25,7 @@ fn private_element_name<'a>(tree: &'a Ast<'_>, node: NodeId) -> Option<&'a [u8]>
     let NodeKindData::PrivateIdentifier(identifier) = tree.kind_data(key) else {
         return None;
     };
-    Some(tree.get_utf8(identifier.name(tree)).as_bytes())
+    Some(identifier.name(tree))
 }
 
 fn private_element_kind(tree: &Ast<'_>, node: NodeId) -> PrivateElementKind {
@@ -53,14 +53,16 @@ fn private_element_is_static(tree: &Ast<'_>, node: NodeId) -> bool {
 
 /// 15.7.7 AllPrivateIdentifiersValid. Walks ancestor ClassBody nodes,
 /// collecting PrivateBoundIdentifiers at each level.
-fn is_private_name_declared(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> bool {
+fn is_private_name_declared(context: &SemanticVisitCtx<'_, '_>, name: AstUtf8) -> bool {
     for ancestor in context.ancestors() {
         let NodeKindData::ClassBody(body) = context.ast.kind_data(ancestor) else {
             continue;
         };
         for child in body.body(context.ast).iter() {
             let child = context.ast.get_node_in_sub_range(child).node_id();
-            if private_element_name(context.ast, child) == Some(name) {
+            if private_element_name(context.ast, child)
+                .is_some_and(|candidate| context.ast.utf8_eq(candidate, name))
+            {
                 return true;
             }
         }
@@ -69,30 +71,32 @@ fn is_private_name_declared(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> 
 }
 
 /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
-fn match_strict_reserved(name: &[u8]) -> Option<&'static str> {
-    match name {
-        b"let" => Some("let"),
-        b"yield" => Some("yield"),
-        b"static" => Some("static"),
-        b"public" => Some("public"),
-        b"private" => Some("private"),
-        b"package" => Some("package"),
-        b"protected" => Some("protected"),
-        b"interface" => Some("interface"),
-        b"implements" => Some("implements"),
-        _ => None,
-    }
+fn match_strict_reserved(tree: &Ast<'_>, name: AstUtf8) -> Option<&'static str> {
+    const WORDS: [&str; 9] = [
+        "let",
+        "yield",
+        "static",
+        "public",
+        "private",
+        "package",
+        "protected",
+        "interface",
+        "implements",
+    ];
+    WORDS
+        .into_iter()
+        .find(|word| tree.utf8_eq_bytes(name, word.as_bytes()))
 }
 
-fn is_eval_or_arguments(name: &[u8]) -> bool {
-    matches!(name, b"eval" | b"arguments")
+fn is_eval_or_arguments(tree: &Ast<'_>, name: AstUtf8) -> bool {
+    tree.utf8_eq_bytes(name, b"eval") || tree.utf8_eq_bytes(name, b"arguments")
 }
 
 fn is_eval_or_arguments_reference(tree: &Ast<'_>, node: NodeId) -> bool {
     let NodeKindData::IdentifierReference(identifier) = tree.kind_data(node) else {
         return false;
     };
-    is_eval_or_arguments(tree.get_utf8(identifier.name(tree)).as_bytes())
+    is_eval_or_arguments(tree, identifier.name(tree))
 }
 
 fn unwrap_parentheses(tree: &Ast<'_>, node: NodeId) -> NodeId {
@@ -262,17 +266,14 @@ enum LabelSearch {
     CrossedBoundary,
 }
 
-fn find_label(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> LabelSearch {
+fn find_label(context: &SemanticVisitCtx<'_, '_>, name: AstUtf8) -> LabelSearch {
     debug_assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
         match context.ast.kind_data(ancestor) {
             NodeKindData::LabeledStatement(statement) => {
-                let label = context
-                    .ast
-                    .get_utf8(statement.label(context.ast).name(context.ast))
-                    .as_bytes();
-                if label == name {
+                let label = statement.label(context.ast).name(context.ast);
+                if context.ast.utf8_eq(label, name) {
                     return if crossed_boundary {
                         LabelSearch::CrossedBoundary
                     } else {
@@ -297,17 +298,17 @@ enum ContinueLabelSearch {
     NotIteration,
 }
 
-fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> ContinueLabelSearch {
+fn find_label_for_continue(
+    context: &SemanticVisitCtx<'_, '_>,
+    name: AstUtf8,
+) -> ContinueLabelSearch {
     debug_assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
         match context.ast.kind_data(ancestor) {
             NodeKindData::LabeledStatement(statement) => {
-                let label = context
-                    .ast
-                    .get_utf8(statement.label(context.ast).name(context.ast))
-                    .as_bytes();
-                if label == name {
+                let label = statement.label(context.ast).name(context.ast);
+                if context.ast.utf8_eq(label, name) {
                     if crossed_boundary {
                         return ContinueLabelSearch::CrossedBoundary;
                     }
@@ -347,13 +348,12 @@ fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.kind_data(ancestor) {
             NodeKindData::Function(_) => return true,
-            NodeKindData::PropertyDefinition(property) => {
+            NodeKindData::PropertyDefinition(property)
                 if property
                     .value(context.ast)
-                    .is_some_and(|value| Some(value.node_id()) == child)
-                {
-                    return false;
-                }
+                    .is_some_and(|value| Some(value.node_id()) == child) =>
+            {
+                return false;
             }
             NodeKindData::StaticBlock(_) => return false,
             NodeKindData::ArrowFunctionExpression(_) | NodeKindData::Program(_) => {}
@@ -398,7 +398,7 @@ fn module_export_name_id(tree: &Ast<'_>, node: NodeId) -> ModuleExportNameValue 
     }
 }
 
-fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
+fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> Cow<'b, [u8]> {
     module_export_name_id(tree, node).bytes(tree)
 }
 
@@ -450,9 +450,9 @@ impl<'a> CheckerState<'a> {
         for index in 0..self.export_specifiers.len() {
             let specifier = &self.export_specifiers[index];
             let local_name = match specifier.local_name {
-                ModuleExportNameValue::Utf8(name) => Some(tree.intern_utf8(name)),
+                ModuleExportNameValue::Utf8(name) => Some(tree.intern_name(name)),
                 ModuleExportNameValue::Wtf8(name) => {
-                    tree.as_utf8(name).map(|name| tree.intern_utf8(name))
+                    tree.as_utf8(name).map(|name| tree.intern_name(name))
                 }
             };
             let binding = local_name.and_then(|name| symbols.binding(ScopeId::MODULE, name));
@@ -460,7 +460,7 @@ impl<'a> CheckerState<'a> {
                 let local_name = specifier.local_name.bytes(tree);
                 let message = self.fmt(format_args!(
                     "Export '{}' is not defined",
-                    String::from_utf8_lossy(local_name)
+                    String::from_utf8_lossy(&local_name)
                 ));
                 self.report(tree.span(specifier.node), message, ReportOptions::default());
             }
@@ -477,7 +477,8 @@ impl<'a> CheckerState<'a> {
         existing: Symbol,
         context: &SemanticContext<'a>,
     ) {
-        let name = tree.get_utf8(identifier.name(tree)).as_bytes();
+        let name = tree.utf8_chunks(identifier.name(tree)).to_cow();
+        let name = name.as_bytes();
         let current_span = tree.span(node);
         let existing_span = tree.span(context.symbols.first_decl_of(existing_id));
         let kind = existing.flags.to_string();
@@ -543,6 +544,7 @@ impl<'a> CheckerState<'a> {
         arguments.to_string()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_redeclaration(
         &mut self,
         identifier: BindingIdentifier,
@@ -711,7 +713,7 @@ impl<'a> CheckerState<'a> {
     /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
     fn check_strict_reserved(
         &mut self,
-        name: &[u8],
+        name: AstUtf8,
         node: NodeId,
         context: &SemanticVisitCtx<'_, 'a>,
         as_what: &'static str,
@@ -719,7 +721,7 @@ impl<'a> CheckerState<'a> {
         if !context.state.scope.is_strict() {
             return;
         }
-        if let Some(word) = match_strict_reserved(name) {
+        if let Some(word) = match_strict_reserved(context.ast, name) {
             let message = self.fmt(format_args!(
                 "'{}' is reserved in strict mode and cannot be used as {}",
                 word, as_what
@@ -778,19 +780,14 @@ impl<'a> CheckerState<'a> {
         context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         match context.ast.kind_data(node) {
-            NodeKindData::IdentifierReference(identifier) => {
-                if is_eval_or_arguments(
-                    context
-                        .ast
-                        .get_utf8(identifier.name(context.ast))
-                        .as_bytes(),
-                ) {
-                    self.report(
-                        context.ast.span(node),
-                        "Cannot assign to 'eval' or 'arguments' in strict mode",
-                        ReportOptions::default(),
-                    );
-                }
+            NodeKindData::IdentifierReference(identifier)
+                if is_eval_or_arguments(context.ast, identifier.name(context.ast)) =>
+            {
+                self.report(
+                    context.ast.span(node),
+                    "Cannot assign to 'eval' or 'arguments' in strict mode",
+                    ReportOptions::default(),
+                );
             }
             NodeKindData::ArrayPattern(array) => {
                 let elements = array.elements(context.ast);
@@ -871,12 +868,11 @@ impl<'a> CheckerState<'a> {
                 .expect("import attribute exists");
             let key = attribute.key(context.ast).node_id();
             let key_name = match context.ast.kind_data(key) {
-                NodeKindData::IdentifierName(identifier) => context
-                    .ast
-                    .get_utf8(identifier.name(context.ast))
-                    .as_bytes(),
+                NodeKindData::IdentifierName(identifier) => {
+                    ImportAttributeName::Utf8(identifier.name(context.ast))
+                }
                 NodeKindData::StringLiteral(string) => {
-                    context.ast.get_wtf8(string.value(context.ast)).as_bytes()
+                    ImportAttributeName::Wtf8(string.value(context.ast))
                 }
                 _ => continue,
             };
@@ -885,31 +881,26 @@ impl<'a> CheckerState<'a> {
                     .get_node(context.ast, previous_index)
                     .expect("import attribute exists");
                 let previous_key = previous.key(context.ast).node_id();
-                let (previous_key_name, previous_key_is_string_literal) =
-                    match context.ast.kind_data(previous_key) {
-                        NodeKindData::IdentifierName(identifier) => (
-                            context
-                                .ast
-                                .get_utf8(identifier.name(context.ast))
-                                .as_bytes(),
-                            false,
-                        ),
-                        NodeKindData::StringLiteral(string) => (
-                            context.ast.get_wtf8(string.value(context.ast)).as_bytes(),
-                            true,
-                        ),
-                        _ => continue,
+                let previous_key_name = match context.ast.kind_data(previous_key) {
+                    NodeKindData::IdentifierName(identifier) => {
+                        ImportAttributeName::Utf8(identifier.name(context.ast))
+                    }
+                    NodeKindData::StringLiteral(string) => {
+                        ImportAttributeName::Wtf8(string.value(context.ast))
+                    }
+                    _ => continue,
+                };
+                if key_name.eq(previous_key_name, context.ast) {
+                    let message = match key_name {
+                        ImportAttributeName::Utf8(name) => self.fmt(format_args!(
+                            "Duplicate import attribute key '{}'",
+                            context.ast.utf8_chunks(name)
+                        )),
+                        ImportAttributeName::Wtf8(name) => self.fmt(format_args!(
+                            "Duplicate import attribute key '{}'",
+                            String::from_utf8_lossy(context.ast.get_wtf8(name).as_bytes())
+                        )),
                     };
-                if key_name == previous_key_name {
-                    let name = if !previous_key_is_string_literal {
-                        previous_key_name
-                    } else {
-                        key_name
-                    };
-                    let message = self.fmt(format_args!(
-                        "Duplicate import attribute key '{}'",
-                        String::from_utf8_lossy(name)
-                    ));
                     self.report(
                         context.ast.span(key),
                         message,
@@ -1027,8 +1018,8 @@ pub(super) fn check_numeric_literal(checker: &mut Checker<'_, '_>, literal: Nume
 pub(super) fn check_reg_exp_literal(checker: &mut Checker<'_, '_>, literal: RegExpLiteral) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    let pattern = context.ast.get_utf8(literal.pattern(context.ast));
-    let flags = context.ast.get_utf8(literal.flags(context.ast));
+    let pattern = context.ast.get_flat_utf8(literal.pattern(context.ast));
+    let flags = context.ast.get_flat_utf8(literal.flags(context.ast));
     let allocator = Allocator::new();
     if swc_next_regular_expression::LiteralParser::new(
         &allocator,
@@ -1057,12 +1048,9 @@ pub(super) fn check_identifier_reference(
         return;
     }
     let node_id = identifier.node_id();
-    let name = context
-        .ast
-        .get_utf8(identifier.name(context.ast))
-        .as_bytes();
+    let name = identifier.name(context.ast);
     checks.check_strict_reserved(name, node_id, context, "an identifier");
-    if name == b"arguments" && !is_arguments_available(context) {
+    if context.ast.utf8_eq_bytes(name, b"arguments") && !is_arguments_available(context) {
         checks.report(
             context.ast.span(node_id),
             "'arguments' is not allowed in class field initializers or static blocks",
@@ -1082,21 +1070,24 @@ pub(super) fn check_binding_identifier(
         .state
         .symbols
         .canonicalize_name(context.ast, identifier.name(context.ast));
-    let name = context.ast.get_utf8(name_id.into()).as_bytes();
+    let name_handle = name_id.into();
     let flags = context.state.symbols.pending.flags;
     if context.state.in_type_position() && !flags.contains(SymbolFlags::TYPE_PARAMETER) {
         return;
     }
     if context.state.scope.is_strict() && !flags.contains(SymbolFlags::AMBIENT) {
-        checks.check_strict_reserved(name, node_id, context, "a binding identifier");
-        if is_eval_or_arguments(name) {
+        checks.check_strict_reserved(name_handle, node_id, context, "a binding identifier");
+        if is_eval_or_arguments(context.ast, name_handle) {
+            let name = context.ast.utf8_chunks(name_handle).to_cow();
             let message = checks.fmt(format_args!(
                 "'{}' is not allowed as a binding identifier in strict mode",
-                String::from_utf8_lossy(name)
+                name
             ));
             checks.report(context.ast.span(node_id), message, ReportOptions::default());
         }
-    } else if flags.contains(SymbolFlags::BLOCK_SCOPED_VAR) && name == b"let" {
+    } else if flags.contains(SymbolFlags::BLOCK_SCOPED_VAR)
+        && context.ast.utf8_eq_bytes(name_handle, b"let")
+    {
         checks.report(
             context.ast.span(node_id),
             "'let' is not allowed as a variable name in a lexical declaration",
@@ -1111,7 +1102,8 @@ pub(super) fn check_binding_identifier(
     if context.state.symbols.export_state.named().is_some() {
         let skip = existing.is_some() && context.ast.is_ts();
         if !skip {
-            checks.record_exported_name(name, node_id, context);
+            let name = context.ast.utf8_chunks(name_handle).to_cow();
+            checks.record_exported_name(name.as_bytes(), node_id, context);
         }
     }
 }
@@ -1119,11 +1111,12 @@ pub(super) fn check_binding_identifier(
 pub(super) fn check_label_identifier(checker: &mut Checker<'_, '_>, identifier: LabelIdentifier) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    let name = context
-        .ast
-        .get_utf8(identifier.name(context.ast))
-        .as_bytes();
-    checks.check_strict_reserved(name, identifier.node_id(), context, "a label");
+    checks.check_strict_reserved(
+        identifier.name(context.ast),
+        identifier.node_id(),
+        context,
+        "a label",
+    );
 }
 
 pub(super) fn check_binary_expression(checker: &mut Checker<'_, '_>, expression: BinaryExpression) {
@@ -1133,14 +1126,12 @@ pub(super) fn check_binary_expression(checker: &mut Checker<'_, '_>, expression:
     if expression.operator(context.ast) == BinaryOperator::In
         && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(left)
     {
-        let name = context
-            .ast
-            .get_utf8(identifier.name(context.ast))
-            .as_bytes();
+        let name = identifier.name(context.ast);
         if !is_private_name_declared(context, name) {
+            let name = context.ast.utf8_chunks(name).to_cow();
             let message = checks.fmt(format_args!(
                 "Private field '#{}' must be declared in an enclosing class",
-                String::from_utf8_lossy(name)
+                name
             ));
             checks.report(context.ast.span(left), message, ReportOptions::default());
         }
@@ -1287,17 +1278,17 @@ pub(super) fn check_break_statement(checker: &mut Checker<'_, '_>, statement: Br
     let checks = &mut checker.checks;
     let context = &mut checker.context;
     if let Some(label) = statement.label(context.ast) {
-        let name = context.ast.get_utf8(label.name(context.ast)).as_bytes();
+        let name = label.name(context.ast);
         let result = find_label(context, name);
         if result != LabelSearch::Found {
+            let name = context.ast.utf8_chunks(name).to_cow();
             let message = match result {
-                LabelSearch::NotFound => checks.fmt(format_args!(
-                    "Use of undefined label '{}'",
-                    String::from_utf8_lossy(name)
-                )),
+                LabelSearch::NotFound => {
+                    checks.fmt(format_args!("Use of undefined label '{}'", name))
+                }
                 LabelSearch::CrossedBoundary => checks.fmt(format_args!(
                     "Cannot break to label '{}' across function boundaries",
-                    String::from_utf8_lossy(name)
+                    name
                 )),
                 LabelSearch::Found => unreachable!(),
             };
@@ -1328,28 +1319,26 @@ pub(super) fn check_continue_statement(
     let checks = &mut checker.checks;
     let context = &mut checker.context;
     if let Some(label) = statement.label(context.ast) {
-        let name = context.ast.get_utf8(label.name(context.ast)).as_bytes();
+        let name = label.name(context.ast);
         let result = find_label_for_continue(context, name);
         if result != ContinueLabelSearch::Found {
+            let name = context.ast.utf8_chunks(name).to_cow();
             let (message, help) = match result {
                 ContinueLabelSearch::NotFound => (
-                    checks.fmt(format_args!(
-                        "Use of undefined label '{}'",
-                        String::from_utf8_lossy(name)
-                    )),
+                    checks.fmt(format_args!("Use of undefined label '{}'", name)),
                     None,
                 ),
                 ContinueLabelSearch::CrossedBoundary => (
                     checks.fmt(format_args!(
                         "Cannot continue to label '{}' across function boundaries",
-                        String::from_utf8_lossy(name)
+                        name
                     )),
                     None,
                 ),
                 ContinueLabelSearch::NotIteration => (
                     checks.fmt(format_args!(
                         "Label '{}' does not denote an iteration statement",
-                        String::from_utf8_lossy(name)
+                        name
                     )),
                     Some(Cow::Borrowed(
                         "A 'continue' statement can only jump to a label of an enclosing 'for', 'while', 'do-while', 'for-in', or 'for-of' statement",
@@ -1383,10 +1372,7 @@ pub(super) fn check_continue_statement(
 pub(super) fn check_labeled_statement(checker: &mut Checker<'_, '_>, statement: LabeledStatement) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    let name = context
-        .ast
-        .get_utf8(statement.label(context.ast).name(context.ast))
-        .as_bytes();
+    let name = statement.label(context.ast).name(context.ast);
     let duplicate = {
         let mut ancestors = context.ancestors();
         let _ = ancestors.next();
@@ -1394,11 +1380,8 @@ pub(super) fn check_labeled_statement(checker: &mut Checker<'_, '_>, statement: 
         for ancestor in ancestors {
             match context.ast.kind_data(ancestor) {
                 NodeKindData::LabeledStatement(outer) => {
-                    let outer_name = context
-                        .ast
-                        .get_utf8(outer.label(context.ast).name(context.ast))
-                        .as_bytes();
-                    if outer_name == name {
+                    let outer_name = outer.label(context.ast).name(context.ast);
+                    if context.ast.utf8_eq(outer_name, name) {
                         duplicate = true;
                     }
                 }
@@ -1411,10 +1394,8 @@ pub(super) fn check_labeled_statement(checker: &mut Checker<'_, '_>, statement: 
         duplicate
     };
     if duplicate {
-        let message = checks.fmt(format_args!(
-            "Duplicate label '{}'",
-            String::from_utf8_lossy(name)
-        ));
+        let name = context.ast.utf8_chunks(name).to_cow();
+        let message = checks.fmt(format_args!("Duplicate label '{}'", name));
         checks.report(
             context.ast.span(statement.label(context.ast).node_id()),
             message,
@@ -1426,7 +1407,10 @@ pub(super) fn check_labeled_statement(checker: &mut Checker<'_, '_>, statement: 
 pub(super) fn check_directive(checker: &mut Checker<'_, '_>, directive: Directive) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    if context.ast.get_utf8(directive.value(context.ast)) != "use strict" {
+    if !context
+        .ast
+        .utf8_eq_bytes(directive.value(context.ast), b"use strict")
+    {
         return;
     }
     let mut parameter = None;
@@ -1512,7 +1496,7 @@ pub(super) fn check_class_body(checker: &mut Checker<'_, '_>, body: ClassBody) {
             let Some(previous_name) = private_element_name(context.ast, previous) else {
                 continue;
             };
-            if previous_name != name {
+            if !context.ast.utf8_eq(previous_name, name) {
                 continue;
             }
             let previous_kind = private_element_kind(context.ast, previous);
@@ -1529,7 +1513,7 @@ pub(super) fn check_class_body(checker: &mut Checker<'_, '_>, body: ClassBody) {
             }
             let message = checks.fmt(format_args!(
                 "Duplicate private name '#{}'",
-                String::from_utf8_lossy(name)
+                context.ast.utf8_chunks(name)
             ));
             checks.report(
                 context.ast.span(child),
@@ -1619,17 +1603,16 @@ pub(super) fn check_object_expression(checker: &mut Checker<'_, '_>, object: Obj
         {
             continue;
         }
-        let name = match context.ast.kind_data(item.key(context.ast).node_id()) {
+        let is_proto = match context.ast.kind_data(item.key(context.ast).node_id()) {
             NodeKindData::IdentifierName(identifier) => context
                 .ast
-                .get_utf8(identifier.name(context.ast))
-                .as_bytes(),
+                .utf8_eq_bytes(identifier.name(context.ast), b"__proto__"),
             NodeKindData::StringLiteral(string) => {
-                context.ast.get_wtf8(string.value(context.ast)).as_bytes()
+                context.ast.get_wtf8(string.value(context.ast)).as_bytes() == b"__proto__"
             }
             _ => continue,
         };
-        if name != b"__proto__" {
+        if !is_proto {
             continue;
         }
         if let Some(first) = first_proto {
@@ -1668,10 +1651,7 @@ pub(super) fn check_member_expression(checker: &mut Checker<'_, '_>, expression:
     if !expression.computed(context.ast)
         && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(property)
     {
-        let name = context
-            .ast
-            .get_utf8(identifier.name(context.ast))
-            .as_bytes();
+        let name = identifier.name(context.ast);
         if context.ast.node_kind(object) == NodeKind::Super {
             checks.report(
                 context.ast.span(expression.node_id()),
@@ -1681,7 +1661,7 @@ pub(super) fn check_member_expression(checker: &mut Checker<'_, '_>, expression:
         } else if !is_private_name_declared(context, name) {
             let message = checks.fmt(format_args!(
                 "Private field '#{}' must be declared in an enclosing class",
-                String::from_utf8_lossy(name)
+                context.ast.utf8_chunks(name)
             ));
             checks.report(
                 context.ast.span(property),
@@ -1823,17 +1803,15 @@ fn yield_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static
 pub(super) fn check_meta_property(checker: &mut Checker<'_, '_>, property: MetaProperty) {
     let checks = &mut checker.checks;
     let context = &mut checker.context;
-    let name = context
-        .ast
-        .get_utf8(property.meta(context.ast).name(context.ast));
-    if name == "import" && !context.ast.is_module() {
+    let name = property.meta(context.ast).name(context.ast);
+    if context.ast.utf8_eq_bytes(name, b"import") && !context.ast.is_module() {
         checks.report(
             context.ast.span(property.node_id()),
             "'import.meta' is only valid in module code",
             ReportOptions::default(),
         );
     }
-    if name == "new" && !is_new_target_available(context) {
+    if context.ast.utf8_eq_bytes(name, b"new") && !is_new_target_available(context) {
         checks.report(
             context.ast.span(property.node_id()),
             "'new.target' is only valid inside functions, class field initializers, or static blocks",
@@ -1901,7 +1879,7 @@ pub(super) fn check_export_all_declaration(
     );
     if let Some(exported) = declaration.exported(context.ast) {
         let name = module_export_name(context.ast, exported.node_id());
-        checks.record_exported_name(name, declaration.node_id(), context);
+        checks.record_exported_name(&name, declaration.node_id(), context);
     }
     checks.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
 }
@@ -1910,7 +1888,7 @@ pub(super) fn check_export_specifier(checker: &mut Checker<'_, '_>, specifier: E
     let checks = &mut checker.checks;
     let context = &mut checker.context;
     let exported_name = module_export_name(context.ast, specifier.exported(context.ast).node_id());
-    checks.record_exported_name(exported_name, specifier.node_id(), context);
+    checks.record_exported_name(&exported_name, specifier.node_id(), context);
     if specifier.export_kind(context.ast) == ImportOrExportKind::Type
         || context.state.in_ts_namespace()
     {

@@ -1293,7 +1293,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // Safety: the lexer rejects lone surrogates and invalid identifier escapes.
             return self
                 .ast
-                .add_utf8(unsafe { std::str::from_utf8_unchecked(value) });
+                .add_utf8(unsafe { std::str::from_utf8_unchecked(value) })
+                .into();
         }
 
         let mut buffer = vec![0u8; raw.len()];
@@ -1304,7 +1305,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // Lone surrogates are not valid in identifiers.
         // All of them are rejected by the lexer with `LexicalError::InvalidIdentifierContinue`
         let value = unsafe { std::str::from_utf8_unchecked(value) };
-        self.ast.add_utf8(value)
+        self.ast.add_utf8(value).into()
     }
 
     fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
@@ -2889,6 +2890,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(ClassElement::TsIndexSignature(signature))
     }
 
+    #[allow(clippy::nonminimal_bool)]
     fn consume_modifier(
         &mut self,
         modifiers: &mut ClassElementModifiers,
@@ -2990,7 +2992,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if matches!(
             self.ast.property_key_data(key),
             PropertyKeyData::PrivateIdentifier(private)
-                if self.ast.get_utf8(private.name(&self.ast)) == "constructor"
+                if self.ast.get_flat_utf8(private.name(&self.ast)) == "constructor"
         ) {
             self.report(
                 key.span(&self.ast),
@@ -3360,7 +3362,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
         let matches = match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(identifier) => {
-                self.ast.get_utf8(identifier.name(&self.ast)) == expected
+                self.ast.get_flat_utf8(identifier.name(&self.ast)) == expected
             }
             PropertyKeyData::StringLiteral(string) => {
                 self.ast.get_wtf8(string.value(&self.ast)) == expected
@@ -7429,7 +7431,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         matches!(
             self.ast.expr_data(expression),
             ExprData::IdentifierReference(identifier)
-                if self.ast.get_utf8(identifier.name(&self.ast)) == "async"
+                if self.ast.get_flat_utf8(identifier.name(&self.ast)) == "async"
                     && self.span_text(identifier.span(&self.ast)) == "async"
         )
     }
@@ -8089,7 +8091,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.advance()?;
         let raw = self.ast.source_slice(token.span.start, token.span.end);
-        let raw_text = self.ast.get_utf8(raw);
+        let raw_text = self.ast.get_flat_utf8(raw);
         let value = match token.tag {
             TokenTag::NumericLiteral => parse_decimal_literal(raw_text),
             TokenTag::HexLiteral => parse_hex_literal(raw_text),
@@ -10983,7 +10985,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let ast = &self.ast;
         let same_name = |a: JsxIdentifier, b: JsxIdentifier| {
-            ast.get_utf8(a.name(ast)) == ast.get_utf8(b.name(ast))
+            ast.get_flat_utf8(a.name(ast)) == ast.get_flat_utf8(b.name(ast))
         };
 
         let a_span = a.span(ast);

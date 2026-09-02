@@ -38,7 +38,7 @@ impl Shorthand {
     fn is_proto_key(&self, property: ObjectProperty, ast: &Ast) -> bool {
         let key: PropertyKey = property.key(ast);
         if let Some(identifier) = key.as_identifier_name(ast) {
-            return ast.get_utf8(identifier.name(ast)) == "__proto__";
+            return ast.utf8_eq_bytes(identifier.name(ast), b"__proto__");
         }
         if let Some(string) = key.as_string_literal(ast) {
             return ast.get_wtf8(string.value(ast)).as_bytes() == b"__proto__";

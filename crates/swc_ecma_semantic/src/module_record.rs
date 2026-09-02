@@ -2,9 +2,9 @@ use std::vec::Vec as RawVec;
 
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstWtf8, ExportAllDeclaration, ExportDefaultDeclaration, ExportDefaultDeclarationKindData,
-    ExportNamedDeclaration, ExportSpecifier, ImportOrExportKind, NodeId, NodeKindData, ReferenceId,
-    SymbolId,
+    Ast, AstUtf8, AstWtf8, ExportAllDeclaration, ExportDefaultDeclaration,
+    ExportDefaultDeclarationKindData, ExportNamedDeclaration, ExportSpecifier, ImportOrExportKind,
+    NodeId, NodeKindData, ReferenceId, SymbolId,
 };
 
 /// The ECMAScript export occurrences of a source text module, in source
@@ -29,8 +29,15 @@ impl ModuleRecord<'_> {
 /// A module name together with the AST node that spells it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ModuleName {
-    pub name: AstWtf8,
+    pub name: ModuleNameValue,
     pub node: NodeId,
+}
+
+/// String representation of a module name without assuming UTF-8 handles are flat WTF-8 ranges.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModuleNameValue {
+    Utf8(AstUtf8),
+    Wtf8(AstWtf8),
 }
 
 /// The name introduced into this module's export namespace.
@@ -342,10 +349,12 @@ enum RawExportTarget {
 
 fn module_name(tree: &Ast, node: NodeId) -> ModuleName {
     let name = match tree.kind_data(node) {
-        NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
-        NodeKindData::IdentifierReference(identifier) => identifier.name(tree).into(),
-        NodeKindData::BindingIdentifier(identifier) => identifier.name(tree).into(),
-        NodeKindData::StringLiteral(string) => string.value(tree),
+        NodeKindData::IdentifierName(identifier) => ModuleNameValue::Utf8(identifier.name(tree)),
+        NodeKindData::IdentifierReference(identifier) => {
+            ModuleNameValue::Utf8(identifier.name(tree))
+        }
+        NodeKindData::BindingIdentifier(identifier) => ModuleNameValue::Utf8(identifier.name(tree)),
+        NodeKindData::StringLiteral(string) => ModuleNameValue::Wtf8(string.value(tree)),
         _ => unreachable!("module export name must be an identifier or string literal"),
     };
     ModuleName { name, node }
@@ -356,7 +365,7 @@ fn string_name(tree: &Ast, node: NodeId) -> ModuleName {
         unreachable!("module source must be a string literal")
     };
     ModuleName {
-        name: string.value(tree),
+        name: ModuleNameValue::Wtf8(string.value(tree)),
         node,
     }
 }

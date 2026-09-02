@@ -1,11 +1,9 @@
-use std::collections::HashSet;
-
 use swc_next_ecma_ast::{
     AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
     IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut,
     VisitMutWith,
 };
-use swc_next_ecma_semantic::{ReferenceSpace, Semantic, SymbolName};
+use swc_next_ecma_semantic::{ReferenceSpace, Semantic, UsedNameState};
 
 #[derive(Default)]
 pub struct CaptureFrame {
@@ -24,34 +22,19 @@ impl CaptureFrame {
 ///
 /// This is the flat-AST equivalent of `swc_ecma_utils::function::FnEnvHoister`.
 /// It owns capture state, while callers retain ownership of AST traversal.
-pub struct FnEnvHoister<'semantic> {
-    semantic: &'semantic Semantic<'semantic>,
+pub struct FnEnvHoister<'semantic, 'semantic_data, 'ast> {
+    semantic: &'semantic Semantic<'semantic_data>,
     frames: Vec<CaptureFrame>,
-    used_names: HashSet<Vec<u8>>,
+    used_names: UsedNameState<'ast>,
     in_arrow: bool,
 }
 
-impl<'semantic> FnEnvHoister<'semantic> {
-    pub fn new(ast: &Ast<'_>, semantic: &'semantic Semantic<'semantic>) -> Self {
-        let mut used_names = HashSet::new();
-        for entry in semantic.iter_symbols() {
-            let name = match entry.symbol.name {
-                SymbolName::Utf8(name) => ast.get_utf8(name.into()).as_bytes(),
-                SymbolName::Wtf8(name) => ast.get_wtf8(name).as_bytes(),
-            };
-            used_names.insert(name.to_vec());
-        }
-        for entry in semantic.iter_references() {
-            used_names.insert(
-                ast.get_utf8(entry.reference.name.into())
-                    .as_bytes()
-                    .to_vec(),
-            );
-        }
+impl<'semantic, 'semantic_data, 'ast> FnEnvHoister<'semantic, 'semantic_data, 'ast> {
+    pub fn new(ast: &mut Ast<'ast>, semantic: &'semantic Semantic<'semantic_data>) -> Self {
         Self {
             semantic,
             frames: vec![CaptureFrame::default()],
-            used_names,
+            used_names: UsedNameState::new(ast.allocator()),
             in_arrow: false,
         }
     }
@@ -71,16 +54,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     }
 
     fn fresh_name(&mut self, base: &str, ast: &mut Ast<'_>) -> AstUtf8 {
-        let mut candidate = base.to_string();
-        let mut suffix = 2u32;
-        while self.used_names.contains(candidate.as_bytes()) {
-            candidate.clear();
-            candidate.push_str(base);
-            candidate.push_str(&suffix.to_string());
-            suffix += 1;
-        }
-        self.used_names.insert(candidate.as_bytes().to_vec());
-        ast.add_utf8(&candidate)
+        self.used_names.next_name(ast, base, 2).into()
     }
 
     fn capture_this(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
@@ -117,7 +91,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     }
 
     fn is_unresolved_arguments(&self, node: IdentifierReference, ast: &Ast<'_>) -> bool {
-        if ast.get_utf8(node.name(ast)) != "arguments" {
+        if !ast.utf8_eq_bytes(node.name(ast), b"arguments") {
             return false;
         }
         let Some(reference_id) = self.semantic.reference_of(node.node_id()) else {
@@ -130,7 +104,8 @@ impl<'semantic> FnEnvHoister<'semantic> {
     fn is_new_target(&self, node: swc_next_ecma_ast::MetaProperty, ast: &Ast<'_>) -> bool {
         let meta = node.meta(ast);
         let property = node.property(ast);
-        ast.get_utf8(meta.name(ast)) == "new" && ast.get_utf8(property.name(ast)) == "target"
+        ast.utf8_eq_bytes(meta.name(ast), b"new")
+            && ast.utf8_eq_bytes(property.name(ast), b"target")
     }
 
     pub fn transform_this_expression(
@@ -198,7 +173,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
                 false,
             );
             let arguments_name = ast.add_utf8("arguments");
-            let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name);
+            let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name.into());
             declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
         }
         if let Some(name) = frame.new_target {
@@ -211,8 +186,8 @@ impl<'semantic> FnEnvHoister<'semantic> {
             );
             let new_name = ast.add_utf8("new");
             let target_name = ast.add_utf8("target");
-            let meta = ast.identifier_name(DUMMY_SP, new_name);
-            let property = ast.identifier_name(DUMMY_SP, target_name);
+            let meta = ast.identifier_name(DUMMY_SP, new_name.into());
+            let property = ast.identifier_name(DUMMY_SP, target_name.into());
             let init = ast.expr_meta_property(DUMMY_SP, meta, property);
             declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
         }

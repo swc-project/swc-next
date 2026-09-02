@@ -27,7 +27,7 @@ pub use hashbrown::{
     Equivalent, TryReserveError,
     hash_map::{
         Drain, Entry, EntryRef, ExtractIf, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys,
-        OccupiedError, Values, ValuesMut,
+        OccupiedError, RawEntryMut, Values, ValuesMut,
     },
 };
 

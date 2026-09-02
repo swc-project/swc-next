@@ -10,6 +10,7 @@ mod strings;
 mod syntax;
 mod visit;
 
+#[allow(clippy::diverging_sub_expression)]
 mod generated {
     mod ast_builder;
     mod ast_clone_in;
@@ -31,7 +32,7 @@ pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
-pub use strings::{AstInternedUtf8, AstUtf8, AstWtf8};
+pub use strings::{AstInternedUtf8, AstUtf8, AstWtf8, GeneratedUtf8State, Utf8Chunks};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};
 
@@ -351,7 +352,7 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_utf8(&mut self, value: &str) -> AstUtf8 {
+    pub fn add_utf8(&mut self, value: &str) -> AstInternedUtf8 {
         self.strings.add_utf8(value)
     }
 
@@ -361,9 +362,41 @@ impl<'a> Ast<'a> {
         self.strings.intern_utf8(value)
     }
 
+    /// Canonicalizes an identifier and records it for generated-name collision
+    /// checks without a second content lookup.
+    #[inline]
+    pub fn intern_name(&mut self, value: AstUtf8) -> AstInternedUtf8 {
+        self.strings.intern_name(value)
+    }
+
+    #[inline]
+    pub fn generated_utf8_state(&mut self, base: &str) -> GeneratedUtf8State {
+        self.strings.generated_utf8_state(base)
+    }
+
+    #[inline]
+    pub fn reserve_generated_name_from_state(
+        &mut self,
+        state: &mut GeneratedUtf8State,
+        suffix: u64,
+    ) -> (AstInternedUtf8, bool) {
+        self.strings
+            .reserve_generated_name_from_state(state, suffix)
+    }
+
+    #[inline]
+    pub fn reserve_name(&mut self, name: AstInternedUtf8) -> bool {
+        self.strings.reserve_name(name)
+    }
+
     #[inline]
     pub fn add_wtf8(&mut self, value: &swc_next_allocator::wtf8::Wtf8) -> AstWtf8 {
         self.strings.add_wtf8(value)
+    }
+
+    #[inline]
+    pub fn utf8_to_wtf8(&mut self, value: AstUtf8) -> AstWtf8 {
+        self.strings.utf8_to_wtf8(value)
     }
 
     /// Canonicalizes an existing WTF-8 handle without copying its value into string storage.
@@ -373,8 +406,39 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn get_utf8(&self, id: AstUtf8) -> &str {
+    pub fn get_flat_utf8(&self, id: AstUtf8) -> &str {
+        self.strings.get_flat_utf8(id)
+    }
+
+    /// Returns a borrowed or materialized logical UTF-8 string.
+    ///
+    /// Test-only convenience API. Production callers should use the
+    /// non-materializing string-pool operations instead.
+    #[doc(hidden)]
+    #[inline]
+    pub fn get_utf8(&self, id: AstUtf8) -> std::borrow::Cow<'_, str> {
         self.strings.get_utf8(id)
+    }
+
+    /// Returns a non-allocating logical view of a flat or compact UTF-8 handle.
+    #[inline]
+    pub fn utf8_chunks(&self, id: AstUtf8) -> Utf8Chunks<'_> {
+        self.strings.utf8_chunks(id)
+    }
+
+    #[inline]
+    pub fn utf8_eq(&self, left: AstUtf8, right: AstUtf8) -> bool {
+        self.strings.utf8_eq(left, right)
+    }
+
+    #[inline]
+    pub fn utf8_eq_bytes(&self, id: AstUtf8, bytes: &[u8]) -> bool {
+        self.strings.utf8_eq_bytes(id, bytes)
+    }
+
+    #[inline]
+    pub fn utf8_eq_wtf8(&self, utf8: AstUtf8, wtf8: AstWtf8) -> bool {
+        self.strings.utf8_eq_wtf8(utf8, wtf8)
     }
 
     #[inline]

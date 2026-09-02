@@ -84,13 +84,13 @@ struct ResolverDisplayVisitor<'a, 'ast> {
 
 impl ResolverDisplayVisitor<'_, '_> {
     fn write_identifier(&mut self, node: SymbolNode, name: AstUtf8) {
-        let name = self.ast.get_utf8(name);
+        let name = self.ast.get_flat_utf8(name);
         let context = self.resolver.symbol_scope(node).raw();
         writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 
     fn write_identifier_name(&mut self, identifier: IdentifierName, context: u32) {
-        let name = self.ast.get_utf8(identifier.name(self.ast));
+        let name = self.ast.get_flat_utf8(identifier.name(self.ast));
         writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();
     }
 

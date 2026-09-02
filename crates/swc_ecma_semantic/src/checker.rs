@@ -52,6 +52,24 @@ struct CheckerState<'a> {
     diagnostics: Vec<Diagnostic<'a>>,
 }
 
+#[derive(Clone, Copy)]
+enum ImportAttributeName {
+    Utf8(AstUtf8),
+    Wtf8(AstWtf8),
+}
+
+impl ImportAttributeName {
+    fn eq(self, other: Self, ast: &Ast<'_>) -> bool {
+        match (self, other) {
+            (Self::Utf8(left), Self::Utf8(right)) => ast.utf8_eq(left, right),
+            (Self::Utf8(utf8), Self::Wtf8(wtf8)) | (Self::Wtf8(wtf8), Self::Utf8(utf8)) => {
+                ast.utf8_eq_wtf8(utf8, wtf8)
+            }
+            (Self::Wtf8(left), Self::Wtf8(right)) => ast.get_wtf8(left) == ast.get_wtf8(right),
+        }
+    }
+}
+
 impl<'traverse, 'a> Checker<'traverse, 'a> {
     pub fn new(ast: &'traverse mut Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
         let state = SemanticContext::init(ast, build_module_record);
@@ -154,7 +172,7 @@ fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
     loop {
         callee = match tree.kind_data(callee) {
             NodeKindData::IdentifierReference(identifier) => {
-                return tree.get_utf8(identifier.name(tree)).as_bytes() == b"eval";
+                return tree.utf8_eq_bytes(identifier.name(tree), b"eval");
             }
             NodeKindData::ParenthesizedExpression(wrapper) => wrapper.expression(tree).node_id(),
             NodeKindData::TsAsExpression(wrapper) => wrapper.expression(tree).node_id(),
@@ -167,6 +185,11 @@ fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
     }
 }
 
+struct ExportSpecifierInfo {
+    local_name: ModuleExportNameValue,
+    node: NodeId,
+}
+
 #[derive(Clone, Copy)]
 enum ModuleExportNameValue {
     Utf8(AstUtf8),
@@ -174,17 +197,19 @@ enum ModuleExportNameValue {
 }
 
 impl ModuleExportNameValue {
-    fn bytes<'b>(self, tree: &'b Ast<'_>) -> &'b [u8] {
+    fn bytes<'b>(self, tree: &'b Ast<'_>) -> Cow<'b, [u8]> {
         match self {
-            Self::Utf8(name) => tree.get_utf8(name).as_bytes(),
-            Self::Wtf8(name) => tree.get_wtf8(name).as_bytes(),
+            Self::Utf8(name) => {
+                let chunks = tree.utf8_chunks(name);
+                if chunks.suffix().is_none() {
+                    Cow::Borrowed(chunks.prefix().as_bytes())
+                } else {
+                    Cow::Owned(chunks.bytes().collect())
+                }
+            }
+            Self::Wtf8(name) => Cow::Borrowed(tree.get_wtf8(name).as_bytes()),
         }
     }
-}
-
-struct ExportSpecifierInfo {
-    local_name: ModuleExportNameValue,
-    node: NodeId,
 }
 
 impl<'a> CheckerState<'a> {

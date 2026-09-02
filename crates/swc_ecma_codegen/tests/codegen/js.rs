@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind,
+    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Span,
     TypedSubRange,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
@@ -110,6 +110,33 @@ fn numeric_literal_value_compares_float_bits() {
 }
 
 #[test]
+fn source_map_preserves_compact_identifier_names() {
+    let allocator = Allocator::new();
+    let mut ast = Ast::new(" _temp", &allocator);
+    let mut state = ast.generated_utf8_state("_temp");
+    let (name, was_free) = ast.reserve_generated_name_from_state(&mut state, 2);
+    assert!(was_free);
+
+    let expression = ast.expr_identifier_reference(Span::new(1, 6), name.into());
+    let statement = ast.stmt_expression_statement(DUMMY_SP, expression);
+    let body = ast.add_typed_sub_range([statement]);
+    let program = ast.program(DUMMY_SP, TypedSubRange::empty(), body, None);
+    ast.set_root_program(program);
+
+    let result = print(
+        &allocator,
+        &ast,
+        PrintOptions {
+            source_map_path: Some("input.js".into()),
+            ..PrintOptions::default()
+        },
+    );
+
+    assert_eq!(result.code, "_temp2;\n");
+    assert_eq!(result.map.unwrap().names(), &[b"_temp2".as_slice()]);
+}
+
+#[test]
 fn synthesized_number_property_keys() {
     assert_eq!(
         print_synthesized_number_property_key(f64::NAN, false, false),
@@ -161,6 +188,36 @@ fn synthesized_number_property_keys() {
     );
 }
 
+#[test]
+fn compact_identifier_name_prints_quoted_without_materializing() {
+    let allocator = Allocator::new();
+    let mut ast = Ast::new("", &allocator);
+    let mut state = ast.generated_utf8_state("not-\0");
+    let name = ast.reserve_generated_name_from_state(&mut state, 0).0;
+    let key = ast.property_key_identifier_name(DUMMY_SP, name.into());
+    let value = ast.expr_numeric_literal(DUMMY_SP, 0.0, None);
+    let property = ast.object_property(
+        DUMMY_SP,
+        key,
+        value,
+        PropertyKind::Init,
+        false,
+        false,
+        false,
+    );
+    let properties = ast.add_typed_sub_range([ObjectPropertyKind::ObjectProperty(property)]);
+    let expression = ast.expr_object_expression(DUMMY_SP, properties);
+    let statement = ast.stmt_expression_statement(DUMMY_SP, expression);
+    let body = ast.add_typed_sub_range([statement]);
+    let program = ast.program(DUMMY_SP, TypedSubRange::empty(), body, None);
+    ast.set_root_program(program);
+
+    assert_eq!(
+        print(&allocator, &ast, PrintOptions::default()).code,
+        "({ \"not-\\x000\": 0 });\n"
+    );
+}
+
 fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify: bool) -> String {
     let allocator = Allocator::new();
     let mut ast = Ast::new("", &allocator);
@@ -201,7 +258,7 @@ fn print_negative_number_contexts(number_format: NumberFormat) -> String {
 
     let member_object = ast.expr_numeric_literal(DUMMY_SP, -2.0, None);
     let property_name = ast.add_utf8("toString");
-    let property = ast.identifier_name(DUMMY_SP, property_name);
+    let property = ast.identifier_name(DUMMY_SP, property_name.into());
     let member = ast.expr_member_expression(
         DUMMY_SP,
         member_object,

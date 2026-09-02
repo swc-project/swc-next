@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fmt::Write, path::PathBuf};
 
 use arrayvec::ArrayVec;
 use memchr::memchr3;
@@ -6,7 +6,10 @@ use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
-use crate::util::{next_code_point, push_code_point_escape, push_u16_escape, quote_into};
+use crate::util::{
+    QuotedUtf8Writer, Utf8QuoteSelector, next_code_point, push_code_point_escape, push_u16_escape,
+    quote_into,
+};
 
 use crate::{
     SourceMap,
@@ -329,13 +332,21 @@ impl<'a> Printer<'a> {
     }
 
     #[inline]
-    fn add_source_mapping_for_name(&mut self, original_offset: u32, original_name: &'a str) {
+    fn add_source_mapping_for_utf8(&mut self, original_offset: u32, name: AstUtf8) {
         if self.options.source_map_path.is_some() {
-            self.builder.add_source_mapping(
-                original_offset,
-                original_name.as_bytes(),
-                self.js.as_slice(),
-            );
+            let chunks = self.ast.utf8_chunks(name);
+            let original_name = match chunks.suffix() {
+                None => chunks.prefix().as_bytes(),
+                Some(suffix) => {
+                    let mut name =
+                        ArenaVec::with_capacity_in(chunks.prefix().len() + 1, self.allocator);
+                    name.extend_from_slice_copy(chunks.prefix().as_bytes());
+                    name.push(suffix);
+                    name.into_bump_slice()
+                }
+            };
+            self.builder
+                .add_source_mapping(original_offset, original_name, self.js.as_slice());
         }
     }
 
@@ -349,10 +360,19 @@ impl<'a> Printer<'a> {
         self.js.extend_from_slice_copy(text.as_ref());
     }
 
+    #[inline]
+    fn print_ast_utf8(&mut self, name: AstUtf8) {
+        let chunks = self.ast.utf8_chunks(name);
+        self.js.extend_from_slice_copy(chunks.prefix().as_bytes());
+        if let Some(suffix) = chunks.suffix() {
+            self.js.push(suffix);
+        }
+    }
+
     fn print_program(&mut self, program: Program) {
         if let Some(hashbang) = program.hashbang(self.ast) {
             self.print("#!");
-            self.print_bytes(self.ast.get_utf8(hashbang.value(self.ast)));
+            self.print_bytes(self.ast.get_flat_utf8(hashbang.value(self.ast)).as_bytes());
             self.print("\n");
         }
         for id in program.directives(self.ast).iter() {
@@ -374,14 +394,14 @@ impl<'a> Printer<'a> {
     fn print_directive(&mut self, directive: Directive) {
         let expression = directive.expression(self.ast);
         let value = self.ast.get_wtf8(expression.value(self.ast));
-        let raw = self.ast.get_utf8(expression.raw(self.ast));
+        let raw = self.ast.get_flat_utf8(expression.raw(self.ast));
         let raw_is_safe = !raw.is_empty() && !raw.contains("script");
         if value == "use strict" && raw.as_bytes().contains(&b'\\') && raw_is_safe {
-            self.print_bytes(raw);
+            self.print_bytes(raw.as_bytes());
             return;
         }
         if !self.options.minify && raw_is_safe && (!self.options.ascii_only || raw.is_ascii()) {
-            self.print_bytes(raw);
+            self.print_bytes(raw.as_bytes());
             return;
         }
         self.print_quoted(value, false);
@@ -410,8 +430,8 @@ impl<'a> Printer<'a> {
             }
             let value = self
                 .ast
-                .get_utf8(comment.value(self.ast.source().as_bytes()))
-                .as_bytes();
+                .get_flat_utf8(comment.value(self.ast.source().as_bytes()));
+            let value = value.as_bytes();
             let mut trim_start = 0;
             while value[trim_start..]
                 .first()
@@ -676,12 +696,41 @@ impl<'a> Printer<'a> {
     }
 
     #[inline]
-    fn print_identifier(&mut self, name: &str) {
+    fn print_identifier(&mut self, name: impl AsRef<str>) {
+        let name = name.as_ref();
         self.print_space_before_identifier();
         if !self.options.ascii_only || name.is_ascii() {
             self.print_bytes(name);
         } else {
             self.print_identifier_ascii_only(name);
+        }
+    }
+
+    #[inline]
+    fn print_ast_identifier(&mut self, name: AstUtf8) {
+        self.print_space_before_identifier();
+        let chunks = self.ast.utf8_chunks(name);
+        let prefix = chunks.prefix();
+        if !self.options.ascii_only || prefix.is_ascii() {
+            self.js.extend_from_slice_copy(prefix.as_bytes());
+        } else {
+            self.print_identifier_ascii_only(prefix);
+        }
+        if let Some(suffix) = chunks.suffix() {
+            self.js.push(suffix);
+        }
+    }
+
+    #[inline(always)]
+    fn print_utf8_identifier(&mut self, prefix: &str, suffix: Option<u8>) {
+        self.print_space_before_identifier();
+        if !self.options.ascii_only || prefix.is_ascii() {
+            self.js.extend_from_slice_copy(prefix.as_bytes());
+        } else {
+            self.print_identifier_ascii_only(prefix);
+        }
+        if let Some(suffix) = suffix {
+            self.js.push(suffix);
         }
     }
 
@@ -722,6 +771,30 @@ impl<'a> Printer<'a> {
         quote_into(&mut self.js, value, quote, self.options.ascii_only);
     }
 
+    fn print_quoted_utf8(&mut self, prefix: &str, suffix: Option<u8>, allow_backtick: bool) {
+        let mut selector = Utf8QuoteSelector::default();
+        selector
+            .write_str(prefix)
+            .expect("UTF-8 quote selector is infallible");
+        if let Some(suffix) = suffix {
+            selector
+                .write_char(char::from(suffix))
+                .expect("UTF-8 quote selector is infallible");
+        }
+        let quote = selector.quote(allow_backtick);
+
+        let mut writer = QuotedUtf8Writer::new(&mut self.js, quote, self.options.ascii_only);
+        writer
+            .write_str(prefix)
+            .expect("UTF-8 quote writer is infallible");
+        if let Some(suffix) = suffix {
+            writer
+                .write_char(char::from(suffix))
+                .expect("UTF-8 quote writer is infallible");
+        }
+        writer.finish();
+    }
+
     fn print_stmt(&mut self, stmt: Stmt) {
         self.print_stmt_with_context(stmt, false);
     }
@@ -742,9 +815,9 @@ impl<'a> Printer<'a> {
                 self.print("break");
                 if let Some(label) = s.label(self.ast) {
                     self.print(" ");
-                    let name = self.ast.get_utf8(label.name(self.ast));
-                    self.add_source_mapping_for_name(label.span(self.ast).start, name);
-                    self.print_identifier(name);
+                    let name = label.name(self.ast);
+                    self.add_source_mapping_for_utf8(label.span(self.ast).start, name);
+                    self.print_ast_identifier(name);
                 }
                 self.print_semicolon_after_statement();
             }
@@ -754,9 +827,9 @@ impl<'a> Printer<'a> {
                 self.print("continue");
                 if let Some(label) = s.label(self.ast) {
                     self.print(" ");
-                    let name = self.ast.get_utf8(label.name(self.ast));
-                    self.add_source_mapping_for_name(label.span(self.ast).start, name);
-                    self.print_identifier(name);
+                    let name = label.name(self.ast);
+                    self.add_source_mapping_for_utf8(label.span(self.ast).start, name);
+                    self.print_ast_identifier(name);
                 }
                 self.print_semicolon_after_statement();
             }
@@ -915,9 +988,9 @@ impl<'a> Printer<'a> {
             StmtData::LabeledStatement(s) => {
                 self.print_indent();
                 let label = s.label(self.ast);
-                let name = self.ast.get_utf8(label.name(self.ast));
-                self.add_source_mapping_for_name(label.span(self.ast).start, name);
-                self.print_identifier(name);
+                let name = label.name(self.ast);
+                self.add_source_mapping_for_utf8(label.span(self.ast).start, name);
+                self.print_ast_identifier(name);
                 self.print(":");
                 self.print_body(s.body(self.ast));
             }
@@ -1047,7 +1120,7 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("export as namespace ");
-                self.print_identifier(self.ast.get_utf8(s.id(self.ast).name(self.ast)));
+                self.print_ast_identifier(s.id(self.ast).name(self.ast));
                 self.print_semicolon_after_statement();
             }
         }
@@ -1299,7 +1372,7 @@ impl<'a> Printer<'a> {
             self.print_for_left(left);
             return;
         };
-        let wrap = self.ast.get_utf8(identifier.name(self.ast)) == "async";
+        let wrap = self.ast.utf8_eq_bytes(identifier.name(self.ast), b"async");
         if wrap {
             self.print("(");
         }
@@ -1468,9 +1541,9 @@ impl<'a> Printer<'a> {
         if decorators {
             self.print_decorators(id.decorators(self.ast));
         }
-        let name = self.ast.get_utf8(id.name(self.ast));
-        self.add_source_mapping_for_name(id.span(self.ast).start, name);
-        self.print_identifier(name);
+        let name = id.name(self.ast);
+        self.add_source_mapping_for_utf8(id.span(self.ast).start, name);
+        self.print_ast_identifier(name);
         if id.optional(self.ast) {
             self.print("?");
         }
@@ -1570,10 +1643,9 @@ impl<'a> Printer<'a> {
             let value = prop.value(self.ast);
             let can_shorthand = !prop.computed(self.ast)
                 && match self.ast.property_key_data(prop.key(self.ast)) {
-                    PropertyKeyData::IdentifierName(key) => {
-                        self.binding_pattern_identifier_name(value)
-                            == Some(self.ast.get_utf8(key.name(self.ast)))
-                    }
+                    PropertyKeyData::IdentifierName(key) => self
+                        .binding_pattern_identifier_name(value)
+                        .is_some_and(|name| self.ast.utf8_eq(name, key.name(self.ast))),
                     _ => false,
                 };
             if prop.shorthand(self.ast) {
@@ -1622,13 +1694,14 @@ impl<'a> Printer<'a> {
     fn print_simple_assignment_target(&mut self, target: SimpleAssignmentTarget) {
         match self.ast.simple_assignment_target_data(target) {
             SimpleAssignmentTargetData::IdentifierReference(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                let wrap = self.js.len() == self.for_of_init_start && name == "let";
+                let name = i.name(self.ast);
+                let wrap =
+                    self.js.len() == self.for_of_init_start && self.ast.utf8_eq_bytes(name, b"let");
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name);
                 if wrap {
                     self.print(")");
                 }
@@ -1662,7 +1735,7 @@ impl<'a> Printer<'a> {
             return true;
         }
         self.ast
-            .get_utf8(comment.value(self.ast.source().as_bytes()))
+            .get_flat_utf8(comment.value(self.ast.source().as_bytes()))
             .chars()
             .any(|c| matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
     }
@@ -1779,13 +1852,14 @@ impl<'a> Printer<'a> {
         }
         match self.ast.expr_data(expr) {
             ExprData::IdentifierReference(e) => {
-                let name = self.ast.get_utf8(e.name(self.ast));
-                let wrap = self.js.len() == self.for_of_init_start && name == "let";
+                let name = e.name(self.ast);
+                let wrap =
+                    self.js.len() == self.for_of_init_start && self.ast.utf8_eq_bytes(name, b"let");
                 if wrap {
                     self.print("(");
                 }
-                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
-                self.print_identifier(name);
+                self.add_source_mapping_for_utf8(expr.span(self.ast).start, name);
+                self.print_ast_identifier(name);
                 if wrap {
                     self.print(")");
                 }
@@ -1800,9 +1874,9 @@ impl<'a> Printer<'a> {
             }
             ExprData::MetaProperty(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print_identifier(self.ast.get_utf8(e.meta(self.ast).name(self.ast)));
+                self.print_ast_identifier(e.meta(self.ast).name(self.ast));
                 self.print(".");
-                self.print_identifier(self.ast.get_utf8(e.property(self.ast).name(self.ast)));
+                self.print_ast_identifier(e.property(self.ast).name(self.ast));
             }
             ExprData::StringLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
@@ -1814,7 +1888,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::BigIntLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                let raw = self.ast.get_utf8(e.raw(self.ast));
+                let raw = self.ast.get_flat_utf8(e.raw(self.ast));
                 for byte in raw.bytes() {
                     if byte != b'_' {
                         self.js.push(byte);
@@ -1838,7 +1912,7 @@ impl<'a> Printer<'a> {
                         || (last == b'<'
                             && self
                                 .ast
-                                .get_utf8(e.pattern(self.ast))
+                                .get_flat_utf8(e.pattern(self.ast))
                                 .get(..6)
                                 .is_some_and(|prefix| prefix.eq_ignore_ascii_case("script"))))
                 {
@@ -1846,9 +1920,9 @@ impl<'a> Printer<'a> {
                 }
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("/");
-                self.print_bytes(self.ast.get_utf8(e.pattern(self.ast)));
+                self.print_bytes(self.ast.get_flat_utf8(e.pattern(self.ast)).as_bytes());
                 self.print("/");
-                self.print_bytes(self.ast.get_utf8(e.flags(self.ast)));
+                self.print_bytes(self.ast.get_flat_utf8(e.flags(self.ast)).as_bytes());
 
                 // The next identifier needs a separator or it would become
                 // part of the regular expression flags.
@@ -2047,10 +2121,10 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::PrivateIdentifier(e) => {
-                let name = self.ast.get_utf8(e.name(self.ast));
-                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                let name = e.name(self.ast);
+                self.add_source_mapping_for_utf8(expr.span(self.ast).start, name);
                 self.print("#");
-                self.print_identifier(name);
+                self.print_ast_identifier(name);
             }
             ExprData::TsAsExpression(e) => {
                 let wrap = level >= Precedence::Compare;
@@ -2234,7 +2308,7 @@ impl<'a> Printer<'a> {
             && matches!(
                 object_data,
                 ExprData::IdentifierReference(identifier)
-                    if self.ast.get_utf8(identifier.name(self.ast)) == "let"
+                    if self.ast.utf8_eq_bytes(identifier.name(self.ast), b"let")
             );
         if wrap_object {
             self.print("(");
@@ -2254,24 +2328,31 @@ impl<'a> Printer<'a> {
         self.need_space_before_dot = usize::MAX;
         let property = e.property(self.ast);
         let property_data = self.ast.property_key_data(property);
-        let (identifier_text, property_text): (Option<&str>, Option<&Wtf8>) = match property_data {
-            PropertyKeyData::IdentifierName(identifier) => {
-                let name = self.ast.get_utf8(identifier.name(self.ast));
-                (Some(name), Some(Wtf8::from_str(name)))
-            }
+        if !computed && let PropertyKeyData::IdentifierName(identifier) = property_data {
+            let ast = self.ast;
+            let name = identifier.name(ast);
+            let chunks = ast.utf8_chunks(name);
+            self.print_member_identifier(
+                chunks.prefix(),
+                chunks.suffix(),
+                optional,
+                need_space_before_dot,
+                property.span(ast).start,
+            );
+            return;
+        }
+
+        let property_text = match property_data {
             PropertyKeyData::StringLiteral(string) => {
-                (None, Some(self.ast.get_wtf8(string.value(self.ast))))
+                Some(self.ast.get_wtf8(string.value(self.ast)))
             }
-            _ => (None, None),
+            _ => None,
         };
         let force_computed = !computed
-            && match identifier_text {
-                Some(name) => !self.can_print_identifier(name),
-                None => property_text.is_some_and(|name| {
-                    name.as_str()
-                        .is_none_or(|name| !self.can_print_identifier(name))
-                }),
-            };
+            && property_text.is_some_and(|name| {
+                name.as_str()
+                    .is_none_or(|name| !self.can_print_identifier(name))
+            });
         if optional {
             self.print("?.");
         }
@@ -2298,11 +2379,39 @@ impl<'a> Printer<'a> {
                 self.print(".");
             }
             self.add_source_mapping(property.span(self.ast).start);
-            if matches!(property_data, PropertyKeyData::IdentifierName(_)) {
-                self.print_identifier(identifier_text.unwrap());
-            } else {
-                self.print_property_key_plain_data(property, property_data);
+            self.print_property_key_plain_data(property, property_data);
+        }
+    }
+
+    #[inline(always)]
+    fn print_member_identifier(
+        &mut self,
+        prefix: &str,
+        suffix: Option<u8>,
+        optional: bool,
+        need_space_before_dot: bool,
+        source_offset: u32,
+    ) {
+        let force_computed = !self.can_print_utf8_identifier(prefix, suffix);
+        if optional {
+            self.print("?.");
+        }
+        if force_computed {
+            self.print("[");
+            self.add_source_mapping(source_offset);
+            self.print_quoted_utf8(prefix, suffix, true);
+            self.print("]");
+        } else {
+            if !optional {
+                if need_space_before_dot {
+                    // "1.toString" is a syntax error, so print
+                    // "1 .toString" instead.
+                    self.print(" ");
+                }
+                self.print(".");
             }
+            self.add_source_mapping(source_offset);
+            self.print_utf8_identifier(prefix, suffix);
         }
     }
 
@@ -2632,7 +2741,8 @@ impl<'a> Printer<'a> {
             && !property.computed(self.ast)
             && match self.ast.property_key_data(property.key(self.ast)) {
                 PropertyKeyData::IdentifierName(identifier) => {
-                    self.can_print_identifier(self.ast.get_utf8(identifier.name(self.ast)))
+                    let chunks = self.ast.utf8_chunks(identifier.name(self.ast));
+                    self.can_print_utf8_identifier(chunks.prefix(), chunks.suffix())
                 }
                 _ => false,
             }
@@ -2651,12 +2761,10 @@ impl<'a> Printer<'a> {
 
     fn print_property_key_expr(&mut self, key: PropertyKey) {
         match self.ast.property_key_data(key) {
-            PropertyKeyData::IdentifierName(e) => {
-                self.print_identifier(self.ast.get_utf8(e.name(self.ast)))
-            }
+            PropertyKeyData::IdentifierName(e) => self.print_ast_identifier(e.name(self.ast)),
             PropertyKeyData::PrivateIdentifier(e) => {
                 self.print("#");
-                self.print_identifier(self.ast.get_utf8(e.name(self.ast)));
+                self.print_ast_identifier(e.name(self.ast));
             }
             PropertyKeyData::StringLiteral(e) => {
                 self.print_quoted(self.ast.get_wtf8(e.value(self.ast)), true)
@@ -2665,7 +2773,7 @@ impl<'a> Printer<'a> {
                 self.print_number_expr(e, Precedence::Lowest);
             }
             PropertyKeyData::BigIntLiteral(e) => {
-                for byte in self.ast.get_utf8(e.raw(self.ast)).bytes() {
+                for byte in self.ast.get_flat_utf8(e.raw(self.ast)).bytes() {
                     if byte != b'_' {
                         self.js.push(byte);
                     }
@@ -2685,11 +2793,13 @@ impl<'a> Printer<'a> {
     fn print_property_key_plain_data(&mut self, key: PropertyKey, data: PropertyKeyData) {
         match data {
             PropertyKeyData::IdentifierName(value) => {
-                let name = self.ast.get_utf8(value.name(self.ast));
-                if self.can_print_identifier(name) {
-                    self.print_identifier(name);
+                let name = value.name(self.ast);
+                let ast = self.ast;
+                let chunks = ast.utf8_chunks(name);
+                if self.can_print_utf8_identifier(chunks.prefix(), chunks.suffix()) {
+                    self.print_utf8_identifier(chunks.prefix(), chunks.suffix());
                 } else {
-                    self.print_quoted(Wtf8::from_str(name), true);
+                    self.print_quoted_utf8(chunks.prefix(), chunks.suffix(), true);
                 }
             }
             PropertyKeyData::NumericLiteral(value) => self.print_number_property_key(value),
@@ -2721,10 +2831,10 @@ impl<'a> Printer<'a> {
         for (i, id) in quasis.iter().enumerate() {
             let quasi = self.ast.get_node_in_sub_range(id);
             if is_tagged {
-                self.print_bytes(self.ast.get_utf8(quasi.raw(self.ast)));
+                self.print_bytes(self.ast.get_flat_utf8(quasi.raw(self.ast)).as_bytes());
             } else {
                 let cooked = if quasi.is_cooked_undefined(self.ast) {
-                    Wtf8::from_str(self.ast.get_utf8(quasi.raw(self.ast)))
+                    Wtf8::from_str(self.ast.get_flat_utf8(quasi.raw(self.ast)))
                 } else {
                     self.ast.get_wtf8(quasi.cooked(self.ast))
                 };
@@ -3072,15 +3182,16 @@ impl<'a> Printer<'a> {
                     ExprData::CallExpression(call) => expression = call.callee(ast),
                     ExprData::MemberExpression(member) if !member.computed(ast) => {
                         let name = match ast.property_key_data(member.property(ast)) {
-                            PropertyKeyData::IdentifierName(identifier) => {
-                                ast.get_utf8(identifier.name(ast))
-                            }
-                            PropertyKeyData::PrivateIdentifier(identifier) => {
-                                ast.get_utf8(identifier.name(ast))
-                            }
+                            PropertyKeyData::IdentifierName(identifier) => identifier.name(ast),
+                            PropertyKeyData::PrivateIdentifier(identifier) => identifier.name(ast),
                             _ => return true,
                         };
-                        if !is_identifier_es5_and_esnext(name.as_bytes()) {
+                        let chunks = ast.utf8_chunks(name);
+                        if !is_identifier_es5_and_esnext(chunks.prefix().as_bytes())
+                            || chunks
+                                .suffix()
+                                .is_some_and(|suffix| !is_ident_continue_ascii(suffix))
+                        {
                             return true;
                         }
                         expression = member.object(ast);
@@ -3156,10 +3267,10 @@ impl<'a> Printer<'a> {
         let Some(raw) = literal.raw(self.ast) else {
             return false;
         };
-        let raw = self.ast.get_utf8(raw);
+        let raw = self.ast.get_flat_utf8(raw);
 
         self.print_space_before_identifier();
-        self.print_bytes(raw);
+        self.print_bytes(raw.as_bytes());
         self.mark_raw_number_before_dot(raw);
         true
     }
@@ -3538,9 +3649,9 @@ impl<'a> Printer<'a> {
                         self.print("type ");
                     }
                     self.print_module_name(s.imported(self.ast));
-                    let imported = self.module_name(s.imported(self.ast));
-                    let local = self.ast.get_utf8(s.local(self.ast).name(self.ast));
-                    if imported != local {
+                    if !self
+                        .module_name_eq_utf8(s.imported(self.ast), s.local(self.ast).name(self.ast))
+                    {
                         self.print_space();
                         self.print_space_before_identifier();
                         self.print("as ");
@@ -3599,9 +3710,9 @@ impl<'a> Printer<'a> {
     fn print_module_name(&mut self, name: ModuleExportName) {
         match self.ast.module_export_name_data(name) {
             ModuleExportNameData::IdentifierName(i) => {
-                let text = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(name.span(self.ast).start, text);
-                self.print_identifier(text)
+                let text = i.name(self.ast);
+                self.add_source_mapping_for_utf8(name.span(self.ast).start, text);
+                self.print_ast_identifier(text)
             }
             ModuleExportNameData::StringLiteral(s) => {
                 let text = self.ast.get_wtf8(s.value(self.ast));
@@ -3671,7 +3782,7 @@ impl<'a> Printer<'a> {
                 self.print("type ");
             }
             self.print_module_name(s.local(self.ast));
-            if self.module_name(s.local(self.ast)) != self.module_name(s.exported(self.ast)) {
+            if !self.module_names_eq(s.local(self.ast), s.exported(self.ast)) {
                 self.print_space();
                 self.print_space_before_identifier();
                 self.print("as");
@@ -3890,7 +4001,8 @@ impl<'a> Printer<'a> {
                 for (i, id) in qs.iter().enumerate() {
                     self.print_bytes(
                         self.ast
-                            .get_utf8(self.ast.get_node_in_sub_range(id).raw(self.ast)),
+                            .get_flat_utf8(self.ast.get_node_in_sub_range(id).raw(self.ast))
+                            .as_bytes(),
                     );
                     if i < types.len() {
                         self.print("${");
@@ -4087,7 +4199,7 @@ impl<'a> Printer<'a> {
                     .ts_type_predicate_name_data(t.parameter_name(self.ast))
                 {
                     TsTypePredicateNameData::IdentifierName(i) => {
-                        self.print_identifier(self.ast.get_utf8(i.name(self.ast)))
+                        self.print_ast_identifier(i.name(self.ast))
                     }
                     TsTypePredicateNameData::TsThisType(_) => self.print("this"),
                 };
@@ -4125,9 +4237,9 @@ impl<'a> Printer<'a> {
     fn print_ts_type_name(&mut self, n: TsTypeName) {
         match self.ast.ts_type_name_data(n) {
             TsTypeNameData::IdentifierReference(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name)
             }
             TsTypeNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
@@ -4135,35 +4247,35 @@ impl<'a> Printer<'a> {
     fn print_ts_qualified(&mut self, q: TsQualifiedName) {
         match self.ast.ts_qualified_name_left_data(q.left(self.ast)) {
             TsQualifiedNameLeftData::IdentifierReference(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name)
             }
             TsQualifiedNameLeftData::IdentifierName(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name)
             }
             TsQualifiedNameLeftData::BindingIdentifier(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name)
             }
             TsQualifiedNameLeftData::ThisExpression(_) => self.print("this"),
             TsQualifiedNameLeftData::TsQualifiedName(x) => self.print_ts_qualified(x),
         }
         self.print(".");
         let right = q.right(self.ast);
-        let name = self.ast.get_utf8(right.name(self.ast));
-        self.add_source_mapping_for_name(right.span(self.ast).start, name);
-        self.print_identifier(name);
+        let name = right.name(self.ast);
+        self.add_source_mapping_for_utf8(right.span(self.ast).start, name);
+        self.print_ast_identifier(name);
     }
     fn print_ts_import_qualifier(&mut self, q: TsImportTypeQualifier) {
         match self.ast.ts_import_type_qualifier_data(q) {
             TsImportTypeQualifierData::IdentifierName(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name)
             }
             TsImportTypeQualifierData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
@@ -4188,7 +4300,9 @@ impl<'a> Printer<'a> {
             TsLiteralData::NumericLiteral(n) => {
                 self.print_number_literal(n, Precedence::Lowest);
             }
-            TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.get_utf8(n.raw(self.ast))),
+            TsLiteralData::BigIntLiteral(n) => {
+                self.print_bytes(self.ast.get_flat_utf8(n.raw(self.ast)).as_bytes())
+            }
             TsLiteralData::BooleanLiteral(b) => {
                 self.print(if b.value(self.ast) { "true" } else { "false" })
             }
@@ -4230,9 +4344,9 @@ impl<'a> Printer<'a> {
                     element_type = rest.type_annotation(self.ast);
                 }
                 let label = n.label(self.ast);
-                let name = self.ast.get_utf8(label.name(self.ast));
-                self.add_source_mapping_for_name(label.span(self.ast).start, name);
-                self.print_identifier(name);
+                let name = label.name(self.ast);
+                self.add_source_mapping_for_utf8(label.span(self.ast).start, name);
+                self.print_ast_identifier(name);
                 if n.optional(self.ast) {
                     self.print("?");
                 }
@@ -4452,9 +4566,9 @@ impl<'a> Printer<'a> {
         }
         match self.ast.ts_enum_member_name_data(n) {
             TsEnumMemberNameData::IdentifierName(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_identifier(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_identifier(name)
             }
             TsEnumMemberNameData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
@@ -4530,9 +4644,9 @@ impl<'a> Printer<'a> {
             self.print("declare ");
         }
         let id = d.id(self.ast);
-        let name = self.ast.get_utf8(id.name(self.ast));
-        self.add_source_mapping_for_name(id.span(self.ast).start, name);
-        self.print_identifier(name);
+        let name = id.name(self.ast);
+        self.add_source_mapping_for_utf8(id.span(self.ast).start, name);
+        self.print_ast_identifier(name);
         self.print_space();
         let b = d.body(self.ast);
         self.add_source_mapping(b.span(self.ast).start);
@@ -4652,15 +4766,15 @@ impl<'a> Printer<'a> {
     fn print_jsx_name(&mut self, n: JsxElementName) {
         match self.ast.jsx_element_name_data(n) {
             JsxElementNameData::JsxIdentifier(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(n.span(self.ast).start, name);
-                self.print_bytes(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(n.span(self.ast).start, name);
+                self.print_ast_utf8(name)
             }
             JsxElementNameData::JsxNamespacedName(x) => {
                 self.add_source_mapping(n.span(self.ast).start);
-                self.print_bytes(self.ast.get_utf8(x.namespace(self.ast).name(self.ast)));
+                self.print_ast_utf8(x.namespace(self.ast).name(self.ast));
                 self.print(":");
-                self.print_bytes(self.ast.get_utf8(x.name(self.ast).name(self.ast)));
+                self.print_ast_utf8(x.name(self.ast).name(self.ast));
             }
             JsxElementNameData::JsxMemberExpression(m) => self.print_jsx_member(m),
         }
@@ -4671,30 +4785,30 @@ impl<'a> Printer<'a> {
             .jsx_member_expression_object_data(m.object(self.ast))
         {
             JsxMemberExpressionObjectData::JsxIdentifier(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(i.span(self.ast).start, name);
-                self.print_bytes(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(i.span(self.ast).start, name);
+                self.print_ast_utf8(name)
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(m) => self.print_jsx_member(m),
         }
         self.print(".");
         let property = m.property(self.ast);
-        let name = self.ast.get_utf8(property.name(self.ast));
-        self.add_source_mapping_for_name(property.span(self.ast).start, name);
-        self.print_bytes(name);
+        let name = property.name(self.ast);
+        self.add_source_mapping_for_utf8(property.span(self.ast).start, name);
+        self.print_ast_utf8(name);
     }
     fn print_jsx_attr_name(&mut self, n: JsxAttributeName) {
         match self.ast.jsx_attribute_name_data(n) {
             JsxAttributeNameData::JsxIdentifier(i) => {
-                let name = self.ast.get_utf8(i.name(self.ast));
-                self.add_source_mapping_for_name(n.span(self.ast).start, name);
-                self.print_bytes(name)
+                let name = i.name(self.ast);
+                self.add_source_mapping_for_utf8(n.span(self.ast).start, name);
+                self.print_ast_utf8(name)
             }
             JsxAttributeNameData::JsxNamespacedName(x) => {
                 self.add_source_mapping(n.span(self.ast).start);
-                self.print_bytes(self.ast.get_utf8(x.namespace(self.ast).name(self.ast)));
+                self.print_ast_utf8(x.namespace(self.ast).name(self.ast));
                 self.print(":");
-                self.print_bytes(self.ast.get_utf8(x.name(self.ast).name(self.ast)));
+                self.print_ast_utf8(x.name(self.ast).name(self.ast));
             }
         }
     }
@@ -4735,7 +4849,7 @@ impl<'a> Printer<'a> {
     fn print_jsx_child(&mut self, c: JsxChild) {
         match self.ast.jsx_child_data(c) {
             JsxChildData::JsxText(t) => {
-                self.print_bytes(self.ast.get_utf8(t.value(self.ast)));
+                self.print_bytes(self.ast.get_flat_utf8(t.value(self.ast)).as_bytes());
             }
             JsxChildData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxChildData::JsxSpreadChild(s) => {
@@ -4750,15 +4864,13 @@ impl<'a> Printer<'a> {
 }
 
 impl Printer<'_> {
-    fn binding_pattern_identifier_name(&self, binding: BindingPattern) -> Option<&str> {
+    fn binding_pattern_identifier_name(&self, binding: BindingPattern) -> Option<AstUtf8> {
         match self.ast.binding_pattern_data(binding) {
-            BindingPatternData::BindingIdentifier(identifier) => {
-                Some(self.ast.get_utf8(identifier.name(self.ast)))
-            }
+            BindingPatternData::BindingIdentifier(identifier) => Some(identifier.name(self.ast)),
             BindingPatternData::SimpleAssignmentTarget(target) => {
                 match self.ast.simple_assignment_target_data(target) {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                        Some(self.ast.get_utf8(identifier.name(self.ast)))
+                        Some(identifier.name(self.ast))
                     }
                     _ => None,
                 }
@@ -4792,7 +4904,8 @@ impl Printer<'_> {
     }
 
     #[inline]
-    fn can_print_identifier(&self, name: &str) -> bool {
+    fn can_print_identifier(&self, name: impl AsRef<str>) -> bool {
+        let name = name.as_ref();
         let bytes = name.as_bytes();
         let Some((&first, rest)) = bytes.split_first() else {
             return false;
@@ -4810,19 +4923,56 @@ impl Printer<'_> {
         is_identifier_es5_and_esnext(bytes)
     }
 
-    fn module_name(&self, n: ModuleExportName) -> &Wtf8 {
-        let ast = self.ast;
-        match ast.module_export_name_data(n) {
-            ModuleExportNameData::IdentifierName(i) => Wtf8::from_str(ast.get_utf8(i.name(ast))),
-            ModuleExportNameData::StringLiteral(s) => ast.get_wtf8(s.value(ast)),
+    #[inline]
+    fn can_print_utf8_identifier(&self, prefix: &str, suffix: Option<u8>) -> bool {
+        self.can_print_identifier(prefix) && suffix.is_none_or(is_ident_continue_ascii)
+    }
+
+    fn module_name_eq_utf8(&self, module_name: ModuleExportName, utf8: AstUtf8) -> bool {
+        match self.ast.module_export_name_data(module_name) {
+            ModuleExportNameData::IdentifierName(identifier) => {
+                self.ast.utf8_eq(identifier.name(self.ast), utf8)
+            }
+            ModuleExportNameData::StringLiteral(string) => {
+                self.ast.utf8_eq_wtf8(utf8, string.value(self.ast))
+            }
+        }
+    }
+
+    fn module_names_eq(&self, left: ModuleExportName, right: ModuleExportName) -> bool {
+        match (
+            self.ast.module_export_name_data(left),
+            self.ast.module_export_name_data(right),
+        ) {
+            (
+                ModuleExportNameData::IdentifierName(left),
+                ModuleExportNameData::IdentifierName(right),
+            ) => self.ast.utf8_eq(left.name(self.ast), right.name(self.ast)),
+            (
+                ModuleExportNameData::IdentifierName(left),
+                ModuleExportNameData::StringLiteral(right),
+            ) => self
+                .ast
+                .utf8_eq_wtf8(left.name(self.ast), right.value(self.ast)),
+            (
+                ModuleExportNameData::StringLiteral(left),
+                ModuleExportNameData::IdentifierName(right),
+            ) => self
+                .ast
+                .utf8_eq_wtf8(right.name(self.ast), left.value(self.ast)),
+            (
+                ModuleExportNameData::StringLiteral(left),
+                ModuleExportNameData::StringLiteral(right),
+            ) => {
+                self.ast.get_wtf8(left.value(self.ast)) == self.ast.get_wtf8(right.value(self.ast))
+            }
         }
     }
 }
 
 fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
-    let value = ast
-        .get_utf8(comment.value(ast.source().as_bytes()))
-        .as_bytes();
+    let value = ast.get_flat_utf8(comment.value(ast.source().as_bytes()));
+    let value = value.as_bytes();
     if ast
         .source()
         .as_bytes()

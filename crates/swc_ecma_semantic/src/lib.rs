@@ -24,20 +24,22 @@ mod ecmascript;
 mod module_record;
 pub mod name_resolver;
 pub mod scope;
+mod used_names;
 
 pub use binder::{Declaration, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags};
 pub use module_record::{
     ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
-    ModuleRecord,
+    ModuleNameValue, ModuleRecord,
 };
 pub use swc_next_ecma_ast::ReferenceId;
+pub use used_names::UsedNameState;
 
 oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
     pub struct DeclarationId;
 }
 
-/// Canonical name stored for a semantic symbol and used for scope lookup.
+/// Canonical name stored for a semantic symbol.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum SymbolName {
     Utf8(AstInternedUtf8),
@@ -56,7 +58,7 @@ impl SymbolName {
     #[inline]
     pub fn intern_wtf8(ast: &mut Ast<'_>, name: AstWtf8) -> Self {
         if let Some(name) = ast.as_utf8(name) {
-            return Self::Utf8(ast.intern_utf8(name));
+            return Self::Utf8(ast.intern_name(name));
         }
         Self::Wtf8(ast.intern_wtf8(name))
     }
@@ -69,7 +71,6 @@ impl SymbolName {
         }
     }
 
-    #[inline]
     pub fn as_wtf8(self) -> Option<AstWtf8> {
         match self {
             Self::Utf8(_) => None,
@@ -505,13 +506,6 @@ mod tests {
         SymbolName, analyze, scope::ScopeKind,
     };
 
-    fn symbol_name_bytes<'b>(ast: &'b Ast<'_>, name: SymbolName) -> &'b [u8] {
-        match name {
-            SymbolName::Utf8(name) => ast.get_utf8(name.into()).as_bytes(),
-            SymbolName::Wtf8(name) => ast.get_wtf8(name).as_bytes(),
-        }
-    }
-
     fn analyze_source<'a>(
         allocator: &'a Allocator,
         source: &'a str,
@@ -547,9 +541,7 @@ mod tests {
         let source = "interface A {} interface B {} interface A {} interface \\u0041 {}";
         let (mut ast, semantic) = analyze_source(&allocator, source, ts_script);
         let a_name = ast.add_utf8("A");
-        let a_name = ast.intern_utf8(a_name);
         let b_name = ast.add_utf8("B");
-        let b_name = ast.intern_utf8(b_name);
         let a = semantic.binding(ScopeId::ROOT, a_name).unwrap();
         let b = semantic.binding(ScopeId::ROOT, b_name).unwrap();
         let mut a_declarations = semantic.declaration_ids(a);
@@ -663,13 +655,18 @@ mod tests {
         let (ast, semantic) = analyze_source(&allocator, source, ts_module);
         let symbol = semantic
             .iter_symbols()
-            .find(|entry| symbol_name_bytes(&ast, entry.symbol.name) == b"T")
+            .find(|entry| {
+                matches!(
+                    entry.symbol.name,
+                    SymbolName::Utf8(name) if ast.utf8_eq_bytes(name.into(), b"T")
+                )
+            })
             .unwrap();
         assert!(symbol.symbol.flags.contains(SymbolFlags::TYPE_IMPORT));
 
         let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"T")
+            .find(|entry| ast.utf8_eq_bytes(entry.reference.name.into(), b"T"))
             .unwrap()
             .reference;
         assert_eq!(reference.flags.space, ReferenceSpace::Type);
@@ -680,7 +677,7 @@ mod tests {
         let (ast, semantic) = analyze_source(&allocator, source, ts_module);
         let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"T")
+            .find(|entry| ast.utf8_eq_bytes(entry.reference.name.into(), b"T"))
             .unwrap()
             .reference;
         assert_eq!(reference.flags.space, ReferenceSpace::Value);
@@ -759,11 +756,10 @@ mod tests {
         let source = "let value; with ({}) { value; }";
         let (mut ast, semantic) = analyze_source(&allocator, source, js_script);
         let value_name = ast.add_utf8("value");
-        let value_name = ast.intern_utf8(value_name);
         let value_symbol = semantic.binding(ScopeId::ROOT, value_name).unwrap();
         let value = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"value")
+            .find(|entry| ast.utf8_eq_bytes(entry.reference.name.into(), b"value"))
             .unwrap()
             .reference;
         assert!(value.flags.is_dynamic());
@@ -779,7 +775,7 @@ mod tests {
         let (ast, semantic) = analyze_source(&allocator, source, js_script);
         let reference = semantic
             .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name.into()).as_bytes() == b"value")
+            .find(|entry| ast.utf8_eq_bytes(entry.reference.name.into(), b"value"))
             .unwrap()
             .reference;
         assert!(!reference.flags.is_dynamic());
@@ -795,10 +791,10 @@ mod tests {
         assert!(reference.flags.is_dynamic());
         assert_eq!(reference.symbol, Some(symbol_id));
         assert_eq!(semantic.uses(symbol_id), &[reference_id]);
-        assert_eq!(
-            symbol_name_bytes(&ast, semantic.symbol(symbol_id).name),
-            b"value"
-        );
+        assert!(matches!(
+            semantic.symbol(symbol_id).name,
+            SymbolName::Utf8(name) if ast.utf8_eq_bytes(name.into(), b"value")
+        ));
 
         let source = "function f() { eval('direct'); }";
         let (_, semantic) = analyze_source(&allocator, source, js_script);
@@ -838,10 +834,9 @@ mod tests {
             .collect();
         assert_eq!(references.len(), 2);
         assert_eq!(references[0].name, references[1].name);
-        assert_eq!(ast.get_utf8(references[0].name.into()), "value");
+        assert!(ast.utf8_eq_bytes(references[0].name.into(), b"value"));
 
         let value_name = ast.add_utf8("value");
-        let value_name = ast.intern_utf8(value_name);
         let symbol = semantic.binding(ScopeId::ROOT, value_name).unwrap();
         assert_eq!(
             semantic.symbol(symbol).name,
