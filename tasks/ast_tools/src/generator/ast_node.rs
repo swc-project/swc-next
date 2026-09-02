@@ -11,6 +11,7 @@ use crate::{
 };
 
 pub fn ast_node(schema: &Schema) -> RawOutput {
+    let mut enum_data = TokenStream::new();
     let mut node_impls = TokenStream::new();
     let mut data_accessors = TokenStream::new();
     let mut node_kind_variants = TokenStream::new();
@@ -34,7 +35,8 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 ));
             }
             AstType::Enum(ast_enum) => {
-                node_impls.extend(generate_node_impls_for_enum(ast_enum));
+                enum_data.extend(generate_enum_data(ast_enum, schema));
+                node_impls.extend(generate_node_impls_for_enum(ast_enum, schema));
                 data_accessors.extend(generate_data_accessor(ast_enum, schema));
                 node_kind_enum_checks.extend(generate_node_kind_enum_check(ast_enum, schema));
             }
@@ -61,6 +63,8 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
 
                 #node_kind_enum_checks
             }
+
+            #enum_data
 
             #[repr(C)]
             struct AstEnumDataRepr {
@@ -101,6 +105,51 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
         },
     }
     .into()
+}
+
+fn generate_enum_data(ast: &AstEnum, schema: &Schema) -> TokenStream {
+    assert!(
+        ast._attrs.ast_attrs.contains("repr"),
+        "AST enum `{}` must use `#[ast(repr)]`",
+        ast.name
+    );
+
+    let data_name = format_ident!("{}Data", ast.name);
+    let nested = ast._attrs.ast_attrs.contains("nested");
+    let repr = if nested {
+        format_ident!("u32")
+    } else {
+        format_ident!("u8")
+    };
+    let variants = ast.variants.iter().enumerate().map(|(index, variant)| {
+        let variant_name = format_ident!("{}", variant.name);
+        let type_id = variant
+            .type_id
+            .expect("AST enum variants must contain one field");
+        let payload = schema.types[type_id].repr_ident(schema);
+        let discriminant = if nested {
+            let discriminant = (index + 1) as u32;
+            quote!(#discriminant)
+        } else {
+            let AstType::Struct(payload) = &schema.types[type_id] else {
+                panic!(
+                    "flat AST enum `{}.{}` must contain a struct",
+                    ast.name, variant.name
+                );
+            };
+            let node_kind = format_ident!("{}", payload.name);
+            quote!(NodeKind::#node_kind as u8)
+        };
+        quote!(#variant_name(#payload) = #discriminant,)
+    });
+
+    quote! {
+        #[repr(C, #repr)]
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub enum #data_name {
+            #(#variants)*
+        }
+    }
 }
 
 fn generate_node_kind_enum_check(ast: &AstEnum, schema: &Schema) -> TokenStream {
@@ -251,9 +300,31 @@ fn generate_node_impls_for_struct(ast: &AstStruct) -> TokenStream {
     generate_node_impls(&name)
 }
 
-fn generate_node_impls_for_enum(ast: &AstEnum) -> TokenStream {
+fn generate_node_impls_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
-    generate_node_impls(&name)
+    let node_impls = generate_node_impls(&name);
+    let constructors = ast.variants.iter().map(|variant| {
+        let variant_name = format_ident!("{}", variant.name);
+        let type_id = variant
+            .type_id
+            .expect("AST enum variants must contain one field");
+        let payload = schema.types[type_id].repr_ident(schema);
+        quote! {
+            #[allow(non_snake_case)]
+            #[inline]
+            pub fn #variant_name(node: #payload) -> Self {
+                Self(node.node_id())
+            }
+        }
+    });
+
+    quote! {
+        #node_impls
+
+        impl #name {
+            #(#constructors)*
+        }
+    }
 }
 
 fn generate_node_impls(name: &proc_macro2::Ident) -> TokenStream {

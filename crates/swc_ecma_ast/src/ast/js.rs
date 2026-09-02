@@ -2,7 +2,6 @@ use std::mem;
 
 use swc_next_ast_macros::ast;
 
-use super::{jsx::*, ts::*};
 use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
 
 macro_rules! impl_extra_data_compact {

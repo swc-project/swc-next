@@ -924,6 +924,383 @@ impl NodeKind {
         )
     }
 }
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum StmtData {
+    BlockStatement(BlockStatement) = 1u32,
+    BreakStatement(BreakStatement) = 2u32,
+    ContinueStatement(ContinueStatement) = 3u32,
+    DebuggerStatement(DebuggerStatement) = 4u32,
+    DoWhileStatement(DoWhileStatement) = 5u32,
+    EmptyStatement(EmptyStatement) = 6u32,
+    ExpressionStatement(ExpressionStatement) = 7u32,
+    ForInStatement(ForInStatement) = 8u32,
+    ForOfStatement(ForOfStatement) = 9u32,
+    ForStatement(ForStatement) = 10u32,
+    IfStatement(IfStatement) = 11u32,
+    LabeledStatement(LabeledStatement) = 12u32,
+    ReturnStatement(ReturnStatement) = 13u32,
+    SwitchStatement(SwitchStatement) = 14u32,
+    ThrowStatement(ThrowStatement) = 15u32,
+    TryStatement(TryStatement) = 16u32,
+    WhileStatement(WhileStatement) = 17u32,
+    WithStatement(WithStatement) = 18u32,
+    Declaration(Decl) = 19u32,
+    ImportDeclaration(ImportDeclaration) = 20u32,
+    ExportNamedDeclaration(ExportNamedDeclaration) = 21u32,
+    ExportDefaultDeclaration(ExportDefaultDeclaration) = 22u32,
+    ExportAllDeclaration(ExportAllDeclaration) = 23u32,
+    TsExportAssignment(TsExportAssignment) = 24u32,
+    TsNamespaceExportDeclaration(TsNamespaceExportDeclaration) = 25u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum DeclData {
+    VariableDeclaration(VariableDeclaration) = NodeKind::VariableDeclaration as u8,
+    Function(Function) = NodeKind::Function as u8,
+    Class(Class) = NodeKind::Class as u8,
+    TsFunction(TsFunction) = NodeKind::TsFunction as u8,
+    TsTypeAliasDeclaration(TsTypeAliasDeclaration) = NodeKind::TsTypeAliasDeclaration as u8,
+    TsInterfaceDeclaration(TsInterfaceDeclaration) = NodeKind::TsInterfaceDeclaration as u8,
+    TsEnumDeclaration(TsEnumDeclaration) = NodeKind::TsEnumDeclaration as u8,
+    TsModuleDeclaration(TsModuleDeclaration) = NodeKind::TsModuleDeclaration as u8,
+    TsGlobalDeclaration(TsGlobalDeclaration) = NodeKind::TsGlobalDeclaration as u8,
+    TsImportEqualsDeclaration(TsImportEqualsDeclaration) =
+        NodeKind::TsImportEqualsDeclaration as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ExprData {
+    IdentifierReference(IdentifierReference) = NodeKind::IdentifierReference as u8,
+    ThisExpression(ThisExpression) = NodeKind::ThisExpression as u8,
+    Super(Super) = NodeKind::Super as u8,
+    MetaProperty(MetaProperty) = NodeKind::MetaProperty as u8,
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+    NumericLiteral(NumericLiteral) = NodeKind::NumericLiteral as u8,
+    BigIntLiteral(BigIntLiteral) = NodeKind::BigIntLiteral as u8,
+    BooleanLiteral(BooleanLiteral) = NodeKind::BooleanLiteral as u8,
+    NullLiteral(NullLiteral) = NodeKind::NullLiteral as u8,
+    RegExpLiteral(RegExpLiteral) = NodeKind::RegExpLiteral as u8,
+    TemplateLiteral(TemplateLiteral) = NodeKind::TemplateLiteral as u8,
+    BinaryExpression(BinaryExpression) = NodeKind::BinaryExpression as u8,
+    LogicalExpression(LogicalExpression) = NodeKind::LogicalExpression as u8,
+    UnaryExpression(UnaryExpression) = NodeKind::UnaryExpression as u8,
+    UpdateExpression(UpdateExpression) = NodeKind::UpdateExpression as u8,
+    AssignmentExpression(AssignmentExpression) = NodeKind::AssignmentExpression as u8,
+    ConditionalExpression(ConditionalExpression) = NodeKind::ConditionalExpression as u8,
+    SequenceExpression(SequenceExpression) = NodeKind::SequenceExpression as u8,
+    MemberExpression(MemberExpression) = NodeKind::MemberExpression as u8,
+    CallExpression(CallExpression) = NodeKind::CallExpression as u8,
+    ChainExpression(ChainExpression) = NodeKind::ChainExpression as u8,
+    NewExpression(NewExpression) = NodeKind::NewExpression as u8,
+    TaggedTemplateExpression(TaggedTemplateExpression) = NodeKind::TaggedTemplateExpression as u8,
+    ArrowFunctionExpression(ArrowFunctionExpression) = NodeKind::ArrowFunctionExpression as u8,
+    ArrayExpression(ArrayExpression) = NodeKind::ArrayExpression as u8,
+    ObjectExpression(ObjectExpression) = NodeKind::ObjectExpression as u8,
+    ParenthesizedExpression(ParenthesizedExpression) = NodeKind::ParenthesizedExpression as u8,
+    Function(Function) = NodeKind::Function as u8,
+    Class(Class) = NodeKind::Class as u8,
+    ImportExpression(ImportExpression) = NodeKind::ImportExpression as u8,
+    AwaitExpression(AwaitExpression) = NodeKind::AwaitExpression as u8,
+    YieldExpression(YieldExpression) = NodeKind::YieldExpression as u8,
+    PrivateIdentifier(PrivateIdentifier) = NodeKind::PrivateIdentifier as u8,
+    TsAsExpression(TsAsExpression) = NodeKind::TsAsExpression as u8,
+    TsSatisfiesExpression(TsSatisfiesExpression) = NodeKind::TsSatisfiesExpression as u8,
+    TsTypeAssertion(TsTypeAssertion) = NodeKind::TsTypeAssertion as u8,
+    TsNonNullExpression(TsNonNullExpression) = NodeKind::TsNonNullExpression as u8,
+    TsInstantiationExpression(TsInstantiationExpression) =
+        NodeKind::TsInstantiationExpression as u8,
+    JsxElement(JsxElement) = NodeKind::JsxElement as u8,
+    JsxFragment(JsxFragment) = NodeKind::JsxFragment as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum BindingPatternData {
+    BindingIdentifier(BindingIdentifier) = 1u32,
+    SimpleAssignmentTarget(SimpleAssignmentTarget) = 2u32,
+    AssignmentPattern(AssignmentPattern) = 3u32,
+    BindingRestElement(BindingRestElement) = 4u32,
+    ArrayPattern(ArrayPattern) = 5u32,
+    ObjectPattern(ObjectPattern) = 6u32,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum AssignmentTargetData {
+    SimpleAssignmentTarget(SimpleAssignmentTarget) = 1u32,
+    ArrayAssignmentTarget(ArrayPattern) = 2u32,
+    ObjectAssignmentTarget(ObjectPattern) = 3u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum SimpleAssignmentTargetData {
+    IdentifierReference(IdentifierReference) = NodeKind::IdentifierReference as u8,
+    MemberExpression(MemberExpression) = NodeKind::MemberExpression as u8,
+    TsAsExpression(TsAsExpression) = NodeKind::TsAsExpression as u8,
+    TsSatisfiesExpression(TsSatisfiesExpression) = NodeKind::TsSatisfiesExpression as u8,
+    TsTypeAssertion(TsTypeAssertion) = NodeKind::TsTypeAssertion as u8,
+    TsNonNullExpression(TsNonNullExpression) = NodeKind::TsNonNullExpression as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum PropertyKeyData {
+    IdentifierName(IdentifierName) = 1u32,
+    PrivateIdentifier(PrivateIdentifier) = 2u32,
+    StringLiteral(StringLiteral) = 3u32,
+    NumericLiteral(NumericLiteral) = 4u32,
+    BigIntLiteral(BigIntLiteral) = 5u32,
+    Expr(Expr) = 6u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ModuleExportNameData {
+    IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ArgumentData {
+    Expr(Expr) = 1u32,
+    SpreadElement(SpreadElement) = 2u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ObjectPropertyKindData {
+    ObjectProperty(ObjectProperty) = NodeKind::ObjectProperty as u8,
+    SpreadElement(SpreadElement) = NodeKind::SpreadElement as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ForStatementInitData {
+    VariableDeclaration(VariableDeclaration) = 1u32,
+    Expr(Expr) = 2u32,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ForStatementLeftData {
+    VariableDeclaration(VariableDeclaration) = 1u32,
+    AssignmentTarget(AssignmentTarget) = 2u32,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ArrowFunctionBodyData {
+    FunctionBody(FunctionBody) = 1u32,
+    Expr(Expr) = 2u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FormalParameterItemData {
+    FormalParameter(FormalParameter) = NodeKind::FormalParameter as u8,
+    TsParameterProperty(TsParameterProperty) = NodeKind::TsParameterProperty as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FormalParameterPatternData {
+    BindingPattern(BindingPattern) = 1u32,
+    TsThisParameter(TsThisParameter) = 2u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ClassElementData {
+    MethodDefinition(MethodDefinition) = NodeKind::MethodDefinition as u8,
+    PropertyDefinition(PropertyDefinition) = NodeKind::PropertyDefinition as u8,
+    StaticBlock(StaticBlock) = NodeKind::StaticBlock as u8,
+    TsMethodDefinition(TsMethodDefinition) = NodeKind::TsMethodDefinition as u8,
+    TsIndexSignature(TsIndexSignature) = NodeKind::TsIndexSignature as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ImportDeclarationSpecifierData {
+    ImportSpecifier(ImportSpecifier) = NodeKind::ImportSpecifier as u8,
+    ImportDefaultSpecifier(ImportDefaultSpecifier) = NodeKind::ImportDefaultSpecifier as u8,
+    ImportNamespaceSpecifier(ImportNamespaceSpecifier) = NodeKind::ImportNamespaceSpecifier as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ExportDefaultDeclarationKindData {
+    Expr(Expr) = 1u32,
+    Function(Function) = 2u32,
+    Class(Class) = 3u32,
+    TsFunction(TsFunction) = 4u32,
+    TsInterfaceDeclaration(TsInterfaceDeclaration) = 5u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsTypeData {
+    TsAnyKeyword(TsAnyKeyword) = NodeKind::TsAnyKeyword as u8,
+    TsUnknownKeyword(TsUnknownKeyword) = NodeKind::TsUnknownKeyword as u8,
+    TsNeverKeyword(TsNeverKeyword) = NodeKind::TsNeverKeyword as u8,
+    TsVoidKeyword(TsVoidKeyword) = NodeKind::TsVoidKeyword as u8,
+    TsNullKeyword(TsNullKeyword) = NodeKind::TsNullKeyword as u8,
+    TsUndefinedKeyword(TsUndefinedKeyword) = NodeKind::TsUndefinedKeyword as u8,
+    TsStringKeyword(TsStringKeyword) = NodeKind::TsStringKeyword as u8,
+    TsNumberKeyword(TsNumberKeyword) = NodeKind::TsNumberKeyword as u8,
+    TsBigIntKeyword(TsBigIntKeyword) = NodeKind::TsBigIntKeyword as u8,
+    TsBooleanKeyword(TsBooleanKeyword) = NodeKind::TsBooleanKeyword as u8,
+    TsSymbolKeyword(TsSymbolKeyword) = NodeKind::TsSymbolKeyword as u8,
+    TsObjectKeyword(TsObjectKeyword) = NodeKind::TsObjectKeyword as u8,
+    TsIntrinsicKeyword(TsIntrinsicKeyword) = NodeKind::TsIntrinsicKeyword as u8,
+    TsThisType(TsThisType) = NodeKind::TsThisType as u8,
+    TsTypeReference(TsTypeReference) = NodeKind::TsTypeReference as u8,
+    TsTypeQuery(TsTypeQuery) = NodeKind::TsTypeQuery as u8,
+    TsImportType(TsImportType) = NodeKind::TsImportType as u8,
+    TsLiteralType(TsLiteralType) = NodeKind::TsLiteralType as u8,
+    TsTemplateLiteralType(TsTemplateLiteralType) = NodeKind::TsTemplateLiteralType as u8,
+    TsArrayType(TsArrayType) = NodeKind::TsArrayType as u8,
+    TsIndexedAccessType(TsIndexedAccessType) = NodeKind::TsIndexedAccessType as u8,
+    TsTupleType(TsTupleType) = NodeKind::TsTupleType as u8,
+    TsOptionalType(TsOptionalType) = NodeKind::TsOptionalType as u8,
+    TsRestType(TsRestType) = NodeKind::TsRestType as u8,
+    TsJsDocNullableType(TsJsDocNullableType) = NodeKind::TsJsDocNullableType as u8,
+    TsJsDocNonNullableType(TsJsDocNonNullableType) = NodeKind::TsJsDocNonNullableType as u8,
+    TsJsDocUnknownType(TsJsDocUnknownType) = NodeKind::TsJsDocUnknownType as u8,
+    TsUnionType(TsUnionType) = NodeKind::TsUnionType as u8,
+    TsIntersectionType(TsIntersectionType) = NodeKind::TsIntersectionType as u8,
+    TsConditionalType(TsConditionalType) = NodeKind::TsConditionalType as u8,
+    TsInferType(TsInferType) = NodeKind::TsInferType as u8,
+    TsTypeOperator(TsTypeOperator) = NodeKind::TsTypeOperator as u8,
+    TsParenthesizedType(TsParenthesizedType) = NodeKind::TsParenthesizedType as u8,
+    TsFunctionType(TsFunctionType) = NodeKind::TsFunctionType as u8,
+    TsConstructorType(TsConstructorType) = NodeKind::TsConstructorType as u8,
+    TsTypePredicate(TsTypePredicate) = NodeKind::TsTypePredicate as u8,
+    TsTypeLiteral(TsTypeLiteral) = NodeKind::TsTypeLiteral as u8,
+    TsMappedType(TsMappedType) = NodeKind::TsMappedType as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsTypeNameData {
+    IdentifierReference(IdentifierReference) = NodeKind::IdentifierReference as u8,
+    TsQualifiedName(TsQualifiedName) = NodeKind::TsQualifiedName as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsQualifiedNameLeftData {
+    IdentifierReference(IdentifierReference) = NodeKind::IdentifierReference as u8,
+    IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
+    BindingIdentifier(BindingIdentifier) = NodeKind::BindingIdentifier as u8,
+    ThisExpression(ThisExpression) = NodeKind::ThisExpression as u8,
+    TsQualifiedName(TsQualifiedName) = NodeKind::TsQualifiedName as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsImportTypeQualifierData {
+    IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
+    TsQualifiedName(TsQualifiedName) = NodeKind::TsQualifiedName as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsTypeQueryExprNameData {
+    TsTypeName(TsTypeName) = 1u32,
+    ThisExpression(ThisExpression) = 2u32,
+    TsImportType(TsImportType) = 3u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsLiteralData {
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+    NumericLiteral(NumericLiteral) = NodeKind::NumericLiteral as u8,
+    BigIntLiteral(BigIntLiteral) = NodeKind::BigIntLiteral as u8,
+    BooleanLiteral(BooleanLiteral) = NodeKind::BooleanLiteral as u8,
+    TemplateLiteral(TemplateLiteral) = NodeKind::TemplateLiteral as u8,
+    UnaryExpression(UnaryExpression) = NodeKind::UnaryExpression as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsTupleElementData {
+    TsType(TsType) = 1u32,
+    TsNamedTupleMember(TsNamedTupleMember) = 2u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsTypeElementData {
+    TsPropertySignature(TsPropertySignature) = NodeKind::TsPropertySignature as u8,
+    TsMethodSignature(TsMethodSignature) = NodeKind::TsMethodSignature as u8,
+    TsCallSignatureDeclaration(TsCallSignatureDeclaration) =
+        NodeKind::TsCallSignatureDeclaration as u8,
+    TsConstructSignatureDeclaration(TsConstructSignatureDeclaration) =
+        NodeKind::TsConstructSignatureDeclaration as u8,
+    TsIndexSignature(TsIndexSignature) = NodeKind::TsIndexSignature as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsTypePredicateNameData {
+    IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
+    TsThisType(TsThisType) = NodeKind::TsThisType as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsEnumMemberNameData {
+    IdentifierName(IdentifierName) = 1u32,
+    StringLiteral(StringLiteral) = 2u32,
+    TemplateLiteral(TemplateLiteral) = 3u32,
+    Expr(Expr) = 4u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsModuleNameData {
+    BindingIdentifier(BindingIdentifier) = NodeKind::BindingIdentifier as u8,
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+    TsQualifiedName(TsQualifiedName) = NodeKind::TsQualifiedName as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsModuleBodyData {
+    TsModuleBlock(TsModuleBlock) = NodeKind::TsModuleBlock as u8,
+    TsModuleDeclaration(TsModuleDeclaration) = NodeKind::TsModuleDeclaration as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TsModuleReferenceData {
+    TsTypeName(TsTypeName) = 1u32,
+    TsExternalModuleReference(TsExternalModuleReference) = 2u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxElementNameData {
+    JsxIdentifier(JsxIdentifier) = NodeKind::JsxIdentifier as u8,
+    JsxNamespacedName(JsxNamespacedName) = NodeKind::JsxNamespacedName as u8,
+    JsxMemberExpression(JsxMemberExpression) = NodeKind::JsxMemberExpression as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxMemberExpressionObjectData {
+    JsxIdentifier(JsxIdentifier) = NodeKind::JsxIdentifier as u8,
+    JsxMemberExpression(JsxMemberExpression) = NodeKind::JsxMemberExpression as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxAttributeNameData {
+    JsxIdentifier(JsxIdentifier) = NodeKind::JsxIdentifier as u8,
+    JsxNamespacedName(JsxNamespacedName) = NodeKind::JsxNamespacedName as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxAttributeItemData {
+    JsxAttribute(JsxAttribute) = NodeKind::JsxAttribute as u8,
+    JsxSpreadAttribute(JsxSpreadAttribute) = NodeKind::JsxSpreadAttribute as u8,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxAttributeValueData {
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+    JsxExpressionContainer(JsxExpressionContainer) = NodeKind::JsxExpressionContainer as u8,
+    JsxElement(JsxElement) = NodeKind::JsxElement as u8,
+    JsxFragment(JsxFragment) = NodeKind::JsxFragment as u8,
+}
+#[repr(C, u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxExpressionData {
+    Expr(Expr) = 1u32,
+    JsxEmptyExpression(JsxEmptyExpression) = 2u32,
+}
+#[repr(C, u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum JsxChildData {
+    JsxText(JsxText) = NodeKind::JsxText as u8,
+    JsxExpressionContainer(JsxExpressionContainer) = NodeKind::JsxExpressionContainer as u8,
+    JsxSpreadChild(JsxSpreadChild) = NodeKind::JsxSpreadChild as u8,
+    JsxElement(JsxElement) = NodeKind::JsxElement as u8,
+    JsxFragment(JsxFragment) = NodeKind::JsxFragment as u8,
+}
 #[repr(C)]
 struct AstEnumDataRepr {
     kind: NodeKind,
@@ -1174,6 +1551,133 @@ impl SetSpan for Stmt {
         }
     }
 }
+impl Stmt {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BlockStatement(node: BlockStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BreakStatement(node: BreakStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ContinueStatement(node: ContinueStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn DebuggerStatement(node: DebuggerStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn DoWhileStatement(node: DoWhileStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn EmptyStatement(node: EmptyStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ExpressionStatement(node: ExpressionStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ForInStatement(node: ForInStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ForOfStatement(node: ForOfStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ForStatement(node: ForStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IfStatement(node: IfStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn LabeledStatement(node: LabeledStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ReturnStatement(node: ReturnStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn SwitchStatement(node: SwitchStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ThrowStatement(node: ThrowStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TryStatement(node: TryStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn WhileStatement(node: WhileStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn WithStatement(node: WithStatement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Declaration(node: Decl) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ImportDeclaration(node: ImportDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ExportNamedDeclaration(node: ExportNamedDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ExportDefaultDeclaration(node: ExportDefaultDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ExportAllDeclaration(node: ExportAllDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsExportAssignment(node: TsExportAssignment) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNamespaceExportDeclaration(node: TsNamespaceExportDeclaration) -> Self {
+        Self(node.node_id())
+    }
+}
 impl Decl {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1198,6 +1702,58 @@ impl SetSpan for Decl {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl Decl {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn VariableDeclaration(node: VariableDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Function(node: Function) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Class(node: Class) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsFunction(node: TsFunction) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeAliasDeclaration(node: TsTypeAliasDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsInterfaceDeclaration(node: TsInterfaceDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsEnumDeclaration(node: TsEnumDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsModuleDeclaration(node: TsModuleDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsGlobalDeclaration(node: TsGlobalDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsImportEqualsDeclaration(node: TsImportEqualsDeclaration) -> Self {
+        Self(node.node_id())
     }
 }
 impl Expr {
@@ -1226,6 +1782,208 @@ impl SetSpan for Expr {
         }
     }
 }
+impl Expr {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierReference(node: IdentifierReference) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ThisExpression(node: ThisExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Super(node: Super) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn MetaProperty(node: MetaProperty) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn NumericLiteral(node: NumericLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BigIntLiteral(node: BigIntLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BooleanLiteral(node: BooleanLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn NullLiteral(node: NullLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn RegExpLiteral(node: RegExpLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TemplateLiteral(node: TemplateLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BinaryExpression(node: BinaryExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn LogicalExpression(node: LogicalExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn UnaryExpression(node: UnaryExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn UpdateExpression(node: UpdateExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn AssignmentExpression(node: AssignmentExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ConditionalExpression(node: ConditionalExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn SequenceExpression(node: SequenceExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn MemberExpression(node: MemberExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn CallExpression(node: CallExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ChainExpression(node: ChainExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn NewExpression(node: NewExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TaggedTemplateExpression(node: TaggedTemplateExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ArrowFunctionExpression(node: ArrowFunctionExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ArrayExpression(node: ArrayExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ObjectExpression(node: ObjectExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ParenthesizedExpression(node: ParenthesizedExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Function(node: Function) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Class(node: Class) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ImportExpression(node: ImportExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn AwaitExpression(node: AwaitExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn YieldExpression(node: YieldExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn PrivateIdentifier(node: PrivateIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsAsExpression(node: TsAsExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsSatisfiesExpression(node: TsSatisfiesExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeAssertion(node: TsTypeAssertion) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNonNullExpression(node: TsNonNullExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsInstantiationExpression(node: TsInstantiationExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxElement(node: JsxElement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxFragment(node: JsxFragment) -> Self {
+        Self(node.node_id())
+    }
+}
 impl BindingPattern {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1250,6 +2008,38 @@ impl SetSpan for BindingPattern {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl BindingPattern {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BindingIdentifier(node: BindingIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn SimpleAssignmentTarget(node: SimpleAssignmentTarget) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn AssignmentPattern(node: AssignmentPattern) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BindingRestElement(node: BindingRestElement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ArrayPattern(node: ArrayPattern) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ObjectPattern(node: ObjectPattern) -> Self {
+        Self(node.node_id())
     }
 }
 impl AssignmentTarget {
@@ -1278,6 +2068,23 @@ impl SetSpan for AssignmentTarget {
         }
     }
 }
+impl AssignmentTarget {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn SimpleAssignmentTarget(node: SimpleAssignmentTarget) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ArrayAssignmentTarget(node: ArrayPattern) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ObjectAssignmentTarget(node: ObjectPattern) -> Self {
+        Self(node.node_id())
+    }
+}
 impl SimpleAssignmentTarget {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1302,6 +2109,38 @@ impl SetSpan for SimpleAssignmentTarget {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl SimpleAssignmentTarget {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierReference(node: IdentifierReference) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn MemberExpression(node: MemberExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsAsExpression(node: TsAsExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsSatisfiesExpression(node: TsSatisfiesExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeAssertion(node: TsTypeAssertion) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNonNullExpression(node: TsNonNullExpression) -> Self {
+        Self(node.node_id())
     }
 }
 impl PropertyKey {
@@ -1330,6 +2169,38 @@ impl SetSpan for PropertyKey {
         }
     }
 }
+impl PropertyKey {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierName(node: IdentifierName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn PrivateIdentifier(node: PrivateIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn NumericLiteral(node: NumericLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BigIntLiteral(node: BigIntLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
+    }
+}
 impl ModuleExportName {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1354,6 +2225,18 @@ impl SetSpan for ModuleExportName {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl ModuleExportName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierName(node: IdentifierName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
     }
 }
 impl Argument {
@@ -1382,6 +2265,18 @@ impl SetSpan for Argument {
         }
     }
 }
+impl Argument {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn SpreadElement(node: SpreadElement) -> Self {
+        Self(node.node_id())
+    }
+}
 impl ObjectPropertyKind {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1406,6 +2301,18 @@ impl SetSpan for ObjectPropertyKind {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl ObjectPropertyKind {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ObjectProperty(node: ObjectProperty) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn SpreadElement(node: SpreadElement) -> Self {
+        Self(node.node_id())
     }
 }
 impl ForStatementInit {
@@ -1434,6 +2341,18 @@ impl SetSpan for ForStatementInit {
         }
     }
 }
+impl ForStatementInit {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn VariableDeclaration(node: VariableDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
+    }
+}
 impl ForStatementLeft {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1458,6 +2377,18 @@ impl SetSpan for ForStatementLeft {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl ForStatementLeft {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn VariableDeclaration(node: VariableDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn AssignmentTarget(node: AssignmentTarget) -> Self {
+        Self(node.node_id())
     }
 }
 impl ArrowFunctionBody {
@@ -1486,6 +2417,18 @@ impl SetSpan for ArrowFunctionBody {
         }
     }
 }
+impl ArrowFunctionBody {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn FunctionBody(node: FunctionBody) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
+    }
+}
 impl FormalParameterItem {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1510,6 +2453,18 @@ impl SetSpan for FormalParameterItem {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl FormalParameterItem {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn FormalParameter(node: FormalParameter) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsParameterProperty(node: TsParameterProperty) -> Self {
+        Self(node.node_id())
     }
 }
 impl FormalParameterPattern {
@@ -1538,6 +2493,18 @@ impl SetSpan for FormalParameterPattern {
         }
     }
 }
+impl FormalParameterPattern {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BindingPattern(node: BindingPattern) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsThisParameter(node: TsThisParameter) -> Self {
+        Self(node.node_id())
+    }
+}
 impl ClassElement {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1562,6 +2529,33 @@ impl SetSpan for ClassElement {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl ClassElement {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn MethodDefinition(node: MethodDefinition) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn PropertyDefinition(node: PropertyDefinition) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StaticBlock(node: StaticBlock) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsMethodDefinition(node: TsMethodDefinition) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsIndexSignature(node: TsIndexSignature) -> Self {
+        Self(node.node_id())
     }
 }
 impl ImportDeclarationSpecifier {
@@ -1590,6 +2584,23 @@ impl SetSpan for ImportDeclarationSpecifier {
         }
     }
 }
+impl ImportDeclarationSpecifier {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ImportSpecifier(node: ImportSpecifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ImportDefaultSpecifier(node: ImportDefaultSpecifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ImportNamespaceSpecifier(node: ImportNamespaceSpecifier) -> Self {
+        Self(node.node_id())
+    }
+}
 impl ExportDefaultDeclarationKind {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -1614,6 +2625,33 @@ impl SetSpan for ExportDefaultDeclarationKind {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl ExportDefaultDeclarationKind {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Function(node: Function) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Class(node: Class) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsFunction(node: TsFunction) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsInterfaceDeclaration(node: TsInterfaceDeclaration) -> Self {
+        Self(node.node_id())
     }
 }
 impl Super {
@@ -3852,6 +4890,198 @@ impl SetSpan for TsType {
         }
     }
 }
+impl TsType {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsAnyKeyword(node: TsAnyKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsUnknownKeyword(node: TsUnknownKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNeverKeyword(node: TsNeverKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsVoidKeyword(node: TsVoidKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNullKeyword(node: TsNullKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsUndefinedKeyword(node: TsUndefinedKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsStringKeyword(node: TsStringKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNumberKeyword(node: TsNumberKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsBigIntKeyword(node: TsBigIntKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsBooleanKeyword(node: TsBooleanKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsSymbolKeyword(node: TsSymbolKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsObjectKeyword(node: TsObjectKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsIntrinsicKeyword(node: TsIntrinsicKeyword) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsThisType(node: TsThisType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeReference(node: TsTypeReference) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeQuery(node: TsTypeQuery) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsImportType(node: TsImportType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsLiteralType(node: TsLiteralType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTemplateLiteralType(node: TsTemplateLiteralType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsArrayType(node: TsArrayType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsIndexedAccessType(node: TsIndexedAccessType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTupleType(node: TsTupleType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsOptionalType(node: TsOptionalType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsRestType(node: TsRestType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsJsDocNullableType(node: TsJsDocNullableType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsJsDocNonNullableType(node: TsJsDocNonNullableType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsJsDocUnknownType(node: TsJsDocUnknownType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsUnionType(node: TsUnionType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsIntersectionType(node: TsIntersectionType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsConditionalType(node: TsConditionalType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsInferType(node: TsInferType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeOperator(node: TsTypeOperator) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsParenthesizedType(node: TsParenthesizedType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsFunctionType(node: TsFunctionType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsConstructorType(node: TsConstructorType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypePredicate(node: TsTypePredicate) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeLiteral(node: TsTypeLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsMappedType(node: TsMappedType) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsTypeName {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -3876,6 +5106,18 @@ impl SetSpan for TsTypeName {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl TsTypeName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierReference(node: IdentifierReference) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsQualifiedName(node: TsQualifiedName) -> Self {
+        Self(node.node_id())
     }
 }
 impl TsQualifiedNameLeft {
@@ -3904,6 +5146,33 @@ impl SetSpan for TsQualifiedNameLeft {
         }
     }
 }
+impl TsQualifiedNameLeft {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierReference(node: IdentifierReference) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierName(node: IdentifierName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BindingIdentifier(node: BindingIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ThisExpression(node: ThisExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsQualifiedName(node: TsQualifiedName) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsImportTypeQualifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -3928,6 +5197,18 @@ impl SetSpan for TsImportTypeQualifier {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl TsImportTypeQualifier {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierName(node: IdentifierName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsQualifiedName(node: TsQualifiedName) -> Self {
+        Self(node.node_id())
     }
 }
 impl TsTypeQueryExprName {
@@ -3956,6 +5237,23 @@ impl SetSpan for TsTypeQueryExprName {
         }
     }
 }
+impl TsTypeQueryExprName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeName(node: TsTypeName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ThisExpression(node: ThisExpression) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsImportType(node: TsImportType) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsLiteral {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -3980,6 +5278,38 @@ impl SetSpan for TsLiteral {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl TsLiteral {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn NumericLiteral(node: NumericLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BigIntLiteral(node: BigIntLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BooleanLiteral(node: BooleanLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TemplateLiteral(node: TemplateLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn UnaryExpression(node: UnaryExpression) -> Self {
+        Self(node.node_id())
     }
 }
 impl TsTupleElement {
@@ -4008,6 +5338,18 @@ impl SetSpan for TsTupleElement {
         }
     }
 }
+impl TsTupleElement {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsType(node: TsType) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsNamedTupleMember(node: TsNamedTupleMember) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsTypeElement {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -4032,6 +5374,33 @@ impl SetSpan for TsTypeElement {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl TsTypeElement {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsPropertySignature(node: TsPropertySignature) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsMethodSignature(node: TsMethodSignature) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsCallSignatureDeclaration(node: TsCallSignatureDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsConstructSignatureDeclaration(node: TsConstructSignatureDeclaration) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsIndexSignature(node: TsIndexSignature) -> Self {
+        Self(node.node_id())
     }
 }
 impl TsTypePredicateName {
@@ -4060,6 +5429,18 @@ impl SetSpan for TsTypePredicateName {
         }
     }
 }
+impl TsTypePredicateName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierName(node: IdentifierName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsThisType(node: TsThisType) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsEnumMemberName {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -4084,6 +5465,28 @@ impl SetSpan for TsEnumMemberName {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl TsEnumMemberName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn IdentifierName(node: IdentifierName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TemplateLiteral(node: TemplateLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
     }
 }
 impl TsModuleName {
@@ -4112,6 +5515,23 @@ impl SetSpan for TsModuleName {
         }
     }
 }
+impl TsModuleName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn BindingIdentifier(node: BindingIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsQualifiedName(node: TsQualifiedName) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsModuleBody {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -4138,6 +5558,18 @@ impl SetSpan for TsModuleBody {
         }
     }
 }
+impl TsModuleBody {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsModuleBlock(node: TsModuleBlock) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsModuleDeclaration(node: TsModuleDeclaration) -> Self {
+        Self(node.node_id())
+    }
+}
 impl TsModuleReference {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -4162,6 +5594,18 @@ impl SetSpan for TsModuleReference {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl TsModuleReference {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsTypeName(node: TsTypeName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TsExternalModuleReference(node: TsExternalModuleReference) -> Self {
+        Self(node.node_id())
     }
 }
 impl TsFunction {
@@ -6088,6 +7532,23 @@ impl SetSpan for JsxElementName {
         }
     }
 }
+impl JsxElementName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxIdentifier(node: JsxIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxNamespacedName(node: JsxNamespacedName) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxMemberExpression(node: JsxMemberExpression) -> Self {
+        Self(node.node_id())
+    }
+}
 impl JsxMemberExpressionObject {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -6112,6 +7573,18 @@ impl SetSpan for JsxMemberExpressionObject {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl JsxMemberExpressionObject {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxIdentifier(node: JsxIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxMemberExpression(node: JsxMemberExpression) -> Self {
+        Self(node.node_id())
     }
 }
 impl JsxAttributeName {
@@ -6140,6 +7613,18 @@ impl SetSpan for JsxAttributeName {
         }
     }
 }
+impl JsxAttributeName {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxIdentifier(node: JsxIdentifier) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxNamespacedName(node: JsxNamespacedName) -> Self {
+        Self(node.node_id())
+    }
+}
 impl JsxAttributeItem {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -6164,6 +7649,18 @@ impl SetSpan for JsxAttributeItem {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl JsxAttributeItem {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxAttribute(node: JsxAttribute) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxSpreadAttribute(node: JsxSpreadAttribute) -> Self {
+        Self(node.node_id())
     }
 }
 impl JsxAttributeValue {
@@ -6192,6 +7689,28 @@ impl SetSpan for JsxAttributeValue {
         }
     }
 }
+impl JsxAttributeValue {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxExpressionContainer(node: JsxExpressionContainer) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxElement(node: JsxElement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxFragment(node: JsxFragment) -> Self {
+        Self(node.node_id())
+    }
+}
 impl JsxExpression {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -6218,6 +7737,18 @@ impl SetSpan for JsxExpression {
         }
     }
 }
+impl JsxExpression {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn Expr(node: Expr) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxEmptyExpression(node: JsxEmptyExpression) -> Self {
+        Self(node.node_id())
+    }
+}
 impl JsxChild {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -6242,6 +7773,33 @@ impl SetSpan for JsxChild {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
         }
+    }
+}
+impl JsxChild {
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxText(node: JsxText) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxExpressionContainer(node: JsxExpressionContainer) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxSpreadChild(node: JsxSpreadChild) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxElement(node: JsxElement) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn JsxFragment(node: JsxFragment) -> Self {
+        Self(node.node_id())
     }
 }
 impl JsxElement {

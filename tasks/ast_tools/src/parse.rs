@@ -304,6 +304,12 @@ impl Parser {
 
     fn parse_enum(&mut self, type_id: TypeId, attrs: AstAttrs, item: ItemEnum) -> AstType {
         let name = item.ident.to_string();
+        assert!(
+            item.variants
+                .iter()
+                .all(|variant| variant.discriminant.is_none()),
+            "`#[ast(repr)]` enum `{name}` does not support explicit discriminants"
+        );
         let variants = item
             .variants
             .into_iter()

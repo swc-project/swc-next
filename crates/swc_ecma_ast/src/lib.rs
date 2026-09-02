@@ -27,7 +27,7 @@ pub use ast::*;
 pub use comment::*;
 pub use derive::*;
 pub use diagnostic::*;
-pub use generated::ast_node::{NodeKind, NodeKindData};
+pub use generated::ast_node::*;
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};

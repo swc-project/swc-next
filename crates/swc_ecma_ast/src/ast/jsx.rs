@@ -1,7 +1,5 @@
 use swc_next_ast_macros::ast;
 
-use super::js::*;
-
 #[ast(repr)]
 pub enum JsxElementName {
     JsxIdentifier(JsxIdentifier),
