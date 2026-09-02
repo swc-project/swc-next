@@ -261,24 +261,42 @@ pub fn deserialize_from<'a>(
     tree.reserve(node_count, extra_count);
 
     // SAFETY: `reserve` allocated each destination for `node_count` elements.
-    // The section bounds were checked above, all node-kind bytes are valid
-    // discriminants, and the compile-time assertions guarantee matching
-    // little-endian layouts.
+    // The section bounds were checked above and all node-kind bytes are valid
+    // discriminants. Little-endian targets can copy the canonical wire bytes;
+    // big-endian targets reconstruct the numeric payload representation.
     unsafe {
-        ptr::copy_nonoverlapping(
-            buf.as_ptr().add(spans),
-            tree.nodes.span.as_ptr().cast::<u8>(),
-            node_count * SPAN_SIZE,
-        );
+        if cfg!(target_endian = "little") {
+            ptr::copy_nonoverlapping(
+                buf.as_ptr().add(spans),
+                tree.nodes.span.as_ptr().cast::<u8>(),
+                node_count * SPAN_SIZE,
+            );
+            ptr::copy_nonoverlapping(
+                buf.as_ptr().add(payloads),
+                tree.nodes.data.as_ptr().cast::<u8>(),
+                node_count * NODE_PAYLOAD_SIZE,
+            );
+        } else {
+            for index in 0..node_count {
+                let span = spans + index * SPAN_SIZE;
+                tree.nodes.span.as_ptr().add(index).write(Span::new(
+                    read_u32(buf, span),
+                    read_u32(buf, span + size_of::<u32>()),
+                ));
+                tree.nodes
+                    .data
+                    .as_ptr()
+                    .add(index)
+                    .write(NodePayload(read_u128(
+                        buf,
+                        payloads + index * NODE_PAYLOAD_SIZE,
+                    )));
+            }
+        }
         ptr::copy_nonoverlapping(
             kind_bytes.as_ptr(),
             tree.nodes.kind.as_ptr().cast::<u8>(),
             node_count * NODE_KIND_SIZE,
-        );
-        ptr::copy_nonoverlapping(
-            buf.as_ptr().add(payloads),
-            tree.nodes.data.as_ptr().cast::<u8>(),
-            node_count * NODE_PAYLOAD_SIZE,
         );
         tree.nodes.len = node_count as u32;
     }
@@ -289,11 +307,23 @@ pub fn deserialize_from<'a>(
     // section has the checked byte length, and all bit patterns are valid for
     // `ExtraData`.
     unsafe {
-        ptr::copy_nonoverlapping(
-            buf.as_ptr().add(extra),
-            tree.extra_data.as_mut_ptr().cast::<u8>(),
-            extra_count * EXTRA_DATA_SIZE,
-        );
+        if cfg!(target_endian = "little") {
+            ptr::copy_nonoverlapping(
+                buf.as_ptr().add(extra),
+                tree.extra_data.as_mut_ptr().cast::<u8>(),
+                extra_count * EXTRA_DATA_SIZE,
+            );
+        } else {
+            for index in 0..extra_count {
+                tree.extra_data
+                    .as_mut_ptr()
+                    .add(index)
+                    .write(ExtraData::from_raw(read_u64(
+                        buf,
+                        extra + index * EXTRA_DATA_SIZE,
+                    )));
+            }
+        }
         tree.extra_data.set_len(extra_count);
     }
 
@@ -370,12 +400,27 @@ fn write_slice(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
     *pos += bytes.len();
 }
 
+#[inline]
+fn read_u32(buf: &[u8], pos: usize) -> u32 {
+    u32::from_le_bytes(buf[pos..pos + size_of::<u32>()].try_into().unwrap())
+}
+
+#[inline]
+fn read_u64(buf: &[u8], pos: usize) -> u64 {
+    u64::from_le_bytes(buf[pos..pos + size_of::<u64>()].try_into().unwrap())
+}
+
+#[inline]
+fn read_u128(buf: &[u8], pos: usize) -> u128 {
+    u128::from_le_bytes(buf[pos..pos + size_of::<u128>()].try_into().unwrap())
+}
+
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
 
-    use super::{buffer_size, serialize_into};
-    use crate::{Ast, Span, TypedSubRange};
+    use super::{buffer_size, deserialize_from, serialize_into};
+    use crate::{Ast, GetSpan, Span, TypedSubRange};
 
     #[test]
     fn canonical_little_endian_format() {
@@ -405,12 +450,32 @@ mod tests {
         assert_eq!(u32_at(&buffer, 100), 1); // body range end
     }
 
+    #[test]
+    fn deserialize_canonical_little_endian_format() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let statement = ast.stmt_empty_statement(Span::new(2, 3));
+        let body = ast.add_typed_sub_range([statement]);
+        let program = ast.program(Span::new(1, 4), TypedSubRange::empty(), body, None);
+        ast.set_root_program(program);
+
+        let mut buffer = vec![0; buffer_size(&ast)];
+        serialize_into(&ast, &mut buffer);
+
+        let decoded_allocator = Allocator::new();
+        let decoded = deserialize_from(&buffer, &decoded_allocator).unwrap();
+        let decoded_program = decoded.root_program();
+        let decoded_body = decoded_program.body(&decoded);
+        let decoded_statement = decoded_body.get_node(&decoded, 0).unwrap();
+
+        assert_eq!(decoded.node_count(), 2);
+        assert_eq!(decoded.extra_data_count(), 2);
+        assert_eq!(decoded_program.span(&decoded), Span::new(1, 4));
+        assert_eq!(decoded_statement.span(&decoded), Span::new(2, 3));
+        assert!(decoded_statement.is_empty_statement(&decoded));
+    }
+
     fn u32_at(buffer: &[u8], offset: usize) -> u32 {
         u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap())
     }
-}
-
-#[inline]
-fn read_u32(buf: &[u8], pos: usize) -> u32 {
-    u32::from_le_bytes(buf[pos..pos + size_of::<u32>()].try_into().unwrap())
 }

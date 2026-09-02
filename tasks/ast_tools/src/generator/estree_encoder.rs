@@ -596,6 +596,11 @@ fn write_contextual_encoders(output: &mut String, dispatch: &EncoderDispatch) {
                 "    if (n.type === \"Identifier\" && n.name === \"this\") return encTsThisParameter(n);\n",
             );
         }
+        if name == "JsxAttributeValue" {
+            output.push_str(
+                "    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n",
+            );
+        }
         output.push_str("    switch (n.type) {\n");
         for estree in &current.order {
             let candidates = &current.groups[estree];
@@ -933,6 +938,16 @@ function encode(program) {
       ? parseInt(normalized.slice(1), 8)
       : +normalized;
     return Object.is(value, node.value) ? node.raw : String(node.value);
+  }
+
+  function jsxStringRaw(node) {
+    const raw = node.raw;
+    if (typeof raw !== "string" || raw.length < 2) return "";
+    const quote = raw[0];
+    return (quote === "\"" || quote === "'") &&
+      raw[raw.length - 1] === quote && raw.slice(1, -1) === node.value
+      ? raw
+      : "";
   }
 
 "#;

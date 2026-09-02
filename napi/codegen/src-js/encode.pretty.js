@@ -163,6 +163,16 @@ function encode(program) {
     return Object.is(value, node.value) ? node.raw : String(node.value);
   }
 
+  function jsxStringRaw(node) {
+    const raw = node.raw;
+    if (typeof raw !== "string" || raw.length < 2) return "";
+    const quote = raw[0];
+    return (quote === "\"" || quote === "'") &&
+      raw[raw.length - 1] === quote && raw.slice(1, -1) === node.value
+      ? raw
+      : "";
+  }
+
   function encProgram(n) {
     const _directives = [];
     const _body = [];
@@ -2494,6 +2504,7 @@ function encode(program) {
   }
 
   function encJsxAttributeValue(n) {
+    if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });
     switch (n.type) {
       case "Literal":
         if (typeof n.value === "string") return encStringLiteral(n);
