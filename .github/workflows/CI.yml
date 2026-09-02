@@ -107,10 +107,11 @@ jobs:
         if: matrix.name == 's390x'
         run: >-
           docker run --rm --platform linux/s390x
+          --env CI=true
           --volume "$PWD:/workspace"
           --workdir /workspace
           node:24.16.0-bookworm
-          bash -lc 'corepack pnpm test'
+          bash -lc 'corepack pnpm install --frozen-lockfile && corepack pnpm test'
 
   conformance:
     name: Conformance
