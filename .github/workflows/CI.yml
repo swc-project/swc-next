@@ -97,21 +97,20 @@ jobs:
         run: >-
           ${{ matrix.name == 's390x' && 'cross' || 'cargo' }} test --workspace --locked
           ${{ matrix.name == 's390x' && '--target s390x-unknown-linux-gnu' || '' }}
-      - name: Build s390x Node.js bindings
+      - name: Build all s390x Node.js bindings
         if: matrix.name == 's390x'
         run: |
           pnpm install --frozen-lockfile
           rustup target add s390x-unknown-linux-gnu
-          pnpm --filter @swc-next/parser build --release --target s390x-unknown-linux-gnu --use-napi-cross
-          pnpm --filter @swc-next/codegen build --release --target s390x-unknown-linux-gnu --use-napi-cross
-      - name: Run codegen JavaScript tests on s390x
+          pnpm build --release --target s390x-unknown-linux-gnu --use-napi-cross
+      - name: Run all JavaScript tests on s390x
         if: matrix.name == 's390x'
         run: >-
           docker run --rm --platform linux/s390x
           --volume "$PWD:/workspace"
           --workdir /workspace
           node:24.16.0-bookworm
-          node --test napi/codegen/test/*.test.js
+          bash -lc 'corepack pnpm test'
 
   conformance:
     name: Conformance
