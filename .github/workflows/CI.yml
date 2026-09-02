@@ -80,10 +80,38 @@ jobs:
         if: matrix.name == 's390x'
         with:
           tool: cross
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        if: matrix.name == 's390x'
+        with:
+          version: 11.17.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        if: matrix.name == 's390x'
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        if: matrix.name == 's390x'
+        with:
+          platforms: s390x
       - name: Run tests
         run: >-
           ${{ matrix.name == 's390x' && 'cross' || 'cargo' }} test --workspace --locked
           ${{ matrix.name == 's390x' && '--target s390x-unknown-linux-gnu' || '' }}
+      - name: Build s390x Node.js bindings
+        if: matrix.name == 's390x'
+        run: |
+          pnpm install --frozen-lockfile
+          rustup target add s390x-unknown-linux-gnu
+          pnpm --filter @swc-next/parser build --release --target s390x-unknown-linux-gnu --use-napi-cross
+          pnpm --filter @swc-next/codegen build --release --target s390x-unknown-linux-gnu --use-napi-cross
+      - name: Run codegen JavaScript tests on s390x
+        if: matrix.name == 's390x'
+        run: >-
+          docker run --rm --platform linux/s390x
+          --volume "$PWD:/workspace"
+          --workdir /workspace
+          node:24.16.0-bookworm
+          node --test napi/codegen/test/*.test.js
 
   conformance:
     name: Conformance

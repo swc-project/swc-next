@@ -2,7 +2,23 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { parseSync } from "../../parser/src-js/index.js";
+import { encode } from "../src-js/encode.js";
 import { printSync } from "../src-js/index.js";
+
+test("encode writes spans in canonical little-endian order", () => {
+  const buffer = encode({
+    type: "Program",
+    start: 0x01020304,
+    end: 0x05060708,
+    sourceType: "module",
+    body: [],
+  });
+
+  assert.deepEqual(
+    [...buffer.subarray(36, 44)],
+    [0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05],
+  );
+});
 
 test("printSync prints modified parser-produced ESTree", () => {
   const { program } = parseSync("const answer = 1;");

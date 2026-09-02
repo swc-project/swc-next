@@ -2,6 +2,8 @@
 
 const NULL = 0xffffffff;
 const HEADER_SIZE = 36;
+const NATIVE_LITTLE_ENDIAN =
+  new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 
 const ENUMS = Object.freeze({
   SourceType: ["module", "script", "commonjs", "unambiguous"],
@@ -2536,7 +2538,13 @@ function encode(program) {
   const sourceType = enumValue("SourceType", program.sourceType);
   view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), true);
 
-  bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
+  if (NATIVE_LITTLE_ENDIAN) {
+    bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
+  } else {
+    for (let index = 0; index < nodeCount * 2; index++) {
+      view.setUint32(spansOffset + index * 4, spans[index], true);
+    }
+  }
   bytes.set(kinds.subarray(0, nodeCount), kindsOffset);
   bytes.set(new Uint8Array(payloadBuffer, 0, nodeCount * 16), payloadOffset);
   bytes.set(new Uint8Array(extraBuffer, 0, extraCount * 8), extraOffset);
