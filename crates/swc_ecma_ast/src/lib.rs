@@ -79,49 +79,28 @@ multi_index_vec! {
 #[derive(Clone, Copy)]
 pub struct NodePayload(pub(crate) u128);
 
-/// Canonical 64-bit value stored in the flattening AST's extra-data table.
+/// Compact values stored in the flattening AST's extra-data table.
 ///
-/// Logical fields are packed by numeric bit position rather than native memory
-/// layout, so this representation is identical on little- and big-endian
-/// targets. The field's schema determines how to interpret the value.
+/// The AST schema determines the logical type of each value, so no runtime
+/// discriminant is stored. Little-endian targets retain the original native
+/// typed views used by hot traversal paths.
+#[cfg(target_endian = "little")]
+#[derive(Clone, Copy)]
+pub union ExtraData {
+    node_id: NodeId,
+    sub_range: SubRange,
+    other: u64,
+}
+
+/// Compact values stored in the flattening AST's extra-data table.
+///
+/// On big-endian targets, numeric bit positions match the fixed little-endian
+/// FFI format. The AST schema determines the logical type of each value, so no
+/// runtime discriminant is stored.
+#[cfg(target_endian = "big")]
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct ExtraData(u64);
-
-impl ExtraData {
-    #[inline]
-    pub(crate) fn from_raw(raw: u64) -> Self {
-        Self(raw)
-    }
-
-    #[inline]
-    pub(crate) fn raw(self) -> u64 {
-        self.0
-    }
-
-    #[inline]
-    pub(crate) fn from_node_id(node_id: NodeId) -> Self {
-        Self(node_id.index() as u64)
-    }
-
-    #[inline]
-    pub(crate) fn node_id(self) -> NodeId {
-        NodeId::from_raw_unchecked(self.0 as u32)
-    }
-
-    #[inline]
-    pub(crate) fn from_sub_range(range: SubRange) -> Self {
-        Self(range.start.index() as u64 | ((range.end.index() as u64) << 32))
-    }
-
-    #[inline]
-    pub(crate) fn sub_range(self) -> SubRange {
-        SubRange {
-            start: ExtraDataId::from_raw(self.0 as u32),
-            end: ExtraDataId::from_raw((self.0 >> 32) as u32),
-        }
-    }
-}
 
 impl<'a> Ast<'a> {
     #[inline]

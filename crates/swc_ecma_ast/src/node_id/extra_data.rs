@@ -1,7 +1,80 @@
 use crate::{Ast, AstUtf8, AstWtf8, ExtraData, TypedSubRange};
 
+use super::{NodeId, SubRange};
+
 oxc_index::define_index_type! {
     pub struct ExtraDataId = u32;
+}
+
+#[cfg(target_endian = "little")]
+impl ExtraData {
+    #[inline]
+    pub(crate) fn from_raw(raw: u64) -> Self {
+        Self { other: raw }
+    }
+
+    #[inline]
+    pub(crate) fn raw(self) -> u64 {
+        unsafe { self.other }
+    }
+
+    #[inline]
+    pub(crate) fn from_node_id(node_id: NodeId) -> Self {
+        let mut data = Self { other: 0 };
+        data.node_id = node_id;
+        data
+    }
+
+    #[inline]
+    pub(crate) fn node_id(self) -> NodeId {
+        unsafe { self.node_id }
+    }
+
+    #[inline]
+    pub(crate) fn from_sub_range(range: SubRange) -> Self {
+        Self { sub_range: range }
+    }
+
+    #[inline]
+    pub(crate) fn sub_range(self) -> SubRange {
+        unsafe { self.sub_range }
+    }
+}
+
+#[cfg(target_endian = "big")]
+impl ExtraData {
+    #[inline]
+    pub(crate) fn from_raw(raw: u64) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) fn raw(self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    pub(crate) fn from_node_id(node_id: NodeId) -> Self {
+        Self(node_id.index() as u64)
+    }
+
+    #[inline]
+    pub(crate) fn node_id(self) -> NodeId {
+        NodeId::from_raw_unchecked(self.0 as u32)
+    }
+
+    #[inline]
+    pub(crate) fn from_sub_range(range: SubRange) -> Self {
+        Self(range.start.index() as u64 | ((range.end.index() as u64) << 32))
+    }
+
+    #[inline]
+    pub(crate) fn sub_range(self) -> SubRange {
+        SubRange {
+            start: ExtraDataId::from_raw(self.0 as u32),
+            end: ExtraDataId::from_raw((self.0 >> 32) as u32),
+        }
+    }
 }
 
 /// Converts compact AST fields to and from the flattening AST's extra-data table.
