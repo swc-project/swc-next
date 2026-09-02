@@ -35,7 +35,7 @@ All output is written under
 | ---------------------- | ------------------------------------------------------------------------------------------ |
 | `ast_builder.rs`       | `Ast` constructors that encode node fields into inline payload bits and extra-data storage |
 | `ast_property.rs`      | Typed field getters/setters and enum variant accessors                                     |
-| `ast_node.rs`          | AST enum data, constructors, `NodeKind`, typed/untyped node conversion, node IDs, and spans |
+| `ast_node.rs`          | AST struct/enum data definitions, constructors, `NodeKind`, typed/untyped node conversion, node IDs, and spans |
 | `ast_clone_in.rs`      | Arena-aware `CloneIn` implementations for AST nodes                                        |
 | `ast_visitor.rs`       | Immutable, mutable, and transforming visitor traits and child traversal                    |
 | `ast_extra_compact.rs` | `ExtraDataCompact` conversions used by out-of-line compact storage                         |

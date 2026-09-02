@@ -1,5 +1,5 @@
 #![allow(unused)]
-use crate::{Ast, GetSpan, SetSpan};
+use crate::{Ast, AstUtf8, AstWtf8, GetSpan, ScopeId, SetSpan, Span, SymbolId};
 use crate::{ast::*, node_id::*};
 /// The concrete type stored at a node ID.
 #[repr(u8)]
@@ -924,6 +924,11 @@ impl NodeKind {
         )
     }
 }
+pub struct ProgramData {
+    pub directives: SubRange<Directive>,
+    pub body: SubRange<Stmt>,
+    pub hashbang: Option<Hashbang>,
+}
 #[repr(C, u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum StmtData {
@@ -1123,6 +1128,396 @@ pub enum ExportDefaultDeclarationKindData {
     TsFunction(TsFunction) = 4u32,
     TsInterfaceDeclaration(TsInterfaceDeclaration) = 5u32,
 }
+pub struct SuperData {}
+pub struct ThisExpressionData {}
+pub struct StringLiteralData {
+    pub value: AstWtf8,
+    pub raw: AstUtf8,
+}
+pub struct NumericLiteralData {
+    pub value: f64,
+    pub raw: Option<AstUtf8>,
+}
+pub struct BigIntLiteralData {
+    pub raw: AstUtf8,
+}
+pub struct BooleanLiteralData {
+    pub value: bool,
+}
+pub struct NullLiteralData {}
+pub struct RegExpLiteralData {
+    pub pattern: AstUtf8,
+    pub flags: AstUtf8,
+}
+pub struct TemplateLiteralData {
+    pub quasis: SubRange<TemplateElement>,
+    pub expressions: SubRange<Expr>,
+}
+pub struct TemplateElementData {
+    pub cooked: AstWtf8,
+    pub raw: AstUtf8,
+    pub tail: bool,
+    pub is_cooked_undefined: bool,
+}
+pub struct IdentifierReferenceData {
+    pub name: AstUtf8,
+}
+pub struct PrivateIdentifierData {
+    pub name: AstUtf8,
+}
+pub struct BindingIdentifierData {
+    pub name: AstUtf8,
+    pub decorators: SubRange<Decorator>,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub optional: bool,
+}
+pub struct IdentifierNameData {
+    pub name: AstUtf8,
+}
+pub struct LabelIdentifierData {
+    pub name: AstUtf8,
+}
+pub struct AssignmentPatternData {
+    pub decorators: SubRange<Decorator>,
+    pub left: BindingPattern,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub right: Expr,
+    pub optional: bool,
+}
+pub struct BindingRestElementData {
+    pub decorators: SubRange<Decorator>,
+    pub argument: BindingPattern,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub optional: bool,
+}
+pub struct ArrayPatternData {
+    pub decorators: SubRange<Decorator>,
+    pub elements: SubRange<Option<BindingPattern>>,
+    pub rest: Option<BindingRestElement>,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub optional: bool,
+}
+pub struct ObjectPatternData {
+    pub decorators: SubRange<Decorator>,
+    pub properties: SubRange<BindingProperty>,
+    pub rest: Option<BindingRestElement>,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub optional: bool,
+}
+pub struct BindingPropertyData {
+    pub key: PropertyKey,
+    pub value: BindingPattern,
+    pub shorthand: bool,
+    pub computed: bool,
+}
+pub struct BinaryExpressionData {
+    pub left: Expr,
+    pub right: Expr,
+    pub operator: BinaryOperator,
+}
+pub struct LogicalExpressionData {
+    pub left: Expr,
+    pub right: Expr,
+    pub operator: LogicalOperator,
+}
+pub struct ConditionalExpressionData {
+    pub test: Expr,
+    pub consequent: Expr,
+    pub alternate: Expr,
+}
+pub struct UnaryExpressionData {
+    pub argument: Expr,
+    pub operator: UnaryOperator,
+}
+pub struct UpdateExpressionData {
+    pub argument: SimpleAssignmentTarget,
+    pub operator: UpdateOperator,
+    pub prefix: bool,
+}
+pub struct AssignmentExpressionData {
+    pub left: AssignmentTarget,
+    pub right: Expr,
+    pub operator: AssignmentOperator,
+}
+pub struct VariableDeclarationData {
+    pub kind: VariableKind,
+    pub declarators: SubRange<VariableDeclarator>,
+    pub declare: bool,
+}
+pub struct VariableDeclaratorData {
+    pub id: BindingPattern,
+    pub init: Option<Expr>,
+    pub definite: bool,
+}
+pub struct IfStatementData {
+    pub test: Expr,
+    pub consequent: Stmt,
+    pub alternate: Option<Stmt>,
+}
+pub struct SwitchStatementData {
+    pub discriminant: Expr,
+    pub cases: SubRange<SwitchCase>,
+}
+pub struct SwitchCaseData {
+    pub test: Option<Expr>,
+    pub consequent: SubRange<Stmt>,
+}
+pub struct ForStatementData {
+    pub init: Option<ForStatementInit>,
+    pub test: Option<Expr>,
+    pub update: Option<Expr>,
+    pub body: Stmt,
+}
+pub struct ForInStatementData {
+    pub left: ForStatementLeft,
+    pub right: Expr,
+    pub body: Stmt,
+}
+pub struct ForOfStatementData {
+    pub left: ForStatementLeft,
+    pub right: Expr,
+    pub body: Stmt,
+    pub r#await: bool,
+}
+pub struct TryStatementData {
+    pub block: BlockStatement,
+    pub handler: Option<CatchClause>,
+    pub finalizer: Option<BlockStatement>,
+}
+pub struct CatchClauseData {
+    pub param: Option<BindingPattern>,
+    pub body: BlockStatement,
+}
+pub struct BreakStatementData {
+    pub label: Option<LabelIdentifier>,
+}
+pub struct ContinueStatementData {
+    pub label: Option<LabelIdentifier>,
+}
+pub struct LabeledStatementData {
+    pub label: LabelIdentifier,
+    pub body: Stmt,
+}
+pub struct ExpressionStatementData {
+    pub expression: Expr,
+}
+pub struct ReturnStatementData {
+    pub argument: Option<Expr>,
+}
+pub struct ThrowStatementData {
+    pub argument: Expr,
+}
+pub struct DebuggerStatementData {}
+pub struct EmptyStatementData {}
+pub struct DirectiveData {
+    pub expression: StringLiteral,
+    pub value: AstUtf8,
+}
+pub struct DecoratorData {
+    pub expression: Expr,
+}
+pub struct ClassData {
+    pub class_type: ClassType,
+    pub decorators: SubRange<Decorator>,
+    pub id: Option<BindingIdentifier>,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub super_class: Option<Expr>,
+    pub super_type_arguments: Option<TsTypeParameterInstantiation>,
+    pub implements: SubRange<TsClassImplements>,
+    pub body: ClassBody,
+    pub r#abstract: bool,
+    pub declare: bool,
+}
+pub struct ClassBodyData {
+    pub body: SubRange<ClassElement>,
+}
+pub struct MethodDefinitionData {
+    pub decorators: SubRange<Decorator>,
+    pub key: PropertyKey,
+    pub value: Function,
+    pub kind: MethodDefinitionKind,
+    pub computed: bool,
+    pub r#static: bool,
+    pub r#override: bool,
+    pub optional: bool,
+    pub r#abstract: bool,
+    pub accessibility: Accessibility,
+}
+pub struct PropertyDefinitionData {
+    pub decorators: SubRange<Decorator>,
+    pub key: PropertyKey,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub value: Option<Expr>,
+    pub computed: bool,
+    pub r#static: bool,
+    pub accessor: bool,
+    pub declare: bool,
+    pub r#override: bool,
+    pub optional: bool,
+    pub definite: bool,
+    pub readonly: bool,
+    pub r#abstract: bool,
+    pub accessibility: Accessibility,
+}
+pub struct StaticBlockData {
+    pub body: SubRange<Stmt>,
+}
+pub struct FunctionData {
+    pub function_type: FunctionType,
+    pub id: Option<BindingIdentifier>,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: Option<TsTypeAnnotation>,
+    pub body: FunctionBody,
+    pub generator: bool,
+    pub r#async: bool,
+}
+pub struct FunctionBodyData {
+    pub directives: SubRange<Directive>,
+    pub body: SubRange<Stmt>,
+}
+pub struct BlockStatementData {
+    pub body: SubRange<Stmt>,
+}
+pub struct WhileStatementData {
+    pub test: Expr,
+    pub body: Stmt,
+}
+pub struct DoWhileStatementData {
+    pub body: Stmt,
+    pub test: Expr,
+}
+pub struct WithStatementData {
+    pub object: Expr,
+    pub body: Stmt,
+}
+pub struct FormalParametersData {
+    pub items: SubRange<FormalParameterItem>,
+    pub rest: Option<BindingRestElement>,
+    pub kind: FormalParameterKind,
+}
+pub struct FormalParameterData {
+    pub pattern: FormalParameterPattern,
+}
+pub struct ArrayExpressionData {
+    pub elements: SubRange<Option<Argument>>,
+}
+pub struct ObjectExpressionData {
+    pub properties: SubRange<ObjectPropertyKind>,
+}
+pub struct SpreadElementData {
+    pub argument: Expr,
+}
+pub struct ObjectPropertyData {
+    pub key: PropertyKey,
+    pub value: Expr,
+    pub kind: PropertyKind,
+    pub method: bool,
+    pub shorthand: bool,
+    pub computed: bool,
+}
+pub struct ParenthesizedExpressionData {
+    pub expression: Expr,
+}
+pub struct ArrowFunctionExpressionData {
+    pub expression: bool,
+    pub r#async: bool,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: Option<TsTypeAnnotation>,
+    pub body: ArrowFunctionBody,
+}
+pub struct SequenceExpressionData {
+    pub expressions: SubRange<Expr>,
+}
+pub struct MemberExpressionData {
+    pub object: Expr,
+    pub property: PropertyKey,
+    pub computed: bool,
+    pub optional: bool,
+}
+pub struct CallExpressionData {
+    pub callee: Expr,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+    pub arguments: SubRange<Argument>,
+    pub optional: bool,
+}
+pub struct ChainExpressionData {
+    pub expression: Expr,
+}
+pub struct TaggedTemplateExpressionData {
+    pub tag: Expr,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+    pub quasi: TemplateLiteral,
+}
+pub struct NewExpressionData {
+    pub callee: Expr,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+    pub arguments: SubRange<Argument>,
+}
+pub struct AwaitExpressionData {
+    pub argument: Expr,
+}
+pub struct YieldExpressionData {
+    pub argument: Option<Expr>,
+    pub delegate: bool,
+}
+pub struct MetaPropertyData {
+    pub meta: IdentifierName,
+    pub property: IdentifierName,
+}
+pub struct ImportExpressionData {
+    pub source: Expr,
+    pub options: Option<Expr>,
+    pub phase: Option<ImportPhase>,
+    pub sync: bool,
+}
+pub struct ImportDeclarationData {
+    pub specifiers: SubRange<ImportDeclarationSpecifier>,
+    pub source: StringLiteral,
+    pub attributes: SubRange<ImportAttribute>,
+    pub phase: Option<ImportPhase>,
+    pub import_kind: ImportOrExportKind,
+}
+pub struct ImportSpecifierData {
+    pub imported: ModuleExportName,
+    pub local: BindingIdentifier,
+    pub import_kind: ImportOrExportKind,
+}
+pub struct ImportDefaultSpecifierData {
+    pub local: BindingIdentifier,
+}
+pub struct ImportNamespaceSpecifierData {
+    pub local: BindingIdentifier,
+}
+pub struct ImportAttributeData {
+    pub key: ModuleExportName,
+    pub value: StringLiteral,
+}
+pub struct ExportNamedDeclarationData {
+    pub declaration: Option<Decl>,
+    pub specifiers: SubRange<ExportSpecifier>,
+    pub source: Option<StringLiteral>,
+    pub attributes: SubRange<ImportAttribute>,
+    pub export_kind: ImportOrExportKind,
+}
+pub struct ExportDefaultDeclarationData {
+    pub declaration: ExportDefaultDeclarationKind,
+}
+pub struct ExportAllDeclarationData {
+    pub exported: Option<ModuleExportName>,
+    pub source: StringLiteral,
+    pub attributes: SubRange<ImportAttribute>,
+    pub export_kind: ImportOrExportKind,
+}
+pub struct ExportSpecifierData {
+    pub local: ModuleExportName,
+    pub exported: ModuleExportName,
+    pub export_kind: ImportOrExportKind,
+}
+pub struct HashbangData {
+    pub value: AstUtf8,
+}
 #[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TsTypeData {
@@ -1253,6 +1648,290 @@ pub enum TsModuleReferenceData {
     TsTypeName(TsTypeName) = 1u32,
     TsExternalModuleReference(TsExternalModuleReference) = 2u32,
 }
+pub struct TsFunctionData {
+    pub id: Option<BindingIdentifier>,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: Option<TsTypeAnnotation>,
+    pub generator: bool,
+    pub r#async: bool,
+    pub declare: bool,
+}
+pub struct TsMethodDefinitionData {
+    pub decorators: SubRange<Decorator>,
+    pub key: PropertyKey,
+    pub value: TsFunction,
+    pub kind: MethodDefinitionKind,
+    pub computed: bool,
+    pub r#static: bool,
+    pub r#override: bool,
+    pub optional: bool,
+    pub r#abstract: bool,
+    pub accessibility: Accessibility,
+}
+pub struct TsTypeAnnotationData {
+    pub type_annotation: TsType,
+}
+pub struct TsAnyKeywordData {}
+pub struct TsUnknownKeywordData {}
+pub struct TsNeverKeywordData {}
+pub struct TsVoidKeywordData {}
+pub struct TsNullKeywordData {}
+pub struct TsUndefinedKeywordData {}
+pub struct TsStringKeywordData {}
+pub struct TsNumberKeywordData {}
+pub struct TsBigIntKeywordData {}
+pub struct TsBooleanKeywordData {}
+pub struct TsSymbolKeywordData {}
+pub struct TsObjectKeywordData {}
+pub struct TsIntrinsicKeywordData {}
+pub struct TsThisTypeData {}
+pub struct TsTypeReferenceData {
+    pub type_name: TsTypeName,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+}
+pub struct TsQualifiedNameData {
+    pub left: TsQualifiedNameLeft,
+    pub right: IdentifierName,
+}
+pub struct TsTypeQueryData {
+    pub expr_name: TsTypeQueryExprName,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+}
+pub struct TsImportTypeData {
+    pub source: StringLiteral,
+    pub options: Option<Expr>,
+    pub qualifier: Option<TsImportTypeQualifier>,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+}
+pub struct TsTypeParameterData {
+    pub name: BindingIdentifier,
+    pub constraint: Option<TsType>,
+    pub default: Option<TsType>,
+    pub r#in: bool,
+    pub out: bool,
+    pub r#const: bool,
+}
+pub struct TsTypeParameterDeclarationData {
+    pub params: SubRange<TsTypeParameter>,
+}
+pub struct TsTypeParameterInstantiationData {
+    pub params: SubRange<TsType>,
+}
+pub struct TsLiteralTypeData {
+    pub literal: TsLiteral,
+}
+pub struct TsTemplateLiteralTypeData {
+    pub quasis: SubRange<TemplateElement>,
+    pub types: SubRange<TsType>,
+}
+pub struct TsArrayTypeData {
+    pub element_type: TsType,
+}
+pub struct TsIndexedAccessTypeData {
+    pub object_type: TsType,
+    pub index_type: TsType,
+}
+pub struct TsTupleTypeData {
+    pub element_types: SubRange<TsTupleElement>,
+}
+pub struct TsNamedTupleMemberData {
+    pub label: IdentifierName,
+    pub element_type: TsType,
+    pub optional: bool,
+}
+pub struct TsOptionalTypeData {
+    pub type_annotation: TsType,
+}
+pub struct TsRestTypeData {
+    pub type_annotation: TsType,
+}
+pub struct TsJsDocNullableTypeData {
+    pub type_annotation: TsType,
+    pub postfix: bool,
+}
+pub struct TsJsDocNonNullableTypeData {
+    pub type_annotation: TsType,
+    pub postfix: bool,
+}
+pub struct TsJsDocUnknownTypeData {}
+pub struct TsUnionTypeData {
+    pub types: SubRange<TsType>,
+}
+pub struct TsIntersectionTypeData {
+    pub types: SubRange<TsType>,
+}
+pub struct TsConditionalTypeData {
+    pub check_type: TsType,
+    pub extends_type: TsType,
+    pub true_type: TsType,
+    pub false_type: TsType,
+}
+pub struct TsInferTypeData {
+    pub type_parameter: TsTypeParameter,
+}
+pub struct TsTypeOperatorData {
+    pub operator: TsTypeOperatorKind,
+    pub type_annotation: TsType,
+}
+pub struct TsParenthesizedTypeData {
+    pub type_annotation: TsType,
+}
+pub struct TsFunctionTypeData {
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: TsTypeAnnotation,
+}
+pub struct TsConstructorTypeData {
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: TsTypeAnnotation,
+    pub r#abstract: bool,
+}
+pub struct TsTypePredicateData {
+    pub parameter_name: TsTypePredicateName,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub asserts: bool,
+}
+pub struct TsTypeLiteralData {
+    pub members: SubRange<TsTypeElement>,
+}
+pub struct TsMappedTypeData {
+    pub key: BindingIdentifier,
+    pub constraint: TsType,
+    pub name_type: Option<TsType>,
+    pub type_annotation: Option<TsType>,
+    pub optional: TsMappedTypeModifier,
+    pub readonly: TsMappedTypeModifier,
+}
+pub struct TsPropertySignatureData {
+    pub key: PropertyKey,
+    pub type_annotation: Option<TsTypeAnnotation>,
+    pub computed: bool,
+    pub optional: bool,
+    pub readonly: bool,
+}
+pub struct TsMethodSignatureData {
+    pub key: PropertyKey,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: Option<TsTypeAnnotation>,
+    pub kind: TsMethodSignatureKind,
+    pub computed: bool,
+    pub optional: bool,
+}
+pub struct TsCallSignatureDeclarationData {
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: Option<TsTypeAnnotation>,
+}
+pub struct TsConstructSignatureDeclarationData {
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub params: FormalParameters,
+    pub return_type: Option<TsTypeAnnotation>,
+}
+pub struct TsIndexSignatureData {
+    pub parameters: SubRange<BindingIdentifier>,
+    pub type_annotation: TsTypeAnnotation,
+    pub readonly: bool,
+    pub r#static: bool,
+}
+pub struct TsTypeAliasDeclarationData {
+    pub id: BindingIdentifier,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub type_annotation: TsType,
+    pub declare: bool,
+}
+pub struct TsInterfaceDeclarationData {
+    pub id: BindingIdentifier,
+    pub type_parameters: Option<TsTypeParameterDeclaration>,
+    pub extends: SubRange<TsInterfaceHeritage>,
+    pub body: TsInterfaceBody,
+    pub declare: bool,
+}
+pub struct TsInterfaceBodyData {
+    pub body: SubRange<TsTypeElement>,
+}
+pub struct TsInterfaceHeritageData {
+    pub expression: Expr,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+}
+pub struct TsClassImplementsData {
+    pub expression: Expr,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+}
+pub struct TsEnumDeclarationData {
+    pub id: BindingIdentifier,
+    pub body: TsEnumBody,
+    pub is_const: bool,
+    pub declare: bool,
+}
+pub struct TsEnumBodyData {
+    pub members: SubRange<TsEnumMember>,
+}
+pub struct TsEnumMemberData {
+    pub id: TsEnumMemberName,
+    pub initializer: Option<Expr>,
+    pub computed: bool,
+}
+pub struct TsModuleDeclarationData {
+    pub id: TsModuleName,
+    pub body: Option<TsModuleBody>,
+    pub kind: TsModuleDeclarationKind,
+    pub declare: bool,
+}
+pub struct TsModuleBlockData {
+    pub directives: SubRange<Directive>,
+    pub body: SubRange<Stmt>,
+}
+pub struct TsGlobalDeclarationData {
+    pub id: IdentifierName,
+    pub body: TsModuleBlock,
+    pub declare: bool,
+}
+pub struct TsParameterPropertyData {
+    pub decorators: SubRange<Decorator>,
+    pub parameter: BindingPattern,
+    pub r#override: bool,
+    pub readonly: bool,
+    pub accessibility: Accessibility,
+}
+pub struct TsThisParameterData {
+    pub type_annotation: Option<TsTypeAnnotation>,
+}
+pub struct TsAsExpressionData {
+    pub expression: Expr,
+    pub type_annotation: TsType,
+}
+pub struct TsSatisfiesExpressionData {
+    pub expression: Expr,
+    pub type_annotation: TsType,
+}
+pub struct TsTypeAssertionData {
+    pub type_annotation: TsType,
+    pub expression: Expr,
+}
+pub struct TsNonNullExpressionData {
+    pub expression: Expr,
+}
+pub struct TsInstantiationExpressionData {
+    pub expression: Expr,
+    pub type_arguments: TsTypeParameterInstantiation,
+}
+pub struct TsExportAssignmentData {
+    pub expression: Expr,
+}
+pub struct TsNamespaceExportDeclarationData {
+    pub id: IdentifierName,
+}
+pub struct TsImportEqualsDeclarationData {
+    pub id: BindingIdentifier,
+    pub module_reference: TsModuleReference,
+    pub import_kind: ImportOrExportKind,
+}
+pub struct TsExternalModuleReferenceData {
+    pub expression: StringLiteral,
+}
 #[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum JsxElementNameData {
@@ -1300,6 +1979,55 @@ pub enum JsxChildData {
     JsxSpreadChild(JsxSpreadChild) = NodeKind::JsxSpreadChild as u8,
     JsxElement(JsxElement) = NodeKind::JsxElement as u8,
     JsxFragment(JsxFragment) = NodeKind::JsxFragment as u8,
+}
+pub struct JsxElementData {
+    pub opening_element: JsxOpeningElement,
+    pub children: SubRange<JsxChild>,
+    pub closing_element: Option<JsxClosingElement>,
+}
+pub struct JsxOpeningElementData {
+    pub name: JsxElementName,
+    pub type_arguments: Option<TsTypeParameterInstantiation>,
+    pub attributes: SubRange<JsxAttributeItem>,
+    pub self_closing: bool,
+}
+pub struct JsxClosingElementData {
+    pub name: JsxElementName,
+}
+pub struct JsxFragmentData {
+    pub opening_fragment: JsxOpeningFragment,
+    pub children: SubRange<JsxChild>,
+    pub closing_fragment: JsxClosingFragment,
+}
+pub struct JsxOpeningFragmentData {}
+pub struct JsxClosingFragmentData {}
+pub struct JsxIdentifierData {
+    pub name: AstUtf8,
+}
+pub struct JsxNamespacedNameData {
+    pub namespace: JsxIdentifier,
+    pub name: JsxIdentifier,
+}
+pub struct JsxMemberExpressionData {
+    pub object: JsxMemberExpressionObject,
+    pub property: JsxIdentifier,
+}
+pub struct JsxAttributeData {
+    pub name: JsxAttributeName,
+    pub value: Option<JsxAttributeValue>,
+}
+pub struct JsxSpreadAttributeData {
+    pub argument: Expr,
+}
+pub struct JsxExpressionContainerData {
+    pub expression: JsxExpression,
+}
+pub struct JsxEmptyExpressionData {}
+pub struct JsxTextData {
+    pub value: AstUtf8,
+}
+pub struct JsxSpreadChildData {
+    pub expression: Expr,
 }
 #[repr(C)]
 struct AstEnumDataRepr {

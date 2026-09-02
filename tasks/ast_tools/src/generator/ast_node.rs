@@ -8,10 +8,11 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Schema},
+    util::safe_ident,
 };
 
 pub fn ast_node(schema: &Schema) -> RawOutput {
-    let mut enum_data = TokenStream::new();
+    let mut ast_data = TokenStream::new();
     let mut node_impls = TokenStream::new();
     let mut data_accessors = TokenStream::new();
     let mut node_kind_variants = TokenStream::new();
@@ -26,6 +27,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
     for ty in &schema.types {
         match ty {
             AstType::Struct(ast_struct) => {
+                ast_data.extend(generate_struct_data(ast_struct, schema));
                 node_impls.extend(generate_node_impls_for_struct(ast_struct));
 
                 let name = format_ident!("{}", ast_struct.name);
@@ -35,7 +37,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 ));
             }
             AstType::Enum(ast_enum) => {
-                enum_data.extend(generate_enum_data(ast_enum, schema));
+                ast_data.extend(generate_enum_data(ast_enum, schema));
                 node_impls.extend(generate_node_impls_for_enum(ast_enum, schema));
                 data_accessors.extend(generate_data_accessor(ast_enum, schema));
                 node_kind_enum_checks.extend(generate_node_kind_enum_check(ast_enum, schema));
@@ -48,7 +50,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
         path: output_path(AST_CRATE_PATH, "ast_node"),
         tokens: quote! {
             #![allow(unused)]
-            use crate::{Ast, GetSpan, SetSpan};
+            use crate::{Ast, AstUtf8, AstWtf8, GetSpan, ScopeId, SetSpan, Span, SymbolId};
             use crate::{ast::*, node_id::*};
 
             /// The concrete type stored at a node ID.
@@ -64,7 +66,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 #node_kind_enum_checks
             }
 
-            #enum_data
+            #ast_data
 
             #[repr(C)]
             struct AstEnumDataRepr {
@@ -105,6 +107,21 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
         },
     }
     .into()
+}
+
+fn generate_struct_data(ast: &AstStruct, schema: &Schema) -> TokenStream {
+    let data_name = format_ident!("{}Data", ast.name);
+    let fields = ast.fields.iter().map(|field| {
+        let field_name = safe_ident(&field.name);
+        let field_type = schema.types[field.type_id].repr_ident(schema);
+        quote!(pub #field_name: #field_type,)
+    });
+
+    quote! {
+        pub struct #data_name {
+            #(#fields)*
+        }
+    }
 }
 
 fn generate_enum_data(ast: &AstEnum, schema: &Schema) -> TokenStream {
