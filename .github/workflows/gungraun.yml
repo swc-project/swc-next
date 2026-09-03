@@ -86,7 +86,7 @@ jobs:
           cargo bench --quiet -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --callgrind-args=cycle-estimation=yes \
-            --callgrind-metrics=Ir,Ct,Cl \
+            --callgrind-metrics=Ir,Ct \
             --save-baseline=base
 
       - name: Compare merge benchmark
@@ -104,7 +104,7 @@ jobs:
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
             --callgrind-args=cycle-estimation=yes \
-            --callgrind-metrics=Ir,Ct,Cl \
+            --callgrind-metrics=Ir,Ct \
             --save-summary=json 2>&1 | tee "$report"
           benchmark_status="${PIPESTATUS[0]}"
 
@@ -219,8 +219,8 @@ jobs:
                 package: "benchmark",
                 bench: "gungraun",
                 baseline: "base",
-                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct,Cl --save-baseline=base",
-                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct,Cl --save-summary=json"
+                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-baseline=base",
+                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-summary=json"
               },
               files: {
                 data_root: "gungraun",

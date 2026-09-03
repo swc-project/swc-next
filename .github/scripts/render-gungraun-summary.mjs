@@ -6,8 +6,7 @@ import { pathToFileURL } from "node:url";
 
 const instructionFormatter = new Intl.NumberFormat("en-US");
 const cycleFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+  maximumFractionDigits: 0,
 });
 
 function hasOwn(value, key) {
@@ -138,12 +137,6 @@ function summaryRows(summary) {
         "throughput cycle estimate",
         benchmark,
       ),
-      latencyCycles: metricComparison(
-        metrics,
-        "Cl",
-        "latency cycle estimate",
-        benchmark,
-      ),
     };
   };
   const total = profile.total?.summary?.Callgrind;
@@ -268,8 +261,8 @@ function renderGroupTable(group, rows) {
   const lines = [
     `##### ${groupTitle(group)}`,
     "",
-    "| Benchmark | Instructions (merge / base) | Change | Throughput cycles (merge / base) | Change | Latency cycles (merge / base) | Change |",
-    "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    "| Benchmark | Ir | Change | Ct | Change |",
+    "| --- | ---: | ---: | ---: | ---: |",
   ];
   for (const row of rows) {
     const label = escapeTableCell(benchmarkLabel(row, includeBenchmark));
@@ -283,13 +276,8 @@ function renderGroupTable(group, rows) {
       row.throughputCycles.baseValue,
       formatCycleCount,
     );
-    const latencyCycles = formatPair(
-      row.latencyCycles.mergeValue,
-      row.latencyCycles.baseValue,
-      formatCycleCount,
-    );
     lines.push(
-      `| \`${label}\` | ${instructions} | ${formatChange(row)} | ${throughputCycles} | ${formatChange(row.throughputCycles)} | ${latencyCycles} | ${formatChange(row.latencyCycles)} |`,
+      `| \`${label}\` | ${instructions} | ${formatChange(row)} | ${throughputCycles} | ${formatChange(row.throughputCycles)} |`,
     );
   }
   lines.push("");
@@ -369,7 +357,7 @@ export function renderSummary(summaries) {
   return [
     "### Callgrind metric changes",
     "",
-    "Callgrind instruction counts and CodSpeed cycle estimates for the merge and base revisions. Throughput (Ct) and latency (Cl) values are converted from centi-cycles to cycles. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages use the same precision as the Gungraun text report. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
+    "Callgrind instruction counts (Ir) and CodSpeed throughput cycle estimates (Ct) for the merge and base revisions. Values are shown as merge / base; Ct is converted from centi-cycles and rounded to whole cycles. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages use the same precision as the Gungraun text report. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
