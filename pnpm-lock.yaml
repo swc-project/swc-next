@@ -291,6 +291,15 @@ importers:
         specifier: 'catalog:'
         version: 0.8.0
 
+  npm/core-wasm:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../../packages/decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
+
   npm/parser:
     dependencies:
       '@swc-next/decoder':

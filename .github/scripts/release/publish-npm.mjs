@@ -26,23 +26,23 @@ function checkFiles(directory, manifest) {
 
 function collectPackages(releaseRoot) {
   const bindings = [];
-  const facades = [];
+  const apiPackages = [];
 
   for (const { directory, manifest } of npmPackages()) {
-    const facadeRoot = path.join(repositoryRoot, directory);
-    const facade = readManifest(facadeRoot);
+    const apiRoot = path.join(repositoryRoot, directory);
+    const apiManifest = readManifest(apiRoot);
     const component = path.basename(directory);
     const bindingsRoot = path.join(releaseRoot, component);
     const expectedNativeBindings = new Map(
-      Object.entries(facade.optionalDependencies ?? {})
+      Object.entries(apiManifest.optionalDependencies ?? {})
     );
 
     if (expectedNativeBindings.size !== manifest.napi.targets.length) {
-      throw new Error(`${facade.name} optionalDependencies are incomplete`);
+      throw new Error(`${apiManifest.name} optionalDependencies are incomplete`);
     }
     const expectedBindings = new Map(expectedNativeBindings);
     if (manifest.wasm) {
-      expectedBindings.set(manifest.wasm.packageName, facade.version);
+      expectedBindings.set(manifest.wasm.packageName, apiManifest.version);
     }
 
     const actualBindings = new Set();
@@ -59,10 +59,10 @@ function collectPackages(releaseRoot) {
         throw new Error(`duplicate binding package: ${binding.name}`);
       }
       if (
-        binding.version !== facade.version ||
-        expectedBindings.get(binding.name) !== facade.version
+        binding.version !== apiManifest.version ||
+        expectedBindings.get(binding.name) !== apiManifest.version
       ) {
-        throw new Error(`${binding.name} does not match ${facade.version}`);
+        throw new Error(`${binding.name} does not match ${apiManifest.version}`);
       }
       actualBindings.add(binding.name);
       checkFiles(bindingRoot, binding);
@@ -73,11 +73,13 @@ function collectPackages(releaseRoot) {
       const missing = [...expectedBindings.keys()].filter(
         (name) => !actualBindings.has(name)
       );
-      throw new Error(`missing ${facade.name} bindings: ${missing.join(", ")}`);
+      throw new Error(
+        `missing ${apiManifest.name} bindings: ${missing.join(", ")}`
+      );
     }
 
-    checkFiles(facadeRoot, facade);
-    facades.push({ directory: facadeRoot, manifest: facade });
+    checkFiles(apiRoot, apiManifest);
+    apiPackages.push({ directory: apiRoot, manifest: apiManifest });
   }
 
   const javascript = jsPackages().map(({ directory, manifest }) => {
@@ -86,13 +88,13 @@ function collectPackages(releaseRoot) {
     return { directory: packageRoot, manifest };
   });
   const versions = new Set(
-    [...javascript, ...facades].map(({ manifest }) => manifest.version),
+    [...javascript, ...apiPackages].map(({ manifest }) => manifest.version),
   );
   if (versions.size !== 1) {
     throw new Error("NPM package versions are not synchronized");
   }
 
-  return [...bindings, ...javascript, ...facades];
+  return [...bindings, ...javascript, ...apiPackages];
 }
 
 function packageExists({ name, version }) {
