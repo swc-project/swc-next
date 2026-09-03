@@ -35,11 +35,40 @@ test("printSync preserves modified negative zero", () => {
   assert.equal(printSync(program).code, "const value = -0;\n");
 });
 
+test("printSync handles modified negative numbers contextually", () => {
+  const exponent = parseSync("1 ** 2;").program;
+  exponent.body[0].expression.left.value = -1;
+  assert.equal(printSync(exponent).code, "(-1) ** 2;\n");
+
+  const property = parseSync("({ 1: 0 });").program;
+  property.body[0].expression.expression.properties[0].key.value = -1;
+  assert.equal(printSync(property).code, '({ "-1": 0 });\n');
+});
+
 test("printSync preserves reordered directive statements", () => {
   const { program } = parseSync('"use strict"; work();');
   program.body.reverse();
 
   assert.equal(printSync(program).code, 'work();\n"use strict";\n');
+});
+
+test("printSync invalidates stale directive raw text", () => {
+  const { program } = parseSync('"use client";');
+  program.body[0].expression.value = "use server";
+
+  assert.equal(printSync(program).code, '"use server";\n');
+
+  const updated = parseSync('"use client";').program;
+  updated.body[0].expression.value = "use server";
+  updated.body[0].directive = "use server";
+
+  assert.equal(printSync(updated).code, '"use server";\n');
+});
+
+test("printSync preserves an unchanged BigInt radix", () => {
+  const { program } = parseSync("0x1_2_3n;");
+
+  assert.equal(printSync(program).code, "0x123n;\n");
 });
 
 test("printSync forwards codegen options", () => {

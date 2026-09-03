@@ -156,14 +156,24 @@ function encode(program) {
     return prefix === "x" ? "hex" : prefix === "o" ? "octal" : prefix === "b" ? "binary" : "decimal";
   }
   function numericRaw(node) {
-    const fallback = Object.is(node.value, -0) ? "-0" : String(node.value);
-    if (typeof node.raw !== "string") return fallback;
+    if (typeof node.raw !== "string") return null;
     const normalized = node.raw.includes("_") ? node.raw.replaceAll("_", "") : node.raw;
     const kind = numericKind(normalized);
     const value = kind === "octal" && normalized[1]?.toLowerCase() !== "o"
       ? parseInt(normalized.slice(1), 8)
       : +normalized;
-    return Object.is(value, node.value) ? node.raw : fallback;
+    return Object.is(value, node.value) ? node.raw : null;
+  }
+
+  function bigIntRaw(node) {
+    const value = typeof node.value === "bigint" ? node.value : BigInt(node.bigint ?? 0);
+    if (typeof node.raw === "string" && node.raw.endsWith("n")) {
+      const raw = node.raw.slice(0, -1);
+      try {
+        if (BigInt(raw.replaceAll("_", "")) === value) return raw;
+      } catch {}
+    }
+    return String(value);
   }
 
   function jsxStringRaw(node) {
@@ -236,7 +246,7 @@ function encode(program) {
   }
 
   function encBigIntLiteral(n) {
-    const v_0 = encStr(typeof n.value === "bigint" ? String(n.value) : (n.bigint ?? String(n.raw ?? "0").replace(/n$/, "")));
+    const v_0 = encStr(bigIntRaw(n));
     const index = allocNode(5, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -670,7 +680,17 @@ function encode(program) {
   }
 
   function encDirective(n) {
-    const v_0 = encStringLiteral(n.expression);
+    const _directiveRaw = n.expression?.raw;
+    const _directiveQuote = _directiveRaw?.[0];
+    const _directiveExpression =
+      typeof _directiveRaw === "string" && _directiveRaw.length >= 2 &&
+      (_directiveQuote === "\"" || _directiveQuote === "'") &&
+      _directiveRaw[_directiveRaw.length - 1] === _directiveQuote &&
+      _directiveRaw.slice(1, -1) === n.directive &&
+      (_directiveRaw.slice(1, -1) === n.expression?.value || _directiveRaw.includes("\\"))
+        ? n.expression
+        : { ...n.expression, raw: "" };
+    const v_0 = encStringLiteral(_directiveExpression);
     const v_1 = encStr(n.directive);
     const index = allocNode(45, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);

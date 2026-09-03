@@ -379,15 +379,13 @@ fn field_source(node: &str, field: &str) -> String {
                 .into()
         }
         ("Class", "class_type") => {
-            "n.type === \"ClassExpression\" ? \"ClassExpression\" : \"ClassDeclaration\""
-                .into()
+            "n.type === \"ClassExpression\" ? \"ClassExpression\" : \"ClassDeclaration\"".into()
         }
+        ("Directive", "expression") => "_directiveExpression".into(),
         ("Directive", "value") => "n.directive".into(),
         ("NumericLiteral", "kind") => "numericKind(_numericRaw)".into(),
         ("NumericLiteral", "raw") => "_numericRaw".into(),
-        ("BigIntLiteral", "raw") => {
-            "typeof n.value === \"bigint\" ? String(n.value) : (n.bigint ?? String(n.raw ?? \"0\").replace(/n$/, \"\"))".into()
-        }
+        ("BigIntLiteral", "raw") => "bigIntRaw(n)".into(),
         ("RegExpLiteral", "pattern") => "n.regex?.pattern ?? n.value?.source ?? \"\"".into(),
         ("RegExpLiteral", "flags") => "n.regex?.flags ?? n.value?.flags ?? \"\"".into(),
         ("TemplateElement", "cooked") => "n.value?.cooked ?? \"\"".into(),
@@ -429,6 +427,19 @@ fn write_special_prelude(output: &mut String, name: &str) {
         _body.push(statement);
       }
     }
+"#,
+        ),
+        "Directive" => output.push_str(
+            r#"    const _directiveRaw = n.expression?.raw;
+    const _directiveQuote = _directiveRaw?.[0];
+    const _directiveExpression =
+      typeof _directiveRaw === "string" && _directiveRaw.length >= 2 &&
+      (_directiveQuote === "\"" || _directiveQuote === "'") &&
+      _directiveRaw[_directiveRaw.length - 1] === _directiveQuote &&
+      _directiveRaw.slice(1, -1) === n.directive &&
+      (_directiveRaw.slice(1, -1) === n.expression?.value || _directiveRaw.includes("\\"))
+        ? n.expression
+        : { ...n.expression, raw: "" };
 "#,
         ),
         "FormalParameters" => output.push_str(
@@ -938,14 +949,24 @@ function encode(program) {
     return prefix === "x" ? "hex" : prefix === "o" ? "octal" : prefix === "b" ? "binary" : "decimal";
   }
   function numericRaw(node) {
-    const fallback = Object.is(node.value, -0) ? "-0" : String(node.value);
-    if (typeof node.raw !== "string") return fallback;
+    if (typeof node.raw !== "string") return null;
     const normalized = node.raw.includes("_") ? node.raw.replaceAll("_", "") : node.raw;
     const kind = numericKind(normalized);
     const value = kind === "octal" && normalized[1]?.toLowerCase() !== "o"
       ? parseInt(normalized.slice(1), 8)
       : +normalized;
-    return Object.is(value, node.value) ? node.raw : fallback;
+    return Object.is(value, node.value) ? node.raw : null;
+  }
+
+  function bigIntRaw(node) {
+    const value = typeof node.value === "bigint" ? node.value : BigInt(node.bigint ?? 0);
+    if (typeof node.raw === "string" && node.raw.endsWith("n")) {
+      const raw = node.raw.slice(0, -1);
+      try {
+        if (BigInt(raw.replaceAll("_", "")) === value) return raw;
+      } catch {}
+    }
+    return String(value);
   }
 
   function jsxStringRaw(node) {
