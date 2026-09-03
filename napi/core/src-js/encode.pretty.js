@@ -114,8 +114,16 @@ function encode(program) {
     return { start, end: start + ids.length };
   }
 
+  function encUtf8(value) {
+    const result = encStr(value);
+    if (!result.isUtf8) {
+      throw new TypeError("AST UTF-8 field contains an unpaired surrogate");
+    }
+    return result;
+  }
+
   function encStr(value) {
-    if (value == null || value === "") return { start: 0, end: 0 };
+    if (value == null || value === "") return { start: 0, end: 0, isUtf8: true };
     value = String(value);
     const previous = strings.get(value);
     if (previous !== undefined) return previous;
@@ -126,6 +134,7 @@ function encode(program) {
       next.set(pool); pool = next;
     }
     const start = poolLength;
+    let isUtf8 = true;
     for (let index = 0; index < value.length; index++) {
       let code = value.charCodeAt(index);
       if (code < 0x80) pool[poolLength++] = code;
@@ -140,12 +149,13 @@ function encode(program) {
         pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
         pool[poolLength++] = 0x80 | (code & 0x3f);
       } else {
+        if (code >= 0xd800 && code <= 0xdfff) isUtf8 = false;
         pool[poolLength++] = 0xe0 | (code >> 12);
         pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
         pool[poolLength++] = 0x80 | (code & 0x3f);
       }
     }
-    const result = { start, end: poolLength };
+    const result = { start, end: poolLength, isUtf8 };
     strings.set(value, result);
     return result;
   }
@@ -225,7 +235,7 @@ function encode(program) {
 
   function encStringLiteral(n) {
     const v_0 = encStr(n.value);
-    const v_1 = encStr(n.raw);
+    const v_1 = encUtf8(n.raw);
     const index = allocNode(3, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -237,7 +247,7 @@ function encode(program) {
   function encNumericLiteral(n) {
     const _numericRaw = n.raw == null ? null : numericRaw(n);
     const v_0 = n.value ?? 0;
-    const v_1 = _numericRaw == null ? { start: NULL, end: 0 } : encStr(_numericRaw);
+    const v_1 = _numericRaw == null ? { start: NULL, end: 0 } : encUtf8(_numericRaw);
     const index = allocNode(4, asStart(n), asEnd(n));
     setPayloadF64(index, 0, v_0);
     setPayloadU32(index, 8, v_1.start);
@@ -246,7 +256,7 @@ function encode(program) {
   }
 
   function encBigIntLiteral(n) {
-    const v_0 = encStr(bigIntRaw(n));
+    const v_0 = encUtf8(bigIntRaw(n));
     const index = allocNode(5, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -266,8 +276,8 @@ function encode(program) {
   }
 
   function encRegExpLiteral(n) {
-    const v_0 = encStr(n.regex?.pattern ?? n.value?.source ?? "");
-    const v_1 = encStr(n.regex?.flags ?? n.value?.flags ?? "");
+    const v_0 = encUtf8(n.regex?.pattern ?? n.value?.source ?? "");
+    const v_1 = encUtf8(n.regex?.flags ?? n.value?.flags ?? "");
     const index = allocNode(8, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -289,7 +299,7 @@ function encode(program) {
 
   function encTemplateElement(n) {
     const v_0 = encStr(n.value?.cooked ?? "");
-    const v_1 = encStr(n.value?.raw ?? "");
+    const v_1 = encUtf8(n.value?.raw ?? "");
     const v_2 = n.tail ? 1 : 0;
     const v_3 = n.value?.cooked == null ? 1 : 0;
     const extraId = allocExtra(1);
@@ -305,7 +315,7 @@ function encode(program) {
   }
 
   function encIdentifierReference(n) {
-    const v_0 = encStr(n.name);
+    const v_0 = encUtf8(n.name);
     const index = allocNode(11, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -313,7 +323,7 @@ function encode(program) {
   }
 
   function encPrivateIdentifier(n) {
-    const v_0 = encStr(n.name);
+    const v_0 = encUtf8(n.name);
     const index = allocNode(12, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -321,7 +331,7 @@ function encode(program) {
   }
 
   function encBindingIdentifier(n) {
-    const v_0 = encStr(n.name);
+    const v_0 = encUtf8(n.name);
     const v_1 = encArray(n.decorators, encDecorator, false);
     const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
     const v_3 = n.optional ? 1 : 0;
@@ -338,7 +348,7 @@ function encode(program) {
   }
 
   function encIdentifierName(n) {
-    const v_0 = encStr(n.name);
+    const v_0 = encUtf8(n.name);
     const index = allocNode(14, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -346,7 +356,7 @@ function encode(program) {
   }
 
   function encLabelIdentifier(n) {
-    const v_0 = encStr(n.name);
+    const v_0 = encUtf8(n.name);
     const index = allocNode(15, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -691,7 +701,7 @@ function encode(program) {
         ? n.expression
         : { ...n.expression, raw: "" };
     const v_0 = encStringLiteral(_directiveExpression);
-    const v_1 = encStr(n.directive);
+    const v_1 = encUtf8(n.directive);
     const index = allocNode(45, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 0, v_1.start);
@@ -1203,7 +1213,7 @@ function encode(program) {
   }
 
   function encHashbang(n) {
-    const v_0 = encStr(n.value);
+    const v_0 = encUtf8(n.value);
     const index = allocNode(85, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -2050,7 +2060,7 @@ function encode(program) {
   }
 
   function encJsxIdentifier(n) {
-    const v_0 = encStr(n.name);
+    const v_0 = encUtf8(n.name);
     const index = allocNode(165, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
@@ -2104,7 +2114,7 @@ function encode(program) {
   }
 
   function encJsxText(n) {
-    const v_0 = encStr(n.value ?? n.raw ?? "");
+    const v_0 = encUtf8(n.value ?? n.raw ?? "");
     const index = allocNode(172, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);

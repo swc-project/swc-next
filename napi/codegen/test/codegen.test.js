@@ -28,6 +28,31 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
+test("printSync rejects lone surrogates in UTF-8 fields", () => {
+  const { program } = parseSync("const value = 1;");
+  program.body[0].declarations[0].id.name = "\uD800";
+
+  assert.throws(
+    () => printSync(program),
+    /AST UTF-8 field contains an unpaired surrogate/,
+  );
+});
+
+test("printSync preserves lone surrogates in WTF-8 fields", () => {
+  const { program } = parseSync('const value = "ok";');
+  program.body[0].declarations[0].init.value = "\uD800";
+  program.body[0].declarations[0].init.raw = null;
+
+  assert.equal(printSync(program).code, 'const value = "\\uD800";\n');
+});
+
+test("printSync accepts surrogate pairs in UTF-8 fields", () => {
+  const { program } = parseSync("const value = 1;");
+  program.body[0].declarations[0].id.name = "\u{10400}";
+
+  assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
+});
+
 test("printSync preserves modified negative zero", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].init.value = -0;

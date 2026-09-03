@@ -283,7 +283,12 @@ fn encode_expression(
                 "0".into()
             }
             AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
-                format!("{source} == null ? {{ start: NULL, end: 0 }} : encStr({source})")
+                let encoder = if primitive.name == "AstUtf8" {
+                    "encUtf8"
+                } else {
+                    "encStr"
+                };
+                format!("{source} == null ? {{ start: NULL, end: 0 }} : {encoder}({source})")
             }
             AstType::Primitive(primitive) if primitive.name == "Span" => {
                 format!("{source} == null ? [0, 0] : [asStart({source}), asEnd({source})]")
@@ -291,7 +296,8 @@ fn encode_expression(
             inner => panic!("unsupported optional encoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
-            "AstUtf8" | "AstWtf8" => format!("encStr({source})"),
+            "AstUtf8" => format!("encUtf8({source})"),
+            "AstWtf8" => format!("encStr({source})"),
             "bool" => format!("{source} ? 1 : 0"),
             "Span" => format!("[asStart({source}), asEnd({source})]"),
             "ScopeId" | "SymbolId" => "0".into(),
@@ -907,8 +913,16 @@ function encode(program) {
     return { start, end: start + ids.length };
   }
 
+  function encUtf8(value) {
+    const result = encStr(value);
+    if (!result.isUtf8) {
+      throw new TypeError("AST UTF-8 field contains an unpaired surrogate");
+    }
+    return result;
+  }
+
   function encStr(value) {
-    if (value == null || value === "") return { start: 0, end: 0 };
+    if (value == null || value === "") return { start: 0, end: 0, isUtf8: true };
     value = String(value);
     const previous = strings.get(value);
     if (previous !== undefined) return previous;
@@ -919,6 +933,7 @@ function encode(program) {
       next.set(pool); pool = next;
     }
     const start = poolLength;
+    let isUtf8 = true;
     for (let index = 0; index < value.length; index++) {
       let code = value.charCodeAt(index);
       if (code < 0x80) pool[poolLength++] = code;
@@ -933,12 +948,13 @@ function encode(program) {
         pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
         pool[poolLength++] = 0x80 | (code & 0x3f);
       } else {
+        if (code >= 0xd800 && code <= 0xdfff) isUtf8 = false;
         pool[poolLength++] = 0xe0 | (code >> 12);
         pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
         pool[poolLength++] = 0x80 | (code & 0x3f);
       }
     }
-    const result = { start, end: poolLength };
+    const result = { start, end: poolLength, isUtf8 };
     strings.set(value, result);
     return result;
   }
