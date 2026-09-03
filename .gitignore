@@ -10,7 +10,4 @@ tasks/testsuite/outputs
 node_modules
 *.node
 *.wasm
-*.tgz
 dist
-/artifacts
-/release-dir
