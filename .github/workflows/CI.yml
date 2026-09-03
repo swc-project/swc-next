@@ -85,6 +85,26 @@ jobs:
           ${{ matrix.name == 's390x' && 'cross' || 'cargo' }} test --workspace --locked
           ${{ matrix.name == 's390x' && '--target s390x-unknown-linux-gnu' || '' }}
 
+  wasm-build:
+    name: Build WebAssembly bindings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+        with:
+          target: wasm32-unknown-unknown
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build WebAssembly bindings
+        run: pnpm build:wasm --release
+
   conformance:
     name: Conformance
     runs-on: ubuntu-latest
