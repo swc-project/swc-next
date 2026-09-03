@@ -28,6 +28,20 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
+test("printSync preserves modified negative zero", () => {
+  const { program } = parseSync("const value = 1;");
+  program.body[0].declarations[0].init.value = -0;
+
+  assert.equal(printSync(program).code, "const value = -0;\n");
+});
+
+test("printSync preserves reordered directive statements", () => {
+  const { program } = parseSync('"use strict"; work();');
+  program.body.reverse();
+
+  assert.equal(printSync(program).code, 'work();\n"use strict";\n');
+});
+
 test("printSync forwards codegen options", () => {
   const { program } = parseSync("const emoji = '😀';");
 

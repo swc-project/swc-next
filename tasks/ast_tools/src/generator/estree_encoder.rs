@@ -419,10 +419,15 @@ fn write_special_prelude(output: &mut String, name: &str) {
         "Program" | "FunctionBody" | "TsModuleBlock" => output.push_str(
             r#"    const _directives = [];
     const _body = [];
+    let inDirectivePrologue = true;
     for (const statement of n.body ?? []) {
-      (statement?.type === "ExpressionStatement" && statement.directive != null
-        ? _directives
-        : _body).push(statement);
+      if (inDirectivePrologue &&
+          statement?.type === "ExpressionStatement" && statement.directive != null) {
+        _directives.push(statement);
+      } else {
+        inDirectivePrologue = false;
+        _body.push(statement);
+      }
     }
 "#,
         ),
@@ -933,13 +938,14 @@ function encode(program) {
     return prefix === "x" ? "hex" : prefix === "o" ? "octal" : prefix === "b" ? "binary" : "decimal";
   }
   function numericRaw(node) {
-    if (typeof node.raw !== "string") return String(node.value);
+    const fallback = Object.is(node.value, -0) ? "-0" : String(node.value);
+    if (typeof node.raw !== "string") return fallback;
     const normalized = node.raw.includes("_") ? node.raw.replaceAll("_", "") : node.raw;
     const kind = numericKind(normalized);
     const value = kind === "octal" && normalized[1]?.toLowerCase() !== "o"
       ? parseInt(normalized.slice(1), 8)
       : +normalized;
-    return Object.is(value, node.value) ? node.raw : String(node.value);
+    return Object.is(value, node.value) ? node.raw : fallback;
   }
 
   function jsxStringRaw(node) {
