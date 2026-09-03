@@ -6,6 +6,10 @@ The binary format is internal and versioned with the Rust crates. Depend on the 
 
 ```js
 import { decode } from "@swc-next/decoder";
+import { parseSync as __parseSync } from "./binding.js";
 
-const result = decode(nativeParse(source), source);
+export function parseSync(source, options) {
+  const buffer = __parseSync(source, options);
+  return decode(buffer, source);
+}
 ```
