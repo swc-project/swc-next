@@ -1,0 +1,43 @@
+diff --git a/src/api.rs b/src/api.rs
+index eba70f4..4f8494f 100644
+--- a/src/api.rs
++++ b/src/api.rs
+@@ -918,6 +918,10 @@ pub enum EventKind {
+     SpLoss1,
+     /// Counter showing bad spatial locality for LL caches (--cachuse=yes)
+     SpLoss2,
++    /// Estimated reciprocal throughput in centi-cycles (--cycle-estimation=yes)
++    Ct,
++    /// Estimated latency in centi-cycles (--cycle-estimation=yes)
++    Cl,
+ }
+
+ /// Set the expected exit status of a binary benchmark
+@@ -1879,6 +1883,8 @@ impl Display for EventKind {
+             Self::L1HitRate => f.write_str("L1 Hit Rate"),
+             Self::LLHitRate => f.write_str("LL Hit Rate"),
+             Self::RamHitRate => f.write_str("RAM Hit Rate"),
++            Self::Ct => f.write_str("Throughput Cycles"),
++            Self::Cl => f.write_str("Latency Cycles"),
+             _ => write!(f, "{self:?}"),
+         }
+     }
+@@ -1961,6 +1967,8 @@ impl_from_str_metric!(
+         "l1hitrate" => L1HitRate,
+         "llhitrate" => LLHitRate,
+         "ramhitrate" => RamHitRate,
++        "ct" => Ct,
++        "cl" => Cl,
+     }
+ );
+
+@@ -1994,7 +2002,9 @@ impl TypeChecker for EventKind {
+             | Self::AcCost2
+             | Self::SpLoss1
+-            | Self::SpLoss2 => true,
++            | Self::SpLoss2
++            | Self::Ct
++            | Self::Cl => true,
+             Self::I1MissRate
+             | Self::LLiMissRate
+             | Self::D1MissRate
