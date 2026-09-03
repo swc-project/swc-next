@@ -1,4 +1,5 @@
 tasks/testsuite/snapshots/*.snap text=auto eol=lf
 
 # Generated files
-napi/*/src-js/decode.pretty.js linguist-generated=true
+packages/decoder/index.pretty.js linguist-generated=true
+packages/encoder/index.pretty.js linguist-generated=true
