@@ -1,6 +1,7 @@
 import { printSync as __printSync } from "./binding.js";
-import { encode } from "@swc-next/encoder";
+import { encode, encodeOptions } from "@swc-next/encoder";
 
 export function printSync(program, options) {
-  return __printSync(encode(program), options);
+  const code = __printSync(encode(program), encodeOptions(options));
+  return { code };
 }

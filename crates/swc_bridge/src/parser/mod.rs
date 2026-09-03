@@ -1,4 +1,5 @@
 mod options;
+mod options_wire;
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};

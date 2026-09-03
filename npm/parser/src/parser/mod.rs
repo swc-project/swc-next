@@ -1,10 +1,9 @@
-use napi::bindgen_prelude::Buffer;
 use swc_next_bridge::{Lang, ParserOptions, SourceType, bridge, parse_to_buffer};
 use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
 
 #[bridge]
-pub fn parse_sync(source: String, options: Option<ParserOptions>) -> Buffer {
-    Buffer::from(parse_to_buffer(&source, options))
+pub fn parse_sync(source: String, options: Option<ParserOptions>) -> Vec<u8> {
+    parse_to_buffer(&source, options)
 }
 
 #[bridge]

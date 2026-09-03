@@ -9,14 +9,14 @@ repository.workspace  = true
 version               = "0.1.3"
 
 [package.metadata.cargo-shear]
-ignored = ["napi-derive"]
+ignored = ["napi", "napi-derive"]
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
+# `#[bridge]` expands to NAPI-RS, and its CLI detects this direct dependency.
 napi              = { workspace = true }
-# @napi-rs/cli detects binding crates through this direct dependency.
 napi-derive       = { workspace = true }
 swc_next_bridge   = { workspace = true, features = ["parser"] }
 swc_next_ecma_ast = { workspace = true }
