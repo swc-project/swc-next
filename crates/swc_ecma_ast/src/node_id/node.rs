@@ -1,6 +1,6 @@
-oxc_index::define_nonmax_u32_index_type! {
+oxc_index::define_index_type! {
     #[repr(transparent)]
-    pub struct NodeId;
+    pub struct NodeId = u32;
 }
 
 pub trait AstNode {

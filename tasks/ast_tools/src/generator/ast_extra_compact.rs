@@ -60,12 +60,16 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                    impl<'a> ExtraDataCompact<'a> for #ty_ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            ExtraData::from_optional_node_id(self.map(|node| node.node_id()))
+                            ExtraData::from_node_id(self.map_or(
+                                NodeId::from_raw_unchecked(u32::MAX),
+                                |node| node.node_id(),
+                            ))
                         }
 
                         #[inline]
                         unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-                            data.optional_node_id().map(#inner_ident)
+                            let node_id = data.node_id();
+                            (node_id.index() != u32::MAX as usize).then_some(#inner_ident(node_id))
                         }
                    }
                 });
