@@ -1,8 +1,9 @@
-use napi_derive::napi;
 use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
 use swc_next_ecma_parser::{CommentMode as AstCommentMode, Options as AstParserOptions};
 
-#[napi(string_enum = "lowercase")]
+use crate::bridge;
+
+#[bridge(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SourceType {
     Module,
@@ -33,7 +34,7 @@ impl From<AstSourceType> for SourceType {
     }
 }
 
-#[napi(string_enum = "lowercase")]
+#[bridge(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Lang {
     Js,
@@ -67,7 +68,7 @@ impl From<AstLang> for Lang {
     }
 }
 
-#[napi(string_enum = "lowercase")]
+#[bridge(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommentMode {
     None,
@@ -83,7 +84,7 @@ impl From<CommentMode> for AstCommentMode {
     }
 }
 
-#[napi(object)]
+#[bridge(object)]
 #[derive(Default)]
 pub struct ParserOptions {
     /// Determines how the source is parsed and evaluated.

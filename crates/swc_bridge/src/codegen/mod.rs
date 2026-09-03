@@ -1,14 +1,15 @@
 mod options;
 
 use napi::{Error, Result, bindgen_prelude::Buffer};
-use napi_derive::napi;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::ffi::ast::deserialize_from;
 use swc_next_ecma_codegen::print;
 
+use crate::bridge;
+
 pub use self::options::CodegenOptions;
 
-#[napi(object)]
+#[bridge(object)]
 pub struct CodegenOutput {
     pub code: String,
 }

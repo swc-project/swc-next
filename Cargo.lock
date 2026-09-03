@@ -2781,24 +2781,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "swc_next_codegen_napi"
+name = "swc_next_bridge"
 version = "0.1.3"
 dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "swc_next_napi",
+ "swc_next_allocator",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_parser",
 ]
 
 [[package]]
-name = "swc_next_core_napi"
+name = "swc_next_codegen_bridge"
 version = "0.1.3"
 dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "swc_next_bridge",
+]
+
+[[package]]
+name = "swc_next_core_bridge"
+version = "0.1.3"
+dependencies = [
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "swc_next_bridge",
  "swc_next_ecma_ast",
- "swc_next_napi",
 ]
 
 [[package]]
@@ -2861,27 +2874,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "swc_next_napi"
+name = "swc_next_parser_bridge"
 version = "0.1.3"
 dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "swc_next_allocator",
+ "swc_next_bridge",
  "swc_next_ecma_ast",
- "swc_next_ecma_codegen",
- "swc_next_ecma_parser",
-]
-
-[[package]]
-name = "swc_next_parser_napi"
-version = "0.1.3"
-dependencies = [
- "napi",
- "napi-build",
- "napi-derive",
- "swc_next_ecma_ast",
- "swc_next_napi",
 ]
 
 [[package]]
