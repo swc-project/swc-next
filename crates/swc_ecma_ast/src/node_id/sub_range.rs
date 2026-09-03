@@ -11,9 +11,9 @@ use crate::{
 #[repr(C)]
 #[derive(Debug, Hash)]
 pub struct SubRange<T> {
-    pub start: ExtraDataId,
-    pub end: ExtraDataId,
-    pub(crate) _phantom: PhantomData<T>,
+    pub(crate) start: ExtraDataId,
+    pub(crate) end: ExtraDataId,
+    _phantom: PhantomData<T>,
 }
 
 impl<T> Clone for SubRange<T> {
@@ -25,6 +25,14 @@ impl<T> Clone for SubRange<T> {
 impl<T> Copy for SubRange<T> {}
 
 impl<T> SubRange<T> {
+    pub(crate) fn new(start: ExtraDataId, end: ExtraDataId) -> Self {
+        Self {
+            start,
+            end,
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn empty() -> Self {
         Self {
             start: ExtraDataId::from_raw(0),

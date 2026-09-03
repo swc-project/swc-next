@@ -129,11 +129,10 @@ mod tests {
         let decoded = unsafe { Program::from_extra_data(data) };
         assert_eq!(decoded.0.index(), 0x1122_3344);
 
-        let range = SubRange::<()> {
-            start: ExtraDataId::from_raw(0x1122_3344),
-            end: ExtraDataId::from_raw(0x5566_7788),
-            _phantom: std::marker::PhantomData,
-        };
+        let range = SubRange::<()>::new(
+            ExtraDataId::from_raw(0x1122_3344),
+            ExtraDataId::from_raw(0x5566_7788),
+        );
         let data = ExtraData::from_raw(range.raw());
         assert_eq!(data.raw(), 0x5566_7788_1122_3344);
         let decoded = SubRange::<()>::from_raw(data.raw());

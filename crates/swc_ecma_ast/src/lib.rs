@@ -19,7 +19,6 @@ mod generated {
 }
 
 use oxc_index::Idx;
-use std::marker::PhantomData;
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
 
 pub use ast::*;
@@ -211,11 +210,7 @@ impl<'a> Ast<'a> {
             let data = node.into_extra_data();
             self.extra_data.push(data);
         }
-        SubRange {
-            start,
-            end: self.next_extra_data_id(),
-            _phantom: PhantomData,
-        }
+        SubRange::new(start, self.next_extra_data_id())
     }
 
     /// Append pre-encoded extra data and return its starting index.
