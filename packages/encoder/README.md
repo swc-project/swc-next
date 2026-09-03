@@ -6,6 +6,9 @@ The binary format is internal and versioned with the Rust crates. Depend on the 
 
 ```js
 import { encode } from "@swc-next/encoder";
+import { printSync as __printSync } from "./binding.js";
 
-const buffer = encode(program);
+export function printSync(program, options) {
+  return __printSync(encode(program), options);
+}
 ```
