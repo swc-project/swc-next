@@ -1051,7 +1051,7 @@ function encode(program) {
         if (code === 0x75 && raw.charCodeAt(start) === 0x7b) {
           start++;
           end = raw.indexOf("}", start);
-          if (end < 0 || end === start || end - start > 6) return null;
+          if (end < 0 || end === start) return null;
         }
         let value = 0;
         for (let cursor = start; cursor < end; cursor++) {

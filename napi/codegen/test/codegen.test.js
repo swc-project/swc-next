@@ -98,6 +98,14 @@ test("printSync invalidates stale directive raw text", () => {
   assert.equal(printSync(escaped).code, '"use server";\n');
 });
 
+test("printSync preserves code point escapes with leading zeros", () => {
+  const { program } = parseSync('"use\\u{0000020}strict";', {
+    sourceType: "script",
+  });
+
+  assert.equal(printSync(program).code, '"use\\u{0000020}strict";\n');
+});
+
 test("printSync preserves an unchanged BigInt radix", () => {
   const { program } = parseSync("0x1_2_3n;");
 
