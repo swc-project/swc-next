@@ -1,11 +1,14 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{
-    Expr, FnArg, GenericArgument, ImplItem, Item, ItemEnum, ItemFn, ItemImpl, Lit, LitStr, Meta,
-    Pat, PathArguments, ReturnType, Token, Type, Visibility, parse::Parser, parse_macro_input,
-    parse_quote, punctuated::Punctuated,
+    Expr, FnArg, GenericArgument, ImplItem, Item, ItemEnum, ItemFn, ItemImpl, Lit, LitInt, LitStr,
+    Meta, Pat, PathArguments, ReturnType, Token, Type, Visibility, parse::Parser,
+    parse_macro_input, parse_quote, punctuated::Punctuated,
 };
+
+mod napi;
+mod wasm;
 
 #[proc_macro_attribute]
 pub fn bridge(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -28,7 +31,7 @@ fn expand_bridge(item: Item, arguments: Vec<Meta>) -> syn::Result<proc_macro2::T
         Item::Struct(structure) => {
             let napi = napi_meta(&arguments);
             Ok(quote! {
-                #[#napi]
+                #[cfg_attr(not(target_family = "wasm"), #napi)]
                 #structure
             })
         }
@@ -125,8 +128,18 @@ fn expand_enum(
     }
 
     let ident = &enumeration.ident;
+    let variants = enumeration.variants.iter().map(|variant| &variant.ident);
+    let encode_arms = variants.clone().enumerate().map(|(index, variant)| {
+        let index = LitInt::new(&format!("{index}u32"), variant.span());
+        quote!(Self::#variant => #index)
+    });
+    let decode_arms = variants.enumerate().map(|(index, variant)| {
+        let index = LitInt::new(&format!("{index}u32"), variant.span());
+        quote!(#index => Some(Self::#variant))
+    });
+
     Ok(quote! {
-        #[#napi]
+        #[cfg_attr(not(target_family = "wasm"), #napi)]
         #enumeration
 
         impl ::swc_next_bridge::private::Sealed for #ident {}
@@ -160,6 +173,29 @@ fn expand_enum(
                 self
             }
         }
+
+        #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+        unsafe impl ::swc_next_bridge::wasm::FromWasmAbi for #ident {
+            type Abi = u32;
+
+            unsafe fn from_wasm_abi(value: Self::Abi) -> Option<Self> {
+                match value {
+                    #(#decode_arms,)*
+                    _ => None,
+                }
+            }
+        }
+
+        #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+        impl ::swc_next_bridge::wasm::IntoWasmAbi for #ident {
+            type Abi = u32;
+
+            fn into_wasm_abi(self) -> Self::Abi {
+                match self {
+                    #(#encode_arms,)*
+                }
+            }
+        }
     })
 }
 
@@ -168,97 +204,13 @@ fn expand_function(
     arguments: Vec<Meta>,
 ) -> syn::Result<proc_macro2::TokenStream> {
     validate_function(&function)?;
-
-    let mut native_arguments = Vec::new();
-    let mut conversions = Vec::new();
-    let mut call_arguments = Vec::new();
-    for input in &function.sig.inputs {
-        let FnArg::Typed(argument) = input else {
-            return Err(syn::Error::new_spanned(
-                input,
-                "#[bridge] functions cannot have a receiver",
-            ));
-        };
-        let Pat::Ident(pattern) = argument.pat.as_ref() else {
-            return Err(syn::Error::new_spanned(
-                &argument.pat,
-                "#[bridge] parameters must use identifier patterns",
-            ));
-        };
-        if pattern.by_ref.is_some() || pattern.subpat.is_some() {
-            return Err(syn::Error::new_spanned(
-                pattern,
-                "#[bridge] parameters must use identifier patterns",
-            ));
-        }
-
-        let ident = &pattern.ident;
-        let semantic_type = &argument.ty;
-        if is_byte_slice(semantic_type) {
-            native_arguments.push(quote!(#ident: ::napi::bindgen_prelude::Buffer));
-            call_arguments.push(quote!(&#ident));
-            continue;
-        }
-
-        let decode_type = (**semantic_type).clone();
-        native_arguments.push(quote! {
-            #ident: <<#decode_type as ::swc_next_bridge::BridgeDecode>::Wire as
-                ::swc_next_bridge::NativeAbi>::Abi
-        });
-        conversions.push(quote! {
-            let #ident = <<#decode_type as ::swc_next_bridge::BridgeDecode>::Wire as
-                ::swc_next_bridge::NativeAbi>::from_native(#ident);
-            let Some(#ident) = <#decode_type as ::swc_next_bridge::BridgeDecode>::decode(#ident)
-            else {
-                return Err(::napi::Error::new(
-                    ::napi::Status::InvalidArg,
-                    concat!("invalid bridge value for `", stringify!(#ident), "`"),
-                ));
-            };
-        });
-        call_arguments.push(quote!(#ident));
-    }
-
-    let declared_return_type = return_type(&function.sig.output);
-    let (return_type, fallible) = result_value_type(&declared_return_type)
-        .map_or((declared_return_type.clone(), false), |ty| {
-            (ty.clone(), true)
-        });
-    let attributes = &function.attrs;
-    let visibility = &function.vis;
-    let unsafety = &function.sig.unsafety;
-    let ident = &function.sig.ident;
-    let native_adapter = format_ident!("__swc_bridge_napi_{ident}");
-    let call = if unsafety.is_some() {
-        quote!(unsafe { #ident(#(#call_arguments),*) })
-    } else {
-        quote!(#ident(#(#call_arguments),*))
-    };
-    let call = if fallible {
-        quote! {
-            let result = #call
-                .map_err(|error| ::napi::Error::from_reason(error.to_string()))?;
-        }
-    } else {
-        quote!(let result = #call;)
-    };
-    let napi = napi_function_meta(arguments, &function)?;
+    let napi = napi::expand_function(&function, arguments)?;
+    let wasm = wasm::expand_function(&function)?;
 
     Ok(quote! {
         #function
-
-        #(#attributes)*
-        #[#napi]
-        #visibility fn #native_adapter(
-            #(#native_arguments),*
-        ) -> ::napi::Result<<<#return_type as ::swc_next_bridge::BridgeEncode>::Wire as
-            ::swc_next_bridge::NativeAbi>::Abi> {
-            #(#conversions)*
-            #call
-            let result = <#return_type as ::swc_next_bridge::BridgeEncode>::encode(result);
-            Ok(<<#return_type as ::swc_next_bridge::BridgeEncode>::Wire as
-                ::swc_next_bridge::NativeAbi>::into_native(result))
-        }
+        #napi
+        #wasm
     })
 }
 
@@ -285,7 +237,7 @@ fn validate_function(function: &ItemFn) -> syn::Result<()> {
     Ok(())
 }
 
-fn napi_function_meta(
+pub(crate) fn napi_function_meta(
     mut arguments: Vec<Meta>,
     function: &ItemFn,
 ) -> syn::Result<proc_macro2::TokenStream> {
@@ -494,14 +446,14 @@ fn meta_string_value(meta: &Meta, name: &str) -> syn::Result<String> {
     Ok(value.value())
 }
 
-fn return_type(output: &ReturnType) -> Type {
+pub(crate) fn return_type(output: &ReturnType) -> Type {
     match output {
         ReturnType::Default => parse_quote!(()),
         ReturnType::Type(_, ty) => (**ty).clone(),
     }
 }
 
-fn result_value_type(ty: &Type) -> Option<&Type> {
+pub(crate) fn result_value_type(ty: &Type) -> Option<&Type> {
     let Type::Path(path) = ty else {
         return None;
     };
@@ -522,7 +474,7 @@ fn single_type_argument(arguments: &PathArguments) -> Option<&Type> {
     }
 }
 
-fn is_byte_slice(ty: &Type) -> bool {
+pub(crate) fn is_byte_slice(ty: &Type) -> bool {
     let Type::Reference(reference) = ty else {
         return false;
     };
@@ -535,7 +487,7 @@ fn is_byte_slice(ty: &Type) -> bool {
     is_ident_type(&slice.elem, "u8")
 }
 
-fn is_byte_vec(ty: &Type) -> bool {
+pub(crate) fn is_byte_vec(ty: &Type) -> bool {
     let Type::Path(path) = ty else {
         return false;
     };

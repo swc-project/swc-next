@@ -15,10 +15,12 @@ ignored = ["napi", "napi-derive"]
 crate-type = ["cdylib"]
 
 [dependencies]
-# `#[bridge]` expands to NAPI-RS, and its CLI detects this direct dependency.
-napi            = { workspace = true }
-napi-derive     = { workspace = true }
 swc_next_bridge = { workspace = true, features = ["codegen"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+# `#[bridge]` expands to NAPI-RS, and its CLI detects this direct dependency.
+napi        = { workspace = true }
+napi-derive = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }

@@ -4,7 +4,16 @@ extern crate self as swc_next_bridge;
 mod codegen;
 #[cfg(feature = "parser")]
 mod parser;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[doc(hidden)]
+pub mod wasm;
 mod wire;
+
+#[cfg(all(
+    target_family = "wasm",
+    not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
+compile_error!("only wasm32-unknown-unknown is supported by the WebAssembly bridge");
 
 #[cfg(feature = "codegen")]
 pub use codegen::{CodegenOptions, CodegenOutput, print_from_buffer};
