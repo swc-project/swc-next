@@ -15,6 +15,9 @@
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.17.0",
   "devDependencies": {
-    "@napi-rs/cli": "catalog:"
+    "@napi-rs/cli": "catalog:",
+    "@rstest/browser": "catalog:",
+    "@rstest/core": "catalog:",
+    "playwright": "catalog:"
   }
 }

@@ -8,9 +8,12 @@ allowBuilds:
 catalog:
   '@babel/parser': ^8.0.4
   '@napi-rs/cli': ^3.7.4
+  '@rstest/browser': ^0.11.10
+  '@rstest/core': ^0.11.10
   '@swc/core': ^1.15.46
   '@types/node': ^26.1.1
   oxc-parser: ^0.142.0
+  playwright: ^1.62.1
   tinybench: ^6.1.2
   tinypool: ^2.1.0
   typescript: ^7.0.2

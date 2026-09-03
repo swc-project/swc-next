@@ -104,6 +104,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build WebAssembly bindings
         run: pnpm build:wasm --release
+      - name: Run Node.js WebAssembly smoke tests
+        run: node scripts/test-wasm.mjs
+      - name: Install Chromium Headless Shell
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: Run browser WebAssembly smoke tests
+        run: node scripts/test-browser.mjs
 
   conformance:
     name: Conformance
