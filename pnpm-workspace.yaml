@@ -1,5 +1,6 @@
 packages:
   - napi/*
+  - packages/*
 
 allowBuilds:
   '@swc/core': true

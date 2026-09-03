@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decode } from "../src-js/decode.js";
+import { decode } from "@swc-next/decoder";
 import { CommentMode, parseSync, SourceType } from "../src-js/index.js";
 
 test("decoder reads little-endian words from unaligned buffers", () => {

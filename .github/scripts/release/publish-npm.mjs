@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { npmPackages } from "./version.mjs";
+import { jsPackages, npmPackages } from "./version.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../../..");
@@ -76,7 +76,19 @@ function collectPackages(releaseRoot) {
     facades.push({ directory: facadeRoot, manifest: facade });
   }
 
-  return [...bindings, ...facades];
+  const javascript = jsPackages().map(({ directory, manifest }) => {
+    const packageRoot = path.join(repositoryRoot, directory);
+    checkFiles(packageRoot, manifest);
+    return { directory: packageRoot, manifest };
+  });
+  const versions = new Set(
+    [...javascript, ...facades].map(({ manifest }) => manifest.version),
+  );
+  if (versions.size !== 1) {
+    throw new Error("NPM package versions are not synchronized");
+  }
+
+  return [...bindings, ...javascript, ...facades];
 }
 
 function packageExists({ name, version }) {

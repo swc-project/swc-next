@@ -1,5 +1,5 @@
 import { parseSync as __parseSync } from "./binding.js";
-import { decode } from "./decode.js";
+import { decode } from "@swc-next/decoder";
 
 export * from "./binding.js";
 

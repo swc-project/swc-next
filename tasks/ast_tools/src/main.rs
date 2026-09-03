@@ -44,25 +44,11 @@ fn main() {
     let ast_extra_data_compact = ast_extra_compact(&schema);
     ast_extra_data_compact.write_to_file().unwrap();
 
-    let (
-        core_estree_decoder_pretty,
-        core_estree_decoder_minified,
-        parser_estree_decoder_pretty,
-        parser_estree_decoder_minified,
-    ) = estree_decoder(&schema);
-    core_estree_decoder_pretty.write_to_file().unwrap();
-    core_estree_decoder_minified.write_to_file().unwrap();
-    parser_estree_decoder_pretty.write_to_file().unwrap();
-    parser_estree_decoder_minified.write_to_file().unwrap();
+    let (estree_decoder_pretty, estree_decoder_minified) = estree_decoder(&schema);
+    estree_decoder_pretty.write_to_file().unwrap();
+    estree_decoder_minified.write_to_file().unwrap();
 
-    let (
-        core_estree_encoder_pretty,
-        core_estree_encoder_minified,
-        codegen_estree_encoder_pretty,
-        codegen_estree_encoder_minified,
-    ) = estree_encoder(&schema);
-    core_estree_encoder_pretty.write_to_file().unwrap();
-    core_estree_encoder_minified.write_to_file().unwrap();
-    codegen_estree_encoder_pretty.write_to_file().unwrap();
-    codegen_estree_encoder_minified.write_to_file().unwrap();
+    let (estree_encoder_pretty, estree_encoder_minified) = estree_encoder(&schema);
+    estree_encoder_pretty.write_to_file().unwrap();
+    estree_encoder_minified.write_to_file().unwrap();
 }

@@ -21,26 +21,39 @@ function readManifest(relativePath) {
 
 function npmManifestPaths() {
   const paths = ["package.json"];
-  for (const entry of fs
-    .readdirSync(path.join(repositoryRoot, "napi"), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .sort((left, right) => left.name.localeCompare(right.name))) {
-    const manifestPath = `napi/${entry.name}/package.json`;
-    if (fs.existsSync(path.join(repositoryRoot, manifestPath))) {
-      paths.push(manifestPath);
+  for (const parent of ["napi", "packages"]) {
+    for (const entry of fs
+      .readdirSync(path.join(repositoryRoot, parent), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .sort((left, right) => left.name.localeCompare(right.name))) {
+      const manifestPath = `${parent}/${entry.name}/package.json`;
+      if (fs.existsSync(path.join(repositoryRoot, manifestPath))) {
+        paths.push(manifestPath);
+      }
     }
   }
   return paths;
 }
 
-export function npmPackages() {
+function packages() {
   return npmManifestPaths()
     .slice(1)
-    .flatMap((manifestPath) => {
+    .map((manifestPath) => {
       const manifest = readManifest(manifestPath);
-      if (manifest.private === true || !manifest.napi) return [];
-      return [{ directory: path.dirname(manifestPath), manifest }];
+      return { directory: path.dirname(manifestPath), manifest };
     });
+}
+
+export function npmPackages() {
+  return packages().filter(
+    ({ manifest }) => manifest.private !== true && manifest.napi,
+  );
+}
+
+export function jsPackages() {
+  return packages().filter(
+    ({ manifest }) => manifest.private !== true && !manifest.napi,
+  );
 }
 
 function writeVersion(version) {

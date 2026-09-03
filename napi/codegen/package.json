@@ -19,7 +19,6 @@
   "files": [
     "src-js/binding.d.ts",
     "src-js/binding.js",
-    "src-js/encode.js",
     "src-js/index.d.ts",
     "src-js/index.js"
   ],
@@ -49,6 +48,9 @@
       "x86_64-pc-windows-msvc",
       "x86_64-unknown-linux-gnu"
     ]
+  },
+  "dependencies": {
+    "@swc-next/encoder": "workspace:*"
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:",

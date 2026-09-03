@@ -13,12 +13,10 @@ use crate::{
 
 use super::js_minifier::minify;
 
-const CORE_PRETTY_OUTPUT_PATH: &str = "napi/core/src-js/encode.pretty.js";
-const CORE_MINIFIED_OUTPUT_PATH: &str = "napi/core/src-js/encode.js";
-const CODEGEN_PRETTY_OUTPUT_PATH: &str = "napi/codegen/src-js/encode.pretty.js";
-const CODEGEN_MINIFIED_OUTPUT_PATH: &str = "napi/codegen/src-js/encode.js";
+const PRETTY_OUTPUT_PATH: &str = "packages/encoder/index.pretty.js";
+const MINIFIED_OUTPUT_PATH: &str = "packages/encoder/index.js";
 
-pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawOutput) {
+pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput) {
     let mut output = String::new();
     output.push_str(PREAMBLE);
     let dispatch = EncoderDispatch::new(schema);
@@ -39,23 +37,15 @@ pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput, RawOutput, RawO
     write_contextual_encoders(&mut output, &dispatch);
 
     output.push_str(POSTAMBLE);
-    let minified = minify(&output, CORE_PRETTY_OUTPUT_PATH);
+    let minified = minify(&output, PRETTY_OUTPUT_PATH);
     (
         RawOutput {
-            path: CORE_PRETTY_OUTPUT_PATH.into(),
-            content: output.as_bytes().to_vec(),
-        },
-        RawOutput {
-            path: CORE_MINIFIED_OUTPUT_PATH.into(),
-            content: minified.as_bytes().to_vec(),
-        },
-        RawOutput {
-            path: CODEGEN_PRETTY_OUTPUT_PATH.into(),
+            path: PRETTY_OUTPUT_PATH.into(),
             content: output.into_bytes(),
         },
         RawOutput {
-            path: CODEGEN_MINIFIED_OUTPUT_PATH.into(),
-            content: minified.into_bytes(),
+            path: MINIFIED_OUTPUT_PATH.into(),
+            content: minified.as_bytes().to_vec(),
         },
     )
 }

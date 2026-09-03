@@ -2,8 +2,8 @@ import {
   parseSync as __parseSync,
   printSync as __printSync,
 } from "./binding.js";
-import { decode } from "./decode.js";
-import { encode } from "./encode.js";
+import { decode } from "@swc-next/decoder";
+import { encode } from "@swc-next/encoder";
 
 export * from "./binding.js";
 

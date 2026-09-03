@@ -242,6 +242,10 @@ importers:
         version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
 
   napi/codegen:
+    dependencies:
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
@@ -251,6 +255,13 @@ importers:
         version: 26.1.1
 
   napi/core:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../../packages/decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
     devDependencies:
       '@babel/parser':
         specifier: 'catalog:'
@@ -281,6 +292,10 @@ importers:
         version: 0.8.0
 
   napi/parser:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../../packages/decoder
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
@@ -288,6 +303,10 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
+
+  packages/decoder: {}
+
+  packages/encoder: {}
 
 packages:
 
