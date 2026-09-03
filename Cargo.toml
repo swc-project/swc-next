@@ -53,6 +53,7 @@ syn          = { version = "2.0.118", default-features = false }
 # Workspace
 swc_next_allocator        = { version = "0.1.0", path = "crates/swc_allocator" }
 swc_next_ast_macros       = { version = "0.1.0", path = "crates/swc_ast_macros" }
+swc_next_bridge_macros    = { version = "0.1.0", path = "crates/swc_bridge_macros" }
 swc_next_ecma_ast         = { version = "0.1.0", path = "crates/swc_ecma_ast" }
 swc_next_ecma_codegen     = { version = "0.1.0", path = "crates/swc_ecma_codegen" }
 swc_next_ecma_parser      = { version = "0.1.0", path = "crates/swc_ecma_parser" }

@@ -5,6 +5,6 @@ mod parser;
 
 #[cfg(feature = "codegen")]
 pub use codegen::{CodegenOptions, CodegenOutput, print_from_buffer};
-pub use napi_derive::napi as bridge;
 #[cfg(feature = "parser")]
 pub use parser::{CommentMode, Lang, ParserOptions, SourceType, parse_to_buffer};
+pub use swc_next_bridge_macros::bridge;
