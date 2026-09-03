@@ -131,11 +131,11 @@ test("printSync handles modified negative BigInts contextually", () => {
   assert.equal(printSync(property).code, '({ "-1": 0 });\n');
 });
 
-test("printSync uses a modified RegExp value", () => {
+test("printSync prefers RegExp metadata to value", () => {
   const { program } = parseSync("/old/;");
   program.body[0].expression.value = /new/g;
 
-  assert.equal(printSync(program).code, "/new/g;\n");
+  assert.equal(printSync(program).code, "/old/;\n");
 });
 
 test("printSync forwards codegen options", () => {

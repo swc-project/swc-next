@@ -367,8 +367,8 @@ function encode(program) {
   }
 
   function encRegExpLiteral(n) {
-    const v_0 = encUtf8(n.value instanceof RegExp ? n.value.source : n.regex?.pattern ?? "");
-    const v_1 = encUtf8(n.value instanceof RegExp ? n.value.flags : n.regex?.flags ?? "");
+    const v_0 = encUtf8(n.regex?.pattern ?? n.value?.source ?? "");
+    const v_1 = encUtf8(n.regex?.flags ?? n.value?.flags ?? "");
     const index = allocNode(8, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);

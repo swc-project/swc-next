@@ -394,12 +394,8 @@ fn field_source(node: &str, field: &str) -> String {
         ("NumericLiteral", "kind") => "numericKind(_numericRaw)".into(),
         ("NumericLiteral", "raw") => "_numericRaw".into(),
         ("BigIntLiteral", "raw") => "bigIntRaw(n)".into(),
-        ("RegExpLiteral", "pattern") => {
-            "n.value instanceof RegExp ? n.value.source : n.regex?.pattern ?? \"\"".into()
-        }
-        ("RegExpLiteral", "flags") => {
-            "n.value instanceof RegExp ? n.value.flags : n.regex?.flags ?? \"\"".into()
-        }
+        ("RegExpLiteral", "pattern") => "n.regex?.pattern ?? n.value?.source ?? \"\"".into(),
+        ("RegExpLiteral", "flags") => "n.regex?.flags ?? n.value?.flags ?? \"\"".into(),
         ("TemplateElement", "cooked") => "n.value?.cooked ?? \"\"".into(),
         ("TemplateElement", "raw") => "n.value?.raw ?? \"\"".into(),
         ("TemplateElement", "is_cooked_undefined") => "n.value?.cooked == null".into(),
