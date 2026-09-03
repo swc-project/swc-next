@@ -182,7 +182,14 @@ jobs:
         run: pnpm build --release --target "$BUILD_TARGET" $EXTRA_ARGS
 
       - name: Run JavaScript tests
-        if: inputs.test_npm && matrix.target == 'x86_64-unknown-linux-gnu'
+        if: >-
+          inputs.test_npm &&
+          (
+            matrix.target == 'x86_64-unknown-linux-gnu' ||
+            matrix.target == 'x86_64-pc-windows-msvc' ||
+            (runner.arch == 'X64' && matrix.target == 'x86_64-apple-darwin') ||
+            (runner.arch == 'ARM64' && matrix.target == 'aarch64-apple-darwin')
+          )
         run: pnpm test
 
       - name: Upload native bindings
