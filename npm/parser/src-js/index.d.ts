@@ -27,7 +27,7 @@ export interface ParseResult {
   readonly program: any;
   readonly comments: Comment[];
   /** Parser diagnostics, decoded lazily. Empty when parsing succeeds without diagnostics. */
-  readonly errors: Diagnostic[];
+  readonly diagnostics: Diagnostic[];
 }
 
 export declare function parseSync(

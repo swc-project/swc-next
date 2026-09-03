@@ -911,7 +911,7 @@ export function decode(buffer, source) {
     return result;
   };
 
-  const _decodeErrors = () => {
+  const _decodeDiagnostics = () => {
     let offset = diagnostics;
     const readU32 = () => {
       const value = _u32[offset >> 2];
@@ -962,7 +962,7 @@ const POSTAMBLE: &str = r#"      default:
     return result;
   }
 
-  let _program, _comments, _errors;
+  let _program, _comments, _diagnostics;
   return {
     get program() {
       return _program !== undefined
@@ -974,10 +974,10 @@ const POSTAMBLE: &str = r#"      default:
         ? _comments
         : (_comments = _decodeComments());
     },
-    get errors() {
-      return _errors !== undefined
-        ? _errors
-        : (_errors = _decodeErrors());
+    get diagnostics() {
+      return _diagnostics !== undefined
+        ? _diagnostics
+        : (_diagnostics = _decodeDiagnostics());
     },
   };
 }
