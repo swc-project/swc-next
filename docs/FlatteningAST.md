@@ -48,7 +48,9 @@ pub union NodeData {
 }
 ```
 
-The `ExtraData` is used to represent the fields of AST node. It's usally another Id to point to the data structures in [Ast], or it can be a primitive value, which is small enough to store in 8 bytes.
+`ExtraData` is a type-erased, canonical 64-bit word used for node fields that do
+not fit in the inline payload. The AST schema supplies the field type, and
+`ExtraDataValue` defines how that type is encoded and decoded.
 
 - For data smaller than 8 bytes, such as `bool` and `number`, they are directly stored in the `ExtraData`.
 - For data larger than 8 bytes, such as `BigIntValue`, `ExtraData` stores their Ids, while their values are stored in another typed arena of AST context.
@@ -56,28 +58,20 @@ The `ExtraData` is used to represent the fields of AST node. It's usally another
 
 ```rs
 assert!(size_of::<ExtraData>() == 8);
-pub union ExtraData {
-    // Large data
-    node: NodeId,
-    bigint: BigIntId,
-    utf8: Utf8Ref,
-    wtf8: Wtf8Ref,
-    optional_node: OptionalNodeId,
-    optional_utf8: OptionalUtf8Ref,
-    optional_wtf8: OptionalWtf8Ref,
+#[repr(transparent)]
+pub struct ExtraData(u64);
 
-    // Small data
-    span: Span,
-    bool: bool,
-    number: f64,
-    /// Any other data (usually enum) that can be representated within 8 bytes
-    other: u64,
+pub trait ExtraDataValue: Sized {
+    fn into_extra_data(self) -> ExtraData;
+    unsafe fn from_extra_data(data: ExtraData) -> Self;
 }
 ```
 
 ![Flattening AST](./images/flattening-ast.excalidraw.png)
 
-Note that we use `union` instead of `enum` for `NodeData` and `ExtraData`, because each kind of AST node is well-defined. That is to say, we always know how many fields a node has, what their types are, and what their values are.
+No runtime discriminant is needed because each node kind has a fixed schema.
+AST node handles share blanket `ExtraDataValue` implementations instead of
+generating identical conversions for every concrete node type.
 
 #### Typed AST
 
@@ -116,10 +110,8 @@ The builder functions are used for creating new typed AST nodes.
 impl Ast {
     #[inline]
     pub fn module(&mut self, span: Span, body: SubRange<ModuleItem>, shebang: OptionalUtf8Ref) -> Module {
-        let _f0 = self.add_extra(body.to_extra_data(self));
-        let _f1 = self.add_extra(ExtraData {
-            optional_atom: shebang.into(),
-        });
+        let _f0 = self.add_extra(body);
+        let _f1 = self.add_extra(shebang);
         Module(self.add_node(AstNode {
             span,
             kind: NodeKind::Module,
@@ -221,4 +213,5 @@ Storage-specific changes in AST definitions include:
 1. `Box<T>` in ASTs are unnecessary, since all nodes are referred with `NodeId`.
 2. Variable-length fields are declared as `SubRange<T>`. It only stores the start and the end `ExtraDataId`, with which we can query the list of `NodeId`s from the AST context.
 3. `Atom` is replaced with `Utf8Ref`, and `Wtf8Atom` is replaced with `Wtf8Ref`. Both of them are two `u32`s to represent the start index and the end index of shared string pools, which are just a rust `String` and `Wtf8Buf`.
-4. `Option<T>` is specialized for the primitives, such as `OptionalNodeId` and `OptionUtf8Ref`. This is a manual null pointer optimization as `u32::MAX` is used to represent `None` in `Option<T>`.
+4. Optional node handles and strings use reserved canonical words, such as
+   `u32::MAX`, to represent `None` in extra-data storage.

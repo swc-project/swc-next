@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{
     Ast,
-    node_id::{ExtraDataCompact, ExtraDataId},
+    node_id::{ExtraDataId, ExtraDataValue},
 };
 
 /// A typed range of values in the AST extra-data arena.
@@ -129,16 +129,16 @@ impl<T> SubRange<T> {
     #[inline]
     pub fn replace_slot<'a>(self, ast: &mut Ast<'a>, at: NodeExtraDataId<T>, new: T)
     where
-        T: ExtraDataCompact<'a>,
+        T: ExtraDataValue,
     {
-        let data = new.to_extra_data(ast);
-        ast.extra_data[at.inner.index()] = data;
+        // SAFETY: A typed sub-range index identifies a slot assigned to `T`.
+        unsafe { ast.set_extra_unchecked(at.inner, new) };
     }
 
     #[inline]
     pub fn get_node<'a>(self, ast: &Ast<'a>, index: usize) -> Option<T>
     where
-        T: ExtraDataCompact<'a>,
+        T: ExtraDataValue,
     {
         self.get(index).map(|id| ast.get_node_in_sub_range(id))
     }
@@ -198,14 +198,9 @@ pub struct NodeExtraDataId<T> {
 }
 
 impl<'a> Ast<'a> {
-    pub fn get_node_in_sub_range<T: ExtraDataCompact<'a>>(&self, id: NodeExtraDataId<T>) -> T {
-        // Safety: `NodeExtraDataId<T>` should always be valid.
-        unsafe {
-            T::from_extra_data(
-                *self.extra_data.as_slice().get_unchecked(id.inner.index()),
-                self,
-            )
-        }
+    pub fn get_node_in_sub_range<T: ExtraDataValue>(&self, id: NodeExtraDataId<T>) -> T {
+        // SAFETY: A typed sub-range index identifies a slot containing `T`.
+        unsafe { self.extra_unchecked(id.inner) }
     }
 }
 

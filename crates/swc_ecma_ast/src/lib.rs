@@ -13,7 +13,6 @@ mod visit;
 mod generated {
     mod ast_builder;
     mod ast_clone_in;
-    pub(crate) mod ast_extra_compact;
     pub mod ast_node;
     mod ast_property;
     pub(crate) mod ast_visitor;
@@ -29,7 +28,7 @@ pub use derive::*;
 pub use diagnostic::*;
 pub use generated::ast_node::*;
 pub use generated::ast_visitor::*;
-pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange};
+pub use node_id::{AstNode, ExtraDataId, ExtraDataValue, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
 pub use strings::{AstUtf8, AstWtf8};
 pub use syntax::*;
@@ -81,24 +80,9 @@ pub struct NodePayload(pub(crate) u128);
 
 /// Compact values stored in the flattening AST's extra-data table.
 ///
-/// The AST schema determines the logical type of each value, so no runtime
-/// discriminant is stored. Little-endian targets retain the original native
-/// typed views used by hot traversal paths.
-#[cfg(target_endian = "little")]
-#[derive(Clone, Copy)]
-pub union ExtraData {
-    node_id: NodeId,
-
-    /// Any scalar enum or other value representable within eight bytes.
-    other: u64,
-}
-
-/// Compact values stored in the flattening AST's extra-data table.
-///
-/// On big-endian targets, numeric bit positions match the fixed little-endian
-/// FFI format. The AST schema determines the logical type of each value, so no
-/// runtime discriminant is stored.
-#[cfg(target_endian = "big")]
+/// The AST schema supplies the type information, so the table stores only its
+/// canonical 64-bit representation without a runtime discriminant. FFI code
+/// writes this word in little-endian byte order on every target.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct ExtraData(u64);
@@ -218,30 +202,13 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    fn add_extra(&mut self, extra: ExtraData) -> ExtraDataId {
-        let id = self.next_extra_data_id();
-        self.extra_data.push(extra);
-        id
-    }
-
-    #[inline]
-    fn next_extra_data_id(&self) -> ExtraDataId {
-        let index = self.extra_data.len();
-        assert!(
-            index <= ExtraDataId::MAX,
-            "extra data index exceeds ExtraDataId range"
-        );
-        ExtraDataId::from_usize_unchecked(index)
-    }
-
-    #[inline]
-    pub fn add_sub_range<N: ExtraDataCompact<'a>, I: IntoIterator<Item = N>>(
+    pub fn add_sub_range<N: ExtraDataValue, I: IntoIterator<Item = N>>(
         &mut self,
         iter: I,
     ) -> SubRange<N> {
         let start = self.next_extra_data_id();
         for node in iter {
-            let data = node.to_extra_data(self);
+            let data = node.into_extra_data();
             self.extra_data.push(data);
         }
         SubRange {
@@ -456,6 +423,63 @@ impl<'a> Ast<'a> {
         assert!(extra_data_len <= self.extra_data.len());
         self.nodes.truncate(nodes_len);
         self.extra_data.truncate(extra_data_len);
+    }
+}
+
+#[doc(hidden)]
+impl Ast<'_> {
+    #[inline]
+    fn add_extra<T: ExtraDataValue>(&mut self, value: T) -> ExtraDataId {
+        let id = self.next_extra_data_id();
+        self.extra_data.push(value.into_extra_data());
+        id
+    }
+
+    /// Returns the extra-data slot for an out-of-line node field.
+    ///
+    /// # Safety
+    ///
+    /// `node_id` must have an out-of-line payload and `field_offset` must name
+    /// one of that node's out-of-line fields.
+    #[inline]
+    unsafe fn extra_offset_unchecked(&self, node_id: NodeId, field_offset: usize) -> ExtraDataId {
+        let start = unsafe { self.nodes.data_unchecked(node_id).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(field_offset) };
+        debug_assert!(offset < self.extra_data.len());
+        ExtraDataId::from_usize_unchecked(offset)
+    }
+
+    /// Reads a typed value from the type-erased extra-data table.
+    ///
+    /// # Safety
+    ///
+    /// `id` must be in bounds and its slot must contain `T`'s representation.
+    #[inline]
+    unsafe fn extra_unchecked<T: ExtraDataValue>(&self, id: ExtraDataId) -> T {
+        unsafe { T::from_extra_data(*self.extra_data.as_slice().get_unchecked(id.index())) }
+    }
+
+    /// Replaces a value in the type-erased extra-data table.
+    ///
+    /// # Safety
+    ///
+    /// `id` must be in bounds and its slot must be assigned to `T` by the AST
+    /// schema.
+    #[inline]
+    unsafe fn set_extra_unchecked<T: ExtraDataValue>(&mut self, id: ExtraDataId, value: T) {
+        unsafe {
+            *self.extra_data.as_mut_slice().get_unchecked_mut(id.index()) = value.into_extra_data();
+        }
+    }
+
+    #[inline]
+    fn next_extra_data_id(&self) -> ExtraDataId {
+        let index = self.extra_data.len();
+        assert!(
+            index <= ExtraDataId::MAX,
+            "extra data index exceeds ExtraDataId range"
+        );
+        ExtraDataId::from_usize_unchecked(index)
     }
 }
 

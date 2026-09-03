@@ -38,7 +38,6 @@ All output is written under
 | `ast_node.rs`          | AST enum data, constructors, `NodeKind`, typed/untyped node conversion, node IDs, and spans |
 | `ast_clone_in.rs`      | Arena-aware `CloneIn` implementations for AST nodes                                        |
 | `ast_visitor.rs`       | Immutable, mutable, and transforming visitor traits and child traversal                    |
-| `ast_extra_compact.rs` | `ExtraDataCompact` conversions used by out-of-line compact storage                         |
 
 The generator formats Rust output with `rustfmt` and avoids rewriting a file
 when its bytes have not changed.

@@ -2,17 +2,17 @@ use std::mem;
 
 use swc_next_ast_macros::ast;
 
-use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
+use crate::{ExtraData, node_id::ExtraDataValue};
 
-macro_rules! impl_extra_data_compact {
+macro_rules! impl_extra_data_value {
     ($($ty:ty),+ $(,)?) => {
         $(
-            impl<'a> ExtraDataCompact<'a> for $ty {
-                fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+            impl ExtraDataValue for $ty {
+                fn into_extra_data(self) -> ExtraData {
                     ExtraData::from_raw(self as u64)
                 }
 
-                unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+                unsafe fn from_extra_data(data: ExtraData) -> Self {
                     unsafe { mem::transmute(data.raw() as u8) }
                 }
             }
@@ -290,7 +290,7 @@ pub enum ImportPhase {
     Defer,
 }
 
-impl_extra_data_compact!(
+impl_extra_data_value!(
     MethodDefinitionKind,
     Accessibility,
     ClassType,
@@ -307,12 +307,12 @@ impl_extra_data_compact!(
     ImportPhase,
 );
 
-impl<'a> ExtraDataCompact<'a> for Option<ImportPhase> {
-    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+impl ExtraDataValue for Option<ImportPhase> {
+    fn into_extra_data(self) -> ExtraData {
         ExtraData::from_raw(self.map_or(u8::MAX as u64, |phase| phase as u64))
     }
 
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+    unsafe fn from_extra_data(data: ExtraData) -> Self {
         let value = data.raw() as u8;
         (value != u8::MAX).then(|| unsafe { mem::transmute(value) })
     }

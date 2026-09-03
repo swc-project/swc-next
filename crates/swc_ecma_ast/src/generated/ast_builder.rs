@@ -15,13 +15,13 @@ impl<'a> Ast<'a> {
         body: SubRange<Stmt>,
         hashbang: Option<Hashbang>,
     ) -> Program {
-        let _f0 = self.add_extra(body.to_extra_data(self));
+        let _f0 = self.add_extra(body);
         Program(self.add_node(
             span,
             NodeKind::Program,
             NodePayload(
                 0u128
-                    | ((directives.to_extra_data(self).raw() as u128) << 32usize)
+                    | ((directives.into_extra_data().raw() as u128) << 32usize)
                     | ((hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 0usize)
                     | ((_f0.index() as u128) << 96usize),
@@ -4405,8 +4405,8 @@ impl<'a> Ast<'a> {
             NodeKind::StringLiteral,
             NodePayload(
                 0u128
-                    | ((value.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((raw.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((value.into_extra_data().raw() as u128) << 0usize)
+                    | ((raw.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -4422,8 +4422,8 @@ impl<'a> Ast<'a> {
             NodeKind::NumericLiteral,
             NodePayload(
                 0u128
-                    | ((value.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((raw.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((value.into_extra_data().raw() as u128) << 0usize)
+                    | ((raw.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -4432,7 +4432,7 @@ impl<'a> Ast<'a> {
         BigIntLiteral(self.add_node(
             span,
             NodeKind::BigIntLiteral,
-            NodePayload(0u128 | ((raw.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((raw.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4459,8 +4459,8 @@ impl<'a> Ast<'a> {
             NodeKind::RegExpLiteral,
             NodePayload(
                 0u128
-                    | ((pattern.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((flags.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((pattern.into_extra_data().raw() as u128) << 0usize)
+                    | ((flags.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -4476,8 +4476,8 @@ impl<'a> Ast<'a> {
             NodeKind::TemplateLiteral,
             NodePayload(
                 0u128
-                    | ((quasis.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((expressions.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((quasis.into_extra_data().raw() as u128) << 0usize)
+                    | ((expressions.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -4490,13 +4490,13 @@ impl<'a> Ast<'a> {
         tail: bool,
         is_cooked_undefined: bool,
     ) -> TemplateElement {
-        let _f0 = self.add_extra(raw.to_extra_data(self));
+        let _f0 = self.add_extra(raw);
         TemplateElement(self.add_node(
             span,
             NodeKind::TemplateElement,
             NodePayload(
                 0u128
-                    | ((cooked.to_extra_data(self).raw() as u128) << 16usize)
+                    | ((cooked.into_extra_data().raw() as u128) << 16usize)
                     | ((tail as u32 as u128) << 0usize)
                     | ((is_cooked_undefined as u32 as u128) << 8usize)
                     | ((_f0.index() as u128) << 96usize),
@@ -4508,7 +4508,7 @@ impl<'a> Ast<'a> {
         IdentifierReference(self.add_node(
             span,
             NodeKind::IdentifierReference,
-            NodePayload(0u128 | ((name.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((name.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4516,7 +4516,7 @@ impl<'a> Ast<'a> {
         PrivateIdentifier(self.add_node(
             span,
             NodeKind::PrivateIdentifier,
-            NodePayload(0u128 | ((name.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((name.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4528,7 +4528,7 @@ impl<'a> Ast<'a> {
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> BindingIdentifier {
-        let _extra_data = [name.to_extra_data(self), decorators.to_extra_data(self)];
+        let _extra_data = [(name).into_extra_data(), (decorators).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         BindingIdentifier(self.add_node(
             span,
@@ -4548,7 +4548,7 @@ impl<'a> Ast<'a> {
         IdentifierName(self.add_node(
             span,
             NodeKind::IdentifierName,
-            NodePayload(0u128 | ((name.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((name.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4556,7 +4556,7 @@ impl<'a> Ast<'a> {
         LabelIdentifier(self.add_node(
             span,
             NodeKind::LabelIdentifier,
-            NodePayload(0u128 | ((name.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((name.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4569,7 +4569,7 @@ impl<'a> Ast<'a> {
         right: Expr,
         optional: bool,
     ) -> AssignmentPattern {
-        let _extra_data = [decorators.to_extra_data(self), right.to_extra_data(self)];
+        let _extra_data = [(decorators).into_extra_data(), (right).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         AssignmentPattern(self.add_node(
             span,
@@ -4594,7 +4594,7 @@ impl<'a> Ast<'a> {
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> BindingRestElement {
-        let _f0 = self.add_extra(decorators.to_extra_data(self));
+        let _f0 = self.add_extra(decorators);
         BindingRestElement(self.add_node(
             span,
             NodeKind::BindingRestElement,
@@ -4619,7 +4619,7 @@ impl<'a> Ast<'a> {
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
     ) -> ArrayPattern {
-        let _extra_data = [decorators.to_extra_data(self), elements.to_extra_data(self)];
+        let _extra_data = [(decorators).into_extra_data(), (elements).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ArrayPattern(self.add_node(
             span,
@@ -4647,8 +4647,8 @@ impl<'a> Ast<'a> {
         optional: bool,
     ) -> ObjectPattern {
         let _extra_data = [
-            decorators.to_extra_data(self),
-            properties.to_extra_data(self),
+            (decorators).into_extra_data(),
+            (properties).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ObjectPattern(self.add_node(
@@ -4813,7 +4813,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((kind as u32 as u128) << 64usize)
-                    | ((declarators.to_extra_data(self).raw() as u128) << 0usize)
+                    | ((declarators.into_extra_data().raw() as u128) << 0usize)
                     | ((declare as u32 as u128) << 72usize),
             ),
         ))
@@ -4871,7 +4871,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((discriminant.node_id().index() as u32 as u128) << 64usize)
-                    | ((cases.to_extra_data(self).raw() as u128) << 0usize),
+                    | ((cases.into_extra_data().raw() as u128) << 0usize),
             ),
         ))
     }
@@ -4889,7 +4889,7 @@ impl<'a> Ast<'a> {
                 0u128
                     | ((test.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 64usize)
-                    | ((consequent.to_extra_data(self).raw() as u128) << 0usize),
+                    | ((consequent.into_extra_data().raw() as u128) << 0usize),
             ),
         ))
     }
@@ -5094,7 +5094,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((expression.node_id().index() as u32 as u128) << 64usize)
-                    | ((value.to_extra_data(self).raw() as u128) << 0usize),
+                    | ((value.into_extra_data().raw() as u128) << 0usize),
             ),
         ))
     }
@@ -5122,11 +5122,11 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> Class {
         let _extra_data = [
-            decorators.to_extra_data(self),
-            super_class.to_extra_data(self),
-            super_type_arguments.to_extra_data(self),
-            implements.to_extra_data(self),
-            body.to_extra_data(self),
+            (decorators).into_extra_data(),
+            (super_class).into_extra_data(),
+            (super_type_arguments).into_extra_data(),
+            (implements).into_extra_data(),
+            (body).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         Class(self.add_node(
@@ -5151,7 +5151,7 @@ impl<'a> Ast<'a> {
         ClassBody(self.add_node(
             span,
             NodeKind::ClassBody,
-            NodePayload(0u128 | ((body.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((body.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5169,7 +5169,7 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         accessibility: Accessibility,
     ) -> MethodDefinition {
-        let _extra_data = [decorators.to_extra_data(self), value.to_extra_data(self)];
+        let _extra_data = [(decorators).into_extra_data(), (value).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         MethodDefinition(self.add_node(
             span,
@@ -5208,10 +5208,10 @@ impl<'a> Ast<'a> {
         accessibility: Accessibility,
     ) -> PropertyDefinition {
         let _extra_data = [
-            decorators.to_extra_data(self),
-            key.to_extra_data(self),
-            type_annotation.to_extra_data(self),
-            value.to_extra_data(self),
+            (decorators).into_extra_data(),
+            (key).into_extra_data(),
+            (type_annotation).into_extra_data(),
+            (value).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         PropertyDefinition(self.add_node(
@@ -5238,7 +5238,7 @@ impl<'a> Ast<'a> {
         StaticBlock(self.add_node(
             span,
             NodeKind::StaticBlock,
-            NodePayload(0u128 | ((body.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((body.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5255,9 +5255,9 @@ impl<'a> Ast<'a> {
         r#async: bool,
     ) -> Function {
         let _extra_data = [
-            params.to_extra_data(self),
-            return_type.to_extra_data(self),
-            body.to_extra_data(self),
+            (params).into_extra_data(),
+            (return_type).into_extra_data(),
+            (body).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         Function(self.add_node(
@@ -5289,8 +5289,8 @@ impl<'a> Ast<'a> {
             NodeKind::FunctionBody,
             NodePayload(
                 0u128
-                    | ((directives.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((body.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((directives.into_extra_data().raw() as u128) << 0usize)
+                    | ((body.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -5299,7 +5299,7 @@ impl<'a> Ast<'a> {
         BlockStatement(self.add_node(
             span,
             NodeKind::BlockStatement,
-            NodePayload(0u128 | ((body.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((body.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5351,7 +5351,7 @@ impl<'a> Ast<'a> {
             NodeKind::FormalParameters,
             NodePayload(
                 0u128
-                    | ((items.to_extra_data(self).raw() as u128) << 0usize)
+                    | ((items.into_extra_data().raw() as u128) << 0usize)
                     | ((rest.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 64usize)
                     | ((kind as u32 as u128) << 96usize),
@@ -5379,7 +5379,7 @@ impl<'a> Ast<'a> {
         ArrayExpression(self.add_node(
             span,
             NodeKind::ArrayExpression,
-            NodePayload(0u128 | ((elements.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((elements.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5391,7 +5391,7 @@ impl<'a> Ast<'a> {
         ObjectExpression(self.add_node(
             span,
             NodeKind::ObjectExpression,
-            NodePayload(0u128 | ((properties.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((properties.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5450,7 +5450,7 @@ impl<'a> Ast<'a> {
         return_type: Option<TsTypeAnnotation>,
         body: ArrowFunctionBody,
     ) -> ArrowFunctionExpression {
-        let _extra_data = [return_type.to_extra_data(self), body.to_extra_data(self)];
+        let _extra_data = [(return_type).into_extra_data(), (body).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ArrowFunctionExpression(self.add_node(
             span,
@@ -5476,7 +5476,7 @@ impl<'a> Ast<'a> {
         SequenceExpression(self.add_node(
             span,
             NodeKind::SequenceExpression,
-            NodePayload(0u128 | ((expressions.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((expressions.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5509,7 +5509,7 @@ impl<'a> Ast<'a> {
         arguments: SubRange<Argument>,
         optional: bool,
     ) -> CallExpression {
-        let _f0 = self.add_extra(arguments.to_extra_data(self));
+        let _f0 = self.add_extra(arguments);
         CallExpression(self.add_node(
             span,
             NodeKind::CallExpression,
@@ -5570,7 +5570,7 @@ impl<'a> Ast<'a> {
                     | ((type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
                         << 96usize)
-                    | ((arguments.to_extra_data(self).raw() as u128) << 0usize),
+                    | ((arguments.into_extra_data().raw() as u128) << 0usize),
             ),
         ))
     }
@@ -5626,7 +5626,7 @@ impl<'a> Ast<'a> {
         phase: Option<ImportPhase>,
         sync: bool,
     ) -> ImportExpression {
-        let _f0 = self.add_extra(phase.to_extra_data(self));
+        let _f0 = self.add_extra(phase);
         ImportExpression(self.add_node(
             span,
             NodeKind::ImportExpression,
@@ -5651,9 +5651,9 @@ impl<'a> Ast<'a> {
         import_kind: ImportOrExportKind,
     ) -> ImportDeclaration {
         let _extra_data = [
-            specifiers.to_extra_data(self),
-            attributes.to_extra_data(self),
-            phase.to_extra_data(self),
+            (specifiers).into_extra_data(),
+            (attributes).into_extra_data(),
+            (phase).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ImportDeclaration(self.add_node(
@@ -5738,8 +5738,8 @@ impl<'a> Ast<'a> {
         export_kind: ImportOrExportKind,
     ) -> ExportNamedDeclaration {
         let _extra_data = [
-            specifiers.to_extra_data(self),
-            attributes.to_extra_data(self),
+            (specifiers).into_extra_data(),
+            (attributes).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         ExportNamedDeclaration(self.add_node(
@@ -5778,7 +5778,7 @@ impl<'a> Ast<'a> {
         attributes: SubRange<ImportAttribute>,
         export_kind: ImportOrExportKind,
     ) -> ExportAllDeclaration {
-        let _f0 = self.add_extra(attributes.to_extra_data(self));
+        let _f0 = self.add_extra(attributes);
         ExportAllDeclaration(self.add_node(
             span,
             NodeKind::ExportAllDeclaration,
@@ -5816,7 +5816,7 @@ impl<'a> Ast<'a> {
         Hashbang(self.add_node(
             span,
             NodeKind::Hashbang,
-            NodePayload(0u128 | ((value.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((value.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7316,7 +7316,7 @@ impl<'a> Ast<'a> {
         r#async: bool,
         declare: bool,
     ) -> TsFunction {
-        let _extra_data = [params.to_extra_data(self), return_type.to_extra_data(self)];
+        let _extra_data = [(params).into_extra_data(), (return_type).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsFunction(self.add_node(
             span,
@@ -7350,7 +7350,7 @@ impl<'a> Ast<'a> {
         r#abstract: bool,
         accessibility: Accessibility,
     ) -> TsMethodDefinition {
-        let _extra_data = [decorators.to_extra_data(self), value.to_extra_data(self)];
+        let _extra_data = [(decorators).into_extra_data(), (value).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsMethodDefinition(self.add_node(
             span,
@@ -7549,7 +7549,7 @@ impl<'a> Ast<'a> {
         TsTypeParameterDeclaration(self.add_node(
             span,
             NodeKind::TsTypeParameterDeclaration,
-            NodePayload(0u128 | ((params.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((params.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7561,7 +7561,7 @@ impl<'a> Ast<'a> {
         TsTypeParameterInstantiation(self.add_node(
             span,
             NodeKind::TsTypeParameterInstantiation,
-            NodePayload(0u128 | ((params.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((params.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7584,8 +7584,8 @@ impl<'a> Ast<'a> {
             NodeKind::TsTemplateLiteralType,
             NodePayload(
                 0u128
-                    | ((quasis.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((types.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((quasis.into_extra_data().raw() as u128) << 0usize)
+                    | ((types.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -7623,7 +7623,7 @@ impl<'a> Ast<'a> {
         TsTupleType(self.add_node(
             span,
             NodeKind::TsTupleType,
-            NodePayload(0u128 | ((element_types.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((element_types.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7704,7 +7704,7 @@ impl<'a> Ast<'a> {
         TsUnionType(self.add_node(
             span,
             NodeKind::TsUnionType,
-            NodePayload(0u128 | ((types.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((types.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7716,7 +7716,7 @@ impl<'a> Ast<'a> {
         TsIntersectionType(self.add_node(
             span,
             NodeKind::TsIntersectionType,
-            NodePayload(0u128 | ((types.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((types.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7851,7 +7851,7 @@ impl<'a> Ast<'a> {
         TsTypeLiteral(self.add_node(
             span,
             NodeKind::TsTypeLiteral,
-            NodePayload(0u128 | ((members.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((members.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -7866,8 +7866,8 @@ impl<'a> Ast<'a> {
         readonly: TsMappedTypeModifier,
     ) -> TsMappedType {
         let _extra_data = [
-            name_type.to_extra_data(self),
-            type_annotation.to_extra_data(self),
+            (name_type).into_extra_data(),
+            (type_annotation).into_extra_data(),
         ];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsMappedType(self.add_node(
@@ -7920,7 +7920,7 @@ impl<'a> Ast<'a> {
         computed: bool,
         optional: bool,
     ) -> TsMethodSignature {
-        let _extra_data = [params.to_extra_data(self), return_type.to_extra_data(self)];
+        let _extra_data = [(params).into_extra_data(), (return_type).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsMethodSignature(self.add_node(
             span,
@@ -7998,7 +7998,7 @@ impl<'a> Ast<'a> {
             NodeKind::TsIndexSignature,
             NodePayload(
                 0u128
-                    | ((parameters.to_extra_data(self).raw() as u128) << 0usize)
+                    | ((parameters.into_extra_data().raw() as u128) << 0usize)
                     | ((type_annotation.node_id().index() as u32 as u128) << 64usize)
                     | ((readonly as u32 as u128) << 96usize)
                     | ((r#static as u32 as u128) << 104usize),
@@ -8038,7 +8038,7 @@ impl<'a> Ast<'a> {
         body: TsInterfaceBody,
         declare: bool,
     ) -> TsInterfaceDeclaration {
-        let _extra_data = [extends.to_extra_data(self), body.to_extra_data(self)];
+        let _extra_data = [(extends).into_extra_data(), (body).into_extra_data()];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         TsInterfaceDeclaration(self.add_node(
             span,
@@ -8063,7 +8063,7 @@ impl<'a> Ast<'a> {
         TsInterfaceBody(self.add_node(
             span,
             NodeKind::TsInterfaceBody,
-            NodePayload(0u128 | ((body.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((body.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -8130,7 +8130,7 @@ impl<'a> Ast<'a> {
         TsEnumBody(self.add_node(
             span,
             NodeKind::TsEnumBody,
-            NodePayload(0u128 | ((members.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((members.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -8188,8 +8188,8 @@ impl<'a> Ast<'a> {
             NodeKind::TsModuleBlock,
             NodePayload(
                 0u128
-                    | ((directives.to_extra_data(self).raw() as u128) << 0usize)
-                    | ((body.to_extra_data(self).raw() as u128) << 64usize),
+                    | ((directives.into_extra_data().raw() as u128) << 0usize)
+                    | ((body.into_extra_data().raw() as u128) << 64usize),
             ),
         ))
     }
@@ -8227,7 +8227,7 @@ impl<'a> Ast<'a> {
             NodeKind::TsParameterProperty,
             NodePayload(
                 0u128
-                    | ((decorators.to_extra_data(self).raw() as u128) << 0usize)
+                    | ((decorators.into_extra_data().raw() as u128) << 0usize)
                     | ((parameter.node_id().index() as u32 as u128) << 64usize)
                     | ((r#override as u32 as u128) << 96usize)
                     | ((readonly as u32 as u128) << 104usize)
@@ -9047,7 +9047,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((opening_element.node_id().index() as u32 as u128) << 64usize)
-                    | ((children.to_extra_data(self).raw() as u128) << 0usize)
+                    | ((children.into_extra_data().raw() as u128) << 0usize)
                     | ((closing_element.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
                         << 96usize),
@@ -9063,7 +9063,7 @@ impl<'a> Ast<'a> {
         attributes: SubRange<JsxAttributeItem>,
         self_closing: bool,
     ) -> JsxOpeningElement {
-        let _f0 = self.add_extra(attributes.to_extra_data(self));
+        let _f0 = self.add_extra(attributes);
         JsxOpeningElement(self.add_node(
             span,
             NodeKind::JsxOpeningElement,
@@ -9100,7 +9100,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((opening_fragment.node_id().index() as u32 as u128) << 64usize)
-                    | ((children.to_extra_data(self).raw() as u128) << 0usize)
+                    | ((children.into_extra_data().raw() as u128) << 0usize)
                     | ((closing_fragment.node_id().index() as u32 as u128) << 96usize),
             ),
         ))
@@ -9118,7 +9118,7 @@ impl<'a> Ast<'a> {
         JsxIdentifier(self.add_node(
             span,
             NodeKind::JsxIdentifier,
-            NodePayload(0u128 | ((name.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((name.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -9202,7 +9202,7 @@ impl<'a> Ast<'a> {
         JsxText(self.add_node(
             span,
             NodeKind::JsxText,
-            NodePayload(0u128 | ((value.to_extra_data(self).raw() as u128) << 0usize)),
+            NodePayload(0u128 | ((value.into_extra_data().raw() as u128) << 0usize)),
         ))
     }
     #[inline]

@@ -10,9 +10,8 @@ use crate::{
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstStructField, AstType, Schema},
     util::{
-        EXTRA_DATA_ID_BIT_OFFSET, InlineLayout, InlineStorageMode, calculate_inline_layout,
-        generate_field_to_u32, generate_field_to_u64, generate_u32_to_field, generate_u64_to_field,
-        safe_ident,
+        InlineLayout, InlineStorageMode, calculate_inline_layout, generate_field_to_u32,
+        generate_field_to_u64, generate_u32_to_field, generate_u64_to_field, safe_ident,
     },
 };
 
@@ -184,7 +183,7 @@ fn generate_inline_write(
     });
 
     if byte_size == std::mem::size_of::<u64>() {
-        let to_u64 = generate_field_to_u64(field_ty, field_name, quote!(ast), schema);
+        let to_u64 = generate_field_to_u64(field_ty, field_name, schema);
         quote! {
             let field_val: u64 = #to_u64;
             #change_guard
@@ -235,20 +234,8 @@ fn generate_extra_data_property_accessors(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                let offset = unsafe {
-                    ExtraDataId::from_usize_unchecked(
-                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
-                            .wrapping_add(#offset)
-                    )
-                };
-
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        *ast.extra_data.as_slice().get_unchecked(offset.index()),
-                        ast,
-                    )
-                }
+                let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
+                unsafe { ast.extra_unchecked(offset) }
             }
         });
 
@@ -287,20 +274,8 @@ fn generate_extra_data_property_accessors_partial(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                let offset = unsafe {
-                    ExtraDataId::from_usize_unchecked(
-                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
-                            .wrapping_add(#offset)
-                    )
-                };
-
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        *ast.extra_data.as_slice().get_unchecked(offset.index()),
-                        ast,
-                    )
-                }
+                let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
+                unsafe { ast.extra_unchecked(offset) }
             }
         });
 
@@ -327,17 +302,8 @@ fn generate_extra_data_setter(
         return quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-                let offset = unsafe {
-                    ExtraDataId::from_usize_unchecked(
-                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
-                            .wrapping_add(#offset)
-                    )
-                };
-
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
-                };
+                let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
+                unsafe { ast.set_extra_unchecked(offset, #field_name) };
             }
         };
     }
@@ -345,15 +311,8 @@ fn generate_extra_data_setter(
     quote! {
         #[inline]
         pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-            let field_value = #field_name.to_extra_data(ast);
-            let offset = unsafe {
-                ExtraDataId::from_usize_unchecked(
-                    ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
-                        .wrapping_add(#offset)
-                )
-            };
-
-            debug_assert!(offset.index() < ast.extra_data.len());
+            let field_value = #field_name.into_extra_data();
+            let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
             let previous = unsafe {
                 *ast.extra_data.as_slice().get_unchecked(offset.index())
             };

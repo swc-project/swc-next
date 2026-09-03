@@ -3,7 +3,7 @@ use crate::{
     FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
     MethodDefinitionKind, PropertyKind, SourceType, Span, SubRange, TsMappedTypeModifier,
     TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
-    UpdateOperator, VariableKind, node_id::ExtraDataCompact,
+    UpdateOperator, VariableKind, node_id::ExtraDataValue,
 };
 
 pub trait CloneIn<'a>: Sized {
@@ -68,8 +68,8 @@ impl<'a, C, T: CloneIn<'a, Cloned = C>> CloneIn<'a> for Option<T> {
 
 impl<'a, C, T> CloneIn<'a> for SubRange<T>
 where
-    C: ExtraDataCompact<'a>,
-    T: CloneIn<'a, Cloned = C> + ExtraDataCompact<'a>,
+    C: ExtraDataValue,
+    T: CloneIn<'a, Cloned = C> + ExtraDataValue,
 {
     type Cloned = SubRange<C>;
 

@@ -100,7 +100,7 @@ fn generate_build_function_inline(
 
         let bit_offset = byte_offset * 8;
         if byte_size == std::mem::size_of::<u64>() {
-            let field_u64 = generate_field_to_u64(field_ty, &field_name, quote!(self), schema);
+            let field_u64 = generate_field_to_u64(field_ty, &field_name, schema);
             pack_u128.extend(quote! { | ((#field_u64 as u128) << #bit_offset) });
             continue;
         }
@@ -133,7 +133,7 @@ fn generate_build_function_inline(
                 }
 
                 let field_name = format_ident!("{}", field.name);
-                extra_data_values.push(quote!(#field_name.to_extra_data(self)));
+                extra_data_values.push(quote!(#field_name));
             }
 
             let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -169,7 +169,7 @@ fn generate_build_function_extra_data(
     let mut extra_data_values = Vec::new();
     for field in &ast.fields {
         let field_name = format_ident!("{}", field.name);
-        extra_data_values.push(quote!(#field_name.to_extra_data(self)));
+        extra_data_values.push(quote!(#field_name));
     }
 
     let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -209,7 +209,7 @@ fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<Token
         ),
         values => (
             quote! {
-                let _extra_data = [#(#values),*];
+                let _extra_data = [#((#values).into_extra_data()),*];
                 let _extra_data_start = self.add_extra_data_slice(&_extra_data);
             },
             Some(quote!(_extra_data_start)),

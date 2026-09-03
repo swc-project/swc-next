@@ -1334,7 +1334,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // field-specific helpers avoid allocating scratch copies while splitting mutable borrows
     fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'a>,
+        N: AstNode,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_a.items.len());
         let range = self.ast.add_sub_range(
@@ -1348,7 +1348,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'a>,
+        N: AstNode,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_b.items.len());
         let range = self.ast.add_sub_range(
@@ -1362,7 +1362,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'a>,
+        N: AstNode,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_cover.items.len());
         let range = self.ast.add_sub_range(
@@ -1379,7 +1379,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn add_extra_from_scratch_decorators<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'a>,
+        N: AstNode,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_decorators.items.len());
         let range = self.ast.add_sub_range(
@@ -1396,7 +1396,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn add_extra_from_scratch_statements<N>(&mut self, scratch_checkpoint: usize) -> SubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'a>,
+        N: AstNode,
     {
         let scratch_end = self.scratch_statements.items.len();
         self.add_extra_from_scratch_statements_range(scratch_checkpoint, scratch_end)
@@ -1408,7 +1408,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         scratch_end: usize,
     ) -> SubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'a>,
+        N: AstNode,
     {
         debug_assert!(scratch_start <= scratch_end);
         debug_assert!(scratch_end <= self.scratch_statements.items.len());
