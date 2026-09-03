@@ -175,8 +175,12 @@ function encode(program) {
     return Object.is(value, node.value) ? node.raw : null;
   }
 
+  function bigIntValue(node) {
+    return typeof node.value === "bigint" ? node.value : BigInt(node.bigint ?? 0);
+  }
+
   function bigIntRaw(node) {
-    const value = typeof node.value === "bigint" ? node.value : BigInt(node.bigint ?? 0);
+    const value = bigIntValue(node);
     if (typeof node.raw === "string" && node.raw.endsWith("n")) {
       const raw = node.raw.slice(0, -1);
       try {
@@ -184,6 +188,82 @@ function encode(program) {
       } catch {}
     }
     return String(value);
+  }
+
+  function propertyKeyNode(node) {
+    if (node?.type !== "Literal" ||
+        (node.bigint == null && typeof node.value !== "bigint") ||
+        bigIntValue(node) >= 0n) return node;
+    return { ...node, value: String(bigIntValue(node)), bigint: null, raw: "" };
+  }
+
+  function hexDigit(code) {
+    if (code >= 0x30 && code <= 0x39) return code - 0x30;
+    if (code >= 0x41 && code <= 0x46) return code - 0x41 + 10;
+    if (code >= 0x61 && code <= 0x66) return code - 0x61 + 10;
+    return -1;
+  }
+
+  function directiveRawValue(raw) {
+    let result = "";
+    for (let index = 1; index < raw.length - 1; index++) {
+      let code = raw.charCodeAt(index);
+      if (code !== 0x5c) {
+        result += raw[index];
+        continue;
+      }
+      if (++index >= raw.length - 1) return null;
+      code = raw.charCodeAt(index);
+      if (code === 0x0a || code === 0x2028 || code === 0x2029) continue;
+      if (code === 0x0d) {
+        if (raw.charCodeAt(index + 1) === 0x0a) index++;
+        continue;
+      }
+      const escaped = { 0x62: 0x08, 0x66: 0x0c, 0x6e: 0x0a,
+        0x72: 0x0d, 0x74: 0x09, 0x76: 0x0b }[code];
+      if (escaped !== undefined) {
+        result += String.fromCharCode(escaped);
+        continue;
+      }
+      if (code === 0x78 || code === 0x75) {
+        let digits = code === 0x78 ? 2 : 4;
+        let start = index + 1;
+        let end = start + digits;
+        if (code === 0x75 && raw.charCodeAt(start) === 0x7b) {
+          start++;
+          end = raw.indexOf("}", start);
+          if (end < 0 || end === start || end - start > 6) return null;
+        }
+        let value = 0;
+        for (let cursor = start; cursor < end; cursor++) {
+          const digit = hexDigit(raw.charCodeAt(cursor));
+          if (digit < 0) return null;
+          value = value * 16 + digit;
+        }
+        if (end > raw.length - 1 || value > 0x10ffff) return null;
+        result += code === 0x75 && raw.charCodeAt(index + 1) === 0x7b
+          ? String.fromCodePoint(value)
+          : String.fromCharCode(value);
+        index = code === 0x75 && raw.charCodeAt(index + 1) === 0x7b ? end : end - 1;
+        continue;
+      }
+      if (code >= 0x30 && code <= 0x37) {
+        let value = code - 0x30;
+        const maxDigits = code <= 0x33 ? 3 : 2;
+        let digits = 1;
+        while (digits < maxDigits) {
+          const next = raw.charCodeAt(index + 1);
+          if (next < 0x30 || next > 0x37) break;
+          value = value * 8 + next - 0x30;
+          index++;
+          digits++;
+        }
+        result += String.fromCharCode(value);
+        continue;
+      }
+      result += raw[index];
+    }
+    return result;
   }
 
   function jsxStringRaw(node) {
@@ -256,6 +336,17 @@ function encode(program) {
   }
 
   function encBigIntLiteral(n) {
+    const _bigIntValue = bigIntValue(n);
+    if (_bigIntValue < 0n) {
+      const absolute = -_bigIntValue;
+      return encUnaryExpression({
+        type: "UnaryExpression",
+        start: n.start,
+        end: n.end,
+        operator: "-",
+        argument: { ...n, value: absolute, bigint: String(absolute), raw: null },
+      });
+    }
     const v_0 = encUtf8(bigIntRaw(n));
     const index = allocNode(5, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
@@ -448,7 +539,7 @@ function encode(program) {
   }
 
   function encBindingProperty(n) {
-    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_1 = encBindingPattern(n.value);
     const v_2 = n.shorthand ? 1 : 0;
     const v_3 = n.computed ? 1 : 0;
@@ -697,7 +788,7 @@ function encode(program) {
       (_directiveQuote === "\"" || _directiveQuote === "'") &&
       _directiveRaw[_directiveRaw.length - 1] === _directiveQuote &&
       _directiveRaw.slice(1, -1) === n.directive &&
-      (_directiveRaw.slice(1, -1) === n.expression?.value || _directiveRaw.includes("\\"))
+      directiveRawValue(_directiveRaw) === n.expression?.value
         ? n.expression
         : { ...n.expression, raw: "" };
     const v_0 = encStringLiteral(_directiveExpression);
@@ -755,7 +846,7 @@ function encode(program) {
 
   function encMethodDefinition(n) {
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_2 = encFunction(n.value);
     const v_3 = enumValue("MethodDefinitionKind", n.kind);
     const v_4 = n.computed ? 1 : 0;
@@ -783,7 +874,7 @@ function encode(program) {
 
   function encPropertyDefinition(n) {
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
     const v_3 = n.value == null ? NULL : encNode(n.value);
     const v_4 = n.computed ? 1 : 0;
@@ -957,7 +1048,7 @@ function encode(program) {
   }
 
   function encObjectProperty(n) {
-    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_1 = encNode(n.value);
     const v_2 = enumValue("PropertyKind", n.kind);
     const v_3 = n.method ? 1 : 0;
@@ -1245,7 +1336,7 @@ function encode(program) {
   function encTsMethodDefinition(n) {
     isTs = true;
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_1 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_2 = encTsFunction(n.value);
     const v_3 = enumValue("MethodDefinitionKind", n.kind);
     const v_4 = n.computed ? 1 : 0;
@@ -1671,7 +1762,7 @@ function encode(program) {
 
   function encTsPropertySignature(n) {
     isTs = true;
-    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
     const v_2 = n.computed ? 1 : 0;
     const v_3 = n.optional ? 1 : 0;
@@ -1687,7 +1778,7 @@ function encode(program) {
 
   function encTsMethodSignature(n) {
     isTs = true;
-    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(n.key);
+    const v_0 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
     const v_2 = encFormalParameters(n.params);
     const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);

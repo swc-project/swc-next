@@ -90,12 +90,28 @@ test("printSync invalidates stale directive raw text", () => {
   updated.body[0].directive = "use server";
 
   assert.equal(printSync(updated).code, '"use server";\n');
+
+  const escaped = parseSync('"use\\x20client";').program;
+  assert.equal(printSync(escaped).code, '"use\\x20client";\n');
+
+  escaped.body[0].expression.value = "use server";
+  assert.equal(printSync(escaped).code, '"use server";\n');
 });
 
 test("printSync preserves an unchanged BigInt radix", () => {
   const { program } = parseSync("0x1_2_3n;");
 
   assert.equal(printSync(program).code, "0x123n;\n");
+});
+
+test("printSync handles modified negative BigInts contextually", () => {
+  const exponent = parseSync("1n ** 2n;").program;
+  exponent.body[0].expression.left.value = -1n;
+  assert.equal(printSync(exponent).code, "(-1n) ** 2n;\n");
+
+  const property = parseSync("({ 1n: 0 });").program;
+  property.body[0].expression.expression.properties[0].key.value = -1n;
+  assert.equal(printSync(property).code, '({ "-1": 0 });\n');
 });
 
 test("printSync forwards codegen options", () => {
