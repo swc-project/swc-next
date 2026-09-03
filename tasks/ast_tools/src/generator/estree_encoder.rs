@@ -394,8 +394,12 @@ fn field_source(node: &str, field: &str) -> String {
         ("NumericLiteral", "kind") => "numericKind(_numericRaw)".into(),
         ("NumericLiteral", "raw") => "_numericRaw".into(),
         ("BigIntLiteral", "raw") => "bigIntRaw(n)".into(),
-        ("RegExpLiteral", "pattern") => "n.regex?.pattern ?? n.value?.source ?? \"\"".into(),
-        ("RegExpLiteral", "flags") => "n.regex?.flags ?? n.value?.flags ?? \"\"".into(),
+        ("RegExpLiteral", "pattern") => {
+            "n.value instanceof RegExp ? n.value.source : n.regex?.pattern ?? \"\"".into()
+        }
+        ("RegExpLiteral", "flags") => {
+            "n.value instanceof RegExp ? n.value.flags : n.regex?.flags ?? \"\"".into()
+        }
         ("TemplateElement", "cooked") => "n.value?.cooked ?? \"\"".into(),
         ("TemplateElement", "raw") => "n.value?.raw ?? \"\"".into(),
         ("TemplateElement", "is_cooked_undefined") => "n.value?.cooked == null".into(),
@@ -978,7 +982,7 @@ function encode(program) {
   function numericKind(raw) {
     if (typeof raw !== "string" || raw.length < 2 || raw.charCodeAt(0) !== 48) return "decimal";
     const prefix = raw[1].toLowerCase();
-    return prefix === "x" ? "hex" : prefix === "o" ? "octal" : prefix === "b" ? "binary" : "decimal";
+    return prefix === "x" ? "hex" : prefix === "o" || /^0[0-7]+$/.test(raw) ? "octal" : prefix === "b" ? "binary" : "decimal";
   }
   function numericRaw(node) {
     if (typeof node.raw !== "string") return null;

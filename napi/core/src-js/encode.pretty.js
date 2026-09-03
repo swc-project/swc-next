@@ -163,7 +163,7 @@ function encode(program) {
   function numericKind(raw) {
     if (typeof raw !== "string" || raw.length < 2 || raw.charCodeAt(0) !== 48) return "decimal";
     const prefix = raw[1].toLowerCase();
-    return prefix === "x" ? "hex" : prefix === "o" ? "octal" : prefix === "b" ? "binary" : "decimal";
+    return prefix === "x" ? "hex" : prefix === "o" || /^0[0-7]+$/.test(raw) ? "octal" : prefix === "b" ? "binary" : "decimal";
   }
   function numericRaw(node) {
     if (typeof node.raw !== "string") return null;
@@ -367,8 +367,8 @@ function encode(program) {
   }
 
   function encRegExpLiteral(n) {
-    const v_0 = encUtf8(n.regex?.pattern ?? n.value?.source ?? "");
-    const v_1 = encUtf8(n.regex?.flags ?? n.value?.flags ?? "");
+    const v_0 = encUtf8(n.value instanceof RegExp ? n.value.source : n.regex?.pattern ?? "");
+    const v_1 = encUtf8(n.value instanceof RegExp ? n.value.flags : n.regex?.flags ?? "");
     const index = allocNode(8, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);

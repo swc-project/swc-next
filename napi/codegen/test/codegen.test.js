@@ -104,6 +104,15 @@ test("printSync preserves an unchanged BigInt radix", () => {
   assert.equal(printSync(program).code, "0x123n;\n");
 });
 
+test("printSync preserves unchanged legacy octal raw text", () => {
+  const { program } = parseSync("077;", { sourceType: "script" });
+
+  assert.equal(printSync(program).code, "077;\n");
+
+  program.body[0].expression.value = 64;
+  assert.equal(printSync(program).code, "64;\n");
+});
+
 test("printSync handles modified negative BigInts contextually", () => {
   const exponent = parseSync("1n ** 2n;").program;
   exponent.body[0].expression.left.value = -1n;
@@ -112,6 +121,13 @@ test("printSync handles modified negative BigInts contextually", () => {
   const property = parseSync("({ 1n: 0 });").program;
   property.body[0].expression.expression.properties[0].key.value = -1n;
   assert.equal(printSync(property).code, '({ "-1": 0 });\n');
+});
+
+test("printSync uses a modified RegExp value", () => {
+  const { program } = parseSync("/old/;");
+  program.body[0].expression.value = /new/g;
+
+  assert.equal(printSync(program).code, "/new/g;\n");
 });
 
 test("printSync forwards codegen options", () => {
