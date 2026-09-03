@@ -28,10 +28,12 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
-test("printSync rejects lone surrogates in UTF-8 fields", () => {
+test("printSync rejects lone surrogates before they reach native AstUtf8", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].id.name = "\uD800";
 
+  // Letting WTF-8 bytes reach native AstUtf8 would violate the safety
+  // requirement of Rust's `from_utf8_unchecked` and may cause undefined behavior.
   assert.throws(
     () => printSync(program),
     /AST UTF-8 field contains an unpaired surrogate/,
