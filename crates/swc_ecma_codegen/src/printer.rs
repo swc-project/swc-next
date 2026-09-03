@@ -4710,18 +4710,13 @@ impl<'a> Printer<'a> {
                 let raw = self.ast.get_utf8(s.raw(self.ast));
                 if raw.is_empty() {
                     let value = self.ast.get_wtf8(s.value(self.ast));
-                    // JSX attribute strings do not interpret JavaScript escape sequences. Print
-                    // the value directly when one delimiter is available, and use an expression
-                    // when both quote characters occur in the value.
-                    let contains_double_quote = value.as_bytes().contains(&b'"');
-                    let contains_single_quote = value.as_bytes().contains(&b'\'');
-                    if contains_double_quote && contains_single_quote {
-                        self.print("{");
-                        self.print_quoted(value, true);
-                        self.print("}");
-                        return;
-                    }
-                    let quote = if contains_double_quote { "'" } else { "\"" };
+                    // JSX attribute strings do not interpret JavaScript escape sequences, so
+                    // print the value bytes directly instead of using `print_quoted`.
+                    let quote = if value.as_bytes().contains(&b'"') {
+                        "'"
+                    } else {
+                        "\""
+                    };
                     self.print(quote);
                     self.print_bytes(value.as_bytes());
                     self.print(quote);

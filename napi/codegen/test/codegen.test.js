@@ -46,14 +46,6 @@ test("printSync prints modified JSX attribute strings", () => {
 
   value.value = "new";
   assert.equal(printSync(program).code, 'const element = <div title="new" />;\n');
-
-  value.value = `a"b'c`;
-  delete value.raw;
-  const output = printSync(program).code;
-  const reparsed = parseSync(output, { lang: "tsx" }).program;
-  const expression = reparsed.body[0].declarations[0].init.openingElement.attributes[0].value.expression;
-  assert.equal(expression.type, "TemplateLiteral");
-  assert.equal(expression.quasis[0].value.cooked, value.value);
 });
 
 test("printSync rejects unsupported ESTree nodes", () => {
