@@ -241,7 +241,7 @@ importers:
         specifier: 'catalog:'
         version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
 
-  napi/codegen:
+  npm/codegen:
     dependencies:
       '@swc-next/encoder':
         specifier: workspace:*
@@ -254,7 +254,7 @@ importers:
         specifier: 'catalog:'
         version: 26.1.1
 
-  napi/core:
+  npm/core:
     dependencies:
       '@swc-next/decoder':
         specifier: workspace:*
@@ -291,7 +291,7 @@ importers:
         specifier: 'catalog:'
         version: 0.8.0
 
-  napi/parser:
+  npm/parser:
     dependencies:
       '@swc-next/decoder':
         specifier: workspace:*

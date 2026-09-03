@@ -1,5 +1,5 @@
 packages:
-  - napi/*
+  - npm/*
   - packages/*
 
 allowBuilds:

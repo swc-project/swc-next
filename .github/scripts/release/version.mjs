@@ -21,7 +21,7 @@ function readManifest(relativePath) {
 
 function npmManifestPaths() {
   const paths = ["package.json"];
-  for (const parent of ["napi", "packages"]) {
+  for (const parent of ["npm", "packages"]) {
     for (const entry of fs
       .readdirSync(path.join(repositoryRoot, parent), { withFileTypes: true })
       .filter((entry) => entry.isDirectory())

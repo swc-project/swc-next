@@ -1,5 +1,5 @@
 [workspace]
-members  = ["crates/*", "napi/*", "tasks/ast_tools", "tasks/benchmark", "tasks/testsuite"]
+members  = ["crates/*", "npm/*", "tasks/ast_tools", "tasks/benchmark", "tasks/testsuite"]
 resolver = "3"
 
 [workspace.package]

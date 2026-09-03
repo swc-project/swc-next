@@ -197,7 +197,7 @@ jobs:
         with:
           if-no-files-found: error
           name: bindings-${{ matrix.target }}
-          path: napi/*/src-js/*.node
+          path: npm/*/src-js/*.node
 
   release_npm:
     name: Release NPM packages
