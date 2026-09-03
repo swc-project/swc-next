@@ -28,6 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
+    "build:wasm": "node ../../scripts/build-wasm.mjs core --output-dir src-js",
     "conformance": "pnpm build --release && node ./test/estree-conformance.ts",
     "test": "node --test test/*.test.js"
   },
@@ -56,6 +57,11 @@
   "dependencies": {
     "@swc-next/decoder": "workspace:*",
     "@swc-next/encoder": "workspace:*"
+  },
+  "wasm": {
+    "target": "wasm32-unknown-unknown",
+    "binaryName": "swc-next-core",
+    "packageName": "@swc-next/core-binding-wasm"
   },
   "devDependencies": {
     "@babel/parser": "catalog:",

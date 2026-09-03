@@ -1,12 +1,20 @@
+use std::env;
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{ToTokens, quote};
 use syn::{
     Expr, FnArg, GenericArgument, ImplItem, Item, ItemEnum, ItemFn, ItemImpl, Lit, LitInt, LitStr,
     Meta, Pat, PathArguments, ReturnType, Token, Type, Visibility, parse::Parser,
     parse_macro_input, parse_quote, punctuated::Punctuated,
 };
 
+use crate::metadata::{
+    BridgeDescriptor, BridgeFunction, BridgeParameter, StringEnum, StringEnumVariant,
+    WireDirection, WireMapping, emit_descriptor,
+};
+
+mod metadata;
 mod napi;
 mod wasm;
 
@@ -17,10 +25,131 @@ pub fn bridge(args: TokenStream, input: TokenStream) -> TokenStream {
         Err(error) => return error.into_compile_error().into(),
     };
     let item = parse_macro_input!(input as Item);
+    let descriptors = match describe_bridge_item(&item, &arguments) {
+        Ok(descriptors) => descriptors,
+        Err(error) => return error.into_compile_error().into(),
+    };
     match expand_bridge(item, arguments) {
-        Ok(expanded) => expanded.into(),
+        Ok(expanded) => {
+            for descriptor in descriptors {
+                if let Err(error) = emit_descriptor(&descriptor) {
+                    return syn::Error::new(Span::call_site(), error)
+                        .into_compile_error()
+                        .into();
+                }
+            }
+            let metadata_dependencies = metadata_dependencies();
+            quote! {
+                #expanded
+                #metadata_dependencies
+            }
+            .into()
+        }
         Err(error) => error.into_compile_error().into(),
     }
+}
+
+fn metadata_dependencies() -> proc_macro2::TokenStream {
+    let package_name = env::var("CARGO_PKG_NAME").unwrap_or_default();
+    let package_name = package_name.to_uppercase().replace('-', "_");
+    let force_build = LitStr::new(
+        &format!("SWC_BRIDGE_FORCE_BUILD_{package_name}"),
+        Span::call_site(),
+    );
+    quote! {
+        const _: () = {
+            let _ = option_env!("SWC_BRIDGE_METADATA_DIR");
+            let _ = option_env!(#force_build);
+        };
+    }
+}
+
+fn describe_bridge_item(item: &Item, arguments: &[Meta]) -> syn::Result<Vec<BridgeDescriptor>> {
+    match item {
+        Item::Enum(enumeration) => {
+            describe_enum(enumeration, arguments).map(|descriptor| descriptor.into_iter().collect())
+        }
+        Item::Fn(function) => {
+            describe_function(function, arguments).map(|descriptor| vec![descriptor])
+        }
+        Item::Impl(implementation) => {
+            describe_wire_mapping(implementation, arguments).map(|descriptor| vec![descriptor])
+        }
+        Item::Struct(_) => Ok(Vec::new()),
+        _ => Ok(Vec::new()),
+    }
+}
+
+fn describe_function(function: &ItemFn, arguments: &[Meta]) -> syn::Result<BridgeDescriptor> {
+    validate_function(function)?;
+    let rust_name = function.sig.ident.to_string();
+    let js_name = napi_js_name(arguments)?.unwrap_or_else(|| to_lower_camel_case(&rust_name));
+    let wasm_export_name = format!("__swc_{}", rust_name.trim_start_matches("r#"));
+    let parameters = function
+        .sig
+        .inputs
+        .iter()
+        .map(|input| {
+            let syn::FnArg::Typed(argument) = input else {
+                return Err(syn::Error::new_spanned(
+                    input,
+                    "#[bridge] functions cannot have a receiver",
+                ));
+            };
+            let syn::Pat::Ident(pattern) = argument.pat.as_ref() else {
+                return Err(syn::Error::new_spanned(
+                    &argument.pat,
+                    "#[bridge] parameters must use identifier patterns",
+                ));
+            };
+            let semantic_type = if is_byte_slice(&argument.ty) {
+                "Vec<u8>".to_owned()
+            } else {
+                type_key(&argument.ty)
+            };
+            Ok(BridgeParameter {
+                rust_name: pattern.ident.to_string(),
+                js_name: to_lower_camel_case(&pattern.ident.to_string()),
+                semantic_type,
+            })
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
+    let declared_result = return_type(&function.sig.output);
+    let (result, fallible) = result_value_type(&declared_result)
+        .map_or((&declared_result, false), |result| (result, true));
+
+    Ok(BridgeDescriptor::Function(BridgeFunction {
+        rust_name,
+        js_name,
+        wasm_export_name,
+        parameters,
+        result: type_key(result),
+        fallible,
+    }))
+}
+
+fn describe_enum(
+    enumeration: &ItemEnum,
+    arguments: &[Meta],
+) -> syn::Result<Option<BridgeDescriptor>> {
+    if string_enum_case(arguments)?.is_none() {
+        return Ok(None);
+    }
+    let rust_name = enumeration.ident.to_string();
+    let js_name = napi_js_name(arguments)?.unwrap_or_else(|| rust_name.clone());
+    let variants = enumeration
+        .variants
+        .iter()
+        .map(|variant| StringEnumVariant {
+            rust_name: variant.ident.to_string(),
+            js_value: variant.ident.to_string().to_lowercase(),
+        })
+        .collect();
+    Ok(Some(BridgeDescriptor::StringEnum(StringEnum {
+        rust_name,
+        js_name,
+        variants,
+    })))
 }
 
 fn expand_bridge(item: Item, arguments: Vec<Meta>) -> syn::Result<proc_macro2::TokenStream> {
@@ -46,6 +175,14 @@ fn expand_wire_impl(
     implementation: ItemImpl,
     arguments: Vec<Meta>,
 ) -> syn::Result<proc_macro2::TokenStream> {
+    describe_wire_mapping(&implementation, &arguments)?;
+    Ok(quote!(#implementation))
+}
+
+fn describe_wire_mapping(
+    implementation: &ItemImpl,
+    arguments: &[Meta],
+) -> syn::Result<BridgeDescriptor> {
     if !arguments.is_empty() {
         return Err(syn::Error::new_spanned(
             implementation,
@@ -61,7 +198,7 @@ fn expand_wire_impl(
     }
     let Some((_, trait_path, _)) = &implementation.trait_ else {
         return Err(syn::Error::new_spanned(
-            &implementation,
+            implementation,
             "#[bridge] on an impl requires BridgeDecode or BridgeEncode",
         ));
     };
@@ -71,12 +208,16 @@ fn expand_wire_impl(
             "missing bridge wire trait name",
         ));
     };
-    if trait_name != "BridgeDecode" && trait_name != "BridgeEncode" {
+    let direction = if trait_name == "BridgeDecode" {
+        WireDirection::Decode
+    } else if trait_name == "BridgeEncode" {
+        WireDirection::Encode
+    } else {
         return Err(syn::Error::new_spanned(
             trait_path,
             "#[bridge] on an impl requires BridgeDecode or BridgeEncode",
         ));
-    }
+    };
 
     let mut wire_types = implementation.items.iter().filter_map(|item| {
         let ImplItem::Type(associated_type) = item else {
@@ -84,20 +225,24 @@ fn expand_wire_impl(
         };
         (associated_type.ident == "Wire").then_some(&associated_type.ty)
     });
-    if wire_types.next().is_none() {
+    let Some(wire_type) = wire_types.next() else {
         return Err(syn::Error::new_spanned(
-            &implementation,
+            implementation,
             "#[bridge] wire impl must define `type Wire`",
         ));
-    }
+    };
     if wire_types.next().is_some() {
         return Err(syn::Error::new_spanned(
-            &implementation,
+            implementation,
             "#[bridge] wire impl defines `type Wire` more than once",
         ));
     }
 
-    Ok(quote!(#implementation))
+    Ok(BridgeDescriptor::WireMapping(WireMapping {
+        direction,
+        semantic_type: type_key(&implementation.self_ty),
+        wire_type: type_key(wire_type),
+    }))
 }
 
 fn expand_enum(
@@ -107,7 +252,7 @@ fn expand_enum(
     let napi = napi_meta(&arguments);
     let Some(string_enum_case) = string_enum_case(&arguments)? else {
         return Ok(quote! {
-            #[#napi]
+            #[cfg_attr(not(target_family = "wasm"), #napi)]
             #enumeration
         });
     };
@@ -444,6 +589,13 @@ fn meta_string_value(meta: &Meta, name: &str) -> syn::Result<String> {
         ));
     };
     Ok(value.value())
+}
+
+fn type_key(ty: &Type) -> String {
+    ty.to_token_stream()
+        .to_string()
+        .split_whitespace()
+        .collect()
 }
 
 pub(crate) fn return_type(output: &ReturnType) -> Type {

@@ -519,7 +519,7 @@ nativeBinding = requireNative()
 //   'error'                  → force WASI and throw if no WASI binding is found
 // Treating any non-empty string as truthy (the historical behavior) meant
 // NAPI_RS_FORCE_WASI=false, NAPI_RS_FORCE_WASI=0, etc. inadvertently triggered
-// the WASI path, causing ENOENT for packages shipped without a .wasi.cjs file.
+// the WASI path, causing ENOENT for packages shipped without a .node.mjs file.
 const forceWasi =
   process.env.NAPI_RS_FORCE_WASI === 'true' || process.env.NAPI_RS_FORCE_WASI === 'error'
 
@@ -527,7 +527,7 @@ if (!nativeBinding || forceWasi) {
   let wasiBinding = null
   let wasiBindingError = null
   try {
-    wasiBinding = require('./swc-next-core.wasi.cjs')
+    wasiBinding = require('./swc-next-core.node.mjs')
     nativeBinding = wasiBinding
   } catch (err) {
     if (forceWasi) {
@@ -536,7 +536,7 @@ if (!nativeBinding || forceWasi) {
   }
   if (!nativeBinding || forceWasi) {
     try {
-      wasiBinding = require('@swc-next/core-binding-wasm32-wasi')
+      wasiBinding = require('@swc-next/core-binding-wasm')
       nativeBinding = wasiBinding
     } catch (err) {
       if (forceWasi) {

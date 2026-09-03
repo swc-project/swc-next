@@ -33,12 +33,16 @@ function collectPackages(releaseRoot) {
     const facade = readManifest(facadeRoot);
     const component = path.basename(directory);
     const bindingsRoot = path.join(releaseRoot, component);
-    const expectedBindings = new Map(
+    const expectedNativeBindings = new Map(
       Object.entries(facade.optionalDependencies ?? {})
     );
 
-    if (expectedBindings.size !== manifest.napi.targets.length) {
+    if (expectedNativeBindings.size !== manifest.napi.targets.length) {
       throw new Error(`${facade.name} optionalDependencies are incomplete`);
+    }
+    const expectedBindings = new Map(expectedNativeBindings);
+    if (manifest.wasm) {
+      expectedBindings.set(manifest.wasm.packageName, facade.version);
     }
 
     const actualBindings = new Set();

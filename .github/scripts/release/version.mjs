@@ -50,6 +50,12 @@ export function npmPackages() {
   );
 }
 
+export function wasmPackages() {
+  return packages().filter(
+    ({ manifest }) => manifest.private !== true && manifest.wasm,
+  );
+}
+
 export function jsPackages() {
   return packages().filter(
     ({ manifest }) => manifest.private !== true && !manifest.napi,
@@ -121,8 +127,10 @@ function main() {
     console.log(cargoVersion());
   } else if (command === "npm-packages" && !argument) {
     for (const { directory } of npmPackages()) console.log(directory);
+  } else if (command === "wasm-packages" && !argument) {
+    for (const { directory } of wasmPackages()) console.log(directory);
   } else {
-    fail("usage: version.mjs write <version>|cargo-version|npm-packages");
+    fail("usage: version.mjs write <version>|cargo-version|npm-packages|wasm-packages");
   }
 }
 

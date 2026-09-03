@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "bridge_codegen"
+publish = false
+version = "0.1.0"
+
+[dependencies]
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
