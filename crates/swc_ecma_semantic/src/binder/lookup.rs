@@ -126,7 +126,7 @@ pub(super) fn lookup_name_in_scopes<
                 |symbol| emit(NameBinding::symbol(symbol)),
             )
         } else {
-            lookup_lexical_name::<INCLUDE_GLOBAL, true>(lexical, query)
+            lookup_lexical_name::<INCLUDE_GLOBAL, true, true>(lexical, query)
         });
     };
     lookup_name_with_ts_views::<INCLUDE_GLOBAL, PRECISE_IMPORT_ALIASES, false>(
@@ -201,7 +201,7 @@ fn lookup_name_with_ts_views_policy<
                 |symbol| emit(NameBinding::symbol(symbol)),
             )
         } else {
-            lookup_lexical_name::<INCLUDE_GLOBAL, TS_LOOKUP>(lexical, query)
+            lookup_lexical_name::<INCLUDE_GLOBAL, TS_LOOKUP, true>(lexical, query)
         });
     };
     let hash = scope_maps[ScopeId::ROOT.index()].hasher().hash_one(name);
@@ -323,7 +323,11 @@ fn lookup_name_with_ts_views_policy<
 }
 
 #[inline(always)]
-pub(super) fn lookup_lexical_name<const INCLUDE_GLOBAL: bool, const TS_LOOKUP: bool>(
+pub(super) fn lookup_lexical_name<
+    const INCLUDE_GLOBAL: bool,
+    const TS_LOOKUP: bool,
+    const FILTER_BY_SPACE: bool,
+>(
     lexical: LexicalLookup<'_, '_>,
     query: NameLookupQuery<'_>,
 ) -> NameResolution {
@@ -351,7 +355,7 @@ pub(super) fn lookup_lexical_name<const INCLUDE_GLOBAL: bool, const TS_LOOKUP: b
             |symbol| {
                 let flags = symbols[symbol.index()].flags;
                 (!TS_LOOKUP || binding_visible_from(child_kind, flags, space))
-                    && flags.visible_in(space)
+                    && (!FILTER_BY_SPACE || flags.visible_in(space))
             },
         ) {
             return NameResolution::Resolved(symbol);

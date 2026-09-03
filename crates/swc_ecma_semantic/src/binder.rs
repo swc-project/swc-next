@@ -4093,7 +4093,7 @@ impl<'a> SymbolTracker<'a> {
                 );
             }
         } else if precise_import_aliases {
-            self.resolve_lexical_references::<true, true>(
+            self.resolve_lexical_references::<true, true, true>(
                 tree,
                 &scopes,
                 &mut node_references,
@@ -4105,7 +4105,17 @@ impl<'a> SymbolTracker<'a> {
             .iter()
             .any(|scope| scope.kind.is_ts_lookup_view())
         {
-            self.resolve_lexical_references::<false, true>(
+            self.resolve_lexical_references::<false, true, true>(
+                tree,
+                &scopes,
+                &mut node_references,
+                &mut use_ranges,
+                &mut reference_candidates,
+            );
+        } else if tree.is_ts() {
+            // No signature or conditional-type view can alter lexical lookup.
+            // Select the policy once instead of testing every ancestor edge.
+            self.resolve_lexical_references::<false, false, true>(
                 tree,
                 &scopes,
                 &mut node_references,
@@ -4115,7 +4125,7 @@ impl<'a> SymbolTracker<'a> {
         } else {
             // No signature or conditional-type view can alter lexical lookup.
             // Select the policy once instead of testing every ancestor edge.
-            self.resolve_lexical_references::<false, false>(
+            self.resolve_lexical_references::<false, false, false>(
                 tree,
                 &scopes,
                 &mut node_references,
@@ -4380,7 +4390,11 @@ impl<'a> SymbolTracker<'a> {
         reference_values
     }
 
-    fn resolve_lexical_references<const PRECISE_IMPORT_ALIASES: bool, const TS_LOOKUP: bool>(
+    fn resolve_lexical_references<
+        const PRECISE_IMPORT_ALIASES: bool,
+        const TS_LOOKUP: bool,
+        const FILTER_BY_SPACE: bool,
+    >(
         &mut self,
         tree: &Ast<'a>,
         scopes: &ScopeTree<'_>,
@@ -4399,6 +4413,15 @@ impl<'a> SymbolTracker<'a> {
             let reference = self.references[reference_index];
             let id = ReferenceId::from_usize(reference_index);
             node_references[reference.node.index()] = Some(id);
+            // JavaScript and JSX only produce runtime-value references here;
+            // `Any` is the name-only form used by local export specifiers.
+            debug_assert!(
+                FILTER_BY_SPACE
+                    || matches!(
+                        reference.flags.space,
+                        ReferenceSpace::Value | ReferenceSpace::Any
+                    )
+            );
             let query = NameLookupQuery {
                 scope: reference.scope,
                 name: tree.get_utf8(reference.name).as_bytes(),
@@ -4417,7 +4440,7 @@ impl<'a> SymbolTracker<'a> {
                     |symbol| candidates.push(symbol),
                 )
             } else {
-                lookup_lexical_name::<true, TS_LOOKUP>(lexical, query)
+                lookup_lexical_name::<true, TS_LOOKUP, FILTER_BY_SPACE>(lexical, query)
             };
             if reference.flags.space == ReferenceSpace::Any {
                 self.references[reference_index].flags = self

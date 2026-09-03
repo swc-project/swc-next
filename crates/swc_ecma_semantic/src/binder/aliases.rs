@@ -424,7 +424,7 @@ impl<'tracker, 'a> TsExportAliasResolver<'tracker, 'a> {
             }
             ancestor = self.scopes[current.index()].parent;
         }
-        let global = lookup_lexical_name::<true, true>(
+        let global = lookup_lexical_name::<true, true, true>(
             LexicalLookup {
                 scopes: self.scopes,
                 symbols: &self.tracker.symbols,
