@@ -45,7 +45,7 @@ pub fn estree_encoder(schema: &Schema) -> (RawOutput, RawOutput) {
         },
         RawOutput {
             path: MINIFIED_OUTPUT_PATH.into(),
-            content: minified.as_bytes().to_vec(),
+            content: minified.into_bytes(),
         },
     )
 }
