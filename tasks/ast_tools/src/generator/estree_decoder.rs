@@ -919,9 +919,8 @@ export function decode(buffer, source) {
       offset += 4;
       return value;
     };
-    const readString = () => {
+    const readDiagnosticString = () => {
       const length = readU32();
-      if (length === NULL) return undefined;
       const value = textDecoder.decode(bytes.subarray(offset, offset + length));
       offset += length;
       return value;
@@ -932,15 +931,15 @@ export function decode(buffer, source) {
       const severity = severities[readU8()];
       const start = pos(readU32());
       const end = pos(readU32());
-      const message = readString();
-      const help = readU8() === 0 ? undefined : readString();
+      const message = readDiagnosticString();
+      const help = readU8() === 0 ? undefined : readDiagnosticString();
       const labelCount = readU32();
       const labels = new Array(labelCount);
       for (let label = 0; label < labelCount; label++) {
         labels[label] = {
           start: pos(readU32()),
           end: pos(readU32()),
-          message: readString(),
+          message: readDiagnosticString(),
         };
       }
       result[index] = { severity, message, start, end, help, labels };

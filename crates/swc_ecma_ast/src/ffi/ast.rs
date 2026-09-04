@@ -208,10 +208,10 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
         write_u8(buf, &mut pos, diagnostic.severity as u8);
         write_u32(buf, &mut pos, diagnostic.span.start);
         write_u32(buf, &mut pos, diagnostic.span.end);
-        write_string(buf, &mut pos, &diagnostic.message);
+        write_diagnostic_string(buf, &mut pos, &diagnostic.message);
         write_u8(buf, &mut pos, u8::from(diagnostic.help.is_some()));
         if let Some(help) = &diagnostic.help {
-            write_string(buf, &mut pos, help);
+            write_diagnostic_string(buf, &mut pos, help);
         }
         let label_count =
             u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
@@ -219,7 +219,7 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
         for label in &diagnostic.labels {
             write_u32(buf, &mut pos, label.span.start);
             write_u32(buf, &mut pos, label.span.end);
-            write_string(buf, &mut pos, &label.message);
+            write_diagnostic_string(buf, &mut pos, &label.message);
         }
     }
 
@@ -458,14 +458,14 @@ fn read_u128(buf: &[u8], pos: usize) -> u128 {
     u128::from_le_bytes(buf[pos..pos + size_of::<u128>()].try_into().unwrap())
 }
 
-fn write_string(buf: &mut [u8], pos: &mut usize, value: &str) {
+#[inline]
+fn write_diagnostic_string(buf: &mut [u8], pos: &mut usize, value: &str) {
     write_u32(
         buf,
         pos,
         u32::try_from(value.len()).expect("diagnostic string length exceeds u32"),
     );
-    buf[*pos..*pos + value.len()].copy_from_slice(value.as_bytes());
-    *pos += value.len();
+    write_slice(buf, pos, value.as_bytes());
 }
 
 #[cfg(test)]
