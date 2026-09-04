@@ -106,7 +106,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         debug_assert!(offset < extra_data.len());
                         let #field_value: #field_ty_ident = unsafe {
                             ExtraDataValue::from_extra_data(
-                                *extra_data.get_unchecked(offset)
+                                extra_data.get_unchecked(offset)
                             )
                         };
                     });

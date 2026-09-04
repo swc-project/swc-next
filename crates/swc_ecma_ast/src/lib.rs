@@ -80,8 +80,8 @@ pub struct NodePayload(pub(crate) u128);
 /// Compact values stored in the flattening AST's extra-data table.
 ///
 /// The AST schema supplies the type information, so the table stores only its
-/// canonical 64-bit representation without a runtime discriminant. FFI code
-/// writes this word in little-endian byte order on every target.
+/// 64-bit representation without a runtime discriminant. Its in-memory bytes
+/// use little-endian order on every target.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct ExtraData(u64);
@@ -451,7 +451,7 @@ impl Ast<'_> {
     /// `id` must be in bounds and its slot must contain `T`'s representation.
     #[inline]
     unsafe fn extra_unchecked<T: ExtraDataValue>(&self, id: ExtraDataId) -> T {
-        unsafe { T::from_extra_data(*self.extra_data.as_slice().get_unchecked(id.index())) }
+        unsafe { T::from_extra_data(self.extra_data.as_slice().get_unchecked(id.index())) }
     }
 
     /// Replaces a value in the type-erased extra-data table.

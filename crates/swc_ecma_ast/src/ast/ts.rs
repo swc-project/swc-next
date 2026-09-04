@@ -12,7 +12,7 @@ macro_rules! impl_extra_data_value {
                     ExtraData::from_raw(self as u64)
                 }
 
-                unsafe fn from_extra_data(data: ExtraData) -> Self {
+                unsafe fn from_extra_data(data: &ExtraData) -> Self {
                     unsafe { mem::transmute(data.raw() as u8) }
                 }
             }

@@ -11,7 +11,7 @@ impl Program {
     #[inline]
     pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn hashbang<'a>(self, ast: &crate::Ast<'a>) -> Option<Hashbang> {
@@ -2275,12 +2275,12 @@ impl StringLiteral {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstWtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: AstWtf8) {
@@ -2301,12 +2301,12 @@ impl NumericLiteral {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> f64 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Option<AstUtf8> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: f64) {
@@ -2332,7 +2332,7 @@ impl BigIntLiteral {
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: AstUtf8) {
@@ -2361,12 +2361,12 @@ impl RegExpLiteral {
     #[inline]
     pub fn pattern<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn flags<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_pattern<'a>(self, ast: &mut crate::Ast<'a>, pattern: AstUtf8) {
@@ -2387,12 +2387,12 @@ impl TemplateLiteral {
     #[inline]
     pub fn quasis<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TemplateElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn expressions<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Expr> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_quasis<'a>(self, ast: &mut crate::Ast<'a>, quasis: SubRange<TemplateElement>) {
@@ -2413,7 +2413,7 @@ impl TemplateElement {
     #[inline]
     pub fn cooked<'a>(self, ast: &crate::Ast<'a>) -> AstWtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn tail<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -2461,7 +2461,7 @@ impl IdentifierReference {
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
@@ -2475,7 +2475,7 @@ impl PrivateIdentifier {
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
@@ -2540,7 +2540,7 @@ impl IdentifierName {
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
@@ -2554,7 +2554,7 @@ impl LabelIdentifier {
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
@@ -3106,7 +3106,7 @@ impl VariableDeclaration {
     #[inline]
     pub fn declarators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<VariableDeclarator> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn declare<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -3230,7 +3230,7 @@ impl SwitchStatement {
     #[inline]
     pub fn cases<'a>(self, ast: &crate::Ast<'a>) -> SubRange<SwitchCase> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_discriminant<'a>(self, ast: &mut crate::Ast<'a>, discriminant: Expr) {
@@ -3257,7 +3257,7 @@ impl SwitchCase {
     #[inline]
     pub fn consequent<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_test<'a>(self, ast: &mut crate::Ast<'a>, test: Option<Expr>) {
@@ -3606,7 +3606,7 @@ impl Directive {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_expression<'a>(self, ast: &mut crate::Ast<'a>, expression: StringLiteral) {
@@ -3771,7 +3771,7 @@ impl ClassBody {
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ClassElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<ClassElement>) {
@@ -4070,7 +4070,7 @@ impl StaticBlock {
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
@@ -4186,12 +4186,12 @@ impl FunctionBody {
     #[inline]
     pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_directives<'a>(self, ast: &mut crate::Ast<'a>, directives: SubRange<Directive>) {
@@ -4212,7 +4212,7 @@ impl BlockStatement {
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<Stmt>) {
@@ -4310,7 +4310,7 @@ impl FormalParameters {
     #[inline]
     pub fn items<'a>(self, ast: &crate::Ast<'a>) -> SubRange<FormalParameterItem> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
@@ -4364,7 +4364,7 @@ impl ArrayExpression {
     #[inline]
     pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<Argument>> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_elements<'a>(self, ast: &mut crate::Ast<'a>, elements: SubRange<Option<Argument>>) {
@@ -4378,7 +4378,7 @@ impl ObjectExpression {
     #[inline]
     pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<ObjectPropertyKind> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_properties<'a>(
@@ -4582,7 +4582,7 @@ impl SequenceExpression {
     #[inline]
     pub fn expressions<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Expr> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_expressions<'a>(self, ast: &mut crate::Ast<'a>, expressions: SubRange<Expr>) {
@@ -4774,7 +4774,7 @@ impl NewExpression {
     #[inline]
     pub fn arguments<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Argument> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_callee<'a>(self, ast: &mut crate::Ast<'a>, callee: Expr) {
@@ -5270,7 +5270,7 @@ impl Hashbang {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: AstUtf8) {
@@ -6952,7 +6952,7 @@ impl TsTypeParameterDeclaration {
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTypeParameter> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: SubRange<TsTypeParameter>) {
@@ -6966,7 +6966,7 @@ impl TsTypeParameterInstantiation {
     #[inline]
     pub fn params<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: SubRange<TsType>) {
@@ -6995,12 +6995,12 @@ impl TsTemplateLiteralType {
     #[inline]
     pub fn quasis<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TemplateElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_quasis<'a>(self, ast: &mut crate::Ast<'a>, quasis: SubRange<TemplateElement>) {
@@ -7064,7 +7064,7 @@ impl TsTupleType {
     #[inline]
     pub fn element_types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTupleElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_element_types<'a>(
@@ -7207,7 +7207,7 @@ impl TsUnionType {
     #[inline]
     pub fn types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: SubRange<TsType>) {
@@ -7221,7 +7221,7 @@ impl TsIntersectionType {
     #[inline]
     pub fn types<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsType> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_types<'a>(self, ast: &mut crate::Ast<'a>, types: SubRange<TsType>) {
@@ -7496,7 +7496,7 @@ impl TsTypeLiteral {
     #[inline]
     pub fn members<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTypeElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_members<'a>(self, ast: &mut crate::Ast<'a>, members: SubRange<TsTypeElement>) {
@@ -7844,7 +7844,7 @@ impl TsIndexSignature {
     #[inline]
     pub fn parameters<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingIdentifier> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsTypeAnnotation {
@@ -8024,7 +8024,7 @@ impl TsInterfaceBody {
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsTypeElement> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: SubRange<TsTypeElement>) {
@@ -8154,7 +8154,7 @@ impl TsEnumBody {
     #[inline]
     pub fn members<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsEnumMember> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_members<'a>(self, ast: &mut crate::Ast<'a>, members: SubRange<TsEnumMember>) {
@@ -8260,12 +8260,12 @@ impl TsModuleBlock {
     #[inline]
     pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Stmt> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_directives<'a>(self, ast: &mut crate::Ast<'a>, directives: SubRange<Directive>) {
@@ -8326,7 +8326,7 @@ impl TsParameterProperty {
     #[inline]
     pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn parameter<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
@@ -8992,7 +8992,7 @@ impl JsxElement {
     #[inline]
     pub fn children<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxChild> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn closing_element<'a>(self, ast: &crate::Ast<'a>) -> Option<JsxClosingElement> {
@@ -9113,7 +9113,7 @@ impl JsxFragment {
     #[inline]
     pub fn children<'a>(self, ast: &crate::Ast<'a>) -> SubRange<JsxChild> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn closing_fragment<'a>(self, ast: &crate::Ast<'a>) -> JsxClosingFragment {
@@ -9157,7 +9157,7 @@ impl JsxIdentifier {
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
@@ -9286,7 +9286,7 @@ impl JsxText {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: AstUtf8) {

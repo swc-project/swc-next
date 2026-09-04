@@ -291,6 +291,6 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
 /// Generate an expression that reconstructs an eight-byte field from inline data.
 pub fn generate_u64_to_field(_field_ty: &AstType, _schema: &Schema) -> TokenStream {
     quote! {
-        unsafe { ExtraDataValue::from_extra_data(ExtraData::from_raw(raw)) }
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
 }

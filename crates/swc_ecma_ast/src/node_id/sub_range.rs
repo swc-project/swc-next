@@ -49,20 +49,6 @@ impl<T> SubRange<T> {
         self.len() == 0
     }
 
-    #[inline]
-    pub(crate) fn raw(self) -> u64 {
-        (self.start.index() as u64) | ((self.end.index() as u64) << 32)
-    }
-
-    #[inline]
-    pub(crate) fn from_raw(raw: u64) -> Self {
-        Self {
-            start: ExtraDataId::from_raw(raw as u32),
-            end: ExtraDataId::from_raw((raw >> 32) as u32),
-            _phantom: PhantomData,
-        }
-    }
-
     /// Similar to `Vec::remove(0)`.
     pub fn remove_first(&mut self) -> NodeExtraDataId<T> {
         assert!(!self.is_empty());
@@ -209,23 +195,5 @@ impl<'a> Ast<'a> {
     pub fn get_node_in_sub_range<T: ExtraDataValue>(&self, id: NodeExtraDataId<T>) -> T {
         // SAFETY: A typed sub-range index identifies a slot containing `T`.
         unsafe { self.extra_unchecked(id.inner) }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn compact_representation_roundtrips() {
-        let range = SubRange::<()> {
-            start: ExtraDataId::from_raw(12),
-            end: ExtraDataId::from_raw(34),
-            _phantom: PhantomData,
-        };
-
-        let decoded = SubRange::<()>::from_raw(range.raw());
-        assert_eq!(decoded.start, range.start);
-        assert_eq!(decoded.end, range.end);
     }
 }

@@ -12,7 +12,7 @@ macro_rules! impl_extra_data_value {
                     ExtraData::from_raw(self as u64)
                 }
 
-                unsafe fn from_extra_data(data: ExtraData) -> Self {
+                unsafe fn from_extra_data(data: &ExtraData) -> Self {
                     unsafe { mem::transmute(data.raw() as u8) }
                 }
             }
@@ -312,7 +312,7 @@ impl ExtraDataValue for Option<ImportPhase> {
         ExtraData::from_raw(self.map_or(u8::MAX as u64, |phase| phase as u64))
     }
 
-    unsafe fn from_extra_data(data: ExtraData) -> Self {
+    unsafe fn from_extra_data(data: &ExtraData) -> Self {
         let value = data.raw() as u8;
         (value != u8::MAX).then(|| unsafe { mem::transmute(value) })
     }
