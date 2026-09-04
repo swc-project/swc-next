@@ -213,8 +213,9 @@ export function decode(buffer, source) {
 
   const _decodeDiagnostics = () => {
     let offset = diagnostics;
+    const readU8 = () => bytes[offset++];
     const readU32 = () => {
-      const value = _u32[offset >> 2];
+      const value = _dv.getUint32(offset, true);
       offset += 4;
       return value;
     };
@@ -222,18 +223,18 @@ export function decode(buffer, source) {
       const length = readU32();
       if (length === NULL) return undefined;
       const value = textDecoder.decode(bytes.subarray(offset, offset + length));
-      offset += (length + 3) & ~3;
+      offset += length;
       return value;
     };
     const severities = ["error", "warning", "hint", "info"];
     const result = new Array(diagnosticCount);
     for (let index = 0; index < diagnosticCount; index++) {
-      const severity = severities[readU32()];
+      const severity = severities[readU8()];
       const start = pos(readU32());
       const end = pos(readU32());
-      const labelCount = readU32();
       const message = readString();
-      const help = readString();
+      const help = readU8() === 0 ? undefined : readString();
+      const labelCount = readU32();
       const labels = new Array(labelCount);
       for (let label = 0; label < labelCount; label++) {
         labels[label] = {

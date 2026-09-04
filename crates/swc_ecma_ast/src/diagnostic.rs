@@ -3,11 +3,12 @@ use std::borrow::Cow;
 use crate::Span;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum Severity {
-    Error,
-    Warning,
-    Hint,
-    Info,
+    Error = 0,
+    Warning = 1,
+    Hint = 2,
+    Info = 3,
 }
 
 impl Severity {
