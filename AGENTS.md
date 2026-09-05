@@ -23,7 +23,7 @@ Run from the workspace root.
 | Install                  | `pnpm install`                                                                          |
 | Build all N-API packages | `pnpm build [--release]`                                                                |
 | Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build [--release]` |
-| Build browser package    | `pnpm --filter @swc-next/browser build [--release]`                                     |
+| Build browser package    | `pnpm build:browser [--release]`                                                       |
 | Build all WASM packages  | `pnpm build:wasm [--release]`                                                           |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                 |
 | Smoke test Node.js WASM  | `pnpm test:wasm` (after `pnpm build:wasm`)                                              |
@@ -41,7 +41,7 @@ First run `./scripts/clone_fixtures.sh`. Review changes under `tasks/testsuite/s
 | Codegen   | Test262, TypeScript, Babel | `parse -> print` is idempotent                       | Same as above                                             |
 | Resolver  | SWC resolver fixtures      | Name resolution text matches `swc-conformance`       | Same as above                                             |
 | Transform | Babel                      | Normalized output matches Babel fixtures             | `cargo run -p testsuite --bin babel_transform`            |
-| ESTree    | Test262, TypeScript        | N-API AST matches `estree-conformance`               | `pnpm --filter @swc-next/core conformance`                |
+| ESTree    | Test262, TypeScript        | N-API AST matches `estree-conformance`               | `pnpm test:conformance`                                    |
 
 Debug one fixture with:
 

@@ -135,7 +135,7 @@ jobs:
       - name: Build Node.js bindings
         run: pnpm build --release
       - name: Run ESTree conformance
-        run: pnpm --filter @swc-next/core conformance
+        run: pnpm test:conformance
       - name: Run JavaScript tests
         run: pnpm test
       - name: Check conformance snapshots
