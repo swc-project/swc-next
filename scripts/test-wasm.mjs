@@ -21,7 +21,6 @@ run(
   components.flatMap((component) => ["--filter", `@swc-next/${component}`]).concat("test"),
   { ...process.env, NAPI_RS_FORCE_WASI: "error" },
 );
-run(process.execPath, ["--test", "npm/core-wasm/test/core.test.js"], process.env);
 
 async function linkBinding(component) {
   const packageJsonPath = path.join(

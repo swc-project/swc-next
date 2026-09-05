@@ -1,7 +1,7 @@
 import {
   parseSync as __parseSync,
   printSync as __printSync,
-} from "@swc-next/core-binding-wasm";
+} from "./swc-next-core.browser.mjs";
 import {
   decode,
   encodeOptions as encodeParserOptions,
@@ -18,7 +18,7 @@ export {
   SourceType,
   langFromPath,
   sourceTypeFromPath,
-} from "@swc-next/core-binding-wasm";
+} from "./swc-next-core.browser.mjs";
 
 export function parseSync(source, options) {
   const buffer = __parseSync(source, encodeParserOptions(options));

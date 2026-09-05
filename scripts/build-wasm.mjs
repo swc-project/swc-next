@@ -8,6 +8,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { bindingFileNames, environmentFiles } from "./wasm-package/files.mjs";
+import { prepareBrowserPackage } from "./browser-package.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -104,19 +105,6 @@ function buildComponent(name, { outputDirectory, release }) {
   for (const [file, source] of environmentFiles(names, config.version)) {
     fs.writeFileSync(path.join(destinationDirectory, file), source);
   }
-  if (name === "core") {
-    const declarationSource = path.join(repositoryRoot, "npm/core/src-js/binding.d.ts");
-    const declarationOutput = path.join(
-      repositoryRoot,
-      "npm/core-wasm/binding.d.ts",
-    );
-    const declaration = fs.readFileSync(declarationSource, "utf8");
-    fs.mkdirSync(path.dirname(declarationOutput), { recursive: true });
-    fs.writeFileSync(
-      declarationOutput,
-      declaration.replaceAll("Buffer", "Uint8Array"),
-    );
-  }
 
   const source = path.join(
     cargoMetadata.target_directory,
@@ -125,6 +113,7 @@ function buildComponent(name, { outputDirectory, release }) {
     config.artifact,
   );
   fs.copyFileSync(source, path.join(destinationDirectory, names.wasm));
+  if (name === "core") prepareBrowserPackage(destinationDirectory);
 }
 
 function discoverComponents(metadata) {

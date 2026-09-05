@@ -16,7 +16,7 @@ export default defineConfig({
 function browserProject(name, conditionNames) {
   return {
     name,
-    include: ["npm/core-wasm/test/browser.test.js"],
+    include: ["npm/browser/test/browser.test.js"],
     browser,
     resolve: { conditionNames },
   };

@@ -6,7 +6,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 build",
+    "build": "pnpm --filter \"./npm/*\" --filter \"!@swc-next/browser\" --workspace-concurrency=1 build",
     "build:wasm": "node scripts/build-wasm.mjs",
     "test": "pnpm --filter \"./npm/*\" --if-present test"
   },
