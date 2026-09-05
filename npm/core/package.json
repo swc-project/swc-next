@@ -30,7 +30,8 @@
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
     "build:wasm": "node ../../scripts/build-wasm.mjs core --output-dir src-js",
     "conformance": "pnpm build --release && node ./test/estree-conformance.ts",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/parser.test.js test/codegen.test.js",
+    "test:wasm": "node --test test/wasm.test.js"
   },
   "keywords": [],
   "author": "",

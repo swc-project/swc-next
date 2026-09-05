@@ -31,7 +31,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "node ../../scripts/build-wasm.mjs core"
+    "build": "node ../../scripts/build-wasm.mjs core",
+    "test": "rstest run --include smoke.test.js --browser --browser.headless"
   },
   "dependencies": {
     "@swc-next/decoder": "workspace:*",

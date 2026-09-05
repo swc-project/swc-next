@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { encode } from "@swc-next/encoder";
-import { parseSync } from "../../parser/src-js/index.js";
-import { printSync } from "../src-js/index.js";
+import { parseSync, printSync } from "../src-js/index.js";
 
 test("encode writes spans in canonical little-endian order", () => {
   const buffer = encode({

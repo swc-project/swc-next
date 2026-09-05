@@ -28,8 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "build:wasm": "node ../../scripts/build-wasm.mjs parser --output-dir src-js",
-    "test": "node --test test/*.test.js"
+    "build:wasm": "node ../../scripts/build-wasm.mjs parser --output-dir src-js"
   },
   "keywords": [
     "ast",

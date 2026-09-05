@@ -8,7 +8,9 @@
   "scripts": {
     "build": "pnpm --filter \"./npm/*\" --filter \"!@swc-next/browser\" --workspace-concurrency=1 build",
     "build:wasm": "node scripts/build-wasm.mjs",
-    "test": "pnpm --filter \"./npm/*\" --if-present test"
+    "test": "pnpm --filter @swc-next/core test",
+    "test:wasm": "pnpm --filter @swc-next/core test:wasm",
+    "test:browser": "pnpm --filter @swc-next/browser test"
   },
   "keywords": [],
   "author": "",
