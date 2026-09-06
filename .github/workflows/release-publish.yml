@@ -237,8 +237,9 @@ jobs:
           if-no-files-found: error
           name: bindings-wasm32-unknown-unknown
           path: |
-            target/wasm-package/*/*.wasm
-            target/wasm-package/*/*.bridge.mjs
+            npm/*/src-js/*.wasm
+            npm/*/src-js/*.bridge.mjs
+            !npm/browser/**
 
   release_npm:
     name: Release NPM packages

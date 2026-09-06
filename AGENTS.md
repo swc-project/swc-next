@@ -26,7 +26,7 @@ Run from the workspace root.
 | Build browser package    | `pnpm build:browser [--release]`                                                       |
 | Build all WASM packages  | `pnpm build:wasm [--release]`                                                           |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                 |
-| Smoke test Node.js WASM  | `pnpm test:wasm` (after `pnpm build:wasm`)                                              |
+| Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                              |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                |
 
 ## Testing & Examples
@@ -78,6 +78,6 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 
 ### Adding JavaScript Unit Tests
 
-- New JavaScript tests should only be added to the `@swc-next/core` packages. There should be only simple smoke tests for the wasm and browser packages.
+- New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
 
 Update this file when the commands or workflows above change; otherwise do not edit it.

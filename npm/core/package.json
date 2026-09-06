@@ -29,8 +29,8 @@
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
     "build:wasm": "node ../../scripts/build-wasm.mjs core --output-dir src-js",
-    "test": "node --test test/parser.test.js test/codegen.test.js",
-    "test:wasm": "node --test test/wasm.test.js",
+    "test": "node --test test/*.test.js",
+    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts"
   },
   "keywords": [],
@@ -69,6 +69,7 @@
     "@napi-rs/cli": "catalog:",
     "@swc/core": "catalog:",
     "@types/node": "catalog:",
+    "cross-env": "catalog:",
     "oxc-parser": "catalog:",
     "tinybench": "catalog:",
     "tinypool": "catalog:",
