@@ -1,9 +1,10 @@
 [package]
 edition = "2024"
-name    = "bridge_codegen"
+name    = "bridge_cli"
 publish = false
 version = "0.1.0"
 
 [dependencies]
+clap       = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
