@@ -45,7 +45,7 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/yield-wit
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/await-expression/input.js - babel-generator/test/fixtures/parentheses/await-expression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/class-extends/input.js - babel-generator/test/fixtures/parentheses/class-extends: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/expression/input.js - babel-generator/test/fixtures/parentheses/expression: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/in-inside-for/input.js - parse: Expected ';' after for-loop init, but found ')' at 62..63
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/in-inside-for/input.js - babel-generator/test/fixtures/parentheses/in-inside-for: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/new-callee/input.js - semantic: 'super()' is only valid in a constructor of a derived class at 275..282
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/nullish-coalescing/input.js - babel-generator/test/fixtures/parentheses/nullish-coalescing: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions: transformed output differs from output.js

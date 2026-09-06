@@ -7686,9 +7686,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     #[inline(always)]
     fn parse_expr_from_left(
         &mut self,
-        mut left: Expr,
+        left: Expr,
         minimum: Precedence,
         opts: ParseExpressionOpts,
+    ) -> Option<Expr> {
+        // Specialize the recursive path so preserving [In] does not require a
+        // runtime flag in every binary, logical, or infix parser.
+        if opts.respect_in_parameter {
+            self.parse_expr_from_left_with_in::<true>(left, minimum)
+        } else {
+            self.parse_expr_from_left_with_in::<false>(left, minimum)
+        }
+    }
+
+    #[inline(always)]
+    fn parse_expr_from_left_with_in<const RESPECT_IN_PARAMETER: bool>(
+        &mut self,
+        mut left: Expr,
+        minimum: Precedence,
     ) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
 
@@ -7709,25 +7724,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if precedence > max_left_precedence(left, &self.ast) {
                 break;
             }
-            if opts.respect_in_parameter
+            if RESPECT_IN_PARAMETER
                 && token.tag == TokenTag::In
                 && !self.context.contains(Context::IN)
             {
                 break;
             }
             left = if token.tag.is_binary_operator() {
-                self.parse_binary_expression(left, token.tag)?
+                self.parse_binary_expression::<RESPECT_IN_PARAMETER>(left, token.tag)?
             } else if token.tag.is_logical_operator() {
-                self.parse_logical_expression(left, token.tag)?
+                self.parse_logical_expression::<RESPECT_IN_PARAMETER>(left, token.tag)?
             } else if token.tag.is_assignment_operator() {
-                self.parse_assignment_expression(
-                    precedence,
-                    left,
-                    token.tag,
-                    opts.respect_in_parameter,
-                )?
+                self.parse_assignment_expression(precedence, left, token.tag, RESPECT_IN_PARAMETER)?
             } else {
-                self.parse_infix(precedence, left)?
+                self.parse_infix::<RESPECT_IN_PARAMETER>(precedence, left)?
             };
         }
         Some(left)
@@ -7763,7 +7773,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_infix(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
+    fn parse_infix<const RESPECT_IN_PARAMETER: bool>(
+        &mut self,
+        precedence: Precedence,
+        left: Expr,
+    ) -> Option<Expr> {
         let token = self.current_token;
 
         match token.tag {
@@ -7787,7 +7801,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.parse_update_expression(false, Some(left))
             }
             TokenTag::Question => self.parse_conditional_expression(left),
-            TokenTag::Comma => self.parse_sequence_expression(precedence, left),
+            TokenTag::Comma => {
+                self.parse_sequence_expression::<RESPECT_IN_PARAMETER>(precedence, left)
+            }
             TokenTag::Dot => self.parse_static_member_expression(left, false),
             TokenTag::LeftBracket => self.parse_computed_member_expression(left, false),
             TokenTag::LeftParen => self.parse_call_expression(left, false, None),
@@ -11743,7 +11759,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_binary_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
+    fn parse_binary_expression<const RESPECT_IN_PARAMETER: bool>(
+        &mut self,
+        left: Expr,
+        tag: TokenTag,
+    ) -> Option<Expr> {
         let start = left.span(&self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
@@ -11753,7 +11773,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else {
                 precedence.next()
             },
-            ParseExpressionOpts::default(),
+            ParseExpressionOpts {
+                respect_in_parameter: RESPECT_IN_PARAMETER,
+                ..ParseExpressionOpts::default()
+            },
         )?;
         let operator = binary_operator(tag);
         Some(self.ast.expr_binary_expression(
@@ -11764,11 +11787,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_logical_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
+    fn parse_logical_expression<const RESPECT_IN_PARAMETER: bool>(
+        &mut self,
+        left: Expr,
+        tag: TokenTag,
+    ) -> Option<Expr> {
         let start = left.span(&self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
-        let right = self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
+        let right = self.parse_expr(
+            precedence.next(),
+            ParseExpressionOpts {
+                respect_in_parameter: RESPECT_IN_PARAMETER,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         let operator = match tag {
             TokenTag::LogicalAnd => LogicalOperator::And,
             TokenTag::LogicalOr => LogicalOperator::Or,
@@ -11879,15 +11912,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_sequence_expression(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
+    fn parse_sequence_expression<const RESPECT_IN_PARAMETER: bool>(
+        &mut self,
+        precedence: Precedence,
+        left: Expr,
+    ) -> Option<Expr> {
         let start = left.span(&self.ast).start;
         let checkpoint = self.scratch_a.begin();
         self.scratch_a.append(left);
         let result = (|| {
             let mut end = left.span(&self.ast).end;
             while self.eat(TokenTag::Comma)? {
-                let expression =
-                    self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
+                let expression = self.parse_expr(
+                    precedence.next(),
+                    ParseExpressionOpts {
+                        respect_in_parameter: RESPECT_IN_PARAMETER,
+                        ..ParseExpressionOpts::default()
+                    },
+                )?;
                 end = expression.span(&self.ast).end;
                 self.scratch_a.append(expression);
             }
