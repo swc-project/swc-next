@@ -8,7 +8,7 @@ const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
 export function prepareBrowserPackage(sourceDirectory) {
   const packageDirectory = path.join(repositoryRoot, "npm/core-browser");
-  const directory = path.join(packageDirectory, "src-js");
+  const directory = path.join(packageDirectory, "src");
   fs.mkdirSync(directory, { recursive: true });
   const manifest = JSON.parse(
     fs.readFileSync(path.join(packageDirectory, "package.json"), "utf8"),

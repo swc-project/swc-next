@@ -10,6 +10,7 @@ tasks/testsuite/outputs
 node_modules
 *.node
 *.wasm
+/npm/core-browser/src/*.mjs
 /npm/*/src-js/*.node.mjs
 /npm/*/src-js/runtime.mjs
 /npm/*/src-js/*.bridge.mjs

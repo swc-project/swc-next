@@ -239,7 +239,6 @@ jobs:
           path: |
             npm/*/src-js/*.wasm
             npm/*/src-js/*.bridge.mjs
-            !npm/core-browser/**
 
   release_npm:
     name: Release NPM packages

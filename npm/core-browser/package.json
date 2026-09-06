@@ -7,24 +7,24 @@
     "url": "git+https://github.com/swc-project/swc-next.git",
     "directory": "npm/core-browser"
   },
-  "main": "src-js/index.js",
+  "main": "src/index.js",
   "type": "module",
-  "types": "./src-js/index.d.ts",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src-js/index.d.ts",
-      "import": "./src-js/index.js",
-      "default": "./src-js/index.js"
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
     }
   },
   "files": [
-    "src-js/binding.d.ts",
-    "src-js/index.d.ts",
-    "src-js/index.js",
-    "src-js/swc-next-core.bridge.mjs",
-    "src-js/swc-next-core.browser.mjs",
-    "src-js/swc-next-core.runtime.mjs",
-    "src-js/swc-next-core.wasm"
+    "src/binding.d.ts",
+    "src/index.d.ts",
+    "src/index.js",
+    "src/swc-next-core.bridge.mjs",
+    "src/swc-next-core.browser.mjs",
+    "src/swc-next-core.runtime.mjs",
+    "src/swc-next-core.wasm"
   ],
   "publishConfig": {
     "access": "public",
