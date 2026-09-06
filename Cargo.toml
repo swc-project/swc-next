@@ -1,6 +1,6 @@
 [workspace]
 members  = ["crates/*", "npm/*", "tasks/ast_tools", "tasks/benchmark", "tasks/bridge_codegen", "tasks/testsuite"]
-exclude  = ["npm/browser"]
+exclude  = ["npm/core-browser"]
 resolver = "3"
 
 [workspace.package]

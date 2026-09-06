@@ -7,7 +7,7 @@ import { bindingFileNames, environmentFiles } from "./wasm-package/files.mjs";
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
 export function prepareBrowserPackage(sourceDirectory) {
-  const packageDirectory = path.join(repositoryRoot, "npm/browser");
+  const packageDirectory = path.join(repositoryRoot, "npm/core-browser");
   const directory = path.join(packageDirectory, "src-js");
   fs.mkdirSync(directory, { recursive: true });
   const manifest = JSON.parse(

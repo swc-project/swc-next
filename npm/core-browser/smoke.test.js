@@ -4,7 +4,7 @@
 
 import { expect, test } from "@rstest/core";
 
-import init, { parseSync, printSync } from "@swc-next/browser";
+import init, { parseSync, printSync } from "@swc-next/core-browser";
 
 test("browser exposes parseSync and printSync", async () => {
   await init();
