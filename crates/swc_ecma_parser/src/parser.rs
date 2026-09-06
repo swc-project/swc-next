@@ -4655,8 +4655,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_with_clause(&mut self) -> TypedSubRange<ImportAttribute> {
-        if !matches!(self.current_token.tag, TokenTag::With | TokenTag::Assert) {
-            return TypedSubRange::empty();
+        match self.current_token.tag {
+            TokenTag::With => {}
+            TokenTag::Assert if !self.current_token.has_line_terminator_before() => {}
+            _ => return TypedSubRange::empty(),
         }
         if self.advance().is_none() {
             return TypedSubRange::empty();
@@ -12769,6 +12771,20 @@ mod tests {
         let mut buffer = vec![0; buffer_size(ast, &[])];
         serialize_into(ast, &[], &mut buffer);
         buffer
+    }
+
+    #[test]
+    fn import_assertions() {
+        let allocator = Allocator::new();
+        let options = Options {
+            source_type: SourceType::Module,
+            lang: Lang::Js,
+            ..Options::default()
+        };
+        let source = "import 'x'\nassert ({});";
+        let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+        assert!(result.diagnostics.is_empty());
+        assert_eq!(result.ast.root_program().body(&result.ast).len(), 2);
     }
 
     #[test]

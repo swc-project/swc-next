@@ -35,6 +35,9 @@ Run from the workspace root.
 
 First run `./scripts/clone_fixtures.sh`. Review changes under `tasks/testsuite/snapshots/`.
 
+The Test262 parser/codegen runner also discovers `.js` files with Test262 metadata under
+`tasks/testsuite/fixtures-manual/test262-legacy/`, including tests retained after upstream removal.
+
 | Runner    | Suites                     | Check                                                | Command                                                   |
 | --------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
 | Parser    | Test262, TypeScript, Babel | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance --profile test` |

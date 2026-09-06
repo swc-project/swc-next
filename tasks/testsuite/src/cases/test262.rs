@@ -8,7 +8,10 @@ use rayon::prelude::*;
 use saphyr::{LoadableYamlNode, Yaml};
 use swc_next_ecma_ast::{Lang, SourceType};
 
-use crate::cases::{Case, fixtures};
+use crate::{
+    cases::{Case, fixtures},
+    util::crate_root,
+};
 
 /// https://github.com/evanw/esbuild/blob/main/scripts/test262.js
 pub struct Test262Case {
@@ -55,8 +58,13 @@ impl From<&str> for Phase {
 
 impl Test262Case {
     fn read_cases() -> Vec<Self> {
-        WalkDir::new(fixtures().join("test262").join("test"))
+        let roots = [
+            fixtures().join("test262/test"),
+            crate_root().join("fixtures-manual/test262-legacy"),
+        ];
+        roots
             .into_iter()
+            .flat_map(WalkDir::new)
             .filter_map(|file| {
                 let file = file.unwrap();
                 if !file.file_type().is_file() {
