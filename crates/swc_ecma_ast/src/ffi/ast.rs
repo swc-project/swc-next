@@ -45,6 +45,10 @@ const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
 const EXTRA_DATA_SIZE: usize = 8;
 const COMMENT_SIZE: usize = 16;
+const DIAGNOSTIC_FIXED_SIZE: usize =
+    size_of::<u8>() + SPAN_SIZE + size_of::<u32>() + size_of::<u8>() + size_of::<u32>();
+const DIAGNOSTIC_HELP_FIXED_SIZE: usize = size_of::<u32>();
+const DIAGNOSTIC_LABEL_FIXED_SIZE: usize = SPAN_SIZE + size_of::<u32>();
 const FLAG_TS: u32 = 1 << 0;
 const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
 
@@ -71,30 +75,22 @@ pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra.len())
         + tree.comments().len() * COMMENT_SIZE
-        + diagnostics.iter().map(diagnostic_size).sum::<usize>()
-}
-
-#[inline]
-fn diagnostic_size(diagnostic: &Diagnostic<'_>) -> usize {
-    size_of::<u8>()
-        + SPAN_SIZE
-        + bytes_with_length_size(diagnostic.message.as_bytes())
-        + size_of::<u8>()
-        + diagnostic
-            .help
-            .as_ref()
-            .map_or(0, |help| bytes_with_length_size(help.as_bytes()))
-        + size_of::<u32>()
-        + diagnostic
-            .labels
+        + diagnostics
             .iter()
-            .map(|label| SPAN_SIZE + bytes_with_length_size(label.message.as_bytes()))
+            .map(|diagnostic| {
+                DIAGNOSTIC_FIXED_SIZE
+                    + diagnostic.message.len()
+                    + diagnostic
+                        .help
+                        .as_ref()
+                        .map_or(0, |help| DIAGNOSTIC_HELP_FIXED_SIZE + help.len())
+                    + diagnostic
+                        .labels
+                        .iter()
+                        .map(|label| DIAGNOSTIC_LABEL_FIXED_SIZE + label.message.len())
+                        .sum::<usize>()
+            })
             .sum::<usize>()
-}
-
-#[inline]
-const fn bytes_with_length_size(bytes: &[u8]) -> usize {
-    size_of::<u32>() + bytes.len()
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
