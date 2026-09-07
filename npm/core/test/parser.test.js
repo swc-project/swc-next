@@ -24,6 +24,20 @@ test("decoder reads little-endian words from unaligned buffers", () => {
   assert.deepEqual(result.comments, []);
 });
 
+test("decoder rejects unknown diagnostic severities", () => {
+  const buffer = new Uint8Array(65);
+  const view = new DataView(buffer.buffer);
+  view.setUint32(0, 1, true); // node count
+  view.setUint32(24, 1, true); // diagnostic count
+  buffer[64] = 0xff; // diagnostic severity
+
+  const result = decode(buffer, "");
+  assert.throws(
+    () => result.diagnostics,
+    new RangeError("Unknown diagnostic severity 255"),
+  );
+});
+
 test("parseSync exposes the program lazily", () => {
   const result = parseSync("const answer = 42;");
   const descriptor = Object.getOwnPropertyDescriptor(result, "program");

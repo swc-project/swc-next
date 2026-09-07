@@ -928,7 +928,11 @@ export function decode(buffer, source) {
     const severities = ["error", "warning", "hint", "info"];
     const result = new Array(diagnosticCount);
     for (let index = 0; index < diagnosticCount; index++) {
-      const severity = severities[readU8()];
+      const severityValue = readU8();
+      const severity = severities[severityValue];
+      if (severity === undefined) {
+        throw new RangeError(`Unknown diagnostic severity ${severityValue}`);
+      }
       const start = pos(readU32());
       const end = pos(readU32());
       const message = readDiagnosticString();
