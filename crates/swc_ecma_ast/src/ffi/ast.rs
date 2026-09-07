@@ -45,10 +45,6 @@ const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
 const EXTRA_DATA_SIZE: usize = 8;
 const COMMENT_SIZE: usize = 16;
-const DIAGNOSTIC_FIXED_SIZE: usize =
-    size_of::<u8>() + SPAN_SIZE + size_of::<u32>() + size_of::<u8>() + size_of::<u32>();
-const DIAGNOSTIC_HELP_FIXED_SIZE: usize = size_of::<u32>();
-const DIAGNOSTIC_LABEL_FIXED_SIZE: usize = SPAN_SIZE + size_of::<u32>();
 const FLAG_TS: u32 = 1 << 0;
 const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
 
@@ -68,29 +64,30 @@ const _: () = {
 
 /// Return the exact number of bytes required to serialize `tree` and `diagnostics`.
 pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
-    HEADER_SIZE
+    let mut size = HEADER_SIZE
         + tree.node_count() * SPAN_SIZE
         + align_to_four(tree.node_count() * NODE_KIND_SIZE)
         + tree.node_count() * NODE_PAYLOAD_SIZE
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra.len())
-        + tree.comments().len() * COMMENT_SIZE
-        + diagnostics
-            .iter()
-            .map(|diagnostic| {
-                DIAGNOSTIC_FIXED_SIZE
-                    + diagnostic.message.len()
-                    + diagnostic
-                        .help
-                        .as_ref()
-                        .map_or(0, |help| DIAGNOSTIC_HELP_FIXED_SIZE + help.len())
-                    + diagnostic
-                        .labels
-                        .iter()
-                        .map(|label| DIAGNOSTIC_LABEL_FIXED_SIZE + label.message.len())
-                        .sum::<usize>()
-            })
-            .sum::<usize>()
+        + tree.comments().len() * COMMENT_SIZE;
+
+    for diagnostic in diagnostics {
+        size += size_of::<u8>(); // severity
+        size += SPAN_SIZE; // start, end
+        size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
+        size += size_of::<u8>(); // has_help
+        if let Some(help) = &diagnostic.help {
+            size += size_of::<u32>() + help.len(); // help_len, help
+        }
+        size += size_of::<u32>(); // label_count
+        for label in &diagnostic.labels {
+            size += SPAN_SIZE; // start, end
+            size += size_of::<u32>() + label.message.len(); // message_len, message
+        }
+    }
+
+    size
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
