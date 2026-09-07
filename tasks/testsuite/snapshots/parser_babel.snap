@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1630/1743 (93.52%)
+Negative Passed: 1633/1743 (93.69%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
@@ -56,13 +56,10 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/in
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-using/input.ts - typescript/declare/invalid-namespace-using: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-var/input.ts - typescript/declare/invalid-namespace-var: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/module-class/input.ts - typescript/declare/module-class: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/module-function/input.ts - typescript/declare/module-function: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/namespace-class/input.ts - typescript/declare/namespace-class: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/namespace-function/input.ts - typescript/declare/namespace-function: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/decorators/type-arguments-invalid/input.ts - typescript/decorators/type-arguments-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/disallow-jsx-ambiguity/type-assertion/input.ts - typescript/disallow-jsx-ambiguity/type-assertion: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/disallow-jsx-ambiguity/type-parameter/input.ts - typescript/disallow-jsx-ambiguity/type-parameter: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/invalid-class-implementation/input.ts - typescript/dts/invalid-class-implementation: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/invalid-class-initializer/input.ts - typescript/dts/invalid-class-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/equals-in-script/input.ts - typescript/export/equals-in-script: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/invalid-as-namespace-duplicate-identifier/input.ts - typescript/export/invalid-as-namespace-duplicate-identifier: expected a parse or early error, but pipeline succeeded
