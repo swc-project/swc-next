@@ -64,30 +64,34 @@ const _: () = {
 
 /// Return the exact number of bytes required to serialize `tree` and `diagnostics`.
 pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
-    let mut size = HEADER_SIZE
+    HEADER_SIZE
         + tree.node_count() * SPAN_SIZE
         + align_to_four(tree.node_count() * NODE_KIND_SIZE)
         + tree.node_count() * NODE_PAYLOAD_SIZE
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra.len())
-        + tree.comments().len() * COMMENT_SIZE;
+        + tree.comments().len() * COMMENT_SIZE
+        + diagnostics
+            .iter()
+            .map(|diagnostic| {
+                let mut size = 0;
 
-    for diagnostic in diagnostics {
-        size += size_of::<u8>(); // severity
-        size += SPAN_SIZE; // start, end
-        size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
-        size += size_of::<u8>(); // has_help
-        if let Some(help) = &diagnostic.help {
-            size += size_of::<u32>() + help.len(); // help_len, help
-        }
-        size += size_of::<u32>(); // label_count
-        for label in &diagnostic.labels {
-            size += SPAN_SIZE; // start, end
-            size += size_of::<u32>() + label.message.len(); // message_len, message
-        }
-    }
+                size += size_of::<u8>(); // severity
+                size += SPAN_SIZE; // start, end
+                size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
+                size += size_of::<u8>(); // has_help
+                if let Some(help) = &diagnostic.help {
+                    size += size_of::<u32>() + help.len(); // help_len, help
+                }
+                size += size_of::<u32>(); // label_count
+                for label in &diagnostic.labels {
+                    size += SPAN_SIZE; // start, end
+                    size += size_of::<u32>() + label.message.len(); // message_len, message
+                }
 
-    size
+                size
+            })
+            .sum::<usize>()
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
