@@ -14,9 +14,25 @@ export interface Comment {
   end: number;
 }
 
+export interface DiagnosticLabel {
+  message: string;
+  /** UTF-16 offset in the source. */
+  start: number;
+  /** UTF-16 offset in the source. */
+  end: number;
+}
+
+export interface Diagnostic extends DiagnosticLabel {
+  severity: "error" | "warning" | "hint" | "info";
+  help?: string;
+  labels: DiagnosticLabel[];
+}
+
 export interface ParseResult {
   readonly program: any;
   readonly comments: Comment[];
+  /** Parser diagnostics, decoded lazily. Empty when parsing succeeds without diagnostics. */
+  readonly diagnostics: Diagnostic[];
 }
 
 /**

@@ -71,18 +71,30 @@ pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra.len())
         + tree.comments().len() * COMMENT_SIZE
-        + diagnostics
+        + diagnostics.iter().map(diagnostic_size).sum::<usize>()
+}
+
+#[inline]
+fn diagnostic_size(diagnostic: &Diagnostic<'_>) -> usize {
+    size_of::<u8>()
+        + SPAN_SIZE
+        + bytes_with_length_size(diagnostic.message.as_bytes())
+        + size_of::<u8>()
+        + diagnostic
+            .help
+            .as_ref()
+            .map_or(0, |help| bytes_with_length_size(help.as_bytes()))
+        + size_of::<u32>()
+        + diagnostic
+            .labels
             .iter()
-            .map(|diagnostic| {
-                18 + diagnostic.message.len()
-                    + diagnostic.help.as_ref().map_or(0, |help| 4 + help.len())
-                    + diagnostic
-                        .labels
-                        .iter()
-                        .map(|label| 12 + label.message.len())
-                        .sum::<usize>()
-            })
+            .map(|label| SPAN_SIZE + bytes_with_length_size(label.message.as_bytes()))
             .sum::<usize>()
+}
+
+#[inline]
+const fn bytes_with_length_size(bytes: &[u8]) -> usize {
+    size_of::<u32>() + bytes.len()
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
