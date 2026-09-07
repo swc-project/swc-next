@@ -1,18 +1,7 @@
-use std::{
-    collections::HashSet,
-    env,
-    fs::{self, OpenOptions},
-    io::{BufWriter, Write},
-    path::PathBuf,
-    sync::{LazyLock, Mutex},
-};
-
+use proc_macro2::{Span, TokenStream};
+use quote::quote;
 use serde::Serialize;
-
-const METADATA_DIRECTORY_ENV: &str = "SWC_BRIDGE_METADATA_DIR";
-
-static PREPARED_FILES: LazyLock<Mutex<HashSet<PathBuf>>> =
-    LazyLock::new(|| Mutex::new(HashSet::new()));
+use syn::LitStr;
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -66,43 +55,26 @@ pub(super) struct WireMapping {
     pub wire_type: String,
 }
 
-pub(super) fn emit_descriptor(descriptor: &BridgeDescriptor) -> Result<(), String> {
-    let Some(path) = metadata_path() else {
-        return Ok(());
-    };
-    let mut prepared_files = PREPARED_FILES
-        .lock()
-        .map_err(|_| "bridge metadata lock is poisoned".to_owned())?;
-    if prepared_files.insert(path.clone()) {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| format!("failed to create bridge metadata directory: {error}"))?;
-        }
-        match fs::remove_file(&path) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => {
-                return Err(format!("failed to replace bridge metadata file: {error}"));
-            }
-        }
-    }
+pub(super) fn expand_metadata(descriptors: &[BridgeDescriptor]) -> syn::Result<TokenStream> {
+    let json = serde_json::to_string(descriptors)
+        .map_err(|error| syn::Error::new(Span::call_site(), error))?;
+    let json = LitStr::new(&json, Span::call_site());
+    Ok(quote! {
+        #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+        const _: () = {
+            const BRIDGEN_METADATA: &str = #json;
 
-    let file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(&path)
-        .map_err(|error| format!("failed to open bridge metadata file: {error}"))?;
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer(&mut writer, descriptor)
-        .map_err(|error| format!("failed to serialize bridge metadata: {error}"))?;
-    writer
-        .write_all(b"\n")
-        .and_then(|()| writer.flush())
-        .map_err(|error| format!("failed to write bridge metadata: {error}"))
-}
-
-fn metadata_path() -> Option<PathBuf> {
-    let directory = env::var_os(METADATA_DIRECTORY_ENV)?;
-    let package_name = env::var_os("CARGO_PKG_NAME")?;
-    Some(PathBuf::from(directory).join(package_name))
+            #[used]
+            #[unsafe(link_section = "__wasm_bindgen_unstable")]
+            static _GENERATED: [u8; BRIDGEN_METADATA.len()] = {
+                let mut bytes = [0; BRIDGEN_METADATA.len()];
+                let mut index = 0;
+                while index < bytes.len() {
+                    bytes[index] = BRIDGEN_METADATA.as_bytes()[index];
+                    index += 1;
+                }
+                bytes
+            };
+        };
+    })
 }

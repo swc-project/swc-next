@@ -225,6 +225,8 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "wasm-encoder",
+ "wasmparser",
 ]
 
 [[package]]

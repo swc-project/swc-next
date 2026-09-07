@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -22,7 +21,7 @@ if (component === undefined && options.outputDirectory !== undefined) {
 }
 
 const cargoMetadata = JSON.parse(
-  execFileSync("cargo", ["metadata", "--format-version", "1", "--locked"], {
+  execFileSync("cargo", ["metadata", "--format-version", "1", "--no-deps", "--locked"], {
     cwd: repositoryRoot,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
@@ -41,24 +40,6 @@ for (const name of component === undefined ? components.keys() : [component]) {
 function buildComponent(name, { outputDirectory, release }) {
   const config = components.get(name);
   const names = bindingFileNames(config.binaryName);
-  const metadataPackages = findMetadataPackages(cargoMetadata, config.cargoPackage);
-  const metadataDirectory = path.join(
-    cargoMetadata.target_directory,
-    "swc-next-bridge",
-    "metadata",
-    name,
-  );
-  fs.rmSync(metadataDirectory, { force: true, recursive: true });
-  fs.mkdirSync(metadataDirectory, { recursive: true });
-
-  const cargoEnvironment = {
-    ...process.env,
-    SWC_BRIDGE_METADATA_DIR: metadataDirectory,
-  };
-  for (const packageName of metadataPackages) {
-    cargoEnvironment[forceBuildEnvironment(packageName)] = randomUUID();
-  }
-
   const cargoArguments = [
     "build",
     "--locked",
@@ -70,7 +51,6 @@ function buildComponent(name, { outputDirectory, release }) {
   if (release) cargoArguments.push("--profile", "wasm-release");
   execFileSync("cargo", cargoArguments, {
     cwd: repositoryRoot,
-    env: cargoEnvironment,
     stdio: "inherit",
   });
 
@@ -79,7 +59,12 @@ function buildComponent(name, { outputDirectory, release }) {
       ? path.join(repositoryRoot, "target", "wasm-package", name)
       : path.resolve(process.cwd(), outputDirectory);
   fs.mkdirSync(destinationDirectory, { recursive: true });
-  const bridgeOutput = path.join(destinationDirectory, names.bridge);
+  const source = path.join(
+    cargoMetadata.target_directory,
+    config.target,
+    release ? "wasm-release" : "debug",
+    config.artifact,
+  );
   execFileSync(
     "cargo",
     [
@@ -90,27 +75,21 @@ function buildComponent(name, { outputDirectory, release }) {
       "bridge_cli",
       "--",
       "generate",
-      "--metadata-dir",
-      metadataDirectory,
-      "--runtime",
-      names.runtime,
-      "--output",
-      bridgeOutput,
-      ...metadataPackages.flatMap((packageName) => ["--package", packageName]),
+      source,
+      "--output-dir",
+      destinationDirectory,
+      "--out-name",
+      config.binaryName,
     ],
     { cwd: repositoryRoot, stdio: "inherit" },
   );
   for (const [file, source] of environmentFiles(names, config.version)) {
-    fs.writeFileSync(path.join(destinationDirectory, file), source);
+    // The CLI emits the runtime alongside the bridge and stripped Wasm.
+    if (file !== names.runtime) {
+      fs.writeFileSync(path.join(destinationDirectory, file), source);
+    }
   }
 
-  const source = path.join(
-    cargoMetadata.target_directory,
-    config.target,
-    release ? "wasm-release" : "debug",
-    config.artifact,
-  );
-  fs.copyFileSync(source, path.join(destinationDirectory, names.wasm));
   if (name === "core") prepareBrowserPackage(destinationDirectory);
 }
 
@@ -187,47 +166,6 @@ function parseOptions(arguments_) {
   }
 
   return { outputDirectory, release };
-}
-
-function findMetadataPackages(metadata, rootPackageName) {
-  const packagesById = new Map(metadata.packages.map((pkg) => [pkg.id, pkg]));
-  const rootPackage = metadata.packages.find((pkg) => pkg.name === rootPackageName);
-  if (rootPackage === undefined) {
-    throw new Error(`missing Cargo package ${rootPackageName}`);
-  }
-  const nodesById = new Map(
-    (metadata.resolve?.nodes ?? []).map((node) => [node.id, node]),
-  );
-  const dependencyIds = new Set();
-  const pending = [rootPackage.id];
-  while (pending.length !== 0) {
-    const packageId = pending.pop();
-    if (dependencyIds.has(packageId)) continue;
-    dependencyIds.add(packageId);
-    for (const dependency of nodesById.get(packageId)?.deps ?? []) {
-      pending.push(dependency.pkg);
-    }
-  }
-
-  const macroPackageIds = new Set(
-    metadata.packages
-      .filter((pkg) => pkg.name === "swc_next_bridge_macros")
-      .map((pkg) => pkg.id),
-  );
-  const workspacePackageIds = new Set(metadata.workspace_members);
-  const packageNames = new Set([rootPackageName]);
-  for (const packageId of dependencyIds) {
-    if (!workspacePackageIds.has(packageId)) continue;
-    const node = nodesById.get(packageId);
-    if (node?.deps.some((dependency) => macroPackageIds.has(dependency.pkg))) {
-      packageNames.add(packagesById.get(packageId).name);
-    }
-  }
-  return [...packageNames].sort();
-}
-
-function forceBuildEnvironment(packageName) {
-  return `SWC_BRIDGE_FORCE_BUILD_${packageName.replaceAll("-", "_").toUpperCase()}`;
 }
 
 function usage(components) {

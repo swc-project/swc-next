@@ -1,5 +1,3 @@
-use std::env;
-
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{ToTokens, quote};
@@ -11,7 +9,7 @@ use syn::{
 
 use crate::metadata::{
     BridgeDescriptor, BridgeFunction, BridgeParameter, StringEnum, StringEnumVariant,
-    WireDirection, WireMapping, emit_descriptor,
+    WireDirection, WireMapping, expand_metadata,
 };
 
 mod metadata;
@@ -29,38 +27,17 @@ pub fn bridge(args: TokenStream, input: TokenStream) -> TokenStream {
         Ok(descriptors) => descriptors,
         Err(error) => return error.into_compile_error().into(),
     };
+    let metadata = match expand_metadata(&descriptors) {
+        Ok(metadata) => metadata,
+        Err(error) => return error.into_compile_error().into(),
+    };
     match expand_bridge(item, arguments) {
-        Ok(expanded) => {
-            for descriptor in descriptors {
-                if let Err(error) = emit_descriptor(&descriptor) {
-                    return syn::Error::new(Span::call_site(), error)
-                        .into_compile_error()
-                        .into();
-                }
-            }
-            let metadata_dependencies = metadata_dependencies();
-            quote! {
-                #expanded
-                #metadata_dependencies
-            }
-            .into()
+        Ok(expanded) => quote! {
+            #expanded
+            #metadata
         }
+        .into(),
         Err(error) => error.into_compile_error().into(),
-    }
-}
-
-fn metadata_dependencies() -> proc_macro2::TokenStream {
-    let package_name = env::var("CARGO_PKG_NAME").unwrap_or_default();
-    let package_name = package_name.to_uppercase().replace('-', "_");
-    let force_build = LitStr::new(
-        &format!("SWC_BRIDGE_FORCE_BUILD_{package_name}"),
-        Span::call_site(),
-    );
-    quote! {
-        const _: () = {
-            let _ = option_env!("SWC_BRIDGE_METADATA_DIR");
-            let _ = option_env!(#force_build);
-        };
     }
 }
 
