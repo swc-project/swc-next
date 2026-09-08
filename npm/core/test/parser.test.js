@@ -201,3 +201,26 @@ test("parseSync preserves multiple recoverable diagnostics", () => {
   assert.equal(ambient.diagnostics[0].severity, "error");
   assert.equal(ambient.diagnostics[0].help, undefined);
 });
+
+
+test("ambient implementation recovery preserves enclosing and following declarations", () => {
+  for (const container of ["namespace N", 'module "pkg"']) {
+    const source = `declare ${container} { function bad() {} function good(): void; } declare function after(): void;`;
+    const result = parseSync(source, { lang: Lang.Ts, sourceType: SourceType.Module });
+    assert.equal(result.diagnostics.length, 1);
+    assert.equal(result.program.body.length, 2);
+    const members = result.program.body[0].body.body;
+    assert.deepEqual(members.map((node) => node.id.name), ["bad", "good"]);
+    assert.equal(members[0].type, "TSDeclareFunction");
+    assert.equal(members[0].body, null);
+    assert.equal(result.program.body[1].id.name, "after");
+  }
+  const result = parseSync("declare function bad() {} declare function good(): void;", {
+    lang: Lang.Dts,
+    sourceType: SourceType.Module,
+  });
+  assert.equal(result.diagnostics.length, 1);
+  assert.deepEqual(result.program.body.map((node) => node.id.name), ["bad", "good"]);
+  assert.equal(result.program.body[0].declare, true);
+  assert.equal(result.program.body[0].body, null);
+});
