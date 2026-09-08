@@ -93,7 +93,7 @@ strip         = "symbols"
 inherits = "release"
 strip    = "symbols"
 
-[profile.test]
+[profile.conformance]
 codegen-units    = 256
 debug-assertions = true
 inherits         = "release"
