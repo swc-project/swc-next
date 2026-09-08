@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1635/1743 (93.80%)
+Negative Passed: 1636/1743 (93.86%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
@@ -80,7 +80,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-nam
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-export-assignment/input.ts - typescript/module-namespace/invalid-body-export-assignment: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-export-default/input.ts - typescript/module-namespace/invalid-body-export-default: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-export-from/input.ts - typescript/module-namespace/invalid-body-export-from: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-export-named/input.ts - typescript/module-namespace/invalid-body-export-named: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-import/input.ts - typescript/module-namespace/invalid-body-import: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-namespace-export/input.ts - typescript/module-namespace/invalid-body-namespace-export: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-declare-module-identifier/input.ts - typescript/module-namespace/invalid-declare-module-identifier: expected a parse or early error, but pipeline succeeded

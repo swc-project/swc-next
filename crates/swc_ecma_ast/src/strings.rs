@@ -174,3 +174,43 @@ impl<'a> StringPool<'a> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Ast;
+
+    #[test]
+    fn string_lifetimes() {
+        let allocator = Allocator::new();
+        let (source, first, large, last, surrogate) = {
+            let mut ast = Ast::new("source", &allocator);
+            let source = ast.get_utf8(ast.source_slice(0, 6));
+            let first = ast.add_utf8("first");
+            let first = ast.get_utf8(first);
+            let large = ast.add_utf8(&"x".repeat(4096));
+            let large = ast.get_utf8(large);
+            let copy = ast.add_utf8(first);
+            assert_eq!(ast.get_utf8(copy), first);
+            let prefix = ast.add_utf8(&first[..2]);
+            assert_eq!(ast.get_utf8(prefix), "fi");
+            assert_eq!(first, "first");
+            assert_eq!(large.len(), 4096);
+
+            // SAFETY: ED A0 80 encodes a lone high surrogate, valid in WTF-8.
+            let surrogate = unsafe { Wtf8::from_bytes_unchecked(b"\xed\xa0\x80") };
+            let surrogate = ast.add_wtf8(surrogate);
+            let surrogate = ast.get_wtf8(surrogate);
+            let larger = ast.add_utf8(&"y".repeat(16384));
+            assert_eq!(ast.get_utf8(larger).len(), 16384);
+
+            let last = ast.add_utf8("last");
+            let last = ast.get_utf8(last);
+            (source, first, large, last, surrogate)
+        };
+        assert_eq!(source, "source");
+        assert_eq!(first, "first");
+        assert_eq!(large.as_bytes()[4095], b'x');
+        assert_eq!(last, "last");
+        assert_eq!(surrogate.as_bytes(), b"\xed\xa0\x80");
+    }
+}
