@@ -2343,6 +2343,19 @@ impl<'a> ExtraDataCompact<'a> for Option<ModuleExportName> {
         (node_id.index() != u32::MAX as usize).then_some(ModuleExportName(node_id))
     }
 }
+impl<'a> ExtraDataCompact<'a> for Option<FunctionBody> {
+    #[inline]
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData::from_node_id(
+            self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
+        )
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        let node_id = data.node_id();
+        (node_id.index() != u32::MAX as usize).then_some(FunctionBody(node_id))
+    }
+}
 impl<'a> ExtraDataCompact<'a> for Option<TsImportTypeQualifier> {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {

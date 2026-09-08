@@ -1340,7 +1340,8 @@ function encode(program) {
     const v_4 = n.generator ? 1 : 0;
     const v_5 = n.async ? 1 : 0;
     const v_6 = n.declare ? 1 : 0;
-    const extraId = allocExtra(2);
+    const v_7 = n.body == null ? NULL : encFunctionBody(n.body);
+    const extraId = allocExtra(3);
     const index = allocNode(86, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 3, v_0);
@@ -1350,6 +1351,7 @@ function encode(program) {
     setPayloadU8(index, 0, v_4);
     setPayloadU8(index, 1, v_5);
     setPayloadU8(index, 2, v_6);
+    setExtraU32(extraId + 2, 0, v_7);
     return index;
   }
 

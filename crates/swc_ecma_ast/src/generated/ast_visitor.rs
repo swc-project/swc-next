@@ -1361,6 +1361,10 @@ pub trait Visit<'a> {
         <Option<ModuleExportName> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
+    fn visit_opt_function_body(&mut self, node: Option<FunctionBody>) {
+        <Option<FunctionBody> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
     fn visit_opt_ts_import_type_qualifier(&mut self, node: Option<TsImportTypeQualifier>) {
         <Option<TsImportTypeQualifier> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
@@ -4036,6 +4040,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsFunction {
         let field_value_1 = self.type_parameters(visitor.ast());
         let field_value_2 = self.params(visitor.ast());
         let field_value_3 = self.return_type(visitor.ast());
+        let field_value_7 = self.body(visitor.ast());
         <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
             field_value_1,
@@ -4043,6 +4048,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsFunction {
         );
         <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <Option<FunctionBody> as VisitWith<'a, V>>::visit_with(field_value_7, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMethodDefinition {
@@ -5769,6 +5775,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ModuleExportName> {
         }
     }
 }
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<FunctionBody> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_function_body(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsImportTypeQualifier> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
@@ -7309,6 +7328,13 @@ pub trait VisitMut<'a> {
         node: Option<ModuleExportName>,
     ) -> Option<Option<ModuleExportName>> {
         <Option<ModuleExportName> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_function_body(
+        &mut self,
+        node: Option<FunctionBody>,
+    ) -> Option<Option<FunctionBody>> {
+        <Option<FunctionBody> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_ts_import_type_qualifier(
@@ -11003,6 +11029,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsFunction {
         {
             self.set_return_type(visitor.ast(), field_value);
         }
+        let field_value = self.body(visitor.ast());
+        if let Some(field_value) =
+            <Option<FunctionBody> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_body(visitor.ast(), field_value);
+        }
         None
     }
 }
@@ -13392,6 +13424,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ModuleExportNa
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
         <V as VisitMut<'a>>::visit_mut_opt_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
+        self.and_then(|it| it.visit_mut_with(visitor).map(Some))
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<FunctionBody> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
+        <V as VisitMut<'a>>::visit_mut_opt_function_body(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
@@ -22117,6 +22159,20 @@ impl<'a, State> TraverseWith<'a, State> for Option<ModuleExportName> {
         TraverseAction::Proceed
     }
 }
+impl<'a, State> TraverseWith<'a, State> for Option<FunctionBody> {
+    type Node = <FunctionBody as TraverseWith<'a, State>>::Node;
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction<Self::Node> {
+        if let Some(it) = self {
+            return <FunctionBody as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
 impl<'a, State> TraverseWith<'a, State> for Option<TsImportTypeQualifier> {
     type Node = <TsImportTypeQualifier as TraverseWith<'a, State>>::Node;
     #[inline]
@@ -27405,6 +27461,18 @@ fn walk_ts_function<'a, State, T: ?Sized + Traverse<'a, State>>(
             }
             TraverseAction::Replace(replacement) => {
                 node.set_return_type(ctx.ast, Some(replacement));
+            }
+            TraverseAction::Proceed | TraverseAction::Skip => {}
+        }
+        let child = node.body(ctx.ast);
+        match <Option<FunctionBody> as TraverseWith<'a, State>>::traverse_with(
+            child, traverser, ctx,
+        ) {
+            TraverseAction::Stop => {
+                break 'traverse_children true;
+            }
+            TraverseAction::Replace(replacement) => {
+                node.set_body(ctx.ast, Some(replacement));
             }
             TraverseAction::Proceed | TraverseAction::Skip => {}
         }

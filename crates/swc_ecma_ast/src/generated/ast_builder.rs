@@ -229,6 +229,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        body: Option<FunctionBody>,
     ) -> Stmt {
         Stmt::Declaration(Decl::TsFunction(
             self.ts_function(
@@ -240,6 +241,7 @@ impl<'a> Ast<'a> {
                 generator,
                 r#async,
                 declare,
+                body,
             )
             .into(),
         ))
@@ -477,6 +479,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        body: Option<FunctionBody>,
     ) -> Decl {
         Decl::TsFunction(
             self.ts_function(
@@ -488,6 +491,7 @@ impl<'a> Ast<'a> {
                 generator,
                 r#async,
                 declare,
+                body,
             )
             .into(),
         )
@@ -4368,6 +4372,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        body: Option<FunctionBody>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::TsFunction(
             self.ts_function(
@@ -4379,6 +4384,7 @@ impl<'a> Ast<'a> {
                 generator,
                 r#async,
                 declare,
+                body,
             )
             .into(),
         )
@@ -7327,8 +7333,13 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        body: Option<FunctionBody>,
     ) -> TsFunction {
-        let _extra_data = [params.to_extra_data(self), return_type.to_extra_data(self)];
+        let _extra_data = [
+            params.to_extra_data(self),
+            return_type.to_extra_data(self),
+            body.to_extra_data(self),
+        ];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         TsFunction(self.add_node(
             span,

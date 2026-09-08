@@ -1192,6 +1192,7 @@ export function decode(buffer, source) {
         const f_generator = _dv.getUint8(payload + 0) !== 0;
         const f_async = _dv.getUint8(payload + 1) !== 0;
         const f_declare = _dv.getUint8(payload + 2) !== 0;
+        const f_body = optionalNode(_u32[(extra + (extraId + 2) * 8) >> 2]);
         result = {
           type: "TSDeclareFunction",
           start, end,
@@ -1199,7 +1200,7 @@ export function decode(buffer, source) {
           generator: f_generator,
           async: f_async,
           params: f_params.params,
-          body: null,
+          body: f_body,
           expression: false,
           typeParameters: f_typeParameters,
           returnType: f_returnType,

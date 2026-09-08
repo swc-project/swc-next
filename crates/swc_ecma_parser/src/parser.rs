@@ -2485,11 +2485,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "An implementation cannot be declared in ambient contexts",
                     ReportOptions::default(),
                 );
-                // Function nodes cannot represent an explicit `declare` modifier.
-                // Keep the existing rejection instead of recovering as runtime code.
-                if opts.is_declare {
-                    return None;
-                }
             }
             let has_body = !self.lang.is_typescript()
                 || is_function_expression
@@ -2526,7 +2521,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
         let span = Span::new(start, end);
-        if let Some(body) = body {
+        if let Some(body) = body.filter(|_| !opts.is_declare) {
             let function_type = if is_function_expression {
                 FunctionType::FunctionExpression
             } else {
@@ -2554,6 +2549,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 generator,
                 opts.is_async,
                 opts.is_declare,
+                body,
             );
             Some(ParsedFunction::TsFunction(function))
         }
@@ -3196,6 +3192,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 modifiers.is_generator,
                 modifiers.is_async,
                 false,
+                None,
             );
             let method = self.ast.ts_method_definition(
                 method_span,
