@@ -2485,12 +2485,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "An implementation cannot be declared in ambient contexts",
                     ReportOptions::default(),
                 );
-                return None;
             }
-            let has_body = !ambient_declaration
-                && (!self.lang.is_typescript()
-                    || is_function_expression
-                    || self.current_token.tag == TokenTag::LeftBrace);
+            let has_body = !self.lang.is_typescript()
+                || is_function_expression
+                || self.current_token.tag == TokenTag::LeftBrace;
             let body = if has_body {
                 Some(self.parse_function_body()?)
             } else {
