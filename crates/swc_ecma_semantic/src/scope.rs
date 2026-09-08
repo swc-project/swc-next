@@ -7,7 +7,15 @@ use swc_next_ecma_ast::{
 
 use crate::ecmascript;
 
-/// A single lexical scope in the scope tree.
+pub(crate) enum DecoratorSite {
+    ClassDeclaration,
+    ClassExpression,
+    Member,
+}
+
+/// A lexical environment or a TypeScript name-lookup view in the scope tree.
+/// Lookup views restrict visible declarations without introducing a runtime
+/// environment; see the corresponding [`ScopeKind`] variants.
 ///
 /// ## Example
 /// ```ts
@@ -24,11 +32,14 @@ pub struct Scope {
     pub parent: Option<ScopeId>,
     /// Nearest ancestor (or self) where `var` declarations hoist to.
     pub hoist_target: ScopeId,
+    /// Separate body environment when this function has parameter expressions.
+    /// Signature lookup can inspect it without exposing it to initializers.
+    pub function_body: Option<ScopeId>,
     pub kind: ScopeKind,
     pub flags: ScopeFlags,
 }
 
-/// What kind of JavaScript construct created a scope.
+/// The lexical environment or name-lookup view represented by a scope.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ScopeKind {
     /// Section 16.1.7 GlobalDeclarationInstantiation.
@@ -47,6 +58,9 @@ pub enum ScopeKind {
     With,
     /// Section 15.7.14 ClassDefinitionEvaluation.
     Class,
+    /// Lookup view for a class expression's decorators. Retains the class's
+    /// name and type parameters, but inherits strictness from outside the class.
+    ClassDecorator,
     /// Section 15.7.11 ClassStaticBlockDefinitionEvaluation.
     StaticBlock,
     /// Intermediate scope holding a named function/class expression's
@@ -63,6 +77,24 @@ pub enum ScopeKind {
     /// TS namespace body. Acts as a var-hoist target so vars
     /// declared inside don't escape to the surrounding scope.
     TsModule,
+    /// Type-parameter-list lookup view. The owning declaration contributes
+    /// type parameters; its parameter variables and body-local types are hidden.
+    TsTypeParameters,
+    /// Return-annotation lookup view. The owning declaration contributes
+    /// parameters and type parameters. Body functions and let/const variables
+    /// can contribute value meaning, but body var declarations and local types
+    /// (including classes and enums queried through `typeof`) remain hidden.
+    TsSignatureReturn,
+    /// Parameter-region lookup view. Type queries exclude body-local variables
+    /// and types, but can see body functions. Runtime expressions retain the
+    /// owning function's JavaScript parameter environment.
+    TsSignatureParameter,
+    /// Extends-clause lookup view. Infer declarations belong to the conditional
+    /// scope but are only visible from its true branch.
+    TsConditionalExtends,
+    /// Local visibility of an infer parameter inside its own constraint.
+    /// Its declaration identity still belongs to the conditional scope.
+    TsInferConstraint,
     /// Separate var environment of a function body whose parameter
     /// list contains expressions (10.2.11 FunctionDeclarationInstantiation
     /// step 28):
@@ -77,6 +109,17 @@ pub enum ScopeKind {
 }
 
 impl ScopeKind {
+    pub(crate) fn is_ts_lookup_view(self) -> bool {
+        matches!(
+            self,
+            Self::TsTypeParameters
+                | Self::TsSignatureReturn
+                | Self::TsSignatureParameter
+                | Self::TsConditionalExtends
+                | Self::TsInferConstraint
+        )
+    }
+
     /// Returns whether `var` declarations hoist to this scope kind.
     pub fn is_hoist_target(self) -> bool {
         matches!(
@@ -99,6 +142,9 @@ pub struct ScopeFlags {
     /// Whether this scope or one of its descendants contains a call that can
     /// invoke the intrinsic eval function directly.
     pub direct_eval: bool,
+    /// Stops lookup of an outer `arguments` binding: ordinary functions provide
+    /// their own implicit binding, while static blocks disallow it entirely.
+    pub arguments_barrier: bool,
 }
 
 impl ScopeFlags {
@@ -188,6 +234,7 @@ impl<'a> ScopeTracker<'a> {
             node: root_node,
             parent: None,
             hoist_target: ScopeId::ROOT,
+            function_body: None,
             kind: ScopeKind::Global,
             flags: ScopeFlags {
                 strict: source_type == SourceType::Script && root_strict,
@@ -208,8 +255,7 @@ impl<'a> ScopeTracker<'a> {
                 );
             }
             SourceType::CommonJs => {
-                self.push_scope(
-                    ScopeKind::Function,
+                self.push_function_scope(
                     root_node,
                     ScopeFlags {
                         strict: root_strict,
@@ -237,6 +283,7 @@ impl<'a> ScopeTracker<'a> {
             } else {
                 parent.hoist_target
             },
+            function_body: None,
             kind,
             flags,
         });
@@ -278,11 +325,24 @@ impl<'a> ScopeTracker<'a> {
             // The expression-name scope sits between outer and body.
             self.push_scope(ScopeKind::ExpressionName, function.node_id(), flags);
         }
-        self.push_scope(ScopeKind::Function, function.node_id(), flags);
+        self.push_function_scope(function.node_id(), flags);
     }
 
     pub fn enter_ts_function(&mut self, node: NodeId) {
-        self.push_scope(ScopeKind::Function, node, self.inherit_strict_flag());
+        self.push_function_scope(node, self.inherit_strict_flag());
+    }
+
+    // Ordinary functions own arguments whether or not they have a body.
+    // Arrows, function types and interface signatures use other scope entries.
+    fn push_function_scope(&mut self, node: NodeId, flags: ScopeFlags) {
+        self.push_scope(
+            ScopeKind::Function,
+            node,
+            ScopeFlags {
+                arguments_barrier: true,
+                ..flags
+            },
+        );
     }
 
     pub fn enter_arrow_function_expression(&mut self, tree: &Ast, arrow: ArrowFunctionExpression) {
@@ -309,11 +369,13 @@ impl<'a> ScopeTracker<'a> {
             _ => return,
         };
         if ecmascript::find_parameter_expression(tree, params).is_some() {
+            let function = self.current;
             self.push_scope(
                 ScopeKind::FunctionBody,
                 body.node_id(),
                 self.inherit_strict_flag(),
             );
+            self.scopes[function.index()].function_body = Some(self.current);
         }
     }
 
@@ -378,6 +440,17 @@ impl<'a> ScopeTracker<'a> {
         self.pop_scope();
     }
 
+    pub fn enter_ts_lookup_view(&mut self, node: NodeId, kind: ScopeKind) {
+        debug_assert!(kind.is_ts_lookup_view());
+        self.push_scope(kind, node, self.inherit_strict_flag());
+    }
+
+    pub fn exit_ts_lookup_view(&mut self, node: NodeId) {
+        debug_assert_eq!(self.current_scope().node, node);
+        debug_assert!(self.current_scope().kind.is_ts_lookup_view());
+        self.pop_scope();
+    }
+
     pub fn enter_ts_module_block(&mut self, node: NodeId) {
         self.push_scope(ScopeKind::TsModule, node, self.inherit_strict_flag());
     }
@@ -396,32 +469,42 @@ impl<'a> ScopeTracker<'a> {
 
     pub fn enter_static_block(&mut self, node: NodeId) {
         self.push_scope(ScopeKind::StaticBlock, node, self.inherit_strict_flag());
+        self.current_mut().flags.arguments_barrier = true;
     }
 
-    pub fn enter_decorator(&mut self) {
-        // Decorators evaluate in the scope enclosing the class:
-        // neither its type parameters nor an expression's own name is
-        // visible, so retarget `current` for the decorator subtree.
+    pub fn enter_decorator(&mut self, node: NodeId, site: DecoratorSite) {
         self.decorator_saved.push(self.current);
-        self.current = self.decorator_eval_scope();
+        let Some((class, outer)) = self.decorator_scopes() else {
+            return;
+        };
+        match site {
+            DecoratorSite::ClassDeclaration => self.current = outer,
+            DecoratorSite::ClassExpression => {
+                // Decorators precede ClassTail and do not inherit its strict
+                // mode, even though TS name lookup can see this class.
+                let flags = ScopeFlags {
+                    strict: self.get(outer).flags.strict,
+                    ..ScopeFlags::default()
+                };
+                self.current = class;
+                self.push_scope(ScopeKind::ClassDecorator, node, flags);
+            }
+            DecoratorSite::Member => self.current = class,
+        }
     }
 
-    // the parent of the nearest class scope, past a named class
-    // expression's name scope
-    fn decorator_eval_scope(&self) -> ScopeId {
-        for id in self.ancestors(Some(self.current)) {
-            if self.get(id).kind != ScopeKind::Class {
+    fn decorator_scopes(&self) -> Option<(ScopeId, ScopeId)> {
+        for class in self.ancestors(Some(self.current)) {
+            if self.get(class).kind != ScopeKind::Class {
                 continue;
             }
-            let Some(parent) = self.get(id).parent else {
-                break;
-            };
-            if self.get(parent).kind == ScopeKind::ExpressionName {
-                return self.get(parent).parent.unwrap_or(parent);
+            let mut outer = self.get(class).parent?;
+            if self.get(outer).kind == ScopeKind::ExpressionName {
+                outer = self.get(outer).parent?;
             }
-            return parent;
+            return Some((class, outer));
         }
-        self.current
+        None
     }
 
     // "use strict" applies retroactively to the whole function including
@@ -445,11 +528,14 @@ impl<'a> ScopeTracker<'a> {
         }
     }
 
-    // A node pops exactly the scopes recording it as creator. Two for a
-    // named function or class expression, zero for a shared or never-created
-    // scope. Cannot drift from `enter`.
+    // A node owns its lexical scopes, including both scopes of a named
+    // expression. Lookup views have a separate lifetime: their root node may
+    // create lexical scopes without owning the surrounding lookup view.
     pub fn exit_scope(&mut self, node: NodeId) {
-        while self.current.index() != 0 && self.current_scope().node == node {
+        while self.current.index() != 0
+            && self.current_scope().node == node
+            && !self.current_scope().kind.is_ts_lookup_view()
+        {
             self.pop_scope();
         }
     }

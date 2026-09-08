@@ -69,7 +69,7 @@ pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
         + align_to_four(tree.node_count() * NODE_KIND_SIZE)
         + tree.node_count() * NODE_PAYLOAD_SIZE
         + tree.extra_data_count() * EXTRA_DATA_SIZE
-        + align_to_four(tree.strings.extra.len())
+        + align_to_four(tree.strings.extra_bytes().len())
         + tree.comments().len() * COMMENT_SIZE
         + diagnostics
             .iter()
@@ -109,7 +109,7 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
     let extra_count =
         u32::try_from(tree.extra_data_count()).expect("AST extra-data count exceeds u32");
     let string_pool_len =
-        u32::try_from(tree.strings.extra.len()).expect("AST string pool exceeds u32");
+        u32::try_from(tree.strings.extra_bytes().len()).expect("AST string pool exceeds u32");
     let source_len = u32::try_from(tree.source().len()).expect("AST source length exceeds u32");
     let comment_count = u32::try_from(tree.comments().len()).expect("comment count exceeds u32");
     let diag_count = u32::try_from(diagnostics.len()).expect("diagnostic count exceeds u32");
@@ -188,7 +188,7 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
     }
 
     // =================== String Pool ====================
-    let string_pool = &tree.strings.extra;
+    let string_pool = tree.strings.extra_bytes();
     buf[pos..pos + string_pool.len()].copy_from_slice(string_pool);
     pos += string_pool.len();
     pad_to_four(buf, &mut pos);
@@ -376,8 +376,7 @@ pub fn deserialize_from<'a>(
 
     // =================== String Pool ====================
     tree.strings
-        .extra
-        .extend_from_slice_copy(&buf[strings..strings + string_pool_len]);
+        .initialize_extra(&buf[strings..strings + string_pool_len]);
 
     // ================= Source Metadata =================
     let source_type = match (flags >> FLAG_SOURCE_TYPE_SHIFT) & 3 {

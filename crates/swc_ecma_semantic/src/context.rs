@@ -8,7 +8,7 @@ use crate::{
     Semantic,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
     module_record::ModuleRecordBuilder,
-    scope::ScopeTracker,
+    scope::{DecoratorSite, ScopeTracker},
 };
 
 pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
@@ -48,6 +48,15 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
         self.path.iter().rev().copied()
     }
 
+    pub fn record_ts_expando_assignment(&mut self, node: swc_next_ecma_ast::AssignmentExpression) {
+        self.state.symbols.record_ts_expando_assignment(
+            self.ast,
+            node,
+            &self.state.scope,
+            self.path.iter().rev().copied(),
+        );
+    }
+
     pub fn finalize(self) -> Semantic<'ast> {
         debug_assert!(self.path.is_empty());
         self.state.finalize(self.ast)
@@ -61,8 +70,8 @@ pub(crate) struct SemanticContext<'a> {
     pub scope: ScopeTracker<'a>,
     pub symbols: SymbolTracker<'a>,
     pub module_record: ModuleRecordBuilder<'a>,
-    // depth of TS type-only context. inspect via `in_type_position()`.
-    type_position_depth: u32,
+    // Nested type syntax saves and restores this default through the visitor.
+    default_reference_flags: ReferenceFlags,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
 }
@@ -74,7 +83,7 @@ impl<'a> SemanticContext<'a> {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
             module_record: ModuleRecordBuilder::new(allocator, build_module_record),
-            type_position_depth: 0,
+            default_reference_flags: ReferenceFlags::default(),
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
         }
@@ -82,7 +91,7 @@ impl<'a> SemanticContext<'a> {
 
     /// True when the walker is currently inside a TS type-only subtree.
     pub fn in_type_position(&self) -> bool {
-        self.type_position_depth > 0
+        self.default_reference_flags.space == ReferenceSpace::Type
     }
 
     /// True when the walker is currently inside a TS namespace body.
@@ -99,11 +108,7 @@ impl<'a> SemanticContext<'a> {
 
     #[inline]
     pub fn default_reference_flags(&self) -> ReferenceFlags {
-        ReferenceFlags::default().with_space(if self.in_type_position() {
-            ReferenceSpace::Type
-        } else {
-            ReferenceSpace::Value
-        })
+        self.default_reference_flags
     }
 
     #[inline]
@@ -112,15 +117,18 @@ impl<'a> SemanticContext<'a> {
     }
 
     #[inline]
-    pub fn enter_type_position(&mut self) {
-        self.type_position_depth += 1;
+    pub fn enter_type_position(&mut self) -> ReferenceFlags {
+        let flags = ReferenceFlags::default()
+            .with_space(ReferenceSpace::Type)
+            .no_access();
+        std::mem::replace(&mut self.default_reference_flags, flags)
     }
 
     #[inline]
-    pub fn exit_type_position(&mut self) {
-        debug_assert!(self.type_position_depth > 0);
-        self.type_position_depth -= 1;
-        self.reference_flags = self.default_reference_flags();
+    pub fn exit_type_position(&mut self, previous: ReferenceFlags) {
+        debug_assert!(self.in_type_position());
+        self.default_reference_flags = previous;
+        self.reference_flags = previous;
     }
 
     pub fn enter_directive(&mut self, tree: &Ast, directive: Directive) {
@@ -242,8 +250,8 @@ impl<'a> SemanticContext<'a> {
         self.scope.enter_static_block(node);
     }
 
-    pub fn enter_decorator(&mut self) {
-        self.scope.enter_decorator();
+    pub fn enter_decorator(&mut self, node: NodeId, site: DecoratorSite) {
+        self.scope.enter_decorator(node, site);
     }
 
     pub fn exit_scope(&mut self, node: NodeId) {
@@ -254,7 +262,7 @@ impl<'a> SemanticContext<'a> {
         self.scope.exit_decorator();
     }
 
-    pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
+    pub fn finalize(self, tree: &Ast<'a>) -> Semantic<'a> {
         let (scopes, has_with_statement) = self.scope.into_scope_tree();
         self.symbols
             .finalize(tree, scopes, has_with_statement, self.module_record)

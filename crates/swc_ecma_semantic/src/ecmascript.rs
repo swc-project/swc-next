@@ -1,5 +1,29 @@
 use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKind, NodeKindData};
 
+pub(crate) fn import_equals_reference_node(
+    tree: &Ast<'_>,
+    declaration: swc_next_ecma_ast::TsImportEqualsDeclaration,
+) -> Option<NodeId> {
+    let target = declaration.module_reference(tree);
+    let swc_next_ecma_ast::TsModuleReferenceData::TsTypeName(name) =
+        tree.ts_module_reference_data(target)
+    else {
+        return None;
+    };
+    let mut root = name.node_id();
+    while let NodeKindData::TsQualifiedName(qualified) = tree.kind_data(root) {
+        root = qualified.left(tree).node_id();
+    }
+    Some(root)
+}
+
+pub(crate) fn unwrap_parentheses(tree: &Ast<'_>, mut node: NodeId) -> NodeId {
+    while let NodeKindData::ParenthesizedExpression(parenthesized) = tree.kind_data(node) {
+        node = parenthesized.expression(tree).node_id();
+    }
+    node
+}
+
 /// <https://tc39.es/ecma262/#sec-static-semantics-containsexpression>
 ///
 /// The first expression contained in the parameter list, a default

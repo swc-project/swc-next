@@ -99,11 +99,17 @@ fn format_scope_flags(scope: Scope) -> String {
         ScopeKind::Module => names.push("Module"),
         ScopeKind::Block => names.push("Block"),
         ScopeKind::Class => names.push("Class"),
+        ScopeKind::ClassDecorator => names.push("ClassDecorator"),
         ScopeKind::ExpressionName => names.push("ExpressionName"),
         ScopeKind::Function | ScopeKind::FunctionBody => names.push("Function"),
         ScopeKind::With => names.push("With"),
         ScopeKind::StaticBlock => names.push("ClassStaticBlock"),
         ScopeKind::TsModule => names.push("TsModuleBlock"),
+        ScopeKind::TsTypeParameters => names.push("TsTypeParameters"),
+        ScopeKind::TsSignatureParameter => names.push("TsSignatureParameter"),
+        ScopeKind::TsInferConstraint => names.push("TsInferConstraint"),
+        ScopeKind::TsConditionalExtends => names.push("TsConditionalExtends"),
+        ScopeKind::TsSignatureReturn => names.push("TsSignatureReturn"),
     }
     if scope.flags.direct_eval {
         names.push("DirectEval");

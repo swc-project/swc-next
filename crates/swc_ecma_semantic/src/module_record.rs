@@ -61,6 +61,10 @@ pub enum ExternalExportName {
 }
 
 /// The target state of an export occurrence.
+/// When a target carries a reference, its symbol is the nearest candidate.
+/// Inspect [`crate::Reference::resolution`] and
+/// [`crate::Semantic::reference_candidates`] for that reference's certainty
+/// and additional possible targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExportTarget {
     Local {
@@ -85,7 +89,7 @@ pub enum ExportTarget {
     },
 }
 
-/// One export occurrence and its finalized semantic target.
+/// One export occurrence and its finalized semantic target state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExportEntry {
     pub node: NodeId,
@@ -212,7 +216,9 @@ impl<'a> ModuleRecordBuilder<'a> {
             return;
         }
         let value = declaration.declaration(tree);
-        let expression = value.is_expr(tree);
+        let expression = value
+            .as_expr(tree)
+            .map(|expression| crate::ecmascript::unwrap_parentheses(tree, expression.node_id()));
         let binding = match tree.export_default_declaration_kind_data(value) {
             ExportDefaultDeclarationKindData::Function(function) => {
                 function.id(tree).map(|id| id.node_id())
@@ -221,8 +227,10 @@ impl<'a> ModuleRecordBuilder<'a> {
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(ts_interface_declaration) => {
                 Some(ts_interface_declaration.id(tree).node_id())
             }
-            ExportDefaultDeclarationKindData::TsFunction(_)
-            | ExportDefaultDeclarationKindData::Expr(_) => None,
+            ExportDefaultDeclarationKindData::TsFunction(function) => {
+                function.id(tree).map(|id| id.node_id())
+            }
+            ExportDefaultDeclarationKindData::Expr(_) => None,
         };
         self.exports.push(RawExportEntry {
             node: declaration.node_id(),
@@ -230,7 +238,7 @@ impl<'a> ModuleRecordBuilder<'a> {
             exported: Some(ExportName::Default {
                 node: declaration.node_id(),
             }),
-            origin: if expression {
+            origin: if expression.is_some() {
                 ExportOrigin::DefaultExpression
             } else {
                 ExportOrigin::DefaultDeclaration
@@ -285,8 +293,8 @@ impl<'a> ModuleRecordBuilder<'a> {
                             symbol,
                             reference: None,
                         }
-                    } else if expression {
-                        let reference = node_references[value.index()];
+                    } else if let Some(expression) = expression {
+                        let reference = node_references[expression.index()];
                         let symbol = reference.and_then(|id| references[id.index()].symbol);
                         ExportTarget::Expression {
                             node: value,
@@ -336,7 +344,7 @@ enum RawExportTarget {
     Default {
         value: NodeId,
         binding: Option<NodeId>,
-        expression: bool,
+        expression: Option<NodeId>,
     },
 }
 

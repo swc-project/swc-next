@@ -307,13 +307,17 @@ impl<'a> Ast<'a> {
         self.strings.add_wtf8(value)
     }
 
+    /// Borrows immutable string bytes for the source/allocator lifetime.
+    /// The reference remains valid when strings are added or the AST is dropped.
     #[inline]
-    pub fn get_utf8(&self, id: AstUtf8) -> &str {
+    pub fn get_utf8(&self, id: AstUtf8) -> &'a str {
         self.strings.get_utf8(id)
     }
 
+    /// Borrows immutable string bytes for the source/allocator lifetime.
+    /// The reference remains valid when strings are added or the AST is dropped.
     #[inline]
-    pub fn get_wtf8(&self, id: AstWtf8) -> &swc_next_allocator::wtf8::Wtf8 {
+    pub fn get_wtf8(&self, id: AstWtf8) -> &'a swc_next_allocator::wtf8::Wtf8 {
         self.strings.get_wtf8(id)
     }
 

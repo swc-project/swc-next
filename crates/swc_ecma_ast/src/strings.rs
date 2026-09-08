@@ -56,7 +56,7 @@ impl From<AstUtf8> for AstWtf8 {
 pub(crate) struct StringPool<'a> {
     allocator: &'a Allocator,
     pub(crate) source: &'a str,
-    pub(crate) extra: ArenaVec<'a, u8>,
+    extra: ArenaVec<'a, u8>,
     dedup: ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>,
 }
 
@@ -72,19 +72,19 @@ impl<'a> StringPool<'a> {
     }
 
     #[inline]
-    pub fn get_utf8(&self, id: AstUtf8) -> &str {
+    pub fn get_utf8(&self, id: AstUtf8) -> &'a str {
         // SAFETY: `AstUtf8` is guaranteed to reference valid UTF-8.
         unsafe { std::str::from_utf8_unchecked(self.get_bytes(id.start, id.end)) }
     }
 
     #[inline]
-    pub fn get_wtf8(&self, id: AstWtf8) -> &Wtf8 {
+    pub fn get_wtf8(&self, id: AstWtf8) -> &'a Wtf8 {
         // SAFETY: `AstWtf8` is guaranteed to reference valid WTF-8.
         unsafe { Wtf8::from_bytes_unchecked(self.get_bytes(id.start, id.end)) }
     }
 
     #[inline]
-    fn get_bytes(&self, start: u32, end: u32) -> &[u8] {
+    fn get_bytes(&self, start: u32, end: u32) -> &'a [u8] {
         debug_assert!(end >= start);
         if start == end {
             return b"";
@@ -96,8 +96,26 @@ impl<'a> StringPool<'a> {
         } else {
             let start = (start - source_len) as usize;
             let end = (end - source_len) as usize;
-            &self.extra[start..end]
+            assert!(start <= end && end <= self.extra.len());
+            // SAFETY: The checked range contains initialized bytes. `extra` is
+            // private and only appended to, so existing bytes are never changed.
+            // ArenaVec's RawVec allocates and copies when growing, without
+            // freeing the old buffer; dropping it does not free the buffer either.
+            // Thus this allocation and its bytes remain valid for the allocator's
+            // lifetime, even after StringPool is dropped or grows. Use the raw
+            // buffer pointer so this reference is not derived from a temporary
+            // slice borrow of the vector.
+            unsafe { std::slice::from_raw_parts(self.extra.as_ptr().add(start), end - start) }
         }
+    }
+
+    pub(crate) fn initialize_extra(&mut self, bytes: &[u8]) {
+        assert!(self.extra.is_empty());
+        self.extra.extend_from_slice_copy(bytes);
+    }
+
+    pub(crate) fn extra_bytes(&self) -> &[u8] {
+        &self.extra
     }
 
     /// Returns a slice of the source string corresponding to the given start and end offsets.
@@ -155,3 +173,4 @@ impl<'a> StringPool<'a> {
         id
     }
 }
+
