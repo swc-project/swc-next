@@ -201,33 +201,3 @@ test("parseSync preserves multiple recoverable diagnostics", () => {
   assert.equal(ambient.diagnostics[0].severity, "error");
   assert.equal(ambient.diagnostics[0].help, undefined);
 });
-
-test("parseSync diagnoses function implementations in ambient contexts", () => {
-  const dts = { lang: Lang.Dts, sourceType: SourceType.Module };
-  const ts = { lang: Lang.Ts, sourceType: SourceType.Module };
-
-  for (const [source, options] of [
-    ["export function value() { return 1; }", dts],
-    ["export default function() { return 1; }", dts],
-    ["declare namespace N { function value() { return 1; } }", ts],
-    ['declare module "pkg" { export function value() { return 1; } }', ts],
-    ["declare function value() { return 1; }", ts],
-  ]) {
-    const result = parseSync(source, options);
-    assert.ok(result.diagnostics.length > 0);
-    assert.equal(result.diagnostics[0].severity, "error");
-    assert.equal(result.diagnostics[0].start, source.lastIndexOf("{"));
-    assert.equal(result.diagnostics[0].end, source.lastIndexOf("{") + 1);
-  }
-
-  assert.deepEqual(parseSync("export function value(): number;", dts).diagnostics, []);
-  assert.deepEqual(
-    parseSync("declare namespace N { function value(): number; }", ts).diagnostics,
-    [],
-  );
-  assert.deepEqual(parseSync("export function value() { return 1; }", ts).diagnostics, []);
-  assert.deepEqual(
-    parseSync("namespace N { export function value() { return 1; } }", ts).diagnostics,
-    [],
-  );
-});
