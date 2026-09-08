@@ -7321,22 +7321,6 @@ impl TsFunction {
         }
     }
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Option<FunctionBody> {
-        let offset = unsafe {
-            ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(2usize),
-            )
-        };
-        debug_assert!(offset.index() < ast.extra_data.len());
-        unsafe {
-            ExtraDataCompact::from_extra_data(
-                *ast.extra_data.as_slice().get_unchecked(offset.index()),
-                ast,
-            )
-        }
-    }
-    #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Option<BindingIdentifier>) {
         let field_val: u32 = id.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
@@ -7407,21 +7391,6 @@ impl TsFunction {
             *ast.extra_data
                 .as_mut_slice()
                 .get_unchecked_mut(offset.index()) = return_type.to_extra_data(ast);
-        };
-    }
-    #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: Option<FunctionBody>) {
-        let offset = unsafe {
-            ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(2usize),
-            )
-        };
-        debug_assert!(offset.index() < ast.extra_data.len());
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
 }

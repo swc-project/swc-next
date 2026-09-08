@@ -2477,18 +2477,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let params_end = params.span(&self.ast).end;
             let return_type_end =
                 return_type.map_or(params_end, |return_type| return_type.span(&self.ast).end);
-            let ambient_declaration =
-                (opts.is_declare || self.ts_context.ambient()) && !is_function_expression;
-            if ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
+            let explicit_ambient_declaration = opts.is_declare && !is_function_expression;
+            if explicit_ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
                 self.report(
                     self.current_token.span,
                     "An implementation cannot be declared in ambient contexts",
                     ReportOptions::default(),
                 );
+                return None;
             }
-            let has_body = !self.lang.is_typescript()
-                || is_function_expression
-                || self.current_token.tag == TokenTag::LeftBrace;
+            let has_body = !explicit_ambient_declaration
+                && (!self.lang.is_typescript()
+                    || is_function_expression
+                    || self.current_token.tag == TokenTag::LeftBrace);
             let body = if has_body {
                 Some(self.parse_function_body()?)
             } else {
@@ -2521,7 +2522,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
         let span = Span::new(start, end);
-        if let Some(body) = body.filter(|_| !opts.is_declare) {
+        if let Some(body) = body {
             let function_type = if is_function_expression {
                 FunctionType::FunctionExpression
             } else {
@@ -2549,7 +2550,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 generator,
                 opts.is_async,
                 opts.is_declare,
-                body,
             );
             Some(ParsedFunction::TsFunction(function))
         }
@@ -3192,7 +3192,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 modifiers.is_generator,
                 modifiers.is_async,
                 false,
-                None,
             );
             let method = self.ast.ts_method_definition(
                 method_span,

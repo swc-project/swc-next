@@ -202,8 +202,7 @@ pub enum TsModuleReference {
     TsExternalModuleReference(TsExternalModuleReference),
 }
 
-/// A TypeScript declare function or overload signature.
-/// May retain a body when recovering an invalid ambient implementation.
+/// A body-less TypeScript function declaration or overload signature.
 ///
 /// ## Example
 /// ```ts
@@ -230,8 +229,6 @@ pub struct TsFunction {
     /// true when preceded by the `declare` modifier. Distinguishes a real
     /// ambient declaration from a plain overload signature.
     declare: bool,
-    /// Function body retained when recovering an invalid ambient implementation.
-    body: Option<FunctionBody>,
 }
 
 /// A body-less TypeScript method, accessor, or constructor signature in a

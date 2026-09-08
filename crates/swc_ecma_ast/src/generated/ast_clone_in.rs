@@ -2049,7 +2049,6 @@ impl<'a> CloneIn<'a> for TsFunction {
         let generator = self.generator(ast).clone_in(ast);
         let r#async = self.r#async(ast).clone_in(ast);
         let declare = self.declare(ast).clone_in(ast);
-        let body = self.body(ast).clone_in(ast);
         ast.ts_function(
             span,
             id,
@@ -2059,7 +2058,6 @@ impl<'a> CloneIn<'a> for TsFunction {
             generator,
             r#async,
             declare,
-            body,
         )
     }
 }

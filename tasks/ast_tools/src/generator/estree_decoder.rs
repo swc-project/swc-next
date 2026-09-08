@@ -338,7 +338,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
           generator: f_generator,
           async: f_async,
           params: f_params.params,
-          body: f_body,
+          body: null,
           expression: false,
           typeParameters: f_typeParameters,
           returnType: f_returnType,

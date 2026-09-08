@@ -181,20 +181,3 @@ fn unsupported_lang_variants() {
         crate::UNSUPPORTED_LANG_MESSAGE
     );
 }
-
-#[test]
-fn recovered_ambient_implementations() {
-    let result = strip_types(
-        "declare function value() { return 1; }",
-        options(crate::Lang::Ts),
-    );
-    assert_eq!(result.diagnostics.len(), 1);
-    assert!(result.code.trim().is_empty());
-
-    let result = strip_types(
-        "export declare function value() { return 1; }",
-        options(crate::Lang::Ts),
-    );
-    assert_eq!(result.diagnostics.len(), 1);
-    assert!(result.code.trim().is_empty());
-}

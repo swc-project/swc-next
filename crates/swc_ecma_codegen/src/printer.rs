@@ -995,8 +995,6 @@ impl<'a> Printer<'a> {
                         | DeclData::TsModuleDeclaration(_)
                         | DeclData::TsGlobalDeclaration(_)
                 );
-                let ends_with_block = ends_with_block
-                    || matches!(self.ast.decl_data(d), DeclData::TsFunction(f) if f.body(self.ast).is_some());
                 self.print_decl(d);
                 if ends_with_block {
                     self.print_newline();
@@ -1419,10 +1417,6 @@ impl<'a> Printer<'a> {
         self.print_formal_parameters(f.params(self.ast));
         if let Some(ret) = f.return_type(self.ast) {
             self.print_ts_annotation(ret);
-        }
-        if let Some(body) = f.body(self.ast) {
-            self.print_space();
-            self.print_function_body(body);
         }
     }
 
@@ -3656,8 +3650,6 @@ impl<'a> Printer<'a> {
                     | DeclData::TsEnumDeclaration(_)
                     | DeclData::TsModuleDeclaration(_)
             );
-            let block = block
-                || matches!(self.ast.decl_data(decl), DeclData::TsFunction(f) if f.body(self.ast).is_some());
             if let DeclData::Class(class) = self.ast.decl_data(decl) {
                 self.print_class(class, false);
             } else {
@@ -3742,11 +3734,7 @@ impl<'a> Printer<'a> {
             }
             ExportDefaultDeclarationKindData::TsFunction(f) => {
                 self.print_ts_function(f, false);
-                if f.body(self.ast).is_some() {
-                    self.print_newline();
-                } else {
-                    self.print_semicolon_after_statement();
-                }
+                self.print_semicolon_after_statement();
             }
             ExportDefaultDeclarationKindData::Class(c) => {
                 self.print_class(c, false);

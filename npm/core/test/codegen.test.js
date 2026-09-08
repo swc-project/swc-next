@@ -169,24 +169,3 @@ test("printSync rejects unsupported ESTree nodes", () => {
     /Unsupported ESTree node type Unsupported/,
   );
 });
-
-
-test("recovered declare functions preserve modifiers and bodies through printing", () => {
-  for (const prefix of ["", "export "]) {
-    const source = `${prefix}declare function value() { return 1; }`;
-    const { program, diagnostics } = parseSync(source, { lang: "ts", sourceType: "module" });
-    assert.equal(diagnostics.length, 1);
-    const fn = prefix ? program.body[0].declaration : program.body[0];
-    assert.equal(fn.type, "TSDeclareFunction");
-    assert.equal(fn.declare, true);
-    assert.equal(fn.body.body[0].type, "ReturnStatement");
-    assert.equal(fn.body.body[0].argument.value, 1);
-    const printed = printSync(program).code;
-    assert.ok(printed.startsWith(`${prefix}declare function value()`));
-    const reparsed = parseSync(printed, { lang: "ts", sourceType: "module" });
-    assert.equal(reparsed.diagnostics.length, 1);
-    const recovered = prefix ? reparsed.program.body[0].declaration : reparsed.program.body[0];
-    assert.equal(recovered.declare, true);
-    assert.equal(recovered.body.body[0].argument.value, 1);
-  }
-});
