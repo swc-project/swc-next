@@ -1,6 +1,6 @@
 [workspace]
-members  = ["crates/*", "npm/*", "tasks/ast_tools", "tasks/benchmark", "tasks/bridge_codegen", "tasks/testsuite"]
 exclude  = ["npm/core-browser"]
+members  = ["crates/*", "npm/*", "tasks/ast_tools", "tasks/benchmark", "tasks/bridge_codegen", "tasks/testsuite"]
 resolver = "3"
 
 [workspace.package]
@@ -52,17 +52,17 @@ quote        = "1.0.46"
 syn          = { version = "2.0.118", default-features = false }
 
 # Workspace
-swc_next_allocator        = { version = "0.2.0", path = "crates/swc_allocator" }
-swc_next_ast_macros       = { version = "0.2.0", path = "crates/swc_ast_macros" }
-swc_next_bridge_macros    = { version = "0.2.0", path = "crates/swc_bridge_macros" }
-swc_next_ecma_ast         = { version = "0.2.0", path = "crates/swc_ecma_ast" }
-swc_next_ecma_codegen     = { version = "0.2.0", path = "crates/swc_ecma_codegen" }
-swc_next_ecma_parser      = { version = "0.2.0", path = "crates/swc_ecma_parser" }
+swc_next_allocator          = { version = "0.2.0", path = "crates/swc_allocator" }
+swc_next_ast_macros         = { version = "0.2.0", path = "crates/swc_ast_macros" }
+swc_next_bridge             = { version = "0.2.0", path = "crates/swc_bridge" }
+swc_next_bridge_macros      = { version = "0.2.0", path = "crates/swc_bridge_macros" }
+swc_next_ecma_ast           = { version = "0.2.0", path = "crates/swc_ecma_ast" }
+swc_next_ecma_codegen       = { version = "0.2.0", path = "crates/swc_ecma_codegen" }
+swc_next_ecma_parser        = { version = "0.2.0", path = "crates/swc_ecma_parser" }
+swc_next_ecma_semantic      = { version = "0.2.0", path = "crates/swc_ecma_semantic" }
+swc_next_ecma_transformer   = { version = "0.2.0", path = "crates/swc_ecma_transformer" }
 swc_next_regular_expression = { version = "0.2.0", path = "crates/swc_regular_expression" }
-swc_next_ecma_semantic    = { version = "0.2.0", path = "crates/swc_ecma_semantic" }
-swc_next_ecma_transformer = { version = "0.2.0", path = "crates/swc_ecma_transformer" }
-swc_next_bridge           = { version = "0.2.0", path = "crates/swc_bridge" }
-swc_next_type_strip       = { version = "0.2.0", path = "crates/swc_type_strip" }
+swc_next_type_strip         = { version = "0.2.0", path = "crates/swc_type_strip" }
 
 # Dev
 clap          = { version = "4.5.51", features = ["derive"] }
@@ -100,3 +100,4 @@ inherits         = "release"
 lto              = "thin"
 opt-level        = 2
 overflow-checks  = true
+strip            = "none"
