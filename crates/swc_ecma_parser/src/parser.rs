@@ -2477,8 +2477,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let params_end = params.span(&self.ast).end;
             let return_type_end =
                 return_type.map_or(params_end, |return_type| return_type.span(&self.ast).end);
-            let explicit_ambient_declaration = opts.is_declare && !is_function_expression;
-            if explicit_ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
+            let ambient_declaration =
+                (opts.is_declare || self.ts_context.ambient()) && !is_function_expression;
+            if ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
                 self.report(
                     self.current_token.span,
                     "An implementation cannot be declared in ambient contexts",
@@ -2486,7 +2487,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 );
                 return None;
             }
-            let has_body = !explicit_ambient_declaration
+            let has_body = !ambient_declaration
                 && (!self.lang.is_typescript()
                     || is_function_expression
                     || self.current_token.tag == TokenTag::LeftBrace);

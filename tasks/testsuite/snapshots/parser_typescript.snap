@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13049/13156 (99.19%)
-Negative Passed: 1546/2981 (51.86%)
+Negative Passed: 1547/2981 (51.90%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -1344,7 +1344,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAss
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment8.ts - parserExportAssignment8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment9.ts - parserExportAssignment9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration1.ts - parserFunctionDeclaration1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration2.d.ts - parserFunctionDeclaration2.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration3.ts - parserFunctionDeclaration3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration4.ts - parserFunctionDeclaration4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration6.ts - parserFunctionDeclaration6.ts: expected a parse or early error, but pipeline succeeded
