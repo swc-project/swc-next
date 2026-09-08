@@ -2485,6 +2485,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "An implementation cannot be declared in ambient contexts",
                     ReportOptions::default(),
                 );
+                // Function nodes cannot represent an explicit `declare` modifier.
+                // Keep the existing rejection instead of recovering as runtime code.
+                if opts.is_declare {
+                    return None;
+                }
             }
             let has_body = !self.lang.is_typescript()
                 || is_function_expression
