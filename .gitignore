@@ -18,3 +18,7 @@ node_modules
 /npm/*/src-js/*.module.mjs
 /npm/*/src-js/*.runtime.mjs
 dist
+
+.idea/
+.codex/
+.DS_Store
