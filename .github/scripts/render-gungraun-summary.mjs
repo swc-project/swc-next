@@ -4,9 +4,10 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const instructionFormatter = new Intl.NumberFormat("en-US");
-const cycleFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 0,
+const countFormatter = new Intl.NumberFormat("en-US");
+const changeFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 3,
+  useGrouping: false,
 });
 
 function hasOwn(value, key) {
@@ -212,32 +213,20 @@ function formatChange(row) {
 }
 
 function formatSignedShort(value) {
-  const magnitude = Math.abs(value);
-  let fractionDigits;
-  if (magnitude < 10) {
-    fractionDigits = 5;
-  } else if (magnitude < 100) {
-    fractionDigits = 4;
-  } else if (magnitude < 1_000) {
-    fractionDigits = 3;
-  } else if (magnitude < 10_000) {
-    fractionDigits = 2;
-  } else if (magnitude < 100_000) {
-    fractionDigits = 1;
-  } else {
-    fractionDigits = 0;
-  }
-
   const sign = value < 0 ? "−" : "+";
-  return `${sign}${magnitude.toFixed(fractionDigits)}`;
+  return `${sign}${changeFormatter.format(Math.abs(value))}`;
 }
 
 function formatInstructionCount(value) {
-  return value === null ? "—" : instructionFormatter.format(value);
+  return value === null
+    ? "—"
+    : `${countFormatter.format(Math.trunc(value / 1_000))}K`;
 }
 
 function formatCycleCount(value) {
-  return value === null ? "—" : cycleFormatter.format(value / 100);
+  return value === null
+    ? "—"
+    : `${countFormatter.format(Math.trunc(value / 100_000))}K`;
 }
 
 function formatPair(left, right, formatter) {
@@ -357,7 +346,7 @@ export function renderSummary(summaries) {
   return [
     "### Callgrind metric changes",
     "",
-    "Callgrind instruction counts (Ir) and CodSpeed throughput cycle estimates (Ct) for the merge and base revisions. Values are shown as merge / base; Ct is converted from centi-cycles and rounded to whole cycles. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages use the same precision as the Gungraun text report. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
+    "Callgrind instruction counts (Ir) and CodSpeed throughput cycle estimates (Ct) for the merge and base revisions. Values are shown as merge / base in K (1,000), truncated to whole thousands; Ct is converted from centi-cycles to cycles first. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages are rounded to at most three decimal places. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
