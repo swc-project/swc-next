@@ -126,7 +126,11 @@ impl<T> SubRange<T> {
         T: ExtraDataValue,
     {
         // SAFETY: A typed sub-range index identifies a slot assigned to `T`.
-        unsafe { ast.set_extra_unchecked(at.inner, new) };
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(at.inner.index()) = new.into_extra_data();
+        };
     }
 
     #[inline]
@@ -194,6 +198,6 @@ pub struct NodeExtraDataId<T> {
 impl<'a> Ast<'a> {
     pub fn get_node_in_sub_range<T: ExtraDataValue>(&self, id: NodeExtraDataId<T>) -> T {
         // SAFETY: A typed sub-range index identifies a slot containing `T`.
-        unsafe { self.extra_unchecked(id.inner) }
+        unsafe { T::from_extra_data(self.extra_data.as_slice().get_unchecked(id.inner.index())) }
     }
 }

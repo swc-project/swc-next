@@ -231,11 +231,16 @@ fn generate_extra_data_property_accessors(
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
 
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
+        let extra_offset = generate_extra_data_offset(offset);
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
-                unsafe { ast.extra_unchecked(offset) }
+                #extra_offset
+                unsafe {
+                    ExtraDataValue::from_extra_data(
+                        ast.extra_data.as_slice().get_unchecked(offset.index()),
+                    )
+                }
             }
         });
 
@@ -270,12 +275,17 @@ fn generate_extra_data_property_accessors_partial(
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         let offset = extra_offset;
+        let offset_expr = generate_extra_data_offset(offset);
 
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
-                unsafe { ast.extra_unchecked(offset) }
+                #offset_expr
+                unsafe {
+                    ExtraDataValue::from_extra_data(
+                        ast.extra_data.as_slice().get_unchecked(offset.index()),
+                    )
+                }
             }
         });
 
@@ -290,6 +300,15 @@ fn generate_extra_data_property_accessors_partial(
     }
 }
 
+fn generate_extra_data_offset(field_offset: usize) -> TokenStream {
+    quote! {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(#field_offset) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+    }
+}
+
 fn generate_extra_data_setter(
     field: &AstStructField,
     field_name: &syn::Ident,
@@ -298,12 +317,16 @@ fn generate_extra_data_setter(
 ) -> TokenStream {
     let setter_name = format_ident!("set_{}", field_name);
     let invalidations = generate_invalidations(field);
+    let extra_offset = generate_extra_data_offset(offset);
     if invalidations.is_empty() {
         return quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-                let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
-                unsafe { ast.set_extra_unchecked(offset, #field_name) };
+                #extra_offset
+                unsafe {
+                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) =
+                        #field_name.into_extra_data();
+                };
             }
         };
     }
@@ -312,7 +335,7 @@ fn generate_extra_data_setter(
         #[inline]
         pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
             let field_value = #field_name.into_extra_data();
-            let offset = unsafe { ast.extra_offset_unchecked(self.0, #offset) };
+            #extra_offset
             let previous = unsafe {
                 *ast.extra_data.as_slice().get_unchecked(offset.index())
             };

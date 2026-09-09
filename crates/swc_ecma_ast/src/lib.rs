@@ -430,43 +430,6 @@ impl Ast<'_> {
         id
     }
 
-    /// Returns the extra-data slot for an out-of-line node field.
-    ///
-    /// # Safety
-    ///
-    /// `node_id` must have an out-of-line payload and `field_offset` must name
-    /// one of that node's out-of-line fields.
-    #[inline]
-    unsafe fn extra_offset_unchecked(&self, node_id: NodeId, field_offset: usize) -> ExtraDataId {
-        let start = unsafe { self.nodes.data_unchecked(node_id).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(field_offset) };
-        debug_assert!(offset < self.extra_data.len());
-        ExtraDataId::from_usize_unchecked(offset)
-    }
-
-    /// Reads a typed value from the type-erased extra-data table.
-    ///
-    /// # Safety
-    ///
-    /// `id` must be in bounds and its slot must contain `T`'s representation.
-    #[inline]
-    unsafe fn extra_unchecked<T: ExtraDataValue>(&self, id: ExtraDataId) -> T {
-        unsafe { T::from_extra_data(self.extra_data.as_slice().get_unchecked(id.index())) }
-    }
-
-    /// Replaces a value in the type-erased extra-data table.
-    ///
-    /// # Safety
-    ///
-    /// `id` must be in bounds and its slot must be assigned to `T` by the AST
-    /// schema.
-    #[inline]
-    unsafe fn set_extra_unchecked<T: ExtraDataValue>(&mut self, id: ExtraDataId, value: T) {
-        unsafe {
-            *self.extra_data.as_mut_slice().get_unchecked_mut(id.index()) = value.into_extra_data();
-        }
-    }
-
     #[inline]
     fn next_extra_data_id(&self) -> ExtraDataId {
         let index = self.extra_data.len();
