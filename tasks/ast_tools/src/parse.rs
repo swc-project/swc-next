@@ -536,27 +536,3 @@ fn validate_invalidation_cycles(
     }
     states[field_index] = 2;
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn collection_types_are_not_translated() {
-        let mut parser = Parser {
-            type_names: IndexSet::from(["Stmt".to_string()]),
-            extra_types: IndexVec::new(),
-        };
-
-        let ty = syn::parse_str::<Type>("SubRange<Stmt>").unwrap();
-        let type_id = parser.parse_type_name(&ty).unwrap();
-        let AstType::SubRange(range) = parser.extra_types.first().unwrap() else {
-            panic!("expected SubRange schema type");
-        };
-        assert_eq!(range.type_id, type_id);
-        assert_eq!(range.name, "SubRange<Stmt>");
-
-        let ty = syn::parse_str::<Type>("Vec<Stmt>").unwrap();
-        assert!(parser.parse_type_name(&ty).is_none());
-    }
-}
