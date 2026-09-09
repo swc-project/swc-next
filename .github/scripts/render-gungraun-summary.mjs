@@ -172,8 +172,11 @@ function benchmarkGroup(row) {
 
 function benchmarkLabel(row, includeBenchmark) {
   const segments = row.benchmark.split("::");
-  const functionName = segments.at(-1).replace(/^bench_/, "");
-  if (includeBenchmark) {
+  let functionName = segments.at(-1).replace(/^bench_/, "");
+  if (benchmarkGroup(row) === "semantic") {
+    functionName = functionName.replace(/^semantic(?:_with_|$)/, "");
+  }
+  if (includeBenchmark && functionName) {
     return `${functionName}/${row.caseName}`;
   }
   return row.caseName;
@@ -220,13 +223,13 @@ function formatSignedShort(value) {
 function formatInstructionCount(value) {
   return value === null
     ? "—"
-    : `${countFormatter.format(Math.trunc(value / 1_000))}K`;
+    : countFormatter.format(Math.trunc(value / 1_000));
 }
 
 function formatCycleCount(value) {
   return value === null
     ? "—"
-    : `${countFormatter.format(Math.trunc(value / 100_000))}K`;
+    : countFormatter.format(Math.trunc(value / 100_000));
 }
 
 function formatPair(left, right, formatter) {
@@ -250,7 +253,7 @@ function renderGroupTable(group, rows) {
   const lines = [
     `##### ${groupTitle(group)}`,
     "",
-    "| Benchmark | Ir | Change | Ct | Change |",
+    "| Benchmark | Ir (K) | Change | Ct (K) | Change |",
     "| --- | ---: | ---: | ---: | ---: |",
   ];
   for (const row of rows) {
