@@ -8301,15 +8301,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let quasis_checkpoint = self.scratch_a.begin();
         let expressions_checkpoint = self.scratch_b.begin();
         let head = self.current_token;
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
         let result = (|| {
             let head = self.add_template_element(head, false, tagged);
             self.scratch_a.append(head);
             self.advance()?;
             let end = loop {
-                let grammar_context = enter_grammar_context![&mut self.context, +In];
-                let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-                self.context = grammar_context;
-                let expression = expression?;
+                let expression =
+                    self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
                 self.scratch_b.append(expression);
                 if self.current_token.tag != TokenTag::RightBrace {
                     self.report_expected(
@@ -8358,6 +8357,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .template_literal(Span::new(start, end), quasis, expressions),
             )
         })();
+        self.context = grammar_context;
         self.scratch_a.reset(quasis_checkpoint);
         self.scratch_b.reset(expressions_checkpoint);
         result
