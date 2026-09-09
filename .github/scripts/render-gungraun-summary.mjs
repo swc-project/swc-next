@@ -172,11 +172,8 @@ function benchmarkGroup(row) {
 
 function benchmarkLabel(row, includeBenchmark) {
   const segments = row.benchmark.split("::");
-  let functionName = segments.at(-1).replace(/^bench_/, "");
-  if (benchmarkGroup(row) === "semantic") {
-    functionName = functionName.replace(/^semantic(?:_with_|$)/, "");
-  }
-  if (includeBenchmark && functionName) {
+  const functionName = segments.at(-1).replace(/^bench_/, "");
+  if (includeBenchmark) {
     return `${functionName}/${row.caseName}`;
   }
   return row.caseName;

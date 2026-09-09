@@ -77,14 +77,14 @@ fn setup_program(source: &'static str, lang: Lang) -> Ast<'static> {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_semantic(ast: Ast<'static>) {
+fn bench_analyze(ast: Ast<'static>) {
     black_box(analyze(&ast, AnalyzeOptions::default()));
 }
 
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_semantic_with_syntax_check(ast: Ast<'static>) {
+fn bench_syntax_check(ast: Ast<'static>) {
     black_box(analyze(
         &ast,
         AnalyzeOptions {
@@ -295,7 +295,7 @@ library_benchmark_group!(name = parser, benchmarks = bench_parser);
 
 library_benchmark_group!(
     name = semantic,
-    benchmarks = [bench_semantic, bench_semantic_with_syntax_check]
+    benchmarks = [bench_analyze, bench_syntax_check]
 );
 
 library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
