@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2235/2238 (99.87%)
-Negative Passed: 1633/1743 (93.69%)
+Negative Passed: 1635/1743 (93.80%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
@@ -9,8 +9,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resou
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/async-call/with-optional-parameter/input.ts - typescript/async-call/with-optional-parameter: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/invalid/input.ts - typescript/cast/invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/unparenthesized-assert-and-assign/input.ts - typescript/cast/unparenthesized-assert-and-assign: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/unparenthesized-type-assertion-and-assign/input.ts - typescript/cast/unparenthesized-type-assertion-and-assign: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-method-in-non-abstract-class-1/input.ts - typescript/class/abstract-method-in-non-abstract-class-1: expected a parse or early error, but pipeline succeeded

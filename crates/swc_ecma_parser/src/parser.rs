@@ -8861,9 +8861,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        if self.current_token.tag != TokenTag::Arrow
-            || self.current_token.has_line_terminator_before()
-        {
+        if self.current_token.tag != TokenTag::Arrow {
+            self.report_expected(
+                self.current_token.span,
+                "Expected '=>' in arrow function",
+                ReportOptions::default(),
+            );
+            return None;
+        }
+        if self.current_token.has_line_terminator_before() {
+            self.report(
+                self.current_token.span,
+                "A line terminator is not allowed before '=>'",
+                ReportOptions::default(),
+            );
             return None;
         }
         self.build_arrow_function(start, params, is_async, type_parameters, return_type)

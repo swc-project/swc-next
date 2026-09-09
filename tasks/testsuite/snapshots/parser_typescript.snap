@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13049/13156 (99.19%)
-Negative Passed: 1547/2981 (51.90%)
+Negative Passed: 1549/2981 (51.96%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -50,7 +50,6 @@ Failed: fixtures/typescript/tests/cases/compiler/anyIdenticalToItself.ts - anyId
 Failed: fixtures/typescript/tests/cases/compiler/argumentsBindsToFunctionScopeArgumentList.ts - argumentsBindsToFunctionScopeArgumentList.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/argumentsReferenceInObjectLiteral_Js.ts - /a.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/arrayConcatMap.ts - arrayConcatMap.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts - arrowFunctionErrorSpan.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiAbstract.ts - asiAbstract.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiPublicPrivateProtected.ts - asiPublicPrivateProtected.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiReturn.ts - asiReturn.ts: expected a parse or early error, but pipeline succeeded
@@ -185,7 +184,6 @@ Failed: fixtures/typescript/tests/cases/compiler/deleteExpressionMustBeOptional_
 Failed: fixtures/typescript/tests/cases/compiler/deleteOperator1.ts - deleteOperator1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructureCatchClause.ts - destructureCatchClause.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructuredLateBoundNameHasCorrectTypes.ts - destructuredLateBoundNameHasCorrectTypes.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/destructuringControlFlowNoCrash.ts - destructuringControlFlowNoCrash.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructuringFromUnionSpread.ts - destructuringFromUnionSpread.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructuringUnspreadableIntoRest.ts - destructuringUnspreadableIntoRest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/detachedCommentAtStartOfFunctionBody1.ts - detachedCommentAtStartOfFunctionBody1.ts: expected a parse or early error, but pipeline succeeded
