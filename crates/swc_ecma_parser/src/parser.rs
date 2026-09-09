@@ -10965,36 +10965,37 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let source = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let source = source?;
-        let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
-            let options = if self.current_token.tag == TokenTag::RightParen {
-                None
+        let result = (|| {
+            let source = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
+            let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
+                let options = if self.current_token.tag == TokenTag::RightParen {
+                    None
+                } else {
+                    Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
+                };
+                self.eat(TokenTag::Comma)?;
+                options
             } else {
-                let grammar_context = enter_grammar_context![&mut self.context, +In];
-                let options =
-                    self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-                self.context = grammar_context;
-                Some(options?)
+                None
             };
-            self.eat(TokenTag::Comma)?;
-            options
-        } else {
-            None
-        };
-        let end = self.current_token.span.end;
-        if !self.expect(
-            TokenTag::RightParen,
-            "Expected ')' after import()",
-            Some("Dynamic import call must end with ')'"),
-        ) {
-            return None;
-        }
-        Some(
-            self.ast
-                .expr_import_expression(Span::new(start, end), source, options, phase, sync),
-        )
+            let end = self.current_token.span.end;
+            if !self.expect(
+                TokenTag::RightParen,
+                "Expected ')' after import()",
+                Some("Dynamic import call must end with ')'"),
+            ) {
+                return None;
+            }
+            Some(self.ast.expr_import_expression(
+                Span::new(start, end),
+                source,
+                options,
+                phase,
+                sync,
+            ))
+        })();
+        self.context = grammar_context;
+        result
     }
 
     fn parse_new_target(&mut self, meta: IdentifierName) -> Option<Expr> {
