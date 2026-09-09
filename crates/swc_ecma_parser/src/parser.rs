@@ -9978,6 +9978,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
         let result = (|| {
             let mut end = start + 1;
             while self.current_token.tag != TokenTag::RightBrace
@@ -9985,13 +9986,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             {
                 let property = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.lexer.state.prev_token_end - 3;
-                    let grammar_context = enter_grammar_context![&mut self.context, +In];
                     let expression = self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts { in_cover: true },
-                    );
-                    self.context = grammar_context;
-                    let expression = expression?;
+                    )?;
                     let spread = self.ast.spread_element(
                         Span::new(spread_start, expression.span(&self.ast).end),
                         expression,
@@ -10041,6 +10039,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 end,
             })
         })();
+        self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
     }
@@ -10160,13 +10159,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         if self.current_token.tag == TokenTag::Colon {
             self.advance()?;
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
             let value = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts { in_cover: true },
-            );
-            self.context = grammar_context;
-            let value = value?;
+            )?;
             return Some(ObjectPropertyKind::ObjectProperty(
                 self.ast.object_property(
                     Span::new(start, value.span(&self.ast).end),
@@ -10211,13 +10207,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             };
 
             self.advance()?;
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
             let default_value = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts { in_cover: true },
-            );
-            self.context = grammar_context;
-            let default_value = default_value?;
+            )?;
             let identifier = self
                 .ast
                 .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast));
