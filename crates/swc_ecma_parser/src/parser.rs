@@ -1534,6 +1534,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         statement_context: StatementContext,
     ) -> ParsedBody {
         debug_assert!(statement_context.permits_declaration());
+        // Expression statements and var declarations use +In; enable it here
+        // for the whole body so an enclosing for initializer cannot restrict them.
         let context = enter_grammar_context![&mut self.context, +In];
         let statement_context = mem::replace(&mut self.statement_context, statement_context);
         // `parse_body` is shared by ScriptBody, ModuleBody, FunctionBody, and
@@ -2996,6 +2998,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
+        // The block has no In parameter; its expression statements use +In.
+        // Enable it for the whole block to isolate it from an enclosing ~In.
         let context = enter_grammar_context![&mut self.context, +In, ~Yield, +Await];
         let boundary_context = mem::take(&mut self.boundary_context);
         let checkpoint = self.scratch_statements.begin();
@@ -6204,6 +6208,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.current_token.tag == TokenTag::RightParen {
             return Some(None);
         }
+        // The production above describes this parser's permissive TS extension;
+        // keep its options expression independent of an enclosing ~In context.
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let options = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
         self.context = grammar_context;
@@ -9784,6 +9790,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
         let start = self.current_token.span.start;
         self.advance()?;
+        // ArrayLiteral has no In parameter. Elements, spreads, and binding
+        // defaults within this cover use +In, so enable it once here.
         let context = enter_grammar_context![&mut self.context, +In];
         let checkpoint = self.scratch_cover.begin();
         let result =
@@ -9881,6 +9889,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.current_token.span.start;
         self.advance()?;
+        // ObjectLiteral has no In parameter. Values, spreads, computed keys,
+        // and binding defaults within this cover use +In, so enable it once here.
         let context = enter_grammar_context![&mut self.context, +In];
         let checkpoint = self.scratch_cover.begin();
         let result = (|| {
@@ -11256,6 +11266,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
         if self.eat(TokenTag::Spread)? {
+            // JSX omits grammar parameters; this parser allows in inside {...}
+            // independently of an enclosing for initializer.
             let grammar_context = enter_grammar_context![&mut self.context, +In];
             let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
             self.context = grammar_context;
@@ -11266,6 +11278,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .jsx_child_jsx_spread_child(Span::new(start, end), expression),
             );
         }
+        // JSX omits grammar parameters; this parser allows in inside {...}
+        // independently of an enclosing for initializer.
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
         self.context = grammar_context;
@@ -11523,6 +11537,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 JsxExpression::JsxEmptyExpression(empty),
             ));
         }
+        // JSX omits grammar parameters; this parser allows in inside {...}
+        // independently of an enclosing for initializer.
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
         self.context = grammar_context;
@@ -11558,6 +11574,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
+        // JSX omits grammar parameters; this parser allows in inside {...}
+        // independently of an enclosing for initializer.
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
         self.context = grammar_context;
