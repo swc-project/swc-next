@@ -225,33 +225,64 @@ test("ambient implementation recovery preserves enclosing and following declarat
   assert.equal(result.program.body[0].body, null);
 });
 
-test("parseSync parses typed arrow call arguments in conditional expressions", () => {
+test("parseSync parses typed arrows at nested expression boundaries", () => {
   const options = { lang: Lang.Ts, sourceType: SourceType.Module };
-  for (const call of [
-    "items.map((item): Item => item)",
-    "items.map(([name, content]): Item => ({ name, content }))",
-    "items.map?.((item): Item => item)",
-    "new Factory((item): Item => item)",
-    "consume(...((item): Item => item))",
-    "consume(flag ? (item): Item => item : fallback)",
+  for (const [source, path] of [
+    ["items.map((item): Item => item)", ["arguments", 0]],
+    ["items.map(([name, content]): Item => ({ name, content }))", ["arguments", 0]],
+    ["items.map?.((item): Item => item)", ["expression", "arguments", 0]],
+    ["new Factory((item): Item => item)", ["arguments", 0]],
+    ["[(item): Item => item]", ["elements", 0]],
+    ["{ f: (item): Item => item }", ["properties", 0, "value"]],
+    ["items[(item): Item => item]", ["property"]],
+    ["consume(...(item): Item => item)", ["arguments", 0, "argument"]],
   ]) {
-    const result = parseSync(`const x = cond ? ${call} : undefined;`, options);
+    const result = parseSync(`const x = cond ? ${source} : undefined;`, options);
     assert.deepEqual(result.diagnostics, []);
     const expression = result.program.body[0].declarations[0].init;
     assert.equal(expression.type, "ConditionalExpression");
     assert.equal(expression.alternate.name, "undefined");
+    const arrow = path.reduce((node, key) => node[key], expression.consequent);
+    assert.equal(arrow.type, "ArrowFunctionExpression");
+    assert.equal(arrow.returnType.typeAnnotation.typeName.name, "Item");
+  }
+});
+
+test("parseSync preserves conditional colon disambiguation", () => {
+  function parseConditional(source) {
+    const result = parseSync(source, { lang: Lang.Ts, sourceType: SourceType.Module });
+    assert.deepEqual(result.diagnostics, []);
+    const expression = result.program.body[0].expression;
+    assert.equal(expression.type, "ConditionalExpression");
+    assert.equal(expression.alternate.type, "ArrowFunctionExpression");
+    assert.equal(expression.alternate.params[0].name, "b");
+    return expression;
   }
 
-  const result = parseSync(
-    "cond ? consume((item): Item => item) + (a) : (b) => b;",
-    options,
-  );
-  assert.deepEqual(result.diagnostics, []);
-  const expression = result.program.body[0].expression;
-  assert.equal(expression.consequent.type, "BinaryExpression");
-  const arrow = expression.consequent.left.arguments[0];
-  assert.equal(arrow.type, "ArrowFunctionExpression");
-  assert.equal(arrow.returnType.type, "TSTypeAnnotation");
-  assert.equal(expression.consequent.right.expression.name, "a");
-  assert.equal(expression.alternate.type, "ArrowFunctionExpression");
+  const call = parseConditional("cond ? consume((item): Item => item) + (a) : b => b;");
+  assert.equal(call.consequent.type, "BinaryExpression");
+  assert.equal(call.consequent.right.expression.name, "a");
+
+  const assignment = parseConditional("cond ? x = (a) : b => b;");
+  assert.equal(assignment.consequent.type, "AssignmentExpression");
+  assert.equal(assignment.consequent.right.expression.name, "a");
+
+  const nested = parseConditional("cond ? inner ? yes : (a) : b => b;");
+  assert.equal(nested.consequent.type, "ConditionalExpression");
+  assert.equal(nested.consequent.alternate.expression.name, "a");
+
+  const arrow = parseConditional("cond ? x => (a) : b => b;");
+  assert.equal(arrow.consequent.type, "ArrowFunctionExpression");
+  assert.equal(arrow.consequent.body.expression.name, "a");
+
+  const generator = parseSync("function* f() { return cond ? yield (a) : b => b; }", {
+    lang: Lang.Ts,
+    sourceType: SourceType.Module,
+  });
+  assert.deepEqual(generator.diagnostics, []);
+  const yielded = generator.program.body[0].body.body[0].argument;
+  assert.equal(yielded.consequent.type, "YieldExpression");
+  assert.equal(yielded.consequent.argument.expression.name, "a");
+  assert.equal(yielded.alternate.type, "ArrowFunctionExpression");
+
 });

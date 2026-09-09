@@ -180,7 +180,7 @@ impl BoundaryContext {
 }
 
 bitflags! {
-    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
     struct TsContext: u8 {
         /// Whether parsing is inside a `declare`-prefixed declaration.
         ///
@@ -190,21 +190,9 @@ bitflags! {
         /// Whether a trailing `?` after a type is forbidden from starting a new
         /// conditional type.
         const DISALLOW_CONDITIONAL_TYPES = 1 << 1;
-        /// Whether a speculatively parsed arrow with a return type can commit
-        /// without an outer `:`.
-        ///
-        /// This is false only while reparsing the consequent of a conditional
-        /// expression after a `(x): T => ...` arrow consumed the ternary `:`.
-        const ALLOW_ARROW_RETURN_TYPE = 1 << 2;
         /// Whether parsing is inside a TypeScript declaration body that is
         /// outside ECMAScript module grammar.
         const IN_TS_CONTAINER_BODY = 1 << 3;
-    }
-}
-
-impl Default for TsContext {
-    fn default() -> Self {
-        Self::ALLOW_ARROW_RETURN_TYPE
     }
 }
 
@@ -215,10 +203,6 @@ impl TsContext {
 
     fn disallow_conditional_types(self) -> bool {
         self.contains(Self::DISALLOW_CONDITIONAL_TYPES)
-    }
-
-    fn allow_arrow_return_type(self) -> bool {
-        self.contains(Self::ALLOW_ARROW_RETURN_TYPE)
     }
 
     fn in_ts_container_body(self) -> bool {
@@ -420,9 +404,23 @@ impl FragmentContext {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ParseExpressionOpts {
     in_cover: bool,
+    /// Whether a speculative arrow return type may consume a colon without
+    /// leaving another colon for an enclosing conditional expression.
+    /// Assignment RHSs, yield arguments and concise arrow bodies inherit this restriction;
+    /// nested expression boundaries use the default options.
+    allow_arrow_return_type: bool,
+}
+
+impl Default for ParseExpressionOpts {
+    fn default() -> Self {
+        Self {
+            in_cover: false,
+            allow_arrow_return_type: true,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1774,7 +1772,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_await_expression_statement(&mut self, start: u32) -> Option<Stmt> {
         // The program or function/static block entry already establishes +In.
         let expression = self.parse_await_expression(start)?;
-        let expression = self.parse_expr_from_left(expression, Precedence::Comma)?;
+        let expression = self.parse_expr_from_left(expression, Precedence::Comma, true)?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -3405,7 +3403,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             TokenTag::Import => self.parse_import_expression()?,
-            _ => self.parse_primary_expression(false, Precedence::Primary)?,
+            _ => self.parse_primary_expression(false, Precedence::Primary, true)?,
         };
 
         loop {
@@ -7801,9 +7799,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let left = if self.current_token.tag == TokenTag::Identifier {
             self.parse_plain_identifier()?
         } else {
-            self.parse_prefix(opts.in_cover, minimum)?
+            self.parse_prefix(opts.in_cover, minimum, opts.allow_arrow_return_type)?
         };
-        self.parse_expr_from_left(left, minimum)
+        self.parse_expr_from_left(left, minimum, opts.allow_arrow_return_type)
     }
 
     #[inline(always)]
@@ -7821,7 +7819,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // RelationalExpression[In, Yield, Await] :
     //   [+In] RelationalExpression[+In, ?Yield, ?Await] `in` ShiftExpression[?Yield, ?Await]
     #[inline(always)]
-    fn parse_expr_from_left(&mut self, mut left: Expr, minimum: Precedence) -> Option<Expr> {
+    fn parse_expr_from_left(
+        &mut self,
+        mut left: Expr,
+        minimum: Precedence,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
 
         loop {
@@ -7849,9 +7852,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else if token.tag.is_logical_operator() {
                 self.parse_logical_expression(left, token.tag)?
             } else if token.tag.is_assignment_operator() {
-                self.parse_assignment_expression(precedence, left, token.tag)?
+                self.parse_assignment_expression(
+                    precedence,
+                    left,
+                    token.tag,
+                    allow_arrow_return_type,
+                )?
             } else {
-                self.parse_infix(precedence, left)?
+                self.parse_infix(precedence, left, allow_arrow_return_type)?
             };
         }
         Some(left)
@@ -7861,7 +7869,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   AssignmentExpression[?In, ?Yield, ?Await]
     //   Expression[?In, ?Yield, ?Await] `,` AssignmentExpression[?In, ?Yield, ?Await]
     fn parse_expression_in_cover(&mut self, precedence: Precedence) -> Option<Expr> {
-        self.parse_expr(precedence, ParseExpressionOpts { in_cover: true })
+        self.parse_expr(
+            precedence,
+            ParseExpressionOpts {
+                in_cover: true,
+                ..ParseExpressionOpts::default()
+            },
+        )
     }
 
     fn parse_assignment_expression_in_cover(&mut self) -> Option<Expr> {
@@ -7884,7 +7898,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_infix(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
+    fn parse_infix(
+        &mut self,
+        precedence: Precedence,
+        left: Expr,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let token = self.current_token;
 
         match token.tag {
@@ -7900,14 +7919,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if token.tag == TokenTag::Arrow && !token.has_line_terminator_before() {
-            return self.parse_simple_arrow_function(left);
+            return self.parse_simple_arrow_function(left, allow_arrow_return_type);
         }
 
         match token.tag {
             TokenTag::Increment | TokenTag::Decrement => {
                 self.parse_update_expression(false, Some(left))
             }
-            TokenTag::Question => self.parse_conditional_expression(left),
+            TokenTag::Question => self.parse_conditional_expression(left, allow_arrow_return_type),
             TokenTag::Comma => self.parse_sequence_expression(precedence, left),
             TokenTag::Dot => self.parse_static_member_expression(left, false),
             TokenTag::LeftBracket => self.parse_computed_member_expression(left, false),
@@ -7936,7 +7955,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_prefix(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
+    fn parse_prefix(
+        &mut self,
+        in_cover: bool,
+        minimum: Precedence,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let tag = self.current_token.tag;
 
         if matches!(tag, TokenTag::Increment | TokenTag::Decrement) {
@@ -7963,9 +7987,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // Select the grammar mode before parsing the cover so `minimum` does not
             // need to remain live across the parse.
             if minimum <= Precedence::Assignment {
-                return self.parse_parenthesized_or_arrow_function::<true>(None);
+                return self
+                    .parse_parenthesized_or_arrow_function::<true>(None, allow_arrow_return_type);
             }
-            return self.parse_parenthesized_or_arrow_function::<false>(None);
+            return self.parse_parenthesized_or_arrow_function::<false>(None, true);
         }
 
         if tag == TokenTag::Await && self.context.contains(Context::AWAIT) {
@@ -7989,7 +8014,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && self.context.contains(Context::YIELD)
             && minimum < Precedence::Add
         {
-            return self.parse_yield_expression();
+            return self.parse_yield_expression(allow_arrow_return_type);
         }
 
         if tag == TokenTag::New {
@@ -8001,13 +8026,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Async {
-            return self.parse_async_function_or_arrow(minimum);
+            return self.parse_async_function_or_arrow(minimum, allow_arrow_return_type);
         }
 
         if tag == TokenTag::LessThan {
             if self.lang.is_typescript() {
                 let start = self.current_token.span.start;
-                if let Some(arrow) = self.try_parse_generic_arrow(false, start)? {
+                if let Some(arrow) =
+                    self.try_parse_generic_arrow(false, start, allow_arrow_return_type)?
+                {
                     return Some(arrow);
                 }
                 if !self.lang.is_jsx() {
@@ -8019,10 +8046,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        self.parse_primary_expression(in_cover, minimum)
+        self.parse_primary_expression(in_cover, minimum, allow_arrow_return_type)
     }
 
-    fn parse_primary_expression(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
+    fn parse_primary_expression(
+        &mut self,
+        in_cover: bool,
+        minimum: Precedence,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let token = self.current_token;
 
         if token.tag.is_numeric_literal() {
@@ -8077,7 +8109,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // this parser entry and are rejected by `parse_new_expression`.
             TokenTag::Import => self.parse_import_expression(),
             TokenTag::Await | TokenTag::Yield if self.ts_context.in_ts_container_body() => {
-                self.parse_ts_container_await_or_yield(minimum)
+                self.parse_ts_container_await_or_yield(minimum, allow_arrow_return_type)
             }
             tag if tag.is_identifier_like() => self.parse_identifier(),
             _ => {
@@ -8102,7 +8134,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     #[cold]
-    fn parse_ts_container_await_or_yield(&mut self, minimum: Precedence) -> Option<Expr> {
+    fn parse_ts_container_await_or_yield(
+        &mut self,
+        minimum: Precedence,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         debug_assert!(self.ts_context.in_ts_container_body());
         debug_assert!(!self.boundary_context.can_be_module());
         let tag = self.current_token.tag;
@@ -8114,7 +8150,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Yield {
-            return self.parse_yield_expression();
+            return self.parse_yield_expression(allow_arrow_return_type);
         }
 
         let token = self.current_token;
@@ -8408,15 +8444,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_parenthesized_or_arrow_function<const CAN_BE_ARROW: bool>(
         &mut self,
         arrow_start: Option<u32>,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         let start = arrow_start.unwrap_or(self.current_token.span.start);
         if self.lang.is_typescript() && CAN_BE_ARROW {
             match self.classify_arrow_head() {
                 ArrowHead::Yes => {
-                    return self.parse_arrow(false, start, true);
+                    return self.parse_arrow(false, start, true, allow_arrow_return_type);
                 }
                 ArrowHead::Maybe => {
-                    if let Some(arrow) = self.try_parse_arrow(false, start)? {
+                    if let Some(arrow) =
+                        self.try_parse_arrow(false, start, allow_arrow_return_type)?
+                    {
                         return Some(arrow);
                     }
                 }
@@ -8428,7 +8467,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && !self.current_token.has_line_terminator_before()
             && CAN_BE_ARROW;
         if is_arrow {
-            return self.cover_to_arrow_function(cover, false, start);
+            return self.cover_to_arrow_function(cover, false, start, allow_arrow_return_type);
         }
         self.cover_to_parenthesized_expression(cover)
     }
@@ -8445,8 +8484,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let allow_arrow_return_type = self.ts_context.allow_arrow_return_type();
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let mut end = start + 1;
             let mut has_trailing_comma = false;
@@ -8457,7 +8494,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let spread_start = self.lexer.state.prev_token_end - 3;
                     let argument = self.parse_expr(
                         Precedence::Assignment,
-                        ParseExpressionOpts { in_cover: true },
+                        ParseExpressionOpts {
+                            in_cover: true,
+                            ..ParseExpressionOpts::default()
+                        },
                     )?;
                     Argument::SpreadElement(self.ast.spread_element(
                         Span::new(spread_start, argument.span(&self.ast).end),
@@ -8467,7 +8507,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let grammar_context = enter_grammar_context![&mut self.context, +In];
                     let expression = self.parse_expr(
                         Precedence::Assignment,
-                        ParseExpressionOpts { in_cover: true },
+                        ParseExpressionOpts {
+                            in_cover: true,
+                            ..ParseExpressionOpts::default()
+                        },
                     );
                     self.context = grammar_context;
                     Argument::Expr(expression?)
@@ -8514,8 +8557,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 has_trailing_comma,
             })
         })();
-        self.ts_context
-            .set(TsContext::ALLOW_ARROW_RETURN_TYPE, allow_arrow_return_type);
         self.scratch_cover.reset(checkpoint);
         result
     }
@@ -8602,9 +8643,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         cover: ParenthesizedCover,
         is_async: bool,
         arrow_start: u32,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         let parameters = self.convert_to_formal_parameters(cover)?;
-        self.build_arrow_function(arrow_start, parameters, is_async, None, None)
+        self.build_arrow_function(
+            arrow_start,
+            parameters,
+            is_async,
+            None,
+            None,
+            allow_arrow_return_type,
+        )
     }
 
     fn convert_to_formal_parameters(
@@ -8711,7 +8760,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.expression_to_parameter(expression)
     }
 
-    fn parse_async_function_or_arrow(&mut self, minimum: Precedence) -> Option<Expr> {
+    fn parse_async_function_or_arrow(
+        &mut self,
+        minimum: Precedence,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let token = self.current_token;
         let async_identifier = self.parse_identifier()?;
 
@@ -8741,11 +8794,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 async_identifier,
                 minimum,
                 token.is_escaped(),
+                allow_arrow_return_type,
             ),
             TokenTag::LessThan
                 if self.lang.is_typescript() && minimum <= Precedence::Assignment =>
             {
-                if let Some(arrow) = self.try_parse_generic_arrow(true, token.span.start)? {
+                if let Some(arrow) =
+                    self.try_parse_generic_arrow(true, token.span.start, allow_arrow_return_type)?
+                {
                     if token.is_escaped() {
                         self.report_escaped_keyword(token.span);
                     }
@@ -8765,7 +8821,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let parameter = self.parse_identifier();
                     self.context = context;
                     let parameter = parameter?;
-                    return self.identifier_to_arrow_function(parameter, true, token.span.start);
+                    return self.identifier_to_arrow_function(
+                        parameter,
+                        true,
+                        token.span.start,
+                        allow_arrow_return_type,
+                    );
                 }
                 Some(async_identifier)
             }
@@ -8779,11 +8840,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         async_identifier: Expr,
         minimum: Precedence,
         escaped_async: bool,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         if self.lang.is_typescript() && minimum <= Precedence::Assignment {
             let arrow = match self.classify_arrow_head() {
-                ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start, true)?),
-                ArrowHead::Maybe => self.try_parse_arrow(true, async_span.start)?,
+                ArrowHead::Yes => {
+                    Some(self.parse_arrow(true, async_span.start, true, allow_arrow_return_type)?)
+                }
+                ArrowHead::Maybe => {
+                    self.try_parse_arrow(true, async_span.start, allow_arrow_return_type)?
+                }
                 ArrowHead::No => None,
             };
             if let Some(arrow) = arrow {
@@ -8805,7 +8871,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if escaped_async {
                 self.report_escaped_keyword(async_span);
             }
-            return self.parse_arrow(true, async_span.start, true);
+            return self.parse_arrow(true, async_span.start, true, allow_arrow_return_type);
         }
         self.cover_to_call_expression(cover, async_identifier)
     }
@@ -8815,6 +8881,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         identifier: Expr,
         async_function: bool,
         arrow_start: u32,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         let parameter = self.expression_to_parameter(identifier)?;
         let parameter_span = parameter.span(&self.ast);
@@ -8825,10 +8892,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None,
             FormalParameterKind::ArrowFormalParameters,
         );
-        self.build_arrow_function(arrow_start, parameters, async_function, None, None)
+        self.build_arrow_function(
+            arrow_start,
+            parameters,
+            async_function,
+            None,
+            None,
+            allow_arrow_return_type,
+        )
     }
 
-    fn parse_simple_arrow_function(&mut self, left: Expr) -> Option<Expr> {
+    fn parse_simple_arrow_function(
+        &mut self,
+        left: Expr,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         if self.ast.node_kind(left.node_id()) != NodeKind::IdentifierReference {
             self.report(
                 left.span(&self.ast),
@@ -8838,7 +8916,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let start = left.span(&self.ast).start;
-        self.identifier_to_arrow_function(left, false, start)
+        self.identifier_to_arrow_function(left, false, start, allow_arrow_return_type)
     }
 
     fn classify_arrow_head(&mut self) -> ArrowHead {
@@ -8912,14 +8990,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
-    fn try_parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
+    fn try_parse_arrow(
+        &mut self,
+        is_async: bool,
+        start: u32,
+        allow_arrow_return_type: bool,
+    ) -> Option<Option<Expr>> {
         let position = self.current_token.span.start;
         if self.ts_rejected_speculations.contains(&position) {
             return Some(None);
         }
 
         let checkpoint = self.checkpoint();
-        let arrow = match self.parse_arrow(is_async, start, false) {
+        let arrow = match self.parse_arrow(is_async, start, false, allow_arrow_return_type) {
             Some(arrow) => arrow,
             None => {
                 self.rewind(checkpoint);
@@ -8931,7 +9014,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .as_arrow_function_expression(&self.ast)
             .expect("arrow speculation produces an arrow function")
             .return_type(&self.ast);
-        if !self.ts_context.allow_arrow_return_type()
+        if !allow_arrow_return_type
             && return_type.is_some()
             && self.current_token.tag != TokenTag::Colon
         {
@@ -8942,16 +9025,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(Some(arrow))
     }
 
-    fn try_parse_generic_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
+    fn try_parse_generic_arrow(
+        &mut self,
+        is_async: bool,
+        start: u32,
+        allow_arrow_return_type: bool,
+    ) -> Option<Option<Expr>> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
         let next = self.peek_ahead()?;
         if !next.tag.is_identifier_like() && next.tag != TokenTag::Const {
             return Some(None);
         }
-        self.try_parse_arrow(is_async, start)
+        self.try_parse_arrow(is_async, start, allow_arrow_return_type)
     }
 
-    fn parse_arrow(&mut self, is_async: bool, start: u32, need_diagnostics: bool) -> Option<Expr> {
+    fn parse_arrow(
+        &mut self,
+        is_async: bool,
+        start: u32,
+        need_diagnostics: bool,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let context = if is_async {
             enter_grammar_context![&mut self.context, ?Yield, +Await]
         } else {
@@ -8967,7 +9061,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             commonjs_sensitive_new_target,
         );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let result = self.parse_arrow_inner(is_async, start, need_diagnostics);
+        let result =
+            self.parse_arrow_inner(is_async, start, need_diagnostics, allow_arrow_return_type);
         self.context = context;
         self.boundary_context = boundary_context;
         result
@@ -8978,6 +9073,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         is_async: bool,
         start: u32,
         need_diagnostics: bool,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         let type_parameters = if is_angle_open(self.current_token.tag) {
             Some(self.parse_type_parameters()?)
@@ -9016,7 +9112,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             return None;
         }
-        self.build_arrow_function(start, params, is_async, type_parameters, return_type)
+        self.build_arrow_function(
+            start,
+            params,
+            is_async,
+            type_parameters,
+            return_type,
+            allow_arrow_return_type,
+        )
     }
 
     fn build_arrow_function(
@@ -9026,6 +9129,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         async_function: bool,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         self.advance()?;
         let context = enter_function_grammar_context(&mut self.context, false, async_function);
@@ -9036,7 +9140,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             commonjs_sensitive_new_target,
         );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let body = self.parse_arrow_body();
+        let body = self.parse_arrow_body(allow_arrow_return_type);
         self.context = context;
         self.boundary_context = boundary_context;
         let ArrowBodyResult {
@@ -9065,7 +9169,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //
     // ExpressionBody[In, Await] :
     //   AssignmentExpression[?In, ~Yield, ?Await]
-    fn parse_arrow_body(&mut self) -> Option<ArrowBodyResult> {
+    fn parse_arrow_body(&mut self, allow_arrow_return_type: bool) -> Option<ArrowBodyResult> {
         if self.current_token.tag == TokenTag::LeftBrace {
             let body = self.parse_function_body()?;
             return Some(ArrowBodyResult {
@@ -9073,7 +9177,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 is_expression: false,
             });
         }
-        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(
+            Precedence::Assignment,
+            ParseExpressionOpts {
+                allow_arrow_return_type,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         Some(ArrowBodyResult {
             body: ArrowFunctionBody::Expr(expression),
             is_expression: true,
@@ -9992,7 +10102,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let spread_start = self.lexer.state.prev_token_end - 3;
                     let expression = self.parse_expr(
                         Precedence::Assignment,
-                        ParseExpressionOpts { in_cover: true },
+                        ParseExpressionOpts {
+                            in_cover: true,
+                            ..ParseExpressionOpts::default()
+                        },
                     )?;
                     let spread = self.ast.spread_element(
                         Span::new(spread_start, expression.span(&self.ast).end),
@@ -10165,7 +10278,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
             let value = self.parse_expr(
                 Precedence::Assignment,
-                ParseExpressionOpts { in_cover: true },
+                ParseExpressionOpts {
+                    in_cover: true,
+                    ..ParseExpressionOpts::default()
+                },
             )?;
             return Some(ObjectPropertyKind::ObjectProperty(
                 self.ast.object_property(
@@ -10213,7 +10329,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
             let default_value = self.parse_expr(
                 Precedence::Assignment,
-                ParseExpressionOpts { in_cover: true },
+                ParseExpressionOpts {
+                    in_cover: true,
+                    ..ParseExpressionOpts::default()
+                },
             )?;
             let identifier = self
                 .ast
@@ -10450,7 +10569,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let context = enter_grammar_context![&mut self.context, +In];
                 let expression = self.parse_expr_preserving_stripped_paren(
                     Precedence::Assignment,
-                    ParseExpressionOpts { in_cover },
+                    ParseExpressionOpts {
+                        in_cover,
+                        ..ParseExpressionOpts::default()
+                    },
                 );
                 self.context = context;
                 let expression = expression?;
@@ -10772,9 +10894,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_arguments(&mut self) -> Option<SubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
-        // Call arguments cannot consume the enclosing conditional expression's colon.
-        let allow_arrow_return_type = self.ts_context.allow_arrow_return_type();
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
@@ -10800,8 +10919,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Some(self.add_extra_from_scratch_a(checkpoint))
         })();
         self.context = grammar_context;
-        self.ts_context
-            .set(TsContext::ALLOW_ARROW_RETURN_TYPE, allow_arrow_return_type);
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -10821,7 +10938,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut callee = match self.current_token.tag {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
-            _ => self.parse_primary_expression(false, Precedence::Primary)?,
+            _ => self.parse_primary_expression(false, Precedence::Primary, true)?,
         };
         loop {
             callee = match self.current_token.tag {
@@ -11884,7 +12001,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   `yield`
     //   `yield` [no LineTerminator here] AssignmentExpression[?In, +Yield, ?Await]
     //   `yield` [no LineTerminator here] `*` AssignmentExpression[?In, +Yield, ?Await]
-    fn parse_yield_expression(&mut self) -> Option<Expr> {
+    fn parse_yield_expression(&mut self, allow_arrow_return_type: bool) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Yield);
         let start = self.current_token.span.start;
         self.advance()?;
@@ -11909,7 +12026,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ) {
             None
         } else {
-            Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
+            Some(self.parse_expr(
+                Precedence::Assignment,
+                ParseExpressionOpts {
+                    allow_arrow_return_type,
+                    ..ParseExpressionOpts::default()
+                },
+            )?)
         };
         if delegate && argument.is_none() {
             self.report_expected(
@@ -12072,6 +12195,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         precedence: Precedence,
         left: Expr,
         tag: TokenTag,
+        allow_arrow_return_type: bool,
     ) -> Option<Expr> {
         let start = left.span(&self.ast).start;
         let target = if tag == TokenTag::Assign {
@@ -12094,8 +12218,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         // A stripped parenthesis in the right-hand side is in expression
         // position and must not overwrite evidence from the arrow-head target.
-        let right =
-            self.parse_expr_preserving_stripped_paren(precedence, ParseExpressionOpts::default())?;
+        let right = self.parse_expr_preserving_stripped_paren(
+            precedence,
+            ParseExpressionOpts {
+                allow_arrow_return_type,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(&self.ast).end),
             target,
@@ -12107,19 +12236,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // ConditionalExpression[In, Yield, Await] :
     //   ShortCircuitExpression[?In, ?Yield, ?Await]
     //   ShortCircuitExpression[?In, ?Yield, ?Await] `?` AssignmentExpression[+In, ?Yield, ?Await] `:` AssignmentExpression[?In, ?Yield, ?Await]
-    fn parse_conditional_expression(&mut self, test: Expr) -> Option<Expr> {
+    fn parse_conditional_expression(
+        &mut self,
+        test: Expr,
+        allow_arrow_return_type: bool,
+    ) -> Option<Expr> {
         let start = test.span(&self.ast).start;
         debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         self.advance()?;
         let context = enter_grammar_context![&mut self.context, +In];
-        let old_allow_arrow_return_type = self.ts_context.allow_arrow_return_type();
-        self.ts_context.remove(TsContext::ALLOW_ARROW_RETURN_TYPE);
-        let consequent = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-        self.context = context;
-        self.ts_context.set(
-            TsContext::ALLOW_ARROW_RETURN_TYPE,
-            old_allow_arrow_return_type,
+        let consequent = self.parse_expr(
+            Precedence::Assignment,
+            ParseExpressionOpts {
+                allow_arrow_return_type: false,
+                ..ParseExpressionOpts::default()
+            },
         );
+        self.context = context;
         let consequent = consequent?;
         if !self.expect(
             TokenTag::Colon,
@@ -12130,7 +12263,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let alternate = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let alternate = self.parse_expr(
+            Precedence::Assignment,
+            ParseExpressionOpts {
+                allow_arrow_return_type,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         Some(self.ast.expr_conditional_expression(
             Span::new(start, alternate.span(&self.ast).end),
             test,
