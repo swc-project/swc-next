@@ -203,7 +203,7 @@ function formatChange(row) {
   if (row.comparison === "removed") {
     return "Removed";
   }
-  if (row.change === 0) {
+  if (changeFormatter.format(Math.abs(row.change)) === "0") {
     return "0% ⚪";
   }
 
