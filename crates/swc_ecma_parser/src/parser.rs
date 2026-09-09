@@ -9881,6 +9881,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
         let result =
             (|| {
                 let mut end = start + 1;
@@ -9895,17 +9896,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     }
                     let argument = if self.eat(TokenTag::Spread)? {
                         let spread_start = self.lexer.state.prev_token_end - 3;
-                        let grammar_context = enter_grammar_context![&mut self.context, +In];
-                        let expression = self.parse_assignment_expression_in_cover();
-                        self.context = grammar_context;
-                        let expression = expression?;
+                        let expression = self.parse_assignment_expression_in_cover()?;
                         let span = Span::new(spread_start, expression.span(&self.ast).end);
                         Argument::SpreadElement(self.ast.spread_element(span, expression))
                     } else {
-                        let grammar_context = enter_grammar_context![&mut self.context, +In];
-                        let expression = self.parse_assignment_expression_in_cover();
-                        self.context = grammar_context;
-                        Argument::Expr(expression?)
+                        Argument::Expr(self.parse_assignment_expression_in_cover()?)
                     };
                     end = argument.span(&self.ast).end;
                     self.scratch_cover.append(argument);
@@ -9953,6 +9948,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     end,
                 })
             })();
+        self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
     }
