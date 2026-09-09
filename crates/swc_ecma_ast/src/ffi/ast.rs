@@ -543,12 +543,7 @@ mod tests {
     fn packed_diagnostic_format() {
         let allocator = Allocator::new();
         let mut ast = Ast::new("éx", &allocator);
-        let program = ast.program(
-            Span::new(0, 3),
-            TypedSubRange::empty(),
-            TypedSubRange::empty(),
-            None,
-        );
+        let program = ast.program(Span::new(0, 3), SubRange::empty(), SubRange::empty(), None);
         ast.set_root_program(program);
 
         let diagnostics = [Diagnostic {
