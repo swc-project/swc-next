@@ -1541,11 +1541,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         while !self.is_at_body_end(terminator) {
             let is_directive = (|| {
                 if in_directive_prologue && self.current_token.tag == TokenTag::StringLiteral {
-                    let grammar_context = enter_grammar_context![&mut self.context, +In];
+                    // The program or function/static block entry already establishes +In.
                     let expression =
-                        self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
-                    self.context = grammar_context;
-                    let expression = expression?;
+                        self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())?;
                     if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
                     {
                         let directive =
@@ -1774,13 +1772,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // ExpressionStatement[Yield, Await] :
     //   [lookahead ∉ { `{`, `function`, `async` [no LineTerminator here] `function`, `class`, `let` `[` }] Expression[+In, ?Yield, ?Await] `;`
     fn parse_await_expression_statement(&mut self, start: u32) -> Option<Stmt> {
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let expression = (|| {
-            let expression = self.parse_await_expression(start)?;
-            self.parse_expr_from_left(expression, Precedence::Comma)
-        })();
-        self.context = grammar_context;
-        let expression = expression?;
+        // The program or function/static block entry already establishes +In.
+        let expression = self.parse_await_expression(start)?;
+        let expression = self.parse_expr_from_left(expression, Precedence::Comma)?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -1920,10 +1914,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'if'", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let test = test?;
+        // The program or function/static block entry already establishes +In.
+        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after if condition",
@@ -1956,10 +1948,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'while'", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let test = test?;
+        // The program or function/static block entry already establishes +In.
+        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after while condition",
@@ -1992,10 +1982,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'while'", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let test = test?;
+        // The program or function/static block entry already establishes +In.
+        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after while condition",
@@ -2043,10 +2031,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ) {
             None
         } else {
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
-            let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-            self.context = grammar_context;
-            Some(expression?)
+            // The program or function/static block entry already establishes +In.
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
@@ -2072,10 +2058,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None
             };
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let argument = argument?;
+        // The program or function/static block entry already establishes +In.
+        let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
@@ -2133,10 +2117,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'with'", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let object = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let object = object?;
+        // The program or function/static block entry already establishes +In.
+        let object = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after with expression",
@@ -2155,10 +2137,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // ExpressionStatement[Yield, Await] :
     //   [lookahead ∉ { `{`, `function`, `async` [no LineTerminator here] `function`, `class`, `let` `[` }] Expression[+In, ?Yield, ?Await] `;`
     fn parse_expression_or_labeled_statement(&mut self) -> Option<Stmt> {
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let expression = expression?;
+        // The program or function/static block entry already establishes +In.
+        let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())?;
         if self.ast.node_kind(expression.node_id()) == NodeKind::IdentifierReference
             && self.current_token.tag == TokenTag::Colon
         {
@@ -2174,10 +2154,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   [lookahead ∉ { `{`, `function`, `async` [no LineTerminator here] `function`, `class`, `let` `[` }] Expression[+In, ?Yield, ?Await] `;`
     fn parse_expression_statement(&mut self) -> Option<Stmt> {
         let start = self.current_token.span.start;
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let expression = expression?;
+        // The program or function/static block entry already establishes +In.
+        let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -2246,7 +2224,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             DeclaratorCtx::Normal
         };
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        // The program or function/static block entry already establishes +In.
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             let first = self.parse_variable_declarator(kind, context)?;
@@ -2284,7 +2262,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 opts.is_declare,
             ))
         })();
-        self.context = grammar_context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -3047,7 +3024,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let context = enter_grammar_context![&mut self.context, ~Yield, +Await];
+        let context = enter_grammar_context![&mut self.context, +In, ~Yield, +Await];
         let boundary_context = mem::take(&mut self.boundary_context);
         let checkpoint = self.scratch_statements.begin();
         let body = {
@@ -3731,6 +3708,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    // FunctionBody[Yield, Await] :
+    //   FunctionStatementList[?Yield, ?Await]
+    //
+    // FunctionStatementList[Yield, Await] :
+    //   StatementList[?Yield, ?Await, +Return]?
     fn parse_function_body(&mut self) -> Option<FunctionBody> {
         let start = self.current_token.span.start;
         if !self.expect(
@@ -3740,12 +3722,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
         let boundary_context = self.boundary_context;
         self.boundary_context.insert(BoundaryContext::IN_FUNCTION);
         let ParsedBody { directives, body } = self.parse_body(
             Some(TokenTag::RightBrace),
             StatementContext::StatementListItem,
         );
+        self.context = grammar_context;
         self.boundary_context = boundary_context;
         let end = self.current_token.span.end;
         if !self.expect(
@@ -4417,10 +4401,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let expression = expression?;
+        // The program or function/static block entry already establishes +In.
+        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         Some(DefaultExportPart {
             declaration: ExportDefaultDeclarationKind::Expr(expression),
             needs_semi: true,
@@ -5266,11 +5248,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let (id, computed) = self.parse_enum_member_name()?;
         let start = id.span(&self.ast).start;
         let initializer = if self.eat(TokenTag::Assign)? {
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
-            let expression =
-                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-            self.context = grammar_context;
-            Some(expression?)
+            // The program or function/static block entry already establishes +In.
+            Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
         } else {
             None
         };
@@ -5295,11 +5274,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_enum_member_name(&mut self) -> Option<(TsEnumMemberName, bool)> {
         let token = self.current_token;
         if self.eat(TokenTag::LeftBracket)? {
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
+            // The program or function/static block entry already establishes +In.
             let expression =
-                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-            self.context = grammar_context;
-            let expression = expression?;
+                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
             if !self.expect(
                 TokenTag::RightBracket,
                 "Expected ']' to close a computed enum member name",
@@ -7447,10 +7424,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let test = if self.current_token.tag == TokenTag::Semicolon {
             None
         } else {
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
-            let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-            self.context = grammar_context;
-            Some(expression?)
+            // The program or function/static block entry already establishes +In.
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         if !self.expect(
             TokenTag::Semicolon,
@@ -7462,10 +7437,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let update = if self.current_token.tag == TokenTag::RightParen {
             None
         } else {
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
-            let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-            self.context = grammar_context;
-            Some(expression?)
+            // The program or function/static block entry already establishes +In.
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         if !self.expect(
             TokenTag::RightParen,
@@ -7505,10 +7478,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.report_if_escaped_keyword(self.current_token);
         self.advance_without_escape_check()?;
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let right = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let right = right?;
+        // The program or function/static block entry already establishes +In.
+        let right = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after for-in expression",
@@ -7539,10 +7510,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<Stmt> {
         self.report_if_escaped_keyword(self.current_token);
         self.advance_without_escape_check()?;
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let right = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let right = right?;
+        // The program or function/static block entry already establishes +In.
+        let right = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after for-of expression",
@@ -7623,10 +7592,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'switch'", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let discriminant = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let discriminant = discriminant?;
+        // The program or function/static block entry already establishes +In.
+        let discriminant = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after switch expression",
@@ -7678,10 +7645,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ));
         let case_start = self.current_token.span.start;
         let test = if self.eat(TokenTag::Case)? {
-            let grammar_context = enter_grammar_context![&mut self.context, +In];
-            let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-            self.context = grammar_context;
-            Some(expression?)
+            // The program or function/static block entry already establishes +In.
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         } else {
             self.advance()?;
             None
