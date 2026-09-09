@@ -7850,7 +7850,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if precedence > max_left_precedence(left, &self.ast) {
                 break;
             }
-            if !self.context.contains(Context::IN) && token.tag == TokenTag::In {
+            if token.tag == TokenTag::In && !self.context.contains(Context::IN) {
                 break;
             }
             left = if token.tag.is_binary_operator() {
