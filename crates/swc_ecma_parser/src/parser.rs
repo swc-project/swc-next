@@ -10778,27 +10778,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   ArgumentList[?Yield, ?Await] `,` `...` AssignmentExpression[+In, ?Yield, ?Await]
     fn parse_arguments(&mut self) -> Option<TypedSubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
         let result = (|| {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
             {
                 let argument = if self.eat(TokenTag::Spread)? {
                     let start = self.lexer.state.prev_token_end - 3;
-                    let grammar_context = enter_grammar_context![&mut self.context, +In];
                     let expression =
-                        self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-                    self.context = grammar_context;
-                    let expression = expression?;
+                        self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
                     Argument::SpreadElement(self.ast.spread_element(
                         Span::new(start, expression.span(&self.ast).end),
                         expression,
                     ))
                 } else {
-                    let grammar_context = enter_grammar_context![&mut self.context, +In];
-                    let expression =
-                        self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-                    self.context = grammar_context;
-                    Argument::Expr(expression?)
+                    Argument::Expr(
+                        self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?,
+                    )
                 };
                 self.scratch_a.append(argument);
                 if !self.eat(TokenTag::Comma)? {
@@ -10807,6 +10803,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             Some(self.add_extra_from_scratch_a(checkpoint))
         })();
+        self.context = grammar_context;
         self.scratch_a.reset(checkpoint);
         result
     }
