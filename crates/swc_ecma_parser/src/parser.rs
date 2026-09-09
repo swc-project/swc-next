@@ -10772,6 +10772,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_arguments(&mut self) -> Option<SubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
+        // Call arguments cannot consume the enclosing conditional expression's colon.
+        let allow_arrow_return_type = self.ts_context.allow_arrow_return_type();
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
@@ -10797,6 +10800,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Some(self.add_extra_from_scratch_a(checkpoint))
         })();
         self.context = grammar_context;
+        self.ts_context
+            .set(TsContext::ALLOW_ARROW_RETURN_TYPE, allow_arrow_return_type);
         self.scratch_a.reset(checkpoint);
         result
     }

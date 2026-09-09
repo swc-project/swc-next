@@ -224,3 +224,34 @@ test("ambient implementation recovery preserves enclosing and following declarat
   assert.equal(result.program.body[0].declare, true);
   assert.equal(result.program.body[0].body, null);
 });
+
+test("parseSync parses typed arrow call arguments in conditional expressions", () => {
+  const options = { lang: Lang.Ts, sourceType: SourceType.Module };
+  for (const call of [
+    "items.map((item): Item => item)",
+    "items.map(([name, content]): Item => ({ name, content }))",
+    "items.map?.((item): Item => item)",
+    "new Factory((item): Item => item)",
+    "consume(...((item): Item => item))",
+    "consume(flag ? (item): Item => item : fallback)",
+  ]) {
+    const result = parseSync(`const x = cond ? ${call} : undefined;`, options);
+    assert.deepEqual(result.diagnostics, []);
+    const expression = result.program.body[0].declarations[0].init;
+    assert.equal(expression.type, "ConditionalExpression");
+    assert.equal(expression.alternate.name, "undefined");
+  }
+
+  const result = parseSync(
+    "cond ? consume((item): Item => item) + (a) : (b) => b;",
+    options,
+  );
+  assert.deepEqual(result.diagnostics, []);
+  const expression = result.program.body[0].expression;
+  assert.equal(expression.consequent.type, "BinaryExpression");
+  const arrow = expression.consequent.left.arguments[0];
+  assert.equal(arrow.type, "ArrowFunctionExpression");
+  assert.equal(arrow.returnType.type, "TSTypeAnnotation");
+  assert.equal(expression.consequent.right.expression.name, "a");
+  assert.equal(expression.alternate.type, "ArrowFunctionExpression");
+});
