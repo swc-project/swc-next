@@ -8,10 +8,12 @@ macro_rules! impl_extra_data_value {
     ($($ty:ty),+ $(,)?) => {
         $(
             impl ExtraDataValue for $ty {
+                #[inline]
                 fn into_extra_data(self) -> ExtraData {
                     ExtraData::from_raw(self as u64)
                 }
 
+                #[inline]
                 unsafe fn from_extra_data(data: &ExtraData) -> Self {
                     unsafe { mem::transmute(data.raw() as u8) }
                 }
