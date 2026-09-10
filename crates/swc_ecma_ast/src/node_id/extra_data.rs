@@ -10,30 +10,20 @@ oxc_index::define_index_type! {
 impl ExtraData {
     #[inline]
     pub(crate) fn from_raw(raw: u64) -> Self {
-        Self(raw.to_le())
+        Self {
+            sub_range: SubRange::new(
+                ExtraDataId::from_raw(raw as u32),
+                ExtraDataId::from_raw((raw >> 32) as u32),
+            ),
+        }
     }
 
     #[inline]
     pub(crate) fn raw(self) -> u64 {
-        u64::from_le(self.0)
-    }
-
-    #[inline]
-    fn from_parts(low: u32, high: u32) -> Self {
-        Self::from_raw(u64::from(low) | (u64::from(high) << 32))
-    }
-
-    #[inline]
-    fn parts(&self) -> [u32; 2] {
-        let parts = std::ptr::from_ref(self).cast::<u32>();
-        // SAFETY: `ExtraData` is transparent over a `u64`, so both four-byte
-        // reads are initialized and in bounds.
-        unsafe {
-            [
-                u32::from_le(parts.read_unaligned()),
-                u32::from_le(parts.add(1).read_unaligned()),
-            ]
-        }
+        // SAFETY: Both range fields accept every u32 bit pattern, and all
+        // constructors initialize the full eight-byte slot.
+        let range = unsafe { self.sub_range };
+        (range.start.index() as u64) | ((range.end.index() as u64) << 32)
     }
 }
 
@@ -54,7 +44,7 @@ impl<T: AstNode> ExtraDataValue for T {
 
     #[inline]
     unsafe fn from_extra_data(data: &ExtraData) -> Self {
-        unsafe { Self::from_node_id_unchecked(NodeId::from_raw_unchecked(data.raw() as u32)) }
+        unsafe { Self::from_node_id_unchecked(data.node_id) }
     }
 }
 
@@ -66,7 +56,7 @@ impl<T: AstNode> ExtraDataValue for Option<T> {
 
     #[inline]
     unsafe fn from_extra_data(data: &ExtraData) -> Self {
-        let raw = data.raw() as u32;
+        let raw = unsafe { data.node_id }.index() as u32;
         (raw != u32::MAX)
             .then(|| unsafe { T::from_node_id_unchecked(NodeId::from_raw_unchecked(raw)) })
     }
@@ -75,13 +65,15 @@ impl<T: AstNode> ExtraDataValue for Option<T> {
 impl<T> ExtraDataValue for SubRange<T> {
     #[inline]
     fn into_extra_data(self) -> ExtraData {
-        ExtraData::from_parts(self.start.index() as u32, self.end.index() as u32)
+        ExtraData {
+            sub_range: SubRange::new(self.start, self.end),
+        }
     }
 
     #[inline]
     unsafe fn from_extra_data(data: &ExtraData) -> Self {
-        let [start, end] = data.parts();
-        Self::new(ExtraDataId::from_raw(start), ExtraDataId::from_raw(end))
+        let range = unsafe { data.sub_range };
+        Self::new(range.start, range.end)
     }
 }
 
@@ -138,10 +130,20 @@ impl ExtraDataValue for AstWtf8 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ExtraDataId, ExtraDataValue, NodeId, Program, SubRange};
+    use crate::{ExtraData, ExtraDataId, ExtraDataValue, NodeId, Program, SubRange};
 
     #[test]
     fn canonical_storage() {
+        assert_eq!(
+            ExtraData::from_raw(0x0123_4567_89ab_cdef).raw(),
+            0x0123_4567_89ab_cdef
+        );
+        assert_eq!(ExtraData::from_raw(u64::MAX).raw(), u64::MAX);
+
+        let data = None::<Program>.into_extra_data();
+        assert_eq!(data.raw(), u64::from(u32::MAX));
+        assert!(unsafe { Option::<Program>::from_extra_data(&data) }.is_none());
+
         let node = Program(NodeId::from_raw_unchecked(0x1122_3344));
         let data = node.into_extra_data();
         assert_eq!(data.raw(), 0x1122_3344);

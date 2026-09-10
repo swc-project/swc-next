@@ -80,11 +80,15 @@ pub struct NodePayload(pub(crate) u128);
 /// Compact values stored in the flattening AST's extra-data table.
 ///
 /// The AST schema supplies the type information, so the table stores only its
-/// 64-bit representation without a runtime discriminant. Its in-memory bytes
-/// use little-endian order on every target.
-#[repr(transparent)]
+/// 64-bit representation without a runtime discriminant. The low and high
+/// words are stored in that order, each in native byte order.
+#[repr(C)]
 #[derive(Clone, Copy)]
-pub struct ExtraData(u64);
+pub union ExtraData {
+    node_id: NodeId,
+    sub_range: SubRange<()>,
+    alignment: u64,
+}
 
 impl<'a> Ast<'a> {
     #[inline]

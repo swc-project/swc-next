@@ -338,6 +338,11 @@ fn generate_node_impls(name: &proc_macro2::Ident) -> TokenStream {
 
         impl AstNode for #name {
             #[inline]
+            unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
+                Self(node_id)
+            }
+
+            #[inline]
             fn node_id(self) -> NodeId {
                 self.0
             }
