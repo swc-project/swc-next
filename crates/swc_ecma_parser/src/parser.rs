@@ -7815,10 +7815,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if precedence > max_left_precedence(left, &self.ast) {
                 break;
             }
-            if token.tag == TokenTag::In && !self.context.contains(Context::IN) {
-                break;
-            }
             left = if token.tag.is_binary_operator() {
+                if token.tag == TokenTag::In && !self.context.contains(Context::IN) {
+                    break;
+                }
                 self.parse_binary_expression(left, token.tag)?
             } else if token.tag.is_logical_operator() {
                 self.parse_logical_expression(left, token.tag)?
