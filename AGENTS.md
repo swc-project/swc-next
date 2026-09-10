@@ -36,6 +36,28 @@ Wasm builds use `cargo run --locked -p bridge_cli -- build <component> --output-
 To reuse an existing core Wasm build, run
 `node scripts/wasm-package/cli.mjs prepare-browser --source-dir npm/core/src-js`.
 
+## Transform Architecture
+
+Read [Transformer Implementation](docs/Transformer.md) when implementing or
+refactoring transforms. It describes object relationships, mutation contracts,
+semantic synchronization, helper imports, and the test directory layout.
+
+- All transform implementations must collect required program information during
+  semantic analysis in `swc_ecma_semantic`, reusing existing scope, binding, reference,
+  and class metadata instead of adding separate AST scans in transform passes.
+- Control optional information collection with `bitflags` feature flags. Each transform
+  declares the semantic features it requires; collect optional information only when
+  the corresponding flags are enabled.
+- Keep transformation logic in the actual transform visitors using the generic `TraverseMut`.
+  Obtain a borrowed `Mutation` with `TraverseMutCtx::mutate()` from the transform crate's
+  `Mutate` trait; keep Semantic in `TransformerState` and read AST through `Mutation::ast()`.
+  Perform AST operations through `Mutation`; do not mutate AST and Semantic separately
+  in a visitor.
+- `Mutation` must synchronize Semantic whenever nodes are inserted, deleted,
+  replaced, or moved, so subsequent visitor operations always see semantic information
+  consistent with the latest AST. For deferred statement injection, register semantic
+  information when preparing nodes and attach the queued statements in one final step.
+
 ## Testing & Examples
 
 ### Conformance Testing
@@ -77,6 +99,10 @@ Add `input.js`, `output.js`, and optional `options.json` under
 for options. The runner validates syntax and semantics, compares compact output,
 and checks minification stability. Expected outputs are maintained manually.
 These tests run in the existing workspace test CI without external fixtures.
+
+Run both transform commands to cover static-block lowering: SWC uses the default
+`prevent_extensions=false` private fields; Babel uses `prevent_extensions=true`
+closures. SWC fixtures requiring class-properties lowering are counted as skipped.
 
 ### Debugging with Examples
 

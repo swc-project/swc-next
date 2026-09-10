@@ -1,6 +1,6 @@
-use swc_next_ecma_ast::{Ast, GetSpan, ObjectProperty, PropertyKey};
+use swc_next_ecma_ast::{GetSpan, ObjectProperty, PropertyKey};
 
-use crate::state::TransformerCtx;
+use crate::context::Mutation;
 
 pub(super) struct Shorthand;
 
@@ -8,43 +8,34 @@ impl Shorthand {
     pub fn exit_object_property(
         &mut self,
         property: ObjectProperty,
-        ctx: &mut TransformerCtx<'_, '_>,
+        ctx: &mut Mutation<'_, '_, '_>,
     ) {
-        let (is_shorthand, is_method) = {
-            let ast = &*ctx.ast;
-            (property.shorthand(ast), property.method(ast))
-        };
-        if !is_shorthand && !is_method {
+        if !property.shorthand(ctx.ast()) && !property.method(ctx.ast()) {
             return;
         }
-
-        if self.is_proto_key(property, ctx.ast) {
-            let span = property.key(ctx.ast).span(ctx.ast);
-            let ast = &mut *ctx.ast;
-            let value = ast.add_wtf8("__proto__".into());
-            let key = ast.property_key_expr_string_literal(span, value, ast.empty_utf8());
-            property.set_key(ast, key);
-            property.set_computed(ast, true);
+        let key = property.key(ctx.ast());
+        let proto = key
+            .as_identifier_name(ctx.ast())
+            .is_some_and(|key| ctx.ast().get_utf8(key.name(ctx.ast())) == "__proto__")
+            || key
+                .as_expr(ctx.ast())
+                .and_then(|key| key.as_string_literal(ctx.ast()))
+                .is_some_and(|key| {
+                    ctx.ast().get_wtf8(key.value(ctx.ast())).as_bytes() == b"__proto__"
+                });
+        if proto {
+            let span = key.span(ctx.ast());
+            let value = ctx.intern_wtf8("__proto__");
+            let key = ctx.add_node(ctx.current_scope(), |ast| {
+                ast.string_literal(span, value, ast.empty_utf8())
+            });
+            ctx.set_property_key(
+                property.node_id(),
+                PropertyKey::Expr(swc_next_ecma_ast::Expr::StringLiteral(key)),
+            );
+            ctx.set_property_computed(property.node_id(), true);
         }
-
-        if is_shorthand {
-            property.set_shorthand(ctx.ast, false);
-        }
-        if is_method {
-            property.set_method(ctx.ast, false);
-        }
-    }
-
-    fn is_proto_key(&self, property: ObjectProperty, ast: &Ast) -> bool {
-        let key: PropertyKey = property.key(ast);
-        if let Some(identifier) = key.as_identifier_name(ast) {
-            return ast.get_utf8(identifier.name(ast)) == "__proto__";
-        }
-        if let Some(expression) = key.as_expr(ast)
-            && let Some(string) = expression.as_string_literal(ast)
-        {
-            return ast.get_wtf8(string.value(ast)).as_bytes() == b"__proto__";
-        }
-        false
+        ctx.set_property_shorthand(property, false);
+        ctx.set_property_method(property, false);
     }
 }

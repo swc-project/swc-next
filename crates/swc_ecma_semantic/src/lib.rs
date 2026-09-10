@@ -34,20 +34,59 @@ use crate::{
 
 mod binder;
 mod builder;
+mod class_semantic;
 mod context;
 mod ecmascript;
+#[cfg(debug_assertions)]
+mod invariants;
 mod module_record;
+mod mutation;
 pub mod name_resolver;
 pub mod scope;
+mod used_names;
 
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
 };
+pub use class_semantic::{ClassArrowInfo, ClassInfo, ClassSemantic, ClassStaticBlockLayout};
 pub use module_record::{
     ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
     ModuleRecord,
 };
 pub use swc_next_ecma_ast::ReferenceId;
+pub use used_names::UsedNameState;
+
+bitflags::bitflags! {
+    /// Optional semantic data requested by downstream transforms.
+    #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
+    pub struct SemanticFeatureFlags: u16 {
+        /// Collect private names used by each class.
+        const CLASS_PRIVATE_NAMES = 1 << 0;
+        /// Record property-initializer and static-block environments of arrows.
+        const ARROW_ENVIRONMENTS = 1 << 1;
+        /// Collect names used by transforms that introduce local bindings.
+        const GENERATED_NAMES = 1 << 2;
+        /// Record the active evaluation scope of each node for AST mutations.
+        const NODE_SCOPES = 1 << 3;
+        /// Index comments attached to static blocks.
+        const STATIC_BLOCK_COMMENTS = 1 << 4;
+        /// Record arrows and static blocks that contain lexical super.
+        const LEXICAL_SUPER = 1 << 5;
+        /// Identify the constructors of derived classes.
+        const DERIVED_CONSTRUCTORS = 1 << 6;
+        /// Record arrow this uses in derived constructors, including their owners.
+        const CONSTRUCTOR_THIS = 1 << 7;
+        /// Record super() calls in derived constructors, including their owners.
+        const CONSTRUCTOR_SUPER = 1 << 8;
+        /// Record static fields and trailing blocks for closure-based block lowering.
+        const STATIC_BLOCK_LAYOUT = 1 << 9;
+        /// Collect all optional per-class information.
+        const CLASS = Self::CLASS_PRIVATE_NAMES.bits() | Self::ARROW_ENVIRONMENTS.bits()
+            | Self::STATIC_BLOCK_COMMENTS.bits() | Self::LEXICAL_SUPER.bits()
+            | Self::DERIVED_CONSTRUCTORS.bits() | Self::CONSTRUCTOR_THIS.bits()
+            | Self::CONSTRUCTOR_SUPER.bits() | Self::STATIC_BLOCK_LAYOUT.bits();
+    }
+}
 
 oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -98,9 +137,14 @@ pub struct Semantic<'a> {
     /// The symbol declared by each node, indexed by [`NodeId`].
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
+    node_scopes: Vec<Option<ScopeId>>,
+    direct_eval_calls: rustc_hash::FxHashMap<NodeId, ScopeId>,
 
     module_record: ModuleRecord<'a>,
     ts_members: TsMemberIndex<'a>,
+    features: SemanticFeatureFlags,
+    class: ClassSemantic<'a>,
+    used_names: UsedNameState<'a>,
 }
 
 impl<'a> Semantic<'a> {
@@ -108,6 +152,51 @@ impl<'a> Semantic<'a> {
     /// Intrinsic tags are included; a fragment also requires an element factory.
     pub fn jsx_usages(&self) -> &[JsxUsage] {
         &self.jsx_usages
+    }
+
+    /// The scope active when this node is evaluated, collected by NODE_SCOPES.
+    /// Detached structural nodes may retain their old entry; this is not a
+    /// reachability index.
+    pub fn scope_at(&self, node: NodeId) -> Option<ScopeId> {
+        self.node_scopes.get(node.index()).copied().flatten()
+    }
+
+    /// The evaluation scope outside a scope-owning expression.
+    pub fn scope_outside(&self, node: NodeId) -> Option<ScopeId> {
+        let mut scope = self.scope_at(node)?;
+        while self.scope(scope).node == node {
+            scope = self.scope(scope).parent?;
+        }
+        Some(scope)
+    }
+
+    /// Optional semantic features collected during analysis.
+    pub fn features(&self) -> SemanticFeatureFlags {
+        self.features
+    }
+
+    /// Per-class transform information.
+    pub fn class(&self) -> &ClassSemantic<'a> {
+        &self.class
+    }
+
+    /// Mutable per-class transform information.
+    ///
+    /// AST transforms use this to reserve names for generated class elements.
+    pub fn class_mut(&mut self) -> &mut ClassSemantic<'a> {
+        &mut self.class
+    }
+
+    /// Names collected for transforms that introduce local bindings.
+    ///
+    /// Empty unless [`SemanticFeatureFlags::GENERATED_NAMES`] was enabled.
+    pub fn used_names(&self) -> &UsedNameState<'a> {
+        &self.used_names
+    }
+
+    /// Mutable generated-name state used to synchronize AST transforms.
+    pub fn used_names_mut(&mut self) -> &mut UsedNameState<'a> {
+        &mut self.used_names
     }
 
     /// The symbol with the given id.
@@ -453,6 +542,8 @@ impl<'a> Semantic<'a> {
     pub fn iter_symbols(&self) -> SymbolIterator<'_> {
         SymbolIterator {
             symbols: &self.symbols,
+            declarations: &self.declarations,
+            node_symbols: &self.node_symbols,
             index: 0,
         }
     }
@@ -461,6 +552,7 @@ impl<'a> Semantic<'a> {
     pub fn iter_references(&self) -> ReferenceIterator<'_> {
         ReferenceIterator {
             references: &self.references,
+            node_references: &self.node_references,
             index: 0,
         }
     }
@@ -469,6 +561,7 @@ impl<'a> Semantic<'a> {
     pub fn iter_declarations(&self) -> DeclarationIterator<'_> {
         DeclarationIterator {
             declarations: &self.declarations,
+            node_symbols: &self.node_symbols,
             index: 0,
         }
     }
@@ -541,13 +634,17 @@ impl Iterator for ScopeIterator<'_> {
     type Item = ScopeEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index as usize;
-        let scope = *self.list.get(index)?;
-        self.index += 1;
-        Some(ScopeEntry {
-            id: ScopeId::from_usize(index),
-            scope,
-        })
+        loop {
+            let index = self.index as usize;
+            let scope = *self.list.get(index)?;
+            self.index += 1;
+            if scope.active {
+                return Some(ScopeEntry {
+                    id: ScopeId::from_usize(index),
+                    scope,
+                });
+            }
+        }
     }
 }
 
@@ -569,6 +666,8 @@ impl Iterator for BindingIterator<'_> {
 
 pub struct SymbolIterator<'a> {
     symbols: &'a [Symbol],
+    declarations: &'a [Declaration],
+    node_symbols: &'a [Option<SymbolId>],
     index: u32,
 }
 
@@ -576,23 +675,29 @@ impl Iterator for SymbolIterator<'_> {
     type Item = SymbolEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index as usize;
-        let symbol = *self.symbols.get(index)?;
-        self.index += 1;
-        Some(SymbolEntry {
-            id: SymbolId::from_usize(index),
-            symbol,
-        })
+        loop {
+            let index = self.index as usize;
+            let symbol = *self.symbols.get(index)?;
+            self.index += 1;
+            let id = SymbolId::from_usize(index);
+            if self.node_symbols[self.declarations[symbol.declaration.index()].node.index()]
+                .is_some()
+            {
+                return Some(SymbolEntry { id, symbol });
+            }
+        }
     }
 }
 
 pub struct ReferenceIterator<'a> {
     references: &'a [Reference],
+    node_references: &'a [Option<ReferenceId>],
     index: u32,
 }
 
 pub struct DeclarationIterator<'a> {
     declarations: &'a [Declaration],
+    node_symbols: &'a [Option<SymbolId>],
     index: u32,
 }
 
@@ -600,13 +705,15 @@ impl Iterator for ReferenceIterator<'_> {
     type Item = ReferenceEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index as usize;
-        let reference = *self.references.get(index)?;
-        self.index += 1;
-        Some(ReferenceEntry {
-            id: ReferenceId::from_usize(index),
-            reference,
-        })
+        loop {
+            let index = self.index as usize;
+            let reference = *self.references.get(index)?;
+            self.index += 1;
+            let id = ReferenceId::from_usize(index);
+            if self.node_references[reference.node.index()].is_some() {
+                return Some(ReferenceEntry { id, reference });
+            }
+        }
     }
 }
 
@@ -614,13 +721,17 @@ impl Iterator for DeclarationIterator<'_> {
     type Item = DeclarationEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index as usize;
-        let declaration = *self.declarations.get(index)?;
-        self.index += 1;
-        Some(DeclarationEntry {
-            id: DeclarationId::from_usize(index),
-            declaration,
-        })
+        loop {
+            let index = self.index as usize;
+            let declaration = *self.declarations.get(index)?;
+            self.index += 1;
+            if self.node_symbols[declaration.node.index()].is_some() {
+                return Some(DeclarationEntry {
+                    id: DeclarationId::from_usize(index),
+                    declaration,
+                });
+            }
+        }
     }
 }
 
@@ -641,6 +752,8 @@ pub struct AnalyzeOptions {
     ///
     /// Disabled by default.
     pub build_module_record: bool,
+    /// Optional semantic information required by transforms.
+    pub features: SemanticFeatureFlags,
 }
 
 /// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
@@ -652,7 +765,12 @@ pub struct AnalyzeOptions {
 /// module record is empty.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = SemanticBuilder::new(ast, options.check_syntax, options.build_module_record);
+    let mut visitor = SemanticBuilder::new(
+        ast,
+        options.check_syntax,
+        options.build_module_record,
+        options.features,
+    );
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {

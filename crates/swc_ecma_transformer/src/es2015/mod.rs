@@ -1,7 +1,9 @@
-use swc_next_ecma_ast::{Ast, ObjectProperty, RegExpLiteral};
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_ast::{
+    ArrowFunctionExpression, CallExpression, Function, IdentifierReference, MetaProperty, NodeId,
+    ObjectProperty, Program, RegExpLiteral, StaticBlock, ThisExpression,
+};
 
-use crate::state::TransformerCtx;
+use crate::{TransformFeatureFlags, context::Mutation};
 
 pub mod arrow;
 pub mod shorthand;
@@ -9,17 +11,8 @@ pub mod sticky_regex;
 pub(crate) mod util;
 
 pub struct ES2015 {
-    semantic_program: Option<SemanticProgramTransforms>,
-    traverse: TraverseTransforms,
-}
-
-pub(crate) struct SemanticProgramTransforms {
+    features: TransformFeatureFlags,
     arrow: arrow::ArrowFunctions,
-}
-
-pub(crate) struct TraverseTransforms {
-    shorthand_properties: bool,
-    sticky_regex: bool,
 }
 
 #[derive(Default)]
@@ -30,45 +23,149 @@ pub struct ES2015Options {
 }
 
 impl ES2015 {
-    pub fn new(options: ES2015Options) -> Self {
-        let ES2015Options {
-            arrow_functions,
-            shorthand_properties,
-            sticky_regex,
-        } = options;
+    pub(crate) fn new(options: ES2015Options, features: TransformFeatureFlags) -> Self {
         Self {
-            semantic_program: arrow_functions.map(|options| SemanticProgramTransforms {
-                arrow: arrow::ArrowFunctions::new(options),
-            }),
-            traverse: TraverseTransforms {
-                shorthand_properties,
-                sticky_regex,
-            },
+            features,
+            arrow: arrow::ArrowFunctions::new(options.arrow_functions.unwrap_or_default()),
+        }
+    }
+}
+
+impl ES2015 {
+    pub(crate) fn exit_program(&mut self, node: Program, ctx: &mut Mutation<'_, '_, '_>) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_program(node, ctx);
         }
     }
 
-    pub(crate) fn into_phases(self) -> (Option<SemanticProgramTransforms>, TraverseTransforms) {
-        (self.semantic_program, self.traverse)
+    pub(crate) fn enter_function(&mut self, node: Function, ctx: &mut Mutation<'_, '_, '_>) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.enter_function(node, ctx);
+        }
     }
-}
 
-impl SemanticProgramTransforms {
-    pub(crate) fn transform<'a>(&mut self, ast: &mut Ast<'a>, semantic: &Semantic) {
-        self.arrow.transform(ast, semantic);
+    pub(crate) fn exit_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_call_expression(node, ctx);
+        }
     }
-}
 
-impl TraverseTransforms {
-    pub(crate) fn is_enabled(&self) -> bool {
-        self.shorthand_properties || self.sticky_regex
+    pub(crate) fn exit_function(&mut self, node: Function, ctx: &mut Mutation<'_, '_, '_>) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_function(node, ctx);
+        }
+    }
+
+    pub(crate) fn enter_static_block(&mut self) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.enter_static_block();
+        }
+    }
+
+    pub(crate) fn exit_static_block(&mut self, node: StaticBlock, ctx: &mut Mutation<'_, '_, '_>) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_static_block(node, ctx);
+        }
+    }
+
+    pub(crate) fn enter_arrow_function_expression(
+        &mut self,
+        node: ArrowFunctionExpression,
+        property_initializer_owner: Option<NodeId>,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow
+                .enter_arrow_function_expression(node, property_initializer_owner, ctx);
+        }
+    }
+
+    pub(crate) fn exit_arrow_function_expression(
+        &mut self,
+        node: ArrowFunctionExpression,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_arrow_function_expression(node, ctx);
+        }
+    }
+
+    pub(crate) fn exit_this_expression(
+        &mut self,
+        node: ThisExpression,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_this_expression(node, ctx);
+        }
+    }
+
+    pub(crate) fn enter_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.enter_identifier_reference(node, ctx);
+        }
+    }
+
+    pub(crate) fn exit_meta_property(
+        &mut self,
+        node: MetaProperty,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self
+            .features
+            .contains(TransformFeatureFlags::ARROW_FUNCTIONS)
+        {
+            self.arrow.exit_meta_property(node, ctx);
+        }
     }
 
     pub(crate) fn exit_object_property(
         &mut self,
         node: ObjectProperty,
-        ctx: &mut TransformerCtx<'_, '_>,
+        ctx: &mut Mutation<'_, '_, '_>,
     ) {
-        if self.shorthand_properties {
+        if self
+            .features
+            .contains(TransformFeatureFlags::SHORTHAND_PROPERTIES)
+        {
             shorthand::Shorthand.exit_object_property(node, ctx);
         }
     }
@@ -76,9 +173,9 @@ impl TraverseTransforms {
     pub(crate) fn exit_reg_exp_literal(
         &mut self,
         node: RegExpLiteral,
-        ctx: &mut TransformerCtx<'_, '_>,
+        ctx: &mut Mutation<'_, '_, '_>,
     ) {
-        if self.sticky_regex {
+        if self.features.contains(TransformFeatureFlags::STICKY_REGEX) {
             sticky_regex::StickyRegex.exit_reg_exp_literal(node, ctx);
         }
     }

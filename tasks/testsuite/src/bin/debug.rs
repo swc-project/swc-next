@@ -1,20 +1,13 @@
 use clap::{Parser, ValueEnum};
 use testsuite::{
     cases::{
-        Case,
-        babel::BabelTransformCase,
-        babel_parser::BabelParserCase,
-        local::LocalCase,
-        swc_resolver::SwcResolverCase,
-        test262::Test262Case,
-        typescript::{
-            parser::TypeScriptParserCase,
-            transform::{TypeScriptTransformCase, TypeScriptTransformMode},
-        },
+        Case, babel::BabelTransformCase, babel_parser::BabelParserCase, local::LocalCase,
+        swc_resolver::SwcResolverCase, swc_transform::SwcTransformCase, test262::Test262Case,
+        typescript::TypeScriptCase,
     },
     runner::{
-        Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
-        transform::TransformerRunner,
+        Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
+        parser::ParserRunner, resolver::ResolverRunner, swc_transform::SwcTransformRunner,
     },
 };
 
@@ -22,7 +15,10 @@ use testsuite::{
 enum RunnerName {
     Parser,
     Codegen,
-    Transform,
+    #[value(name = "babel_transform")]
+    BabelTransform,
+    #[value(name = "swc_transform")]
+    SwcTransform,
     Resolver,
 }
 
@@ -34,6 +30,7 @@ enum CaseSet {
     #[value(name = "typescript")]
     TypeScript,
     Babel,
+    Swc,
     #[value(name = "swc_resolver")]
     SwcResolver,
 }
@@ -52,29 +49,6 @@ struct AppArgs {
     /// Contains filter applied to the fixture path and case name.
     #[arg(long)]
     filter: String,
-
-    /// Override the fixture's TypeScript transform options.
-    #[arg(long, value_enum)]
-    typescript_mode: Option<TypeScriptMode>,
-}
-
-#[derive(Clone, Copy, ValueEnum)]
-enum TypeScriptMode {
-    Default,
-    Verbatim,
-    PreserveConstEnums,
-    VerbatimPreserveConstEnums,
-}
-
-impl From<TypeScriptMode> for TypeScriptTransformMode {
-    fn from(mode: TypeScriptMode) -> Self {
-        match mode {
-            TypeScriptMode::Default => Self::DEFAULT,
-            TypeScriptMode::Verbatim => Self::VERBATIM,
-            TypeScriptMode::PreserveConstEnums => Self::PRESERVE_CONST_ENUMS,
-            TypeScriptMode::VerbatimPreserveConstEnums => Self::VERBATIM_PRESERVE_CONST_ENUMS,
-        }
-    }
 }
 
 fn main() {
@@ -82,14 +56,16 @@ fn main() {
     let res = match args.runner {
         RunnerName::Parser => run_conformance::<ParserRunner>(args.case, &args.filter),
         RunnerName::Codegen => run_conformance::<CodegenRunner>(args.case, &args.filter),
-        RunnerName::Transform => match args.case {
-            CaseSet::Babel => run_filtered::<TransformerRunner, BabelTransformCase>(&args.filter),
-            CaseSet::TypeScript => TypeScriptTransformCase::read_all(
-                args.typescript_mode.map(TypeScriptTransformMode::from),
-            )
-            .and_then(|cases| run_filtered_cases::<TransformerRunner, _>(&args.filter, cases)),
-            _ => Err("`transform` runner requires `--case babel` or `--case typescript`".into()),
-        },
+        RunnerName::BabelTransform if matches!(args.case, CaseSet::Babel) => {
+            run_filtered::<BabelTransformRunner, BabelTransformCase>(&args.filter)
+        }
+        RunnerName::BabelTransform => {
+            Err("`babel_transform` runner requires `--case babel`".into())
+        }
+        RunnerName::SwcTransform if matches!(args.case, CaseSet::Swc) => {
+            run_filtered::<SwcTransformRunner, SwcTransformCase>(&args.filter)
+        }
+        RunnerName::SwcTransform => Err("`swc_transform` runner requires `--case swc`".into()),
         RunnerName::Resolver if matches!(args.case, CaseSet::SwcResolver) => {
             run_filtered::<ResolverRunner, SwcResolverCase>(&args.filter)
         }
@@ -100,16 +76,14 @@ fn main() {
 
 fn run_conformance<R>(case_set: CaseSet, filter: &str) -> Result<(), String>
 where
-    R: Runner<Test262Case>
-        + Runner<LocalCase>
-        + Runner<TypeScriptParserCase>
-        + Runner<BabelParserCase>,
+    R: Runner<Test262Case> + Runner<LocalCase> + Runner<TypeScriptCase> + Runner<BabelParserCase>,
 {
     match case_set {
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::Local => run_filtered::<R, LocalCase>(filter),
-        CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
+        CaseSet::TypeScript => run_filtered::<R, TypeScriptCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
+        CaseSet::Swc => Err("parser/codegen do not run SWC transform cases".into()),
         CaseSet::SwcResolver => Err("parser/codegen do not run SWC resolver cases".into()),
     }
 }
@@ -119,15 +93,7 @@ where
     C: Case,
     R: Runner<C>,
 {
-    run_filtered_cases::<R, C>(filter, C::read())
-}
-
-fn run_filtered_cases<R, C>(filter: &str, cases: Vec<C>) -> Result<(), String>
-where
-    C: Case,
-    R: Runner<C>,
-{
-    let mut cases = cases
+    let mut cases = C::read()
         .into_iter()
         .filter(|case| case_label(case).contains(filter))
         .collect::<Vec<_>>();

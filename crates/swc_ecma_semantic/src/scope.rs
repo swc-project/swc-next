@@ -26,6 +26,8 @@ pub(crate) enum DecoratorSite {
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Scope {
+    /// False when a transform has removed this scope.
+    pub active: bool,
     /// The AST node that created this scope.
     pub node: NodeId,
     /// Parent scope, or `None` for the root.
@@ -231,6 +233,7 @@ impl<'a> ScopeTracker<'a> {
     fn push_root(&mut self, root_node: NodeId, source_type: SourceType, root_strict: bool) {
         debug_assert!(self.scopes.is_empty());
         self.scopes.push(Scope {
+            active: true,
             node: root_node,
             parent: None,
             hoist_target: ScopeId::ROOT,
@@ -276,6 +279,7 @@ impl<'a> ScopeTracker<'a> {
         let id = ScopeId::from_usize(self.scopes.len());
         let parent = self.current_scope();
         self.scopes.push(Scope {
+            active: true,
             node,
             parent: Some(self.current),
             hoist_target: if kind.is_hoist_target() {

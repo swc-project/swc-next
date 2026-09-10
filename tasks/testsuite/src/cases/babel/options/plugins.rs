@@ -55,6 +55,9 @@ pub struct BabelPlugins {
     pub arrow_function: Option<ArrowFunctionsOptions>,
     pub shorthand_properties: bool,
     pub sticky_regex: bool,
+
+    // ES2022
+    pub static_blocks: bool,
 }
 
 impl TryFrom<PluginPresetEntries> for BabelPlugins {
@@ -91,6 +94,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                 }
                 "transform-shorthand-properties" => plugins.shorthand_properties = true,
                 "transform-sticky-regex" => plugins.sticky_regex = true,
+                "transform-class-static-block" => plugins.static_blocks = true,
                 _ => plugins.unsupported.push(entry.name().to_owned()),
             }
         }

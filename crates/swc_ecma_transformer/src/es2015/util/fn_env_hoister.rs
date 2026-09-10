@@ -1,22 +1,25 @@
+use crate::context::Mutation;
 use swc_next_ecma_ast::{
-    AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
-    IdentifierReference, Program, StaticBlock, Stmt, SubRange, VariableKind, VisitMut,
-    VisitMutWith,
+    Ast, AstUtf8, BindingPattern, DUMMY_SP, Decl, Expr, GetSpan, IdentifierReference, MetaProperty,
+    NodeId, NodeKindData, ScopeId, Stmt, ThisExpression, UnaryOperator, VariableDeclaration,
+    VariableKind,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 
-use crate::uid::UidGenerator;
-
 #[derive(Default)]
 pub struct CaptureFrame {
-    this: Option<AstUtf8>,
-    arguments: Option<AstUtf8>,
-    new_target: Option<AstUtf8>,
+    pub(crate) this: Option<AstUtf8>,
+    pub(crate) arguments: Option<AstUtf8>,
+    pub(crate) new_target: Option<AstUtf8>,
+    pub(crate) deferred_this: Vec<AstUtf8>,
 }
 
 impl CaptureFrame {
-    fn is_empty(&self) -> bool {
-        self.this.is_none() && self.arguments.is_none() && self.new_target.is_none()
+    pub(crate) fn is_empty(&self) -> bool {
+        self.this.is_none()
+            && self.arguments.is_none()
+            && self.new_target.is_none()
+            && self.deferred_this.is_empty()
     }
 }
 
@@ -24,19 +27,15 @@ impl CaptureFrame {
 ///
 /// This is the flat-AST equivalent of `swc_ecma_utils::function::FnEnvHoister`.
 /// It owns capture state, while callers retain ownership of AST traversal.
-pub struct FnEnvHoister<'semantic, 'ast> {
-    semantic: &'semantic Semantic<'semantic>,
+pub struct FnEnvHoister {
     frames: Vec<CaptureFrame>,
-    uid: UidGenerator<'ast>,
     in_arrow: bool,
 }
 
-impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
-    pub fn new(ast: &Ast<'ast>, semantic: &'semantic Semantic<'semantic>) -> Self {
+impl FnEnvHoister {
+    pub fn new() -> Self {
         Self {
-            semantic,
             frames: vec![CaptureFrame::default()],
-            uid: UidGenerator::new(ast, semantic),
             in_arrow: false,
         }
     }
@@ -49,26 +48,35 @@ impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
         self.frames.push(CaptureFrame::default());
     }
 
+    pub fn push_property_frame(&mut self) {
+        let parent = self.frames.last().expect("a parent capture frame exists");
+        self.frames.push(CaptureFrame {
+            arguments: parent.arguments,
+            new_target: parent.new_target,
+            ..CaptureFrame::default()
+        });
+    }
+
     pub fn take_frame(&mut self) -> CaptureFrame {
         self.frames
             .pop()
             .expect("a function environment frame exists")
     }
 
-    fn capture_this(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
+    pub(crate) fn capture_this(&mut self, ctx: &mut Mutation<'_, '_, '_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.this) {
             return name;
         }
-        let name = self.uid.fresh("_this", ast);
+        let name = generate_capture_name("_this", ctx);
         self.frames.last_mut().expect("a capture frame exists").this = Some(name);
         name
     }
 
-    fn capture_arguments(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
+    fn capture_arguments(&mut self, ctx: &mut Mutation<'_, '_, '_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.arguments) {
             return name;
         }
-        let name = self.uid.fresh("_arguments", ast);
+        let name = generate_capture_name("_arguments", ctx);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -76,11 +84,11 @@ impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
         name
     }
 
-    fn capture_new_target(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
+    fn capture_new_target(&mut self, ctx: &mut Mutation<'_, '_, '_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.new_target) {
             return name;
         }
-        let name = self.uid.fresh("_newtarget", ast);
+        let name = generate_capture_name("_newtarget", ctx);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -88,18 +96,23 @@ impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
         name
     }
 
-    fn is_unresolved_arguments(&self, node: IdentifierReference, ast: &Ast<'_>) -> bool {
+    fn is_unresolved_arguments(
+        &self,
+        node: IdentifierReference,
+        ast: &Ast<'_>,
+        semantic: &Semantic<'_>,
+    ) -> bool {
         if ast.get_utf8(node.name(ast)) != "arguments" {
             return false;
         }
-        let Some(reference_id) = self.semantic.reference_of(node.node_id()) else {
+        let Some(reference_id) = semantic.reference_of(node.node_id()) else {
             return false;
         };
-        let reference = self.semantic.reference(reference_id);
+        let reference = semantic.reference(reference_id);
         reference.flags.space == ReferenceSpace::Value && reference.symbol.is_none()
     }
 
-    fn is_new_target(&self, node: swc_next_ecma_ast::MetaProperty, ast: &Ast<'_>) -> bool {
+    fn is_new_target(&self, node: MetaProperty, ast: &Ast<'_>) -> bool {
         let meta = node.meta(ast);
         let property = node.property(ast);
         ast.get_utf8(meta.name(ast)) == "new" && ast.get_utf8(property.name(ast)) == "target"
@@ -107,189 +120,186 @@ impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
 
     pub fn transform_this_expression(
         &mut self,
-        node: swc_next_ecma_ast::ThisExpression,
-        ast: &mut Ast<'ast>,
-    ) -> Expr {
+        node: ThisExpression,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) -> Option<Expr> {
         if !self.in_arrow {
-            return Expr::ThisExpression(node);
+            return None;
         }
-        let name = self.capture_this(ast);
-        let replacement = ast.identifier_reference(node.span(ast), name);
-        Expr::IdentifierReference(replacement)
+        let name = self.capture_this(ctx);
+        let replacement = ctx.generated_reference(name, node.span(ctx.ast()));
+        Some(Expr::IdentifierReference(replacement))
     }
 
-    pub fn visit_identifier_reference(&mut self, node: IdentifierReference, ast: &mut Ast<'ast>) {
-        if self.in_arrow && self.is_unresolved_arguments(node, ast) {
-            let name = self.capture_arguments(ast);
-            node.set_name(ast, name);
+    pub fn visit_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) {
+        if self.in_arrow && self.is_unresolved_arguments(node, ctx.ast(), ctx.semantic()) {
+            let name = self.capture_arguments(ctx);
+            ctx.retarget_generated_reference(node, name);
         }
     }
 
     pub fn transform_meta_property(
         &mut self,
-        node: swc_next_ecma_ast::MetaProperty,
-        ast: &mut Ast<'ast>,
-    ) -> Expr {
-        if self.in_arrow && self.is_new_target(node, ast) {
-            let name = self.capture_new_target(ast);
-            let replacement = ast.identifier_reference(node.span(ast), name);
-            Expr::IdentifierReference(replacement)
+        node: MetaProperty,
+        new_target_is_undefined: bool,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) -> Option<Expr> {
+        if self.in_arrow && self.is_new_target(node, ctx.ast()) {
+            if new_target_is_undefined {
+                let span = node.span(ctx.ast());
+                let zero = Expr::NumericLiteral(ctx.add_node(ctx.current_scope(), |ast| {
+                    ast.numeric_literal(DUMMY_SP, 0.0, None)
+                }));
+                return Some(Expr::UnaryExpression(
+                    ctx.add_node(ctx.current_scope(), |ast| {
+                        ast.unary_expression(span, zero, UnaryOperator::Void)
+                    }),
+                ));
+            }
+            let name = self.capture_new_target(ctx);
+            let replacement = ctx.generated_reference(name, node.span(ctx.ast()));
+            Some(Expr::IdentifierReference(replacement))
         } else {
-            Expr::MetaProperty(node)
+            None
         }
     }
 
     fn build_capture_declaration(
         &mut self,
         frame: CaptureFrame,
+        scope: ScopeId,
         derived_constructor: bool,
-        ast: &mut Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::VariableDeclaration> {
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) -> Option<VariableDeclaration> {
         if frame.is_empty() {
             return None;
         }
 
-        let mut declarators = Vec::with_capacity(3);
+        let mut declarators = Vec::with_capacity(3 + frame.deferred_this.len());
+        for name in frame.deferred_this {
+            let id = BindingPattern::BindingIdentifier(ctx.generated_declaration(name));
+            declarators.push(ctx.add_node(scope, |ast| {
+                ast.variable_declarator(DUMMY_SP, id, None, None, false)
+            }));
+        }
         if let Some(name) = frame.this {
-            let id = ast.binding_pattern_binding_identifier(DUMMY_SP, name);
-            let init = (!derived_constructor).then(|| ast.expr_this_expression(DUMMY_SP));
-            declarators.push(ast.variable_declarator(DUMMY_SP, id, None, init, false));
+            let id = BindingPattern::BindingIdentifier(ctx.generated_declaration(name));
+            let init = (!derived_constructor).then(|| {
+                Expr::ThisExpression(ctx.add_node(scope, |ast| ast.this_expression(DUMMY_SP)))
+            });
+            declarators.push(ctx.add_node(scope, |ast| {
+                ast.variable_declarator(DUMMY_SP, id, None, init, false)
+            }));
         }
         if let Some(name) = frame.arguments {
-            let id = ast.binding_pattern_binding_identifier(DUMMY_SP, name);
-            let arguments_name = ast.add_utf8("arguments");
-            let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name);
-            declarators.push(ast.variable_declarator(DUMMY_SP, id, None, Some(init), false));
+            let id = BindingPattern::BindingIdentifier(ctx.generated_declaration(name));
+            let init = Expr::IdentifierReference(ctx.create_unbound_reference("arguments", scope));
+            declarators.push(ctx.add_node(scope, |ast| {
+                ast.variable_declarator(DUMMY_SP, id, None, Some(init), false)
+            }));
         }
         if let Some(name) = frame.new_target {
-            let id = ast.binding_pattern_binding_identifier(DUMMY_SP, name);
-            let new_name = ast.add_utf8("new");
-            let target_name = ast.add_utf8("target");
-            let meta = ast.identifier_name(DUMMY_SP, new_name);
-            let property = ast.identifier_name(DUMMY_SP, target_name);
-            let init = ast.expr_meta_property(DUMMY_SP, meta, property);
-            declarators.push(ast.variable_declarator(DUMMY_SP, id, None, Some(init), false));
+            let id = BindingPattern::BindingIdentifier(ctx.generated_declaration(name));
+            let new_name = ctx.intern_utf8("new");
+            let target_name = ctx.intern_utf8("target");
+            let meta = ctx.add_node(scope, |ast| ast.identifier_name(DUMMY_SP, new_name));
+            let property = ctx.add_node(scope, |ast| ast.identifier_name(DUMMY_SP, target_name));
+            let init = Expr::MetaProperty(
+                ctx.add_node(scope, |ast| ast.meta_property(DUMMY_SP, meta, property)),
+            );
+            declarators.push(ctx.add_node(scope, |ast| {
+                ast.variable_declarator(DUMMY_SP, id, None, Some(init), false)
+            }));
         }
 
-        let declarators = ast.add_sub_range(declarators);
-        Some(ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false))
+        let declarators = ctx.add_sub_range(declarators);
+        Some(ctx.add_node(scope, |ast| {
+            ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false)
+        }))
     }
 
-    pub fn inject_into_program(
+    pub(crate) fn enqueue_captures(
         &mut self,
-        program: Program,
-        frame: CaptureFrame,
-        ast: &mut Ast<'ast>,
-    ) {
-        let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
-            return;
-        };
-        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
-        let body = prepend_statement(program.body(ast), statement, ast);
-        program.set_body(ast, body);
-    }
-
-    pub fn inject_into_function(
-        &mut self,
-        function: Function,
+        container: NodeId,
         frame: CaptureFrame,
         derived_constructor: bool,
-        ast: &mut Ast<'ast>,
+        ctx: &mut Mutation<'_, '_, '_>,
     ) {
-        let body = function.body(ast);
-
-        if derived_constructor && let Some(this_name) = frame.this {
-            rewrite_derived_super_calls(body, this_name, ast);
-        }
-
-        let Some(declaration) = self.build_capture_declaration(frame, derived_constructor, ast)
+        let scope = ctx
+            .semantic()
+            .scope_at(container)
+            .expect("capture container is registered");
+        let Some(declaration) =
+            self.build_capture_declaration(frame, scope, derived_constructor, ctx)
         else {
             return;
         };
         let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
-        let statements = prepend_statement(body.body(ast), statement, ast);
-        body.set_body(ast, statements);
+        ctx.inject_statement(container, statement);
     }
 
-    pub fn inject_into_static_block(
+    pub fn wrap_generated_arrow(
         &mut self,
-        block: StaticBlock,
+        value: Expr,
         frame: CaptureFrame,
-        ast: &mut Ast<'ast>,
-    ) {
-        let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
-            return;
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) -> Expr {
+        let this_name = frame.this;
+        let parent = self
+            .frames
+            .last_mut()
+            .expect("a parent capture frame exists");
+        if parent.arguments.is_none() {
+            parent.arguments = frame.arguments;
+        }
+        if parent.new_target.is_none() {
+            parent.new_target = frame.new_target;
+        }
+        parent.deferred_this.extend(frame.deferred_this);
+        let Some(this_name) = this_name else {
+            return value;
         };
-        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
-        let statements = prepend_statement(block.body(ast), statement, ast);
-        block.set_body(ast, statements);
+        parent.deferred_this.push(this_name);
+        let scope = ctx
+            .semantic()
+            .scope_outside(value.node_id())
+            .expect("wrapped arrow has an outer scope");
+        let this = Expr::ThisExpression(ctx.add_node(scope, |ast| ast.this_expression(DUMMY_SP)));
+        let assignment = ctx.assign_generated(this_name, this, DUMMY_SP, scope);
+        let items = ctx.add_sub_range([assignment, value]);
+        Expr::SequenceExpression(
+            ctx.add_node(scope, |ast| ast.sequence_expression(value.span(ast), items)),
+        )
     }
 }
 
-fn prepend_statement(old: SubRange<Stmt>, statement: Stmt, ast: &mut Ast<'_>) -> SubRange<Stmt> {
-    let mut items = Vec::with_capacity(old.len() + 1);
-    items.push(statement);
-    items.extend(old.iter().map(|id| ast.get_node_in_sub_range(id)));
-    ast.add_sub_range(items)
-}
-
-fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut Ast<'_>) {
-    struct InitThis<'visit, 'ast> {
-        ast: &'visit mut Ast<'ast>,
-        this_name: AstUtf8,
-    }
-
-    impl<'ast> VisitMut<'ast> for InitThis<'_, 'ast> {
-        fn ast(&mut self) -> &mut Ast<'ast> {
-            self.ast
-        }
-
-        fn visit_mut_function(&mut self, _node: Function) -> Option<Function> {
-            None
-        }
-
-        fn visit_mut_class(&mut self, _node: Class) -> Option<Class> {
-            None
-        }
-
-        fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
-            let replacement = node.visit_mut_children_with(self);
-            let node = replacement.unwrap_or(node);
-            let Some(call) = node.as_call_expression(self.ast) else {
-                return replacement;
-            };
-            let callee = call.callee(self.ast);
-            if !callee.is_super(self.ast) {
-                return replacement;
-            }
-
-            let call_copy = self.ast.expr_call_expression(
-                call.span(self.ast),
-                callee,
-                call.type_arguments(self.ast),
-                call.arguments(self.ast),
-                call.optional(self.ast),
-            );
-            let left = self
-                .ast
-                .assignment_target_simple_assignment_target_identifier_reference(
-                    DUMMY_SP,
-                    self.this_name,
-                );
-            let this = self.ast.expr_this_expression(DUMMY_SP);
-            let assignment = self.ast.expr_assignment_expression(
-                DUMMY_SP,
-                left,
-                this,
-                AssignmentOperator::Assign,
-            );
-            let expressions = self.ast.add_sub_range([call_copy, assignment]);
-            let sequence = self
-                .ast
-                .sequence_expression(call.span(self.ast), expressions);
-            Some(Expr::SequenceExpression(sequence))
-        }
-    }
-
-    body.visit_mut_with(&mut InitThis { ast, this_name });
+fn generate_capture_name(base: &str, ctx: &mut Mutation<'_, '_, '_>) -> AstUtf8 {
+    use NodeKindData;
+    let owner = ctx
+        .ancestors()
+        .find(|node| {
+            matches!(
+                ctx.ast().kind_data(*node),
+                NodeKindData::Function(_) | NodeKindData::StaticBlock(_) | NodeKindData::Program(_)
+            )
+        })
+        .expect("capture has a function environment");
+    let body = match ctx.ast().kind_data(owner) {
+        NodeKindData::Function(function) => Some(function.body(ctx.ast()).node_id()),
+        _ => None,
+    };
+    let scope = ctx
+        .semantic()
+        .scope_at(body.unwrap_or(owner))
+        .expect("capture owner has a scope");
+    let binding = ctx.generate_binding(
+        base,
+        scope,
+        swc_next_ecma_semantic::SymbolFlags::FUNCTION_SCOPED_VAR,
+    );
+    binding.declaration.name(ctx.ast())
 }

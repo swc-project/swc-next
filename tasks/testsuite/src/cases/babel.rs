@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::Options as CodegenOptions;
 use swc_next_ecma_transformer::TransformerOptions;
 
-use crate::cases::{Case, TransformCase, fixtures};
+use crate::cases::{Case, fixtures, transform::TransformCase};
 
 pub mod options;
 
@@ -41,35 +41,17 @@ const OUTPUT_FILE_NAMES: &[&str] = &[
 
 #[derive(Debug)]
 pub struct BabelTransformCase {
+    pub package_name: String,
     pub path: PathBuf,
+    pub output_path: PathBuf,
     pub name: String,
     pub input: String,
     pub output: String,
     pub options: BabelOptions,
 }
 
-impl TransformCase for BabelTransformCase {
-    fn transformer_options(&self) -> TransformerOptions {
-        self.options.clone().into()
-    }
-
-    fn supports_options(&self) -> bool {
-        self.options.plugins.errors.is_empty()
-            && self.options.plugins.unsupported.is_empty()
-            && self.options.presets.errors.is_empty()
-            && self.options.presets.unsupported.is_empty()
-    }
-
-    fn expected_output(&self) -> Option<&str> {
-        Some(&self.output)
-    }
-
-    fn codegen_options(&self) -> CodegenOptions {
-        self.options.codegen_options()
-    }
-}
-
 struct BabelTransformCasePaths {
+    package_name: String,
     input: PathBuf,
     output: PathBuf,
 }
@@ -89,6 +71,7 @@ impl BabelTransformCase {
                 continue;
             }
 
+            let package_name = package.file_name().to_string_lossy().into_owned();
             let fixture_dir = package.path().join("test/fixtures");
             if !fixture_dir.is_dir() {
                 continue;
@@ -113,6 +96,7 @@ impl BabelTransformCase {
                 };
 
                 case_paths.push(BabelTransformCasePaths {
+                    package_name: package_name.clone(),
                     input: input_path,
                     output: output_path,
                 });
@@ -132,7 +116,9 @@ impl BabelTransformCase {
                 let input = read_to_string(&paths.input)?;
                 let output = read_to_string(&paths.output)?;
                 Ok(Self {
+                    package_name: paths.package_name,
                     path: paths.input,
+                    output_path: paths.output,
                     name,
                     input,
                     output,
@@ -185,6 +171,28 @@ impl Case for BabelTransformCase {
     }
 }
 
+impl TransformCase for BabelTransformCase {
+    fn package_name(&self) -> &str {
+        &self.package_name
+    }
+
+    fn output_path(&self) -> &Path {
+        &self.output_path
+    }
+
+    fn output(&self) -> &str {
+        &self.output
+    }
+
+    fn transformer_options(&self) -> TransformerOptions {
+        self.options.clone().into()
+    }
+
+    fn codegen_options(&self) -> CodegenOptions {
+        self.options.codegen_options()
+    }
+}
+
 pub(super) fn source_type(path: &Path, options: &BabelOptions) -> SourceType {
     match path.extension().and_then(|extension| extension.to_str()) {
         Some("mjs" | "mts") => return SourceType::Module,
@@ -207,7 +215,9 @@ pub(super) fn lang(path: &Path, options: &BabelOptions) -> Lang {
         return Lang::Dts;
     }
 
-    let typescript = matches!(path_lang, Lang::Ts | Lang::Tsx) || options.is_typescript();
+    let typescript = matches!(path_lang, Lang::Ts | Lang::Tsx)
+        || options.is_typescript()
+        || options.plugins.typescript;
     let jsx = matches!(path_lang, Lang::Jsx | Lang::Tsx) || options.is_jsx();
     match (typescript, jsx) {
         (true, true) => Lang::Tsx,

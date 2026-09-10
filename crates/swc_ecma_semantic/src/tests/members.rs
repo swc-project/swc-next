@@ -155,6 +155,7 @@ fn global_export_aliases() {
             AnalyzeOptions {
                 check_syntax,
                 build_module_record: true,
+                ..AnalyzeOptions::default()
             },
         );
         let local = semantic.binding(ScopeId::MODULE, b"Foo").unwrap();

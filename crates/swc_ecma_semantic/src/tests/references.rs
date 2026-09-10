@@ -313,6 +313,7 @@ fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
                 let options = AnalyzeOptions {
                     check_syntax,
                     build_module_record,
+                    ..AnalyzeOptions::default()
                 };
                 let (ast, semantic) =
                     analyze_with_options(&allocator, source, parser_options, options);

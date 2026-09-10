@@ -157,6 +157,7 @@ fn default_type_parameters() {
     let checked = AnalyzeOptions {
         check_syntax: true,
         build_module_record: true,
+        ..AnalyzeOptions::default()
     };
 
     let source =

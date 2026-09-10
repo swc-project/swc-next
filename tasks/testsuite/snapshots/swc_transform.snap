@@ -1,0 +1,21 @@
+swc transform
+=============
+
+Total
+-----
+Cases: 13
+Passed: 8/13 (61.54%)
+Failed: 0/13 (0.00%)
+Panicked: 0/13 (0.00%)
+Skipped: 5/13 (38.46%)
+
+Packages
+========
+
+static-blocks
+-------------
+Cases: 13
+Passed: 8/13 (61.54%)
+Failed: 0/13 (0.00%)
+Panicked: 0/13 (0.00%)
+Skipped: 5/13 (38.46%)

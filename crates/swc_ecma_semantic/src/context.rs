@@ -1,10 +1,11 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, StaticBlock,
 };
 
 use crate::{
-    Semantic,
+    Semantic, SemanticFeatureFlags,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
+    class_semantic::ClassSemantic,
     module_record::ModuleRecordBuilder,
     scope::{DecoratorSite, ScopeTracker},
 };
@@ -18,20 +19,38 @@ pub(crate) struct SemanticContext<'a> {
     pub module_record: ModuleRecordBuilder<'a>,
     // Nested type syntax saves and restores this default through the visitor.
     default_reference_flags: ReferenceFlags,
+    pub class: ClassSemantic<'a>,
+    pub features: SemanticFeatureFlags,
+    node_scopes: Vec<Option<swc_next_ecma_ast::ScopeId>>,
+    pub direct_eval_calls: rustc_hash::FxHashMap<NodeId, swc_next_ecma_ast::ScopeId>,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
 }
 
 impl<'a> SemanticContext<'a> {
-    pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
+    pub fn init(tree: &Ast<'a>, build_module_record: bool, features: SemanticFeatureFlags) -> Self {
         let allocator = tree.allocator();
         Self {
             scope: ScopeTracker::init(tree),
-            symbols: SymbolTracker::init(tree),
+            symbols: SymbolTracker::init(tree, features),
             module_record: ModuleRecordBuilder::new(allocator, build_module_record),
             default_reference_flags: ReferenceFlags::default(),
+            class: ClassSemantic::new(tree, features),
+            features,
+            node_scopes: if features.contains(SemanticFeatureFlags::NODE_SCOPES) {
+                vec![None; tree.node_count()]
+            } else {
+                Vec::new()
+            },
+            direct_eval_calls: Default::default(),
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
+        }
+    }
+
+    pub fn record_node_scope(&mut self, node: NodeId) {
+        if let Some(slot) = self.node_scopes.get_mut(node.index()) {
+            *slot = Some(self.scope.current);
         }
     }
 
@@ -190,10 +209,17 @@ impl<'a> SemanticContext<'a> {
 
     pub fn enter_class(&mut self, tree: &Ast, class: Class) {
         self.scope.enter_class(tree, class);
+        self.class.enter_class(tree, class);
     }
 
-    pub fn enter_static_block(&mut self, node: NodeId) {
-        self.scope.enter_static_block(node);
+    pub fn enter_static_block(&mut self, tree: &Ast, block: StaticBlock) {
+        self.scope.enter_static_block(block.node_id());
+        if self
+            .features
+            .contains(SemanticFeatureFlags::STATIC_BLOCK_COMMENTS)
+        {
+            self.class.record_static_block(tree, block);
+        }
     }
 
     pub fn enter_decorator(&mut self, node: NodeId, site: DecoratorSite) {
@@ -210,7 +236,16 @@ impl<'a> SemanticContext<'a> {
 
     pub fn finalize(self, tree: &Ast<'a>) -> Semantic<'a> {
         let (scopes, has_with_statement) = self.scope.into_scope_tree();
-        self.symbols
-            .finalize(tree, scopes, has_with_statement, self.module_record)
+        let mut semantic = self.symbols.finalize(
+            tree,
+            scopes,
+            has_with_statement,
+            self.module_record,
+            self.features,
+            self.class,
+        );
+        semantic.node_scopes = self.node_scopes;
+        semantic.direct_eval_calls = self.direct_eval_calls;
+        semantic
     }
 }
