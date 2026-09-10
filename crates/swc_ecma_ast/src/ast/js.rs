@@ -8,10 +8,12 @@ macro_rules! impl_extra_data_value {
     ($($ty:ty),+ $(,)?) => {
         $(
             impl ExtraDataValue for $ty {
+                #[inline]
                 fn into_extra_data(self) -> ExtraData {
                     ExtraData::from_raw(self as u64)
                 }
 
+                #[inline]
                 unsafe fn from_extra_data(data: &ExtraData) -> Self {
                     unsafe { mem::transmute(data.raw() as u8) }
                 }
@@ -308,10 +310,12 @@ impl_extra_data_value!(
 );
 
 impl ExtraDataValue for Option<ImportPhase> {
+    #[inline]
     fn into_extra_data(self) -> ExtraData {
         ExtraData::from_raw(self.map_or(u8::MAX as u64, |phase| phase as u64))
     }
 
+    #[inline]
     unsafe fn from_extra_data(data: &ExtraData) -> Self {
         let value = data.raw() as u8;
         (value != u8::MAX).then(|| unsafe { mem::transmute(value) })
