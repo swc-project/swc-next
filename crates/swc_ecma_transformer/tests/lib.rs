@@ -3,7 +3,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 
-fn transform_source<'a>(
+pub(super) fn transform_source<'a>(
     allocator: &'a Allocator,
     source: &'a str,
     options: TransformerOptions,
@@ -37,7 +37,7 @@ fn options() -> TransformerOptions {
     }
 }
 
-fn assert_reference_scopes(ast: &Ast<'_>, semantic: &Semantic<'_>) {
+pub(super) fn assert_reference_scopes(ast: &Ast<'_>, semantic: &Semantic<'_>) {
     let fresh = analyze(ast, AnalyzeOptions::default()).semantic;
     for entry in semantic.iter_references() {
         let fresh_reference = fresh.reference(fresh.reference_of(entry.reference.node).unwrap());

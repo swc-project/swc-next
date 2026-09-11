@@ -610,6 +610,21 @@ impl StaticBlocks {
         } else {
             None
         };
+        if matches!(inferred_name, Some(InferredName::Computed { parent, .. })
+            if matches!(ctx.ast().kind_data(parent), NodeKindData::PropertyDefinition(property)
+                if !property.r#static(ctx.ast())))
+            && ctx
+                .semantic()
+                .class()
+                .static_block_layout(class.node_id())
+                .is_some_and(|layout| layout.trailing_blocks != 0)
+        {
+            // Instance initializers run after class evaluation, potentially after
+            // another evaluation has overwritten a hoisted computed-key temporary.
+            // Preserve native field named evaluation instead of wrapping the class.
+            transform_class_as_private_fields(body, class.node_id(), ctx);
+            return;
+        }
         let mut generated_names = Vec::new();
         let call = ClassTransform {
             ctx,
@@ -712,12 +727,22 @@ fn inferred_name(
                     .map(|identifier| InferredName::String(identifier.name(ctx.ast()).into()))
             }
             NodeKindData::ObjectProperty(node) if node.value(ctx.ast()).node_id() == value => {
-                inferred_property_key_name(
+                let name = inferred_property_key_name(
                     node.key(ctx.ast()),
                     node.computed(ctx.ast()),
                     node.node_id(),
                     ctx,
-                )
+                );
+                // A noncomputed __proto__: value sets the object's prototype;
+                // unlike an ordinary property, it does not perform named evaluation.
+                if !node.computed(ctx.ast())
+                    && matches!(name, Some(InferredName::String(name))
+                        if ctx.ast().get_wtf8(name).as_bytes() == b"__proto__")
+                {
+                    None
+                } else {
+                    name
+                }
             }
             NodeKindData::AssignmentExpression(node)
                 if matches!(
@@ -1046,3 +1071,7 @@ fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut Muta
         },
     );
 }
+
+#[cfg(test)]
+#[path = "../../tests/es2022/static_blocks.rs"]
+mod tests;
