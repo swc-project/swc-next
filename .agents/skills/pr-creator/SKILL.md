@@ -3,7 +3,7 @@ name: pr-creator
 description: Use when asked to create a pull request for this repository. It helps the PR follow the repository's branch safety rules, title convention, pull request template, and concise English writing style.
 ---
 
-# Pull Request Creator
+# Pull request creator
 
 ## Steps
 
@@ -26,11 +26,11 @@ description: Use when asked to create a pull request for this repository. It hel
    - `release: v1.2.0`
 
 5. Write the PR body in concise, clear English.
-   - In `Summary`, explain the change context first: the user-facing problem, maintenance goal, or compatibility constraint that makes the change necessary.
+   - In `Motivation`, explain the user-facing problem, maintenance goal, or compatibility constraint that makes the change necessary.
+   - In `Changes`, describe what the PR changes and how it addresses the motivation. Include implementation details only when they help reviewers assess the change.
    - Prioritize high-signal information: public API changes, behavior changes, breaking changes, migration notes, and important compatibility implications.
-   - Then describe the main implementation change only as much as needed to understand the review.
-   - Keep it short: one compact paragraph or 2-4 bullets is usually enough.
-   - Avoid low-signal sections such as `Test plan` or `Validation`, routine verification commands, generated file lists, or obvious implementation details unless the repository template explicitly requires them or the change has unusual validation risk.
+   - Keep each section short: one compact paragraph or a few bullets is usually enough.
+   - Include relevant verification results in `Changes` when they help reviewers assess correctness, along with material limitations. Avoid separate `Test plan` or `Validation` sections, exhaustive command lists, generated file lists, and obvious implementation details unless the repository template requires them.
    - Good background examples:
      - `This PR adds support for custom logger injection so CLI output can be isolated per instance.`
      - `This PR fixes incorrect padding in URL labels to keep terminal output aligned across different label lengths.`
@@ -42,7 +42,7 @@ description: Use when asked to create a pull request for this repository. It hel
 
 7. Push the branch only after re-checking the branch name. Never push the default branch directly.
 
-8. Create the PR with `gh pr create`.
+8. Create the PR with `gh pr create`. For multiline bodies, write the exact Markdown to a temporary file and pass it with `--body-file`.
 
 ## Constraints
 
