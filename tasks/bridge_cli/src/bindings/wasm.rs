@@ -1,6 +1,6 @@
 use wasmparser::{Encoding, Parser, Payload};
 
-use crate::metadata::BridgeDescriptor;
+use super::descriptor::BridgeDescriptor;
 
 const METADATA_SECTION: &str = "__wasm_bindgen_unstable";
 

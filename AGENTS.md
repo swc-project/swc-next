@@ -23,7 +23,8 @@ Run from the workspace root.
 | Install                  | `pnpm install`                                                                          |
 | Build all N-API packages | `pnpm build [--release]`                                                                |
 | Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build [--release]` |
-| Build browser package    | `pnpm build:browser [--release]`                                                        |
+| Build browser package    | `pnpm build:browser [--release]`                                                       |
+| Assemble browser package | `pnpm --filter @swc-next/core-browser prepare:browser ../../target/wasm-package/core` |
 | Build all WASM packages  | `pnpm build:wasm [--release]`                                                           |
 | Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--release]` |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                 |
@@ -32,7 +33,10 @@ Run from the workspace root.
 
 Wasm builds use `cargo run --locked -p bridge_cli -- build [component] [--release]`.
 Output defaults to `npm/<component>/src-js`; `--output-dir <directory>` overrides it for a
-single component, relative to the current directory. Building `core` also prepares the browser package.
+single component, relative to the current directory. `pnpm build:browser [--release]` builds
+`core` into `target/wasm-package/core`; explicitly run the browser assembly command afterward.
+To reuse an existing core Wasm build, run
+`pnpm --filter @swc-next/core-browser prepare:browser ../core/src-js`.
 
 ## Testing & Examples
 

@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, de::DeserializeOwned};
 
-const TARGET: &str = "wasm32-unknown-unknown";
+pub(super) const TARGET: &str = "wasm32-unknown-unknown";
 
 #[derive(Deserialize)]
 struct Metadata {
@@ -42,20 +42,28 @@ struct WasmConfig {
     target: String,
 }
 
-struct Component {
-    name: String,
-    directory: PathBuf,
-    cargo_package: String,
-    artifact: String,
-    binary_name: String,
-    version: String,
+pub(super) struct Component {
+    pub name: String,
+    pub output_dir: PathBuf,
+    pub cargo_package: String,
+    pub input: PathBuf,
+    pub binary_name: String,
+    pub version: String,
 }
 
-pub(super) fn build(
+/// Validated package metadata and resolved paths used by the build stage.
+pub(super) struct Workspace {
+    pub root: PathBuf,
+    pub profile: &'static str,
+    pub components: Vec<Component>,
+}
+
+pub(super) fn read(
     component: Option<&str>,
     release: bool,
     output_dir: Option<&Path>,
-) -> Result<(), String> {
+) -> Result<Workspace, String> {
+    let profile = if release { "wasm-release" } else { "debug" };
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let root = root
         .canonicalize()
@@ -91,42 +99,22 @@ pub(super) fn build(
         return Err("no Wasm packages found".to_owned());
     }
 
-    for component in components {
-        // Keep each component's feature set independent, especially parser and codegen.
-        let mut cargo = Command::new("cargo");
-        cargo
-            .current_dir(&root)
-            .args(["build", "--locked", "--target", TARGET]);
-        cargo.args(["--package", &component.cargo_package]);
-        if release {
-            cargo.args(["--profile", "wasm-release"]);
+    for component in &mut components {
+        if let Some(directory) = output_dir {
+            component.output_dir = std::path::absolute(directory)
+                .map_err(|error| format!("failed to resolve output directory: {error}"))?;
         }
-        run(&mut cargo)?;
-
-        let destination = match output_dir {
-            Some(directory) => std::path::absolute(directory)
-                .map_err(|error| format!("failed to resolve output directory: {error}"))?,
-            None => component.directory.join("src-js"),
-        };
-        let source = metadata
+        component.input = metadata
             .target_directory
             .join(TARGET)
-            .join(if release { "wasm-release" } else { "debug" })
-            .join(&component.artifact);
-        crate::generate(
-            &source,
-            &destination,
-            Some(&component.binary_name),
-            &component.version,
-        )?;
-        if component.name == "core" {
-            run(Command::new("node")
-                .arg(root.join("scripts/browser-package.mjs"))
-                .arg(&destination)
-                .current_dir(&root))?;
-        }
+            .join(profile)
+            .join(&component.input);
     }
-    Ok(())
+    Ok(Workspace {
+        root,
+        profile,
+        components,
+    })
 }
 
 fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component>, String> {
@@ -193,9 +181,9 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
                 .file_name()
                 .into_string()
                 .map_err(|_| "npm directory name must be UTF-8")?,
-            directory,
+            output_dir: directory.join("src-js"),
             cargo_package: package.name.clone(),
-            artifact: format!("{}.wasm", library.name),
+            input: PathBuf::from(format!("{}.wasm", library.name)),
             binary_name: config.binary_name,
             version,
         });
@@ -208,14 +196,4 @@ fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T, String> {
         fs::read(path).map_err(|error| format!("failed to read {}: {error}", path.display()))?;
     serde_json::from_slice(&source)
         .map_err(|error| format!("invalid JSON in {}: {error}", path.display()))
-}
-
-fn run(command: &mut Command) -> Result<(), String> {
-    let status = command
-        .status()
-        .map_err(|error| format!("failed to run {command:?}: {error}"))?;
-    if !status.success() {
-        return Err(format!("{command:?} failed with {status}"));
-    }
-    Ok(())
 }
