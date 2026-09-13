@@ -239,6 +239,10 @@ jobs:
           path: |
             npm/*/src-js/*.wasm
             npm/*/src-js/*.bridge.mjs
+            npm/*/src-js/*.node.mjs
+            npm/*/src-js/*.browser.mjs
+            npm/*/src-js/*.module.mjs
+            npm/*/src-js/*.runtime.mjs
 
   release_npm:
     name: Release NPM packages

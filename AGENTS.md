@@ -25,9 +25,14 @@ Run from the workspace root.
 | Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build [--release]` |
 | Build browser package    | `pnpm build:browser [--release]`                                                        |
 | Build all WASM packages  | `pnpm build:wasm [--release]`                                                           |
+| Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--release]` |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                 |
 | Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                              |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                |
+
+Wasm builds use `cargo run --locked -p bridge_cli -- build [component] [--release]`.
+Output defaults to `npm/<component>/src-js`; `--output-dir <directory>` overrides it for a
+single component, relative to the current directory. Building `core` also prepares the browser package.
 
 ## Testing & Examples
 

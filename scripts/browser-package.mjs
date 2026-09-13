@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { bindingFileNames, environmentFiles } from "./wasm-package/files.mjs";
+import { bindingFileNames } from "./wasm-package/files.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
@@ -18,14 +18,14 @@ export function prepareBrowserPackage(sourceDirectory) {
   );
   const names = bindingFileNames(coreManifest.wasm.binaryName);
 
-  for (const name of [names.wasm, names.bridge]) {
+  if (manifest.version !== coreManifest.version) {
+    throw new Error("browser and core package versions must match");
+  }
+
+  for (const name of [names.wasm, names.bridge, names.browser, names.runtime]) {
     const source = path.resolve(sourceDirectory, name);
     const destination = path.join(directory, name);
     if (source !== destination) fs.copyFileSync(source, destination);
-  }
-  const files = environmentFiles(names, manifest.version);
-  for (const name of [names.browser, names.runtime]) {
-    fs.writeFileSync(path.join(directory, name), files.get(name));
   }
 
   const declaration = fs.readFileSync(
@@ -36,4 +36,11 @@ export function prepareBrowserPackage(sourceDirectory) {
     path.join(directory, "binding.d.ts"),
     declaration.replaceAll("Buffer", "Uint8Array"),
   );
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.argv.length !== 3) {
+    throw new Error("usage: browser-package.mjs <source-directory>");
+  }
+  prepareBrowserPackage(process.argv[2]);
 }

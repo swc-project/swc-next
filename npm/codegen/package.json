@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "build:wasm": "node ../../scripts/build-wasm.mjs codegen --output-dir src-js"
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build codegen"
   },
   "keywords": [
     "ast",

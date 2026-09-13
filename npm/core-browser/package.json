@@ -31,7 +31,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build:browser": "node ../../scripts/build-wasm.mjs core",
+    "build:browser": "cargo run --quiet --locked --manifest-path ../../Cargo.toml -p bridge_cli -- build core --output-dir ../../target/wasm-package/core",
     "test:browser": "rstest run --include smoke.test.js --browser --browser.headless"
   },
   "dependencies": {

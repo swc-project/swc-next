@@ -1,7 +1,7 @@
 import { access, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { bindingFileNames, environmentFiles } from "./files.mjs";
+import { bindingFileNames } from "./files.mjs";
 
 const SUPPORTED_TARGET = "wasm32-unknown-unknown";
 
@@ -27,7 +27,7 @@ export async function collectArtifacts(userOptions = {}) {
   if (context.options.dryRun) fail("artifacts does not support --dry-run");
 
   const outputDirectory = path.resolve(context.options.cwd, context.options.outputDir);
-  const artifactNames = [context.names.wasm, context.names.bridge];
+  const artifactNames = Object.values(context.names);
   const copied = [];
   for (const artifactName of artifactNames) {
     const matches = await findArtifacts(outputDirectory, artifactName);
@@ -145,7 +145,6 @@ function generatedFiles(context) {
   return new Map([
     ["package.json", `${JSON.stringify(manifest, null, 2)}\n`],
     ["README.md", bindingReadme(context)],
-    ...environmentFiles(context.names, context.packageJson.version),
   ]);
 }
 
@@ -212,6 +211,12 @@ async function validatePackage(context, generated, dryRun) {
     const actual = await readFile(path.join(context.bindingDirectory, name), "utf8");
     if (actual !== generated.get(name)) {
       fail(`${manifest.name} contains a stale generated file: ${name}`);
+    }
+  }
+  for (const name of [context.names.node, context.names.browser, context.names.module]) {
+    const source = await readFile(path.join(context.bindingDirectory, name), "utf8");
+    if (!source.includes(`\nexport const version = ${JSON.stringify(context.packageJson.version)};\n`)) {
+      fail(`${context.packageJson.name} contains a stale entry point: ${name}`);
     }
   }
 }

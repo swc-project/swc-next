@@ -1,3 +1,5 @@
+mod build;
+mod environment;
 mod metadata;
 mod render;
 mod wasm;
@@ -11,7 +13,7 @@ use std::{
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(about = "Generate JavaScript bindings from a WebAssembly module")]
+#[command(about = "Build WebAssembly packages and generate JavaScript bindings")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -19,7 +21,18 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Extract bridge metadata and emit JavaScript bindings, runtime, and stripped Wasm.
+    /// Build workspace Wasm packages and emit bindings into their npm src-js directories.
+    Build {
+        /// Build one component; defaults to every public npm package with Wasm configuration.
+        component: Option<String>,
+        /// Use the wasm-release Cargo profile.
+        #[arg(long, short = 'r')]
+        release: bool,
+        /// Override the output directory for a single component, relative to the current directory.
+        #[arg(long, short = 'o', requires = "component", value_name = "DIR")]
+        output_dir: Option<PathBuf>,
+    },
+    /// Emit JavaScript bindings, environment entry points, runtime, and stripped Wasm.
     Generate {
         #[arg(value_name = "WASM")]
         input: PathBuf,
@@ -28,17 +41,26 @@ enum Command {
         /// Output file prefix; defaults to the input file stem.
         #[arg(long, value_name = "NAME")]
         out_name: Option<String>,
+        /// Package version exported by the environment entry points.
+        #[arg(long, value_name = "VERSION")]
+        package_version: String,
     },
 }
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.command {
+        Command::Build {
+            component,
+            release,
+            output_dir,
+        } => build::build(component.as_deref(), release, output_dir.as_deref()),
         Command::Generate {
             input,
             output_dir,
             out_name,
-        } => generate(&input, &output_dir, out_name.as_deref()),
+            package_version,
+        } => generate(&input, &output_dir, out_name.as_deref(), &package_version),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -49,7 +71,12 @@ fn main() -> ExitCode {
     }
 }
 
-fn generate(input: &Path, output_dir: &Path, out_name: Option<&str>) -> Result<(), String> {
+fn generate(
+    input: &Path,
+    output_dir: &Path,
+    out_name: Option<&str>,
+    version: &str,
+) -> Result<(), String> {
     let name = out_name
         .or_else(|| input.file_stem().and_then(|stem| stem.to_str()))
         .ok_or("input must have a UTF-8 file stem, or specify --out-name")?;
@@ -77,5 +104,5 @@ fn generate(input: &Path, output_dir: &Path, out_name: Option<&str>) -> Result<(
         fs::write(&output, content)
             .map_err(|error| format!("failed to write {}: {error}", output.display()))?;
     }
-    Ok(())
+    environment::write_entries(output_dir, name, version)
 }
