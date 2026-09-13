@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, ensure};
-use serde::{Deserialize, de::DeserializeOwned};
+use serde::Deserialize;
 
 pub(super) const TARGET: &str = "wasm32-unknown-unknown";
 
@@ -30,8 +30,6 @@ struct CargoTarget {
 
 #[derive(Deserialize)]
 struct Manifest {
-    #[serde(default)]
-    private: bool,
     version: Option<String>,
     wasm: Option<WasmConfig>,
 }
@@ -75,10 +73,6 @@ pub(super) fn read(
     let metadata: Metadata = serde_json::from_slice(&metadata.stdout)?;
     let mut components = discover_components(&root, &metadata)?;
     if let Some(name) = component {
-        ensure!(
-            components.iter().any(|component| component.name == name),
-            "unknown component"
-        );
         components.retain(|component| component.name == name);
     }
     ensure!(!components.is_empty(), "no Wasm packages found");
@@ -108,24 +102,11 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
     for entry in entries {
         let directory = entry.path();
         let manifest_path = directory.join("package.json");
-        if !directory.is_dir() || !manifest_path.exists() {
-            continue;
-        }
-        let manifest: Manifest = read_json(&manifest_path)?;
-        if manifest.private {
-            continue;
-        }
+        let source = fs::read(manifest_path)?;
+        let manifest: Manifest = serde_json::from_slice(&source)?;
         let Some(config) = manifest.wasm else {
             continue;
         };
-        ensure!(
-            !config.binary_name.is_empty()
-                && config
-                    .binary_name
-                    .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_')),
-            "invalid Wasm binary name"
-        );
         let version = manifest
             .version
             .filter(|version| !version.is_empty())
@@ -155,9 +136,4 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
         });
     }
     Ok(components)
-}
-
-fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
-    let source = fs::read(path)?;
-    Ok(serde_json::from_slice(&source)?)
 }
