@@ -1,9 +1,10 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, de::DeserializeOwned};
 
 pub(super) const TARGET: &str = "wasm32-unknown-unknown";
@@ -61,47 +62,30 @@ pub(super) fn read(
     component: Option<&str>,
     release: bool,
     output_dir: Option<&Path>,
-) -> Result<Workspace, String> {
+) -> Result<Workspace> {
     let profile = if release { "wasm-release" } else { "debug" };
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let root = root
-        .canonicalize()
-        .map_err(|error| format!("failed to resolve workspace root: {error}"))?;
+    let root = root.canonicalize()?;
     let metadata = Command::new("cargo")
         .args(["metadata", "--format-version", "1", "--no-deps", "--locked"])
         .current_dir(&root)
-        .output()
-        .map_err(|error| format!("failed to run cargo metadata: {error}"))?;
-    if !metadata.status.success() {
-        return Err(format!(
-            "cargo metadata failed: {}",
-            String::from_utf8_lossy(&metadata.stderr)
-        ));
-    }
-    let metadata: Metadata = serde_json::from_slice(&metadata.stdout)
-        .map_err(|error| format!("invalid cargo metadata: {error}"))?;
+        .stderr(Stdio::inherit())
+        .output()?;
+    ensure!(metadata.status.success(), "cargo metadata failed");
+    let metadata: Metadata = serde_json::from_slice(&metadata.stdout)?;
     let mut components = discover_components(&root, &metadata)?;
     if let Some(name) = component {
-        if !components.iter().any(|component| component.name == name) {
-            let names: Vec<_> = components
-                .iter()
-                .map(|component| component.name.as_str())
-                .collect();
-            return Err(format!(
-                "unknown component {name}; expected {}",
-                names.join(", ")
-            ));
-        }
+        ensure!(
+            components.iter().any(|component| component.name == name),
+            "unknown component"
+        );
         components.retain(|component| component.name == name);
     }
-    if components.is_empty() {
-        return Err("no Wasm packages found".to_owned());
-    }
+    ensure!(!components.is_empty(), "no Wasm packages found");
 
     for component in &mut components {
         if let Some(directory) = output_dir {
-            component.output_dir = std::path::absolute(directory)
-                .map_err(|error| format!("failed to resolve output directory: {error}"))?;
+            component.output_dir = std::path::absolute(directory)?;
         }
         component.input = metadata
             .target_directory
@@ -116,12 +100,9 @@ pub(super) fn read(
     })
 }
 
-fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component>, String> {
+fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component>> {
     let npm = root.join("npm");
-    let mut entries = fs::read_dir(&npm)
-        .map_err(|error| format!("failed to read {}: {error}", npm.display()))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| format!("failed to read npm directory entry: {error}"))?;
+    let mut entries = fs::read_dir(&npm)?.collect::<Result<Vec<_>, _>>()?;
     entries.sort_by_key(|entry| entry.file_name());
     let mut components = Vec::new();
     for entry in entries {
@@ -137,42 +118,35 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
         let Some(config) = manifest.wasm else {
             continue;
         };
-        if config.binary_name.is_empty()
-            || !config
-                .binary_name
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-        {
-            return Err(format!(
-                "{} has an invalid Wasm binary name",
-                manifest_path.display()
-            ));
-        }
+        ensure!(
+            !config.binary_name.is_empty()
+                && config
+                    .binary_name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_')),
+            "invalid Wasm binary name"
+        );
         let version = manifest
             .version
             .filter(|version| !version.is_empty())
-            .ok_or_else(|| format!("{} is missing a version", manifest_path.display()))?;
+            .context("missing package version")?;
         let cargo_manifest = directory.join("Cargo.toml");
         let package = metadata
             .packages
             .iter()
             .find(|package| package.manifest_path == cargo_manifest)
-            .ok_or_else(|| format!("missing Cargo package for {}", manifest_path.display()))?;
+            .context("missing Cargo package")?;
         let library = package
             .targets
             .iter()
             .find(|target| target.kind.iter().any(|kind| kind == "cdylib"))
-            .ok_or_else(|| {
-                format!(
-                    "{} does not define a cdylib target",
-                    cargo_manifest.display()
-                )
-            })?;
+            .context("missing cdylib target")?;
         components.push(Component {
             name: entry
                 .file_name()
                 .into_string()
-                .map_err(|_| "npm directory name must be UTF-8")?,
+                .ok()
+                .context("npm directory name must be UTF-8")?,
             output_dir: directory.join("src-js"),
             cargo_package: package.name.clone(),
             input: PathBuf::from(format!("{}.wasm", library.name)),
@@ -183,9 +157,7 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
     Ok(components)
 }
 
-fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T, String> {
-    let source =
-        fs::read(path).map_err(|error| format!("failed to read {}: {error}", path.display()))?;
-    serde_json::from_slice(&source)
-        .map_err(|error| format!("invalid JSON in {}: {error}", path.display()))
+fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    let source = fs::read(path)?;
+    Ok(serde_json::from_slice(&source)?)
 }

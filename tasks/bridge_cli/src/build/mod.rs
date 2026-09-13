@@ -2,13 +2,15 @@ mod metadata;
 
 use std::{path::Path, process::Command};
 
+use anyhow::{Result, ensure};
+
 use crate::bindings;
 
 pub(super) fn build(
     component: Option<&str>,
     release: bool,
     output_dir: Option<&Path>,
-) -> Result<(), String> {
+) -> Result<()> {
     let metadata = metadata::read(component, release, output_dir)?;
     for component in &metadata.components {
         // Keep each component's feature set independent, especially parser and codegen.
@@ -20,12 +22,8 @@ pub(super) fn build(
         if metadata.profile != "debug" {
             cargo.args(["--profile", metadata.profile]);
         }
-        let status = cargo
-            .status()
-            .map_err(|error| format!("failed to run {cargo:?}: {error}"))?;
-        if !status.success() {
-            return Err(format!("{cargo:?} failed with {status}"));
-        }
+        let status = cargo.status()?;
+        ensure!(status.success(), "cargo build failed");
 
         bindings::generate(
             &component.input,

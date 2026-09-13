@@ -1,6 +1,8 @@
 use std::{fs, path::Path};
 
-pub(super) fn write_entries(directory: &Path, name: &str, version: &str) -> Result<(), String> {
+use anyhow::Result;
+
+pub(super) fn write_entries(directory: &Path, name: &str, version: &str) -> Result<()> {
     let runtime = quote(&format!("./{name}.runtime.mjs"));
     let wasm = quote(&format!("./{name}.wasm"));
     let bridge = quote(&format!("./{name}.bridge.mjs"));
@@ -84,8 +86,7 @@ export default function init() {{
         ),
     ] {
         let output = directory.join(format!("{name}.{environment}.mjs"));
-        fs::write(&output, source)
-            .map_err(|error| format!("failed to write {}: {error}", output.display()))?;
+        fs::write(&output, source)?;
     }
     Ok(())
 }

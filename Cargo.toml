@@ -69,6 +69,7 @@ swc_next_regular_expression = { version = "0.2.0", path = "crates/swc_regular_ex
 swc_next_type_strip         = { version = "0.2.0", path = "crates/swc_type_strip" }
 
 # Dev
+anyhow        = "1"
 clap          = { version = "4.5.51", features = ["derive"] }
 criterion     = { package = "codspeed-criterion-compat", version = "5.0.0" }
 gungraun      = "0.19.4"

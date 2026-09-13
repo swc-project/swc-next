@@ -1,7 +1,9 @@
 mod bindings;
 mod build;
 
-use std::{path::PathBuf, process::ExitCode};
+use std::path::PathBuf;
+
+use anyhow::Result;
 
 use clap::{Parser, Subcommand};
 
@@ -27,20 +29,13 @@ enum Command {
     },
 }
 
-fn main() -> ExitCode {
+fn main() -> Result<()> {
     let cli = Cli::parse();
-    let result = match cli.command {
+    match cli.command {
         Command::Build {
             component,
             release,
             output_dir,
         } => build::build(component.as_deref(), release, output_dir.as_deref()),
-    };
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            eprintln!("bridge_cli: {error}");
-            ExitCode::FAILURE
-        }
     }
 }
