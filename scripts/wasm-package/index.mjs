@@ -1,5 +1,13 @@
-import { access, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import {
+  access,
+  copyFile,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { bindingFileNames } from "./files.mjs";
 
@@ -26,14 +34,20 @@ export async function collectArtifacts(userOptions = {}) {
   const context = await readContext(userOptions);
   if (context.options.dryRun) fail("artifacts does not support --dry-run");
 
-  const outputDirectory = path.resolve(context.options.cwd, context.options.outputDir);
+  const outputDirectory = path.resolve(
+    context.options.cwd,
+    context.options.outputDir,
+  );
   const artifactNames = Object.values(context.names);
   const copied = [];
   for (const artifactName of artifactNames) {
     const matches = await findArtifacts(outputDirectory, artifactName);
-    if (matches.length === 0) fail(`missing WebAssembly artifact: ${artifactName}`);
+    if (matches.length === 0)
+      fail(`missing WebAssembly artifact: ${artifactName}`);
     if (matches.length > 1) {
-      fail(`duplicate WebAssembly artifact ${artifactName}: ${matches.join(", ")}`);
+      fail(
+        `duplicate WebAssembly artifact ${artifactName}: ${matches.join(", ")}`,
+      );
     }
     const destination = path.join(context.bindingDirectory, artifactName);
     await copyFile(matches[0], destination);
@@ -64,7 +78,11 @@ export async function prePublish(userOptions = {}) {
     },
   };
 
-  await validatePackage(context, generatedFiles(context), context.options.dryRun);
+  await validatePackage(
+    context,
+    generatedFiles(context),
+    context.options.dryRun,
+  );
 
   if (!context.options.dryRun) {
     await writeFile(
@@ -74,6 +92,46 @@ export async function prePublish(userOptions = {}) {
   }
 
   return { bindingDirectory: context.bindingDirectory, packageJson };
+}
+
+export async function prepareBrowserPackage({
+  sourceDir,
+  cwd = process.cwd(),
+  dryRun = false,
+} = {}) {
+  if (!sourceDir) throw new Error("prepare-browser requires --source-dir");
+  if (dryRun) throw new Error("prepare-browser does not support --dry-run");
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const sourceDirectory = path.resolve(cwd, sourceDir);
+  const packageDirectory = path.join(repositoryRoot, "npm/core-browser");
+  const directory = path.join(packageDirectory, "src");
+  await mkdir(directory, { recursive: true });
+  const manifest = JSON.parse(
+    await readFile(path.join(packageDirectory, "package.json"), "utf8"),
+  );
+  const coreManifest = JSON.parse(
+    await readFile(path.join(repositoryRoot, "npm/core/package.json"), "utf8"),
+  );
+  const names = bindingFileNames(coreManifest.wasm.binaryName);
+
+  if (manifest.version !== coreManifest.version) {
+    throw new Error("browser and core package versions must match");
+  }
+
+  for (const name of [names.wasm, names.bridge, names.browser, names.runtime]) {
+    const source = path.resolve(sourceDirectory, name);
+    const destination = path.join(directory, name);
+    if (source !== destination) await copyFile(source, destination);
+  }
+
+  const declaration = await readFile(
+    path.join(repositoryRoot, "npm/core/src-js/binding.d.ts"),
+    "utf8",
+  );
+  await writeFile(
+    path.join(directory, "binding.d.ts"),
+    declaration.replaceAll("Buffer", "Uint8Array"),
+  );
 }
 
 async function readContext(userOptions) {
@@ -120,7 +178,10 @@ function validateConfig(packageJson, config) {
   if (typeof packageJson.name !== "string" || packageJson.name.length === 0) {
     fail("package.json must contain a package name");
   }
-  if (typeof packageJson.version !== "string" || packageJson.version.length === 0) {
+  if (
+    typeof packageJson.version !== "string" ||
+    packageJson.version.length === 0
+  ) {
     fail("package.json must contain a package version");
   }
   if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -132,7 +193,10 @@ function validateConfig(packageJson, config) {
   ) {
     fail("wasm.binaryName must be a non-empty file name");
   }
-  if (typeof config.packageName !== "string" || config.packageName.length === 0) {
+  if (
+    typeof config.packageName !== "string" ||
+    config.packageName.length === 0
+  ) {
     fail("wasm.packageName must be a non-empty package name");
   }
 }
@@ -195,7 +259,9 @@ async function validatePackage(context, generated, dryRun) {
     fail(`generated package has unexpected name: ${manifest.name}`);
   }
   if (manifest.version !== context.packageJson.version) {
-    fail(`${manifest.name} version ${manifest.version} does not match ${context.packageJson.version}`);
+    fail(
+      `${manifest.name} version ${manifest.version} does not match ${context.packageJson.version}`,
+    );
   }
   for (const file of manifest.files ?? []) {
     try {
@@ -205,14 +271,28 @@ async function validatePackage(context, generated, dryRun) {
     }
   }
   for (const name of generated.keys()) {
-    const actual = await readFile(path.join(context.bindingDirectory, name), "utf8");
+    const actual = await readFile(
+      path.join(context.bindingDirectory, name),
+      "utf8",
+    );
     if (actual !== generated.get(name)) {
       fail(`${manifest.name} contains a stale generated file: ${name}`);
     }
   }
-  for (const name of [context.names.node, context.names.browser, context.names.module]) {
-    const source = await readFile(path.join(context.bindingDirectory, name), "utf8");
-    if (!source.includes(`\nexport const version = ${JSON.stringify(context.packageJson.version)};\n`)) {
+  for (const name of [
+    context.names.node,
+    context.names.browser,
+    context.names.module,
+  ]) {
+    const source = await readFile(
+      path.join(context.bindingDirectory, name),
+      "utf8",
+    );
+    if (
+      !source.includes(
+        `\nexport const version = ${JSON.stringify(context.packageJson.version)};\n`,
+      )
+    ) {
       fail(`${context.packageJson.name} contains a stale entry point: ${name}`);
     }
   }
@@ -251,7 +331,9 @@ async function readJson(file, description) {
 }
 
 function removeUndefined(object) {
-  return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+  return Object.fromEntries(
+    Object.entries(object).filter(([, value]) => value !== undefined),
+  );
 }
 
 function fail(message) {

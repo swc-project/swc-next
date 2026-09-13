@@ -4,7 +4,12 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-import { collectArtifacts, createNpmDirs, prePublish } from "./index.mjs";
+import {
+  collectArtifacts,
+  createNpmDirs,
+  prepareBrowserPackage,
+  prePublish,
+} from "./index.mjs";
 
 const argumentAliases = new Map([
   ["-d", "-o"],
@@ -19,6 +24,7 @@ const argumentOptions = {
   "output-dir": { type: "string", short: "o" },
   "package-json-path": { type: "string" },
   "skip-optional-publish": { type: "boolean" },
+  "source-dir": { type: "string" },
   "tag-style": { type: "string", short: "t" },
 };
 
@@ -43,11 +49,13 @@ export async function run(arguments_) {
       ["outputDir", values["output-dir"]],
       ["packageJsonPath", values["package-json-path"]],
       ["skipOptionalPublish", values["skip-optional-publish"]],
+      ["sourceDir", values["source-dir"]],
       ["tagStyle", values["tag-style"]],
     ].filter(([, value]) => value !== undefined),
   );
   if (values["no-gh-release"]) options.ghRelease = false;
 
+  if (command === "prepare-browser") return prepareBrowserPackage(options);
   if (command === "create-npm-dirs") return createNpmDirs(options);
   if (command === "artifacts") return collectArtifacts(options);
   if (command === "pre-publish" || command === "prepublish") {
@@ -57,7 +65,7 @@ export async function run(arguments_) {
 }
 
 function usage() {
-  return "usage: wasm-package <create-npm-dirs|artifacts|pre-publish> [options]";
+  return "usage: wasm-package <create-npm-dirs|artifacts|pre-publish|prepare-browser> [options]";
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
