@@ -1,0 +1,20 @@
+--- a/dist/cli.js
++++ b/dist/cli.js
+@@ -281,7 +281,7 @@
+ 	if (!resolveNodes) return metadata.packages.filter((crate) => crate.dependencies.some((d) => d.name === "napi-derive"));
+ 	const napiDerivePackageIds = new Set(metadata.packages.filter((p) => p.name === "napi-derive").map((p) => p.id));
+ 	const dependentPackageIds = new Set(resolveNodes.filter((node) => node.deps.some((dep) => napiDerivePackageIds.has(dep.pkg))).map((node) => node.id));
+-	return metadata.packages.filter((crate) => dependentPackageIds.has(crate.id));
++	return metadata.packages.filter((crate) => dependentPackageIds.has(crate.id) || crate.dependencies.some((dep) => dep.name === "swc_next_bridge"));
+ }
+ async function parseMetadata(manifestPath, featureOptions) {
+ 	var _featureOptions$featu;
+@@ -1424,7 +1424,7 @@
+ 		this.crateDir = parse(crate.manifest_path).dir;
+ 		this.outputDir = resolve(this.options.cwd, options.outputDir ?? this.crateDir);
+ 		this.targetDir = options.targetDir ?? process.env.CARGO_BUILD_TARGET_DIR ?? metadata.target_directory;
+-		this.enableTypeDef = this.crate.dependencies.some((dep) => dep.name === "napi-derive" && (dep.uses_default_features || dep.features.includes("type-def")));
++		this.enableTypeDef = this.crate.dependencies.some((dep) => dep.name === "swc_next_bridge" || dep.name === "napi-derive" && (dep.uses_default_features || dep.features.includes("type-def")));
+ 		if (!this.enableTypeDef) {
+ 			const requirementWarning = "`napi-derive` crate is not used or `type-def` feature is not enabled for `napi-derive` crate";
+ 			debug$7.warn(`${requirementWarning}. Will skip binding generation for \`.node\`, \`.wasi\` and \`.d.ts\` files.`);

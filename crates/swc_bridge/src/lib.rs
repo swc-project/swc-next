@@ -28,3 +28,6 @@ pub use wire::NativeAbi;
 #[doc(hidden)]
 pub use wire::private;
 pub use wire::{BridgeDecode, BridgeEncode, BridgeWire};
+#[cfg(not(target_family = "wasm"))]
+#[doc(hidden)]
+pub use {napi, napi_derive};

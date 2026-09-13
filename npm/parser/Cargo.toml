@@ -8,20 +8,12 @@ name                  = "swc_next_parser_bridge"
 repository.workspace  = true
 version               = "0.2.0"
 
-[package.metadata.cargo-shear]
-ignored = ["napi", "napi-derive"]
-
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
 swc_next_bridge   = { workspace = true, features = ["parser"] }
 swc_next_ecma_ast = { workspace = true }
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-# `#[bridge]` expands to NAPI-RS, and its CLI detects this direct dependency.
-napi        = { workspace = true }
-napi-derive = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }

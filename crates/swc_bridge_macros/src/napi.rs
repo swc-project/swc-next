@@ -25,7 +25,7 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
         let ident = &pattern.ident;
         let semantic_type = &argument.ty;
         if is_byte_slice(semantic_type) {
-            native_arguments.push(quote!(#ident: ::napi::bindgen_prelude::Buffer));
+            native_arguments.push(quote!(#ident: napi::bindgen_prelude::Buffer));
             call_arguments.push(quote!(&#ident));
             continue;
         }
@@ -40,8 +40,8 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
                 ::swc_next_bridge::NativeAbi>::from_native(#ident);
             let Some(#ident) = <#decode_type as ::swc_next_bridge::BridgeDecode>::decode(#ident)
             else {
-                return Err(::napi::Error::new(
-                    ::napi::Status::InvalidArg,
+                return Err(napi::Error::new(
+                    napi::Status::InvalidArg,
                     concat!("invalid bridge value for `", stringify!(#ident), "`"),
                 ));
             };
@@ -68,7 +68,7 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
     let call = if fallible {
         quote! {
             let result = #call
-                .map_err(|error| ::napi::Error::from_reason(error.to_string()))?;
+                .map_err(|error| napi::Error::from_reason(error.to_string()))?;
         }
     } else {
         quote!(let result = #call;)
@@ -77,17 +77,23 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
 
     Ok(quote! {
         #[cfg(not(target_family = "wasm"))]
-        #(#attributes)*
-        #[#napi]
-        #visibility fn #native_adapter(
-            #(#native_arguments),*
-        ) -> ::napi::Result<<<#return_type as ::swc_next_bridge::BridgeEncode>::Wire as
-            ::swc_next_bridge::NativeAbi>::Abi> {
-            #(#conversions)*
-            #call
-            let result = <#return_type as ::swc_next_bridge::BridgeEncode>::encode(result);
-            Ok(<<#return_type as ::swc_next_bridge::BridgeEncode>::Wire as
-                ::swc_next_bridge::NativeAbi>::into_native(result))
-        }
+        const _: () = {
+            // NAPI-RS emits relative `napi::` paths. Keep its import local to each
+            // adapter so callers need neither a dependency nor a module-level import.
+            use ::swc_next_bridge::napi;
+
+            #(#attributes)*
+            #[#napi]
+            #visibility fn #native_adapter(
+                #(#native_arguments),*
+            ) -> napi::Result<<<#return_type as ::swc_next_bridge::BridgeEncode>::Wire as
+                ::swc_next_bridge::NativeAbi>::Abi> {
+                #(#conversions)*
+                #call
+                let result = <#return_type as ::swc_next_bridge::BridgeEncode>::encode(result);
+                Ok(<<#return_type as ::swc_next_bridge::BridgeEncode>::Wire as
+                    ::swc_next_bridge::NativeAbi>::into_native(result))
+            }
+        };
     })
 }

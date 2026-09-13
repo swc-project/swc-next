@@ -21,3 +21,6 @@ catalog:
   yuku-parser: ^0.8.0
 
 catalogMode: prefer
+
+patchedDependencies:
+  '@napi-rs/cli@3.7.4': patches/@napi-rs__cli@3.7.4.patch

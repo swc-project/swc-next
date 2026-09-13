@@ -534,9 +534,9 @@ fn cannot_infer_ts_type<T>(ty: &Type) -> syn::Result<T> {
 
 fn napi_meta(arguments: &[Meta]) -> proc_macro2::TokenStream {
     if arguments.is_empty() {
-        quote!(napi_derive::napi)
+        quote!(::swc_next_bridge::napi_derive::napi)
     } else {
-        quote!(napi_derive::napi(#(#arguments),*))
+        quote!(::swc_next_bridge::napi_derive::napi(#(#arguments),*))
     }
 }
 

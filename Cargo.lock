@@ -2817,9 +2817,7 @@ dependencies = [
 name = "swc_next_codegen_bridge"
 version = "0.2.0"
 dependencies = [
- "napi",
  "napi-build",
- "napi-derive",
  "swc_next_bridge",
 ]
 
@@ -2827,9 +2825,7 @@ dependencies = [
 name = "swc_next_core_bridge"
 version = "0.2.0"
 dependencies = [
- "napi",
  "napi-build",
- "napi-derive",
  "swc_next_bridge",
  "swc_next_ecma_ast",
 ]
@@ -2897,9 +2893,7 @@ dependencies = [
 name = "swc_next_parser_bridge"
 version = "0.2.0"
 dependencies = [
- "napi",
  "napi-build",
- "napi-derive",
  "swc_next_bridge",
  "swc_next_ecma_ast",
 ]

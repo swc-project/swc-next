@@ -245,13 +245,16 @@ catalogs:
       specifier: ^0.8.0
       version: 0.8.0
 
+patchedDependencies:
+  '@napi-rs/cli@3.7.4': 18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e
+
 importers:
 
   .:
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
-        version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
       '@rstest/browser':
         specifier: 'catalog:'
         version: 0.11.11(@rstest/core@0.11.11)(playwright@1.62.1)
@@ -279,7 +282,7 @@ importers:
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
-        version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
@@ -298,7 +301,7 @@ importers:
         version: 8.0.4
       '@napi-rs/cli':
         specifier: 'catalog:'
-        version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.46(@swc/helpers@0.5.23)
@@ -332,7 +335,7 @@ importers:
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
-        version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
@@ -2016,7 +2019,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@napi-rs/cli@3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.1)':
+  '@napi-rs/cli@3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)':
     dependencies:
       '@inquirer/prompts': 8.5.2(@types/node@26.1.1)
       '@napi-rs/cross-toolchain': 1.0.3
