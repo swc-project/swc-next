@@ -12,6 +12,7 @@ catalog:
   '@rstest/core': ^0.11.10
   '@swc/core': ^1.15.46
   '@types/node': ^26.1.1
+  cac: ^7.0.0
   cross-env: ^10.1.0
   oxc-parser: ^0.142.0
   playwright: ^1.62.1

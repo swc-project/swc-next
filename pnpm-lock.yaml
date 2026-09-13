@@ -223,6 +223,9 @@ catalogs:
     '@types/node':
       specifier: ^26.1.1
       version: 26.1.1
+    cac:
+      specifier: ^7.0.0
+      version: 7.0.0
     cross-env:
       specifier: ^10.1.0
       version: 10.1.0
@@ -261,6 +264,9 @@ importers:
       '@rstest/core':
         specifier: 'catalog:'
         version: 0.11.11
+      cac:
+        specifier: 'catalog:'
+        version: 7.0.0
       playwright:
         specifier: 'catalog:'
         version: 1.62.1
@@ -1513,6 +1519,10 @@ packages:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
     engines: {node: '>=18'}
 
+  cac@7.0.0:
+    resolution: {integrity: sha512-tixWYgm5ZoOD+3g6UTea91eow5z6AAHaho3g0V9CNSNb45gM8SmflpAc+GRd1InC4AqN/07Unrgp56Y94N9hJQ==}
+    engines: {node: '>=20.19.0'}
+
   chardet@2.2.0:
     resolution: {integrity: sha512-rddelWYNPRrXq6PtNEN2S3f6t9ILzvqaN5pVgi4kqt9jHQaXIial9PznB5iSPVlQSLNaaH22ItWz3EJtQ10+OA==}
 
@@ -2703,6 +2713,8 @@ snapshots:
   bundle-name@4.1.0:
     dependencies:
       run-applescript: 7.1.0
+
+  cac@7.0.0: {}
 
   chardet@2.2.0: {}
 

@@ -22,6 +22,7 @@
     "@napi-rs/cli": "catalog:",
     "@rstest/browser": "catalog:",
     "@rstest/core": "catalog:",
+    "cac": "catalog:",
     "playwright": "catalog:"
   }
 }
