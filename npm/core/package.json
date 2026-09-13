@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core",
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir src-js",
     "test": "node --test test/*.test.js",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts"

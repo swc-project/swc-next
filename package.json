@@ -7,7 +7,7 @@
   "main": "index.js",
   "scripts": {
     "build": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build",
-    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build",
+    "build:wasm": "pnpm --filter \"./npm/*\" --workspace-concurrency=1 --if-present build:wasm",
     "build:browser": "pnpm --filter @swc-next/core-browser build:browser",
     "test": "pnpm --filter @swc-next/core test",
     "test:wasm": "pnpm --filter @swc-next/core test:wasm",

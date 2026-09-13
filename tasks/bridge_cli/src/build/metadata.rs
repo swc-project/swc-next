@@ -1,32 +1,13 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 
 use anyhow::{Context, Result, ensure};
+use cargo_metadata::{Metadata, MetadataCommand};
 use serde::Deserialize;
 
 pub(super) const TARGET: &str = "wasm32-unknown-unknown";
-
-#[derive(Deserialize)]
-struct Metadata {
-    packages: Vec<CargoPackage>,
-    target_directory: PathBuf,
-}
-
-#[derive(Deserialize)]
-struct CargoPackage {
-    name: String,
-    manifest_path: PathBuf,
-    targets: Vec<CargoTarget>,
-}
-
-#[derive(Deserialize)]
-struct CargoTarget {
-    name: String,
-    kind: Vec<String>,
-}
 
 #[derive(Deserialize)]
 struct Manifest {
@@ -52,46 +33,26 @@ pub(super) struct Component {
 /// Validated package metadata and resolved paths used by the build stage.
 pub(super) struct Workspace {
     pub root: PathBuf,
-    pub profile: &'static str,
     pub components: Vec<Component>,
 }
 
-pub(super) fn read(
-    component: Option<&str>,
-    release: bool,
-    output_dir: Option<&Path>,
-) -> Result<Workspace> {
-    let profile = if release { "wasm-release" } else { "debug" };
+pub(super) fn read(component: &str, output_dir: &Path) -> Result<Workspace> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let root = root.canonicalize()?;
-    let metadata = Command::new("cargo")
-        .args(["metadata", "--format-version", "1", "--no-deps", "--locked"])
+    let metadata = MetadataCommand::new()
         .current_dir(&root)
-        .stderr(Stdio::inherit())
-        .output()?;
-    ensure!(metadata.status.success(), "cargo metadata failed");
-    let metadata: Metadata = serde_json::from_slice(&metadata.stdout)?;
+        .no_deps()
+        .verbose(true)
+        .other_options(vec!["--locked".into()])
+        .exec()?;
     let mut components = discover_components(&root, &metadata)?;
-    if let Some(name) = component {
-        components.retain(|component| component.name == name);
-    }
+    components.retain(|candidate| candidate.name == component);
     ensure!(!components.is_empty(), "no Wasm packages found");
 
     for component in &mut components {
-        if let Some(directory) = output_dir {
-            component.output_dir = std::path::absolute(directory)?;
-        }
-        component.input = metadata
-            .target_directory
-            .join(TARGET)
-            .join(profile)
-            .join(&component.input);
+        component.output_dir = std::path::absolute(output_dir)?;
     }
-    Ok(Workspace {
-        root,
-        profile,
-        components,
-    })
+    Ok(Workspace { root, components })
 }
 
 fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component>> {
@@ -115,12 +76,12 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
         let package = metadata
             .packages
             .iter()
-            .find(|package| package.manifest_path == cargo_manifest)
+            .find(|package| package.manifest_path.as_std_path() == cargo_manifest)
             .context("missing Cargo package")?;
         let library = package
             .targets
             .iter()
-            .find(|target| target.kind.iter().any(|kind| kind == "cdylib"))
+            .find(|target| target.is_cdylib())
             .context("missing cdylib target")?;
         components.push(Component {
             name: entry
@@ -128,7 +89,7 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
                 .into_string()
                 .ok()
                 .context("npm directory name must be UTF-8")?,
-            output_dir: directory.join("src-js"),
+            output_dir: PathBuf::default(),
             cargo_package: package.name.clone(),
             input: PathBuf::from(format!("{}.wasm", library.name)),
             binary_name: config.binary_name,

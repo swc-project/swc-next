@@ -1,7 +1,7 @@
 mod bindings;
 mod build;
 
-use std::path::PathBuf;
+use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::Result;
 
@@ -16,26 +16,25 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Build workspace Wasm packages and emit bindings into their npm src-js directories.
+    /// Build a Wasm component and generate JavaScript bindings.
     Build {
-        /// Build one component; defaults to every public npm package with Wasm configuration.
-        component: Option<String>,
-        /// Use the wasm-release Cargo profile.
-        #[arg(long, short = 'r')]
-        release: bool,
-        /// Override the output directory for a single component, relative to the current directory.
-        #[arg(long, short = 'o', requires = "component", value_name = "DIR")]
-        output_dir: Option<PathBuf>,
+        /// Component to build.
+        component: String,
+        /// Output directory, relative to the current directory.
+        #[arg(long, short = 'o', value_name = "DIR")]
+        output_dir: PathBuf,
+        /// Additional arguments passed to cargo build.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        cargo_args: Vec<OsString>,
     },
 }
 
 fn main() -> Result<()> {
-    let cli = Cli::parse();
-    match cli.command {
+    match Cli::parse().command {
         Command::Build {
             component,
-            release,
             output_dir,
-        } => build::build(component.as_deref(), release, output_dir.as_deref()),
+            cargo_args,
+        } => build::build(&component, &output_dir, &cargo_args),
     }
 }

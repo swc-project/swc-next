@@ -103,7 +103,7 @@ jobs:
       - name: Install Node.js dependencies
         run: pnpm install --frozen-lockfile
       - name: Build WebAssembly bindings
-        run: pnpm build:wasm --release
+        run: pnpm build:wasm --profile wasm-release
       - name: Prepare browser package
         run: pnpm --filter @swc-next/core-browser prepare:browser ../core/src-js
       - name: Run Node.js WebAssembly tests

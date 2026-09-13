@@ -44,8 +44,9 @@ napi-build  = "2.4.0"
 napi-derive = "3.6.1"
 
 # Bridge tooling
-wasm-encoder = "0.244.0"
-wasmparser   = { version = "0.244.0", default-features = false, features = ["std"] }
+cargo_metadata = "0.19.2"
+wasm-encoder   = "0.244.0"
+wasmparser     = { version = "0.244.0", default-features = false, features = ["std"] }
 
 # Ast tool
 convert_case = "0.11.0"

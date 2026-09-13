@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
-    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build parser"
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build parser --output-dir src-js"
   },
   "keywords": [
     "ast",
