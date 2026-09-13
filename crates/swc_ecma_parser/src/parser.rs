@@ -2952,7 +2952,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<ClassModifierStep> {
         let token = self.current_token;
         let is_typescript = self.lang.is_typescript();
-        if !is_modifier(token.tag, is_typescript) {
+        if token.is_escaped() || !is_modifier(token.tag, is_typescript) {
             return Some(ClassModifierStep::None);
         }
 
@@ -2974,21 +2974,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ));
         }
 
-        self.report_if_escaped_keyword(token);
         self.advance_without_escape_check()?;
         modifiers.set(token.tag);
         Some(ClassModifierStep::Consumed)
     }
 
     fn try_static_block(&mut self, decorators: SubRange<Decorator>) -> Option<ClassElement> {
-        if self.current_token.tag != TokenTag::Static {
+        let static_token = self.current_token;
+        if static_token.tag != TokenTag::Static || static_token.is_escaped() {
             return None;
         }
         let next = self.peek_ahead()?;
         if next.tag != TokenTag::LeftBrace {
             return None;
         }
-        let static_token = self.current_token;
         if !decorators.is_empty() {
             self.report(
                 decorators
@@ -2999,7 +2998,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        self.report_if_escaped_keyword(static_token);
         self.advance_without_escape_check()?;
         self.parse_static_block(static_token.span.start)
     }
@@ -12975,6 +12973,54 @@ mod tests {
         let mut buffer = vec![0; buffer_size(ast, &[])];
         serialize_into(ast, &[], &mut buffer);
         buffer
+    }
+
+    #[test]
+    fn class_modifiers() {
+        fn parse_fields(source: &str, lang: Lang) -> Vec<(String, bool)> {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                ..Options::default()
+            };
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(result.diagnostics.is_empty());
+            let ast = &result.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let declaration = statement.as_declaration(ast).unwrap();
+            let class = declaration.as_class(ast).unwrap();
+            let body = class.body(ast).body(ast);
+            body.iter()
+                .map(|id| {
+                    let element = ast.get_node_in_sub_range(id);
+                    let field = element.as_property_definition(ast).unwrap();
+                    let key = field.key(ast).as_identifier_name(ast).unwrap();
+                    let name = ast.get_utf8(key.name(ast)).to_owned();
+                    (name, field.r#static(ast))
+                })
+                .collect()
+        }
+
+        let fields = parse_fields("class A { st\\u0061tic\nfoo }", Lang::Js);
+        assert_eq!(fields, [("static".into(), false), ("foo".into(), false)]);
+
+        let fields = parse_fields("class A { st\\u0061tic\nfoo }", Lang::Ts);
+        assert_eq!(fields, [("static".into(), false), ("foo".into(), false)]);
+
+        let fields = parse_fields("class A { static\nfoo }", Lang::Js);
+        assert_eq!(fields, [("foo".into(), true)]);
+
+        let fields = parse_fields("class A { static st\\u0061tic\nfoo }", Lang::Js);
+        assert_eq!(fields, [("static".into(), true), ("foo".into(), false)]);
+
+        let fields = parse_fields("class A { g\\u0065t\nfoo }", Lang::Js);
+        assert_eq!(fields, [("get".into(), false), ("foo".into(), false)]);
+
+        let fields = parse_fields("class A { s\\u0065t\nfoo }", Lang::Js);
+        assert_eq!(fields, [("set".into(), false), ("foo".into(), false)]);
+
+        let fields = parse_fields("class A { a\\u0073ync\nfoo }", Lang::Js);
+        assert_eq!(fields, [("async".into(), false), ("foo".into(), false)]);
     }
 
     #[test]
