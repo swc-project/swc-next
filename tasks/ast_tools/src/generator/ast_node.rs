@@ -50,6 +50,7 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
             #![allow(unused)]
             use crate::{Ast, GetSpan, SetSpan};
             use crate::{ast::*, node_id::*};
+            use crate::node_id::sealed::AstNode as SealedAstNode;
 
             /// The concrete type stored at a node ID.
             #[repr(u8)]
@@ -335,6 +336,8 @@ fn generate_node_impls(name: &proc_macro2::Ident) -> TokenStream {
                 self.0
             }
         }
+
+        impl SealedAstNode for #name {}
 
         impl AstNode for #name {
             #[inline]

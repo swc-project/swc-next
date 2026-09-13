@@ -1,10 +1,23 @@
-use crate::{AstNode, AstUtf8, AstWtf8, ExtraData, SubRange};
+use crate::{AstNode, AstUtf8, AstWtf8, SubRange};
 
-use super::NodeId;
+use super::{NodeId, sealed::ExtraDataValue as SealedExtraDataValue};
 
 oxc_index::define_index_type! {
     #[repr(transparent)]
     pub struct ExtraDataId = u32;
+}
+
+/// Compact values stored in the flattening AST's extra-data table.
+///
+/// The AST schema supplies the type information, so the table stores only its
+/// 64-bit representation without a runtime discriminant. The low and high
+/// words are stored in that order, each in native byte order.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union ExtraData {
+    node_id: NodeId,
+    sub_range: SubRange<()>,
+    alignment: u64,
 }
 
 impl ExtraData {
@@ -28,13 +41,16 @@ impl ExtraData {
 }
 
 /// A value that has an eight-byte representation in the AST extra-data table.
-pub trait ExtraDataValue: Sized {
+/// Implementations are restricted to the storage types supported by this crate.
+pub trait ExtraDataValue: Sized + SealedExtraDataValue {
     fn into_extra_data(self) -> ExtraData;
 
     /// # Safety
     /// `data` must have been written for `Self`.
     unsafe fn from_extra_data(data: &ExtraData) -> Self;
 }
+
+impl<T: AstNode> SealedExtraDataValue for T {}
 
 impl<T: AstNode> ExtraDataValue for T {
     #[inline]
@@ -47,6 +63,8 @@ impl<T: AstNode> ExtraDataValue for T {
         unsafe { Self::from_node_id_unchecked(data.node_id) }
     }
 }
+
+impl<T: AstNode> SealedExtraDataValue for Option<T> {}
 
 impl<T: AstNode> ExtraDataValue for Option<T> {
     #[inline]
@@ -61,6 +79,8 @@ impl<T: AstNode> ExtraDataValue for Option<T> {
             .then(|| unsafe { T::from_node_id_unchecked(NodeId::from_raw_unchecked(raw)) })
     }
 }
+
+impl<T> SealedExtraDataValue for SubRange<T> {}
 
 impl<T> ExtraDataValue for SubRange<T> {
     #[inline]
@@ -77,6 +97,8 @@ impl<T> ExtraDataValue for SubRange<T> {
     }
 }
 
+impl SealedExtraDataValue for AstUtf8 {}
+
 impl ExtraDataValue for AstUtf8 {
     #[inline]
     fn into_extra_data(self) -> ExtraData {
@@ -88,6 +110,8 @@ impl ExtraDataValue for AstUtf8 {
         Self::from_raw(data.raw())
     }
 }
+
+impl SealedExtraDataValue for Option<AstUtf8> {}
 
 impl ExtraDataValue for Option<AstUtf8> {
     #[inline]
@@ -104,6 +128,8 @@ impl ExtraDataValue for Option<AstUtf8> {
     }
 }
 
+impl SealedExtraDataValue for f64 {}
+
 impl ExtraDataValue for f64 {
     #[inline]
     fn into_extra_data(self) -> ExtraData {
@@ -115,6 +141,8 @@ impl ExtraDataValue for f64 {
         Self::from_bits(data.raw())
     }
 }
+
+impl SealedExtraDataValue for AstWtf8 {}
 
 impl ExtraDataValue for AstWtf8 {
     #[inline]

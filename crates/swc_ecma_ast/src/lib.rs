@@ -18,6 +18,7 @@ mod generated {
     pub(crate) mod ast_visitor;
 }
 
+use node_id::ExtraData;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
 
@@ -61,7 +62,7 @@ pub struct Ast<'a> {
 
 multi_index_vec! {
     /// Arena-backed structure-of-arrays storage for flattening AST nodes.
-    pub struct NodeData<'a, NodeId> {
+    pub(crate) struct NodeData<'a, NodeId> {
         pub(crate) span => span_mut => span_unchecked => span_mut_unchecked: Span,
         pub(crate) kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
         pub(crate) data => data_mut => data_unchecked => data_mut_unchecked: NodePayload,
@@ -75,24 +76,11 @@ multi_index_vec! {
 /// [Ast::extra_data].
 #[repr(transparent)]
 #[derive(Clone, Copy)]
-pub struct NodePayload(pub(crate) u128);
-
-/// Compact values stored in the flattening AST's extra-data table.
-///
-/// The AST schema supplies the type information, so the table stores only its
-/// 64-bit representation without a runtime discriminant. The low and high
-/// words are stored in that order, each in native byte order.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub union ExtraData {
-    node_id: NodeId,
-    sub_range: SubRange<()>,
-    alignment: u64,
-}
+pub(crate) struct NodePayload(pub(crate) u128);
 
 impl<'a> Ast<'a> {
     #[inline]
-    pub(crate) fn root_node_id(&self) -> NodeId {
+    fn root_node_id(&self) -> NodeId {
         self.root.expect("AST has no root")
     }
 
@@ -146,7 +134,7 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub(crate) fn add_node(&mut self, span: Span, kind: NodeKind, data: NodePayload) -> NodeId {
+    fn add_node(&mut self, span: Span, kind: NodeKind, data: NodePayload) -> NodeId {
         self.nodes.push(span, kind, data)
     }
 

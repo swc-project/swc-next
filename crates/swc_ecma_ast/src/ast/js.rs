@@ -2,11 +2,15 @@ use std::mem;
 
 use swc_next_ast_macros::ast;
 
-use crate::{ExtraData, node_id::ExtraDataValue};
+use crate::{
+    ExtraData,
+    node_id::{ExtraDataValue, sealed::ExtraDataValue as SealedExtraDataValue},
+};
 
 macro_rules! impl_extra_data_value {
     ($($ty:ty),+ $(,)?) => {
         $(
+            impl SealedExtraDataValue for $ty {}
             impl ExtraDataValue for $ty {
                 #[inline]
                 fn into_extra_data(self) -> ExtraData {
@@ -308,6 +312,8 @@ impl_extra_data_value!(
     ImportOrExportKind,
     ImportPhase,
 );
+
+impl SealedExtraDataValue for Option<ImportPhase> {}
 
 impl ExtraDataValue for Option<ImportPhase> {
     #[inline]

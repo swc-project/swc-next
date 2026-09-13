@@ -1,4 +1,5 @@
 #![allow(unused)]
+use crate::node_id::sealed::AstNode as SealedAstNode;
 use crate::{Ast, GetSpan, SetSpan};
 use crate::{ast::*, node_id::*};
 /// The concrete type stored at a node ID.
@@ -1505,6 +1506,7 @@ impl Program {
         self.0
     }
 }
+impl SealedAstNode for Program {}
 impl AstNode for Program {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -1535,6 +1537,7 @@ impl Stmt {
         self.0
     }
 }
+impl SealedAstNode for Stmt {}
 impl AstNode for Stmt {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -1692,6 +1695,7 @@ impl Decl {
         self.0
     }
 }
+impl SealedAstNode for Decl {}
 impl AstNode for Decl {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -1774,6 +1778,7 @@ impl Expr {
         self.0
     }
 }
+impl SealedAstNode for Expr {}
 impl AstNode for Expr {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2006,6 +2011,7 @@ impl BindingPattern {
         self.0
     }
 }
+impl SealedAstNode for BindingPattern {}
 impl AstNode for BindingPattern {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2068,6 +2074,7 @@ impl AssignmentTarget {
         self.0
     }
 }
+impl SealedAstNode for AssignmentTarget {}
 impl AstNode for AssignmentTarget {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2115,6 +2122,7 @@ impl SimpleAssignmentTarget {
         self.0
     }
 }
+impl SealedAstNode for SimpleAssignmentTarget {}
 impl AstNode for SimpleAssignmentTarget {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2177,6 +2185,7 @@ impl PropertyKey {
         self.0
     }
 }
+impl SealedAstNode for PropertyKey {}
 impl AstNode for PropertyKey {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2239,6 +2248,7 @@ impl ModuleExportName {
         self.0
     }
 }
+impl SealedAstNode for ModuleExportName {}
 impl AstNode for ModuleExportName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2281,6 +2291,7 @@ impl Argument {
         self.0
     }
 }
+impl SealedAstNode for Argument {}
 impl AstNode for Argument {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2323,6 +2334,7 @@ impl ObjectPropertyKind {
         self.0
     }
 }
+impl SealedAstNode for ObjectPropertyKind {}
 impl AstNode for ObjectPropertyKind {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2365,6 +2377,7 @@ impl ForStatementInit {
         self.0
     }
 }
+impl SealedAstNode for ForStatementInit {}
 impl AstNode for ForStatementInit {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2407,6 +2420,7 @@ impl ForStatementLeft {
         self.0
     }
 }
+impl SealedAstNode for ForStatementLeft {}
 impl AstNode for ForStatementLeft {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2449,6 +2463,7 @@ impl ArrowFunctionBody {
         self.0
     }
 }
+impl SealedAstNode for ArrowFunctionBody {}
 impl AstNode for ArrowFunctionBody {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2491,6 +2506,7 @@ impl FormalParameterItem {
         self.0
     }
 }
+impl SealedAstNode for FormalParameterItem {}
 impl AstNode for FormalParameterItem {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2533,6 +2549,7 @@ impl FormalParameterPattern {
         self.0
     }
 }
+impl SealedAstNode for FormalParameterPattern {}
 impl AstNode for FormalParameterPattern {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2575,6 +2592,7 @@ impl ClassElement {
         self.0
     }
 }
+impl SealedAstNode for ClassElement {}
 impl AstNode for ClassElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2632,6 +2650,7 @@ impl ImportDeclarationSpecifier {
         self.0
     }
 }
+impl SealedAstNode for ImportDeclarationSpecifier {}
 impl AstNode for ImportDeclarationSpecifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2679,6 +2698,7 @@ impl ExportDefaultDeclarationKind {
         self.0
     }
 }
+impl SealedAstNode for ExportDefaultDeclarationKind {}
 impl AstNode for ExportDefaultDeclarationKind {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2736,6 +2756,7 @@ impl Super {
         self.0
     }
 }
+impl SealedAstNode for Super {}
 impl AstNode for Super {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2766,6 +2787,7 @@ impl ThisExpression {
         self.0
     }
 }
+impl SealedAstNode for ThisExpression {}
 impl AstNode for ThisExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2796,6 +2818,7 @@ impl StringLiteral {
         self.0
     }
 }
+impl SealedAstNode for StringLiteral {}
 impl AstNode for StringLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2826,6 +2849,7 @@ impl NumericLiteral {
         self.0
     }
 }
+impl SealedAstNode for NumericLiteral {}
 impl AstNode for NumericLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2856,6 +2880,7 @@ impl BigIntLiteral {
         self.0
     }
 }
+impl SealedAstNode for BigIntLiteral {}
 impl AstNode for BigIntLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2886,6 +2911,7 @@ impl BooleanLiteral {
         self.0
     }
 }
+impl SealedAstNode for BooleanLiteral {}
 impl AstNode for BooleanLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2916,6 +2942,7 @@ impl NullLiteral {
         self.0
     }
 }
+impl SealedAstNode for NullLiteral {}
 impl AstNode for NullLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2946,6 +2973,7 @@ impl RegExpLiteral {
         self.0
     }
 }
+impl SealedAstNode for RegExpLiteral {}
 impl AstNode for RegExpLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -2976,6 +3004,7 @@ impl TemplateLiteral {
         self.0
     }
 }
+impl SealedAstNode for TemplateLiteral {}
 impl AstNode for TemplateLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3006,6 +3035,7 @@ impl TemplateElement {
         self.0
     }
 }
+impl SealedAstNode for TemplateElement {}
 impl AstNode for TemplateElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3036,6 +3066,7 @@ impl IdentifierReference {
         self.0
     }
 }
+impl SealedAstNode for IdentifierReference {}
 impl AstNode for IdentifierReference {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3066,6 +3097,7 @@ impl PrivateIdentifier {
         self.0
     }
 }
+impl SealedAstNode for PrivateIdentifier {}
 impl AstNode for PrivateIdentifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3096,6 +3128,7 @@ impl BindingIdentifier {
         self.0
     }
 }
+impl SealedAstNode for BindingIdentifier {}
 impl AstNode for BindingIdentifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3126,6 +3159,7 @@ impl IdentifierName {
         self.0
     }
 }
+impl SealedAstNode for IdentifierName {}
 impl AstNode for IdentifierName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3156,6 +3190,7 @@ impl LabelIdentifier {
         self.0
     }
 }
+impl SealedAstNode for LabelIdentifier {}
 impl AstNode for LabelIdentifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3186,6 +3221,7 @@ impl AssignmentPattern {
         self.0
     }
 }
+impl SealedAstNode for AssignmentPattern {}
 impl AstNode for AssignmentPattern {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3216,6 +3252,7 @@ impl BindingRestElement {
         self.0
     }
 }
+impl SealedAstNode for BindingRestElement {}
 impl AstNode for BindingRestElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3246,6 +3283,7 @@ impl ArrayPattern {
         self.0
     }
 }
+impl SealedAstNode for ArrayPattern {}
 impl AstNode for ArrayPattern {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3276,6 +3314,7 @@ impl ObjectPattern {
         self.0
     }
 }
+impl SealedAstNode for ObjectPattern {}
 impl AstNode for ObjectPattern {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3306,6 +3345,7 @@ impl BindingProperty {
         self.0
     }
 }
+impl SealedAstNode for BindingProperty {}
 impl AstNode for BindingProperty {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3336,6 +3376,7 @@ impl BinaryExpression {
         self.0
     }
 }
+impl SealedAstNode for BinaryExpression {}
 impl AstNode for BinaryExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3366,6 +3407,7 @@ impl LogicalExpression {
         self.0
     }
 }
+impl SealedAstNode for LogicalExpression {}
 impl AstNode for LogicalExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3396,6 +3438,7 @@ impl ConditionalExpression {
         self.0
     }
 }
+impl SealedAstNode for ConditionalExpression {}
 impl AstNode for ConditionalExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3426,6 +3469,7 @@ impl UnaryExpression {
         self.0
     }
 }
+impl SealedAstNode for UnaryExpression {}
 impl AstNode for UnaryExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3456,6 +3500,7 @@ impl UpdateExpression {
         self.0
     }
 }
+impl SealedAstNode for UpdateExpression {}
 impl AstNode for UpdateExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3486,6 +3531,7 @@ impl AssignmentExpression {
         self.0
     }
 }
+impl SealedAstNode for AssignmentExpression {}
 impl AstNode for AssignmentExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3516,6 +3562,7 @@ impl VariableDeclaration {
         self.0
     }
 }
+impl SealedAstNode for VariableDeclaration {}
 impl AstNode for VariableDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3546,6 +3593,7 @@ impl VariableDeclarator {
         self.0
     }
 }
+impl SealedAstNode for VariableDeclarator {}
 impl AstNode for VariableDeclarator {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3576,6 +3624,7 @@ impl IfStatement {
         self.0
     }
 }
+impl SealedAstNode for IfStatement {}
 impl AstNode for IfStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3606,6 +3655,7 @@ impl SwitchStatement {
         self.0
     }
 }
+impl SealedAstNode for SwitchStatement {}
 impl AstNode for SwitchStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3636,6 +3686,7 @@ impl SwitchCase {
         self.0
     }
 }
+impl SealedAstNode for SwitchCase {}
 impl AstNode for SwitchCase {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3666,6 +3717,7 @@ impl ForStatement {
         self.0
     }
 }
+impl SealedAstNode for ForStatement {}
 impl AstNode for ForStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3696,6 +3748,7 @@ impl ForInStatement {
         self.0
     }
 }
+impl SealedAstNode for ForInStatement {}
 impl AstNode for ForInStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3726,6 +3779,7 @@ impl ForOfStatement {
         self.0
     }
 }
+impl SealedAstNode for ForOfStatement {}
 impl AstNode for ForOfStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3756,6 +3810,7 @@ impl TryStatement {
         self.0
     }
 }
+impl SealedAstNode for TryStatement {}
 impl AstNode for TryStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3786,6 +3841,7 @@ impl CatchClause {
         self.0
     }
 }
+impl SealedAstNode for CatchClause {}
 impl AstNode for CatchClause {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3816,6 +3872,7 @@ impl BreakStatement {
         self.0
     }
 }
+impl SealedAstNode for BreakStatement {}
 impl AstNode for BreakStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3846,6 +3903,7 @@ impl ContinueStatement {
         self.0
     }
 }
+impl SealedAstNode for ContinueStatement {}
 impl AstNode for ContinueStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3876,6 +3934,7 @@ impl LabeledStatement {
         self.0
     }
 }
+impl SealedAstNode for LabeledStatement {}
 impl AstNode for LabeledStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3906,6 +3965,7 @@ impl ExpressionStatement {
         self.0
     }
 }
+impl SealedAstNode for ExpressionStatement {}
 impl AstNode for ExpressionStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3936,6 +3996,7 @@ impl ReturnStatement {
         self.0
     }
 }
+impl SealedAstNode for ReturnStatement {}
 impl AstNode for ReturnStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3966,6 +4027,7 @@ impl ThrowStatement {
         self.0
     }
 }
+impl SealedAstNode for ThrowStatement {}
 impl AstNode for ThrowStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -3996,6 +4058,7 @@ impl DebuggerStatement {
         self.0
     }
 }
+impl SealedAstNode for DebuggerStatement {}
 impl AstNode for DebuggerStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4026,6 +4089,7 @@ impl EmptyStatement {
         self.0
     }
 }
+impl SealedAstNode for EmptyStatement {}
 impl AstNode for EmptyStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4056,6 +4120,7 @@ impl Directive {
         self.0
     }
 }
+impl SealedAstNode for Directive {}
 impl AstNode for Directive {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4086,6 +4151,7 @@ impl Decorator {
         self.0
     }
 }
+impl SealedAstNode for Decorator {}
 impl AstNode for Decorator {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4116,6 +4182,7 @@ impl Class {
         self.0
     }
 }
+impl SealedAstNode for Class {}
 impl AstNode for Class {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4146,6 +4213,7 @@ impl ClassBody {
         self.0
     }
 }
+impl SealedAstNode for ClassBody {}
 impl AstNode for ClassBody {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4176,6 +4244,7 @@ impl MethodDefinition {
         self.0
     }
 }
+impl SealedAstNode for MethodDefinition {}
 impl AstNode for MethodDefinition {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4206,6 +4275,7 @@ impl PropertyDefinition {
         self.0
     }
 }
+impl SealedAstNode for PropertyDefinition {}
 impl AstNode for PropertyDefinition {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4236,6 +4306,7 @@ impl StaticBlock {
         self.0
     }
 }
+impl SealedAstNode for StaticBlock {}
 impl AstNode for StaticBlock {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4266,6 +4337,7 @@ impl Function {
         self.0
     }
 }
+impl SealedAstNode for Function {}
 impl AstNode for Function {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4296,6 +4368,7 @@ impl FunctionBody {
         self.0
     }
 }
+impl SealedAstNode for FunctionBody {}
 impl AstNode for FunctionBody {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4326,6 +4399,7 @@ impl BlockStatement {
         self.0
     }
 }
+impl SealedAstNode for BlockStatement {}
 impl AstNode for BlockStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4356,6 +4430,7 @@ impl WhileStatement {
         self.0
     }
 }
+impl SealedAstNode for WhileStatement {}
 impl AstNode for WhileStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4386,6 +4461,7 @@ impl DoWhileStatement {
         self.0
     }
 }
+impl SealedAstNode for DoWhileStatement {}
 impl AstNode for DoWhileStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4416,6 +4492,7 @@ impl WithStatement {
         self.0
     }
 }
+impl SealedAstNode for WithStatement {}
 impl AstNode for WithStatement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4446,6 +4523,7 @@ impl FormalParameters {
         self.0
     }
 }
+impl SealedAstNode for FormalParameters {}
 impl AstNode for FormalParameters {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4476,6 +4554,7 @@ impl FormalParameter {
         self.0
     }
 }
+impl SealedAstNode for FormalParameter {}
 impl AstNode for FormalParameter {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4506,6 +4585,7 @@ impl ArrayExpression {
         self.0
     }
 }
+impl SealedAstNode for ArrayExpression {}
 impl AstNode for ArrayExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4536,6 +4616,7 @@ impl ObjectExpression {
         self.0
     }
 }
+impl SealedAstNode for ObjectExpression {}
 impl AstNode for ObjectExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4566,6 +4647,7 @@ impl SpreadElement {
         self.0
     }
 }
+impl SealedAstNode for SpreadElement {}
 impl AstNode for SpreadElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4596,6 +4678,7 @@ impl ObjectProperty {
         self.0
     }
 }
+impl SealedAstNode for ObjectProperty {}
 impl AstNode for ObjectProperty {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4626,6 +4709,7 @@ impl ParenthesizedExpression {
         self.0
     }
 }
+impl SealedAstNode for ParenthesizedExpression {}
 impl AstNode for ParenthesizedExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4656,6 +4740,7 @@ impl ArrowFunctionExpression {
         self.0
     }
 }
+impl SealedAstNode for ArrowFunctionExpression {}
 impl AstNode for ArrowFunctionExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4686,6 +4771,7 @@ impl SequenceExpression {
         self.0
     }
 }
+impl SealedAstNode for SequenceExpression {}
 impl AstNode for SequenceExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4716,6 +4802,7 @@ impl MemberExpression {
         self.0
     }
 }
+impl SealedAstNode for MemberExpression {}
 impl AstNode for MemberExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4746,6 +4833,7 @@ impl CallExpression {
         self.0
     }
 }
+impl SealedAstNode for CallExpression {}
 impl AstNode for CallExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4776,6 +4864,7 @@ impl ChainExpression {
         self.0
     }
 }
+impl SealedAstNode for ChainExpression {}
 impl AstNode for ChainExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4806,6 +4895,7 @@ impl TaggedTemplateExpression {
         self.0
     }
 }
+impl SealedAstNode for TaggedTemplateExpression {}
 impl AstNode for TaggedTemplateExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4836,6 +4926,7 @@ impl NewExpression {
         self.0
     }
 }
+impl SealedAstNode for NewExpression {}
 impl AstNode for NewExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4866,6 +4957,7 @@ impl AwaitExpression {
         self.0
     }
 }
+impl SealedAstNode for AwaitExpression {}
 impl AstNode for AwaitExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4896,6 +4988,7 @@ impl YieldExpression {
         self.0
     }
 }
+impl SealedAstNode for YieldExpression {}
 impl AstNode for YieldExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4926,6 +5019,7 @@ impl MetaProperty {
         self.0
     }
 }
+impl SealedAstNode for MetaProperty {}
 impl AstNode for MetaProperty {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4956,6 +5050,7 @@ impl ImportExpression {
         self.0
     }
 }
+impl SealedAstNode for ImportExpression {}
 impl AstNode for ImportExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -4986,6 +5081,7 @@ impl ImportDeclaration {
         self.0
     }
 }
+impl SealedAstNode for ImportDeclaration {}
 impl AstNode for ImportDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5016,6 +5112,7 @@ impl ImportSpecifier {
         self.0
     }
 }
+impl SealedAstNode for ImportSpecifier {}
 impl AstNode for ImportSpecifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5046,6 +5143,7 @@ impl ImportDefaultSpecifier {
         self.0
     }
 }
+impl SealedAstNode for ImportDefaultSpecifier {}
 impl AstNode for ImportDefaultSpecifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5076,6 +5174,7 @@ impl ImportNamespaceSpecifier {
         self.0
     }
 }
+impl SealedAstNode for ImportNamespaceSpecifier {}
 impl AstNode for ImportNamespaceSpecifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5106,6 +5205,7 @@ impl ImportAttribute {
         self.0
     }
 }
+impl SealedAstNode for ImportAttribute {}
 impl AstNode for ImportAttribute {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5136,6 +5236,7 @@ impl ExportNamedDeclaration {
         self.0
     }
 }
+impl SealedAstNode for ExportNamedDeclaration {}
 impl AstNode for ExportNamedDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5166,6 +5267,7 @@ impl ExportDefaultDeclaration {
         self.0
     }
 }
+impl SealedAstNode for ExportDefaultDeclaration {}
 impl AstNode for ExportDefaultDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5196,6 +5298,7 @@ impl ExportAllDeclaration {
         self.0
     }
 }
+impl SealedAstNode for ExportAllDeclaration {}
 impl AstNode for ExportAllDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5226,6 +5329,7 @@ impl ExportSpecifier {
         self.0
     }
 }
+impl SealedAstNode for ExportSpecifier {}
 impl AstNode for ExportSpecifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5256,6 +5360,7 @@ impl Hashbang {
         self.0
     }
 }
+impl SealedAstNode for Hashbang {}
 impl AstNode for Hashbang {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5286,6 +5391,7 @@ impl TsType {
         self.0
     }
 }
+impl SealedAstNode for TsType {}
 impl AstNode for TsType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5508,6 +5614,7 @@ impl TsTypeName {
         self.0
     }
 }
+impl SealedAstNode for TsTypeName {}
 impl AstNode for TsTypeName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5550,6 +5657,7 @@ impl TsQualifiedNameLeft {
         self.0
     }
 }
+impl SealedAstNode for TsQualifiedNameLeft {}
 impl AstNode for TsQualifiedNameLeft {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5607,6 +5715,7 @@ impl TsImportTypeQualifier {
         self.0
     }
 }
+impl SealedAstNode for TsImportTypeQualifier {}
 impl AstNode for TsImportTypeQualifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5649,6 +5758,7 @@ impl TsTypeQueryExprName {
         self.0
     }
 }
+impl SealedAstNode for TsTypeQueryExprName {}
 impl AstNode for TsTypeQueryExprName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5696,6 +5806,7 @@ impl TsLiteral {
         self.0
     }
 }
+impl SealedAstNode for TsLiteral {}
 impl AstNode for TsLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5758,6 +5869,7 @@ impl TsTupleElement {
         self.0
     }
 }
+impl SealedAstNode for TsTupleElement {}
 impl AstNode for TsTupleElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5800,6 +5912,7 @@ impl TsTypeElement {
         self.0
     }
 }
+impl SealedAstNode for TsTypeElement {}
 impl AstNode for TsTypeElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5857,6 +5970,7 @@ impl TsTypePredicateName {
         self.0
     }
 }
+impl SealedAstNode for TsTypePredicateName {}
 impl AstNode for TsTypePredicateName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5899,6 +6013,7 @@ impl TsEnumMemberName {
         self.0
     }
 }
+impl SealedAstNode for TsEnumMemberName {}
 impl AstNode for TsEnumMemberName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5951,6 +6066,7 @@ impl TsModuleName {
         self.0
     }
 }
+impl SealedAstNode for TsModuleName {}
 impl AstNode for TsModuleName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -5998,6 +6114,7 @@ impl TsModuleBody {
         self.0
     }
 }
+impl SealedAstNode for TsModuleBody {}
 impl AstNode for TsModuleBody {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6040,6 +6157,7 @@ impl TsModuleReference {
         self.0
     }
 }
+impl SealedAstNode for TsModuleReference {}
 impl AstNode for TsModuleReference {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6082,6 +6200,7 @@ impl TsFunction {
         self.0
     }
 }
+impl SealedAstNode for TsFunction {}
 impl AstNode for TsFunction {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6112,6 +6231,7 @@ impl TsMethodDefinition {
         self.0
     }
 }
+impl SealedAstNode for TsMethodDefinition {}
 impl AstNode for TsMethodDefinition {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6142,6 +6262,7 @@ impl TsTypeAnnotation {
         self.0
     }
 }
+impl SealedAstNode for TsTypeAnnotation {}
 impl AstNode for TsTypeAnnotation {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6172,6 +6293,7 @@ impl TsAnyKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsAnyKeyword {}
 impl AstNode for TsAnyKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6202,6 +6324,7 @@ impl TsUnknownKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsUnknownKeyword {}
 impl AstNode for TsUnknownKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6232,6 +6355,7 @@ impl TsNeverKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsNeverKeyword {}
 impl AstNode for TsNeverKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6262,6 +6386,7 @@ impl TsVoidKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsVoidKeyword {}
 impl AstNode for TsVoidKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6292,6 +6417,7 @@ impl TsNullKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsNullKeyword {}
 impl AstNode for TsNullKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6322,6 +6448,7 @@ impl TsUndefinedKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsUndefinedKeyword {}
 impl AstNode for TsUndefinedKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6352,6 +6479,7 @@ impl TsStringKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsStringKeyword {}
 impl AstNode for TsStringKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6382,6 +6510,7 @@ impl TsNumberKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsNumberKeyword {}
 impl AstNode for TsNumberKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6412,6 +6541,7 @@ impl TsBigIntKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsBigIntKeyword {}
 impl AstNode for TsBigIntKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6442,6 +6572,7 @@ impl TsBooleanKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsBooleanKeyword {}
 impl AstNode for TsBooleanKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6472,6 +6603,7 @@ impl TsSymbolKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsSymbolKeyword {}
 impl AstNode for TsSymbolKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6502,6 +6634,7 @@ impl TsObjectKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsObjectKeyword {}
 impl AstNode for TsObjectKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6532,6 +6665,7 @@ impl TsIntrinsicKeyword {
         self.0
     }
 }
+impl SealedAstNode for TsIntrinsicKeyword {}
 impl AstNode for TsIntrinsicKeyword {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6562,6 +6696,7 @@ impl TsThisType {
         self.0
     }
 }
+impl SealedAstNode for TsThisType {}
 impl AstNode for TsThisType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6592,6 +6727,7 @@ impl TsTypeReference {
         self.0
     }
 }
+impl SealedAstNode for TsTypeReference {}
 impl AstNode for TsTypeReference {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6622,6 +6758,7 @@ impl TsQualifiedName {
         self.0
     }
 }
+impl SealedAstNode for TsQualifiedName {}
 impl AstNode for TsQualifiedName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6652,6 +6789,7 @@ impl TsTypeQuery {
         self.0
     }
 }
+impl SealedAstNode for TsTypeQuery {}
 impl AstNode for TsTypeQuery {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6682,6 +6820,7 @@ impl TsImportType {
         self.0
     }
 }
+impl SealedAstNode for TsImportType {}
 impl AstNode for TsImportType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6712,6 +6851,7 @@ impl TsTypeParameter {
         self.0
     }
 }
+impl SealedAstNode for TsTypeParameter {}
 impl AstNode for TsTypeParameter {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6742,6 +6882,7 @@ impl TsTypeParameterDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsTypeParameterDeclaration {}
 impl AstNode for TsTypeParameterDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6772,6 +6913,7 @@ impl TsTypeParameterInstantiation {
         self.0
     }
 }
+impl SealedAstNode for TsTypeParameterInstantiation {}
 impl AstNode for TsTypeParameterInstantiation {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6802,6 +6944,7 @@ impl TsLiteralType {
         self.0
     }
 }
+impl SealedAstNode for TsLiteralType {}
 impl AstNode for TsLiteralType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6832,6 +6975,7 @@ impl TsTemplateLiteralType {
         self.0
     }
 }
+impl SealedAstNode for TsTemplateLiteralType {}
 impl AstNode for TsTemplateLiteralType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6862,6 +7006,7 @@ impl TsArrayType {
         self.0
     }
 }
+impl SealedAstNode for TsArrayType {}
 impl AstNode for TsArrayType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6892,6 +7037,7 @@ impl TsIndexedAccessType {
         self.0
     }
 }
+impl SealedAstNode for TsIndexedAccessType {}
 impl AstNode for TsIndexedAccessType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6922,6 +7068,7 @@ impl TsTupleType {
         self.0
     }
 }
+impl SealedAstNode for TsTupleType {}
 impl AstNode for TsTupleType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6952,6 +7099,7 @@ impl TsNamedTupleMember {
         self.0
     }
 }
+impl SealedAstNode for TsNamedTupleMember {}
 impl AstNode for TsNamedTupleMember {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -6982,6 +7130,7 @@ impl TsOptionalType {
         self.0
     }
 }
+impl SealedAstNode for TsOptionalType {}
 impl AstNode for TsOptionalType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7012,6 +7161,7 @@ impl TsRestType {
         self.0
     }
 }
+impl SealedAstNode for TsRestType {}
 impl AstNode for TsRestType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7042,6 +7192,7 @@ impl TsJsDocNullableType {
         self.0
     }
 }
+impl SealedAstNode for TsJsDocNullableType {}
 impl AstNode for TsJsDocNullableType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7072,6 +7223,7 @@ impl TsJsDocNonNullableType {
         self.0
     }
 }
+impl SealedAstNode for TsJsDocNonNullableType {}
 impl AstNode for TsJsDocNonNullableType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7102,6 +7254,7 @@ impl TsJsDocUnknownType {
         self.0
     }
 }
+impl SealedAstNode for TsJsDocUnknownType {}
 impl AstNode for TsJsDocUnknownType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7132,6 +7285,7 @@ impl TsUnionType {
         self.0
     }
 }
+impl SealedAstNode for TsUnionType {}
 impl AstNode for TsUnionType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7162,6 +7316,7 @@ impl TsIntersectionType {
         self.0
     }
 }
+impl SealedAstNode for TsIntersectionType {}
 impl AstNode for TsIntersectionType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7192,6 +7347,7 @@ impl TsConditionalType {
         self.0
     }
 }
+impl SealedAstNode for TsConditionalType {}
 impl AstNode for TsConditionalType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7222,6 +7378,7 @@ impl TsInferType {
         self.0
     }
 }
+impl SealedAstNode for TsInferType {}
 impl AstNode for TsInferType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7252,6 +7409,7 @@ impl TsTypeOperator {
         self.0
     }
 }
+impl SealedAstNode for TsTypeOperator {}
 impl AstNode for TsTypeOperator {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7282,6 +7440,7 @@ impl TsParenthesizedType {
         self.0
     }
 }
+impl SealedAstNode for TsParenthesizedType {}
 impl AstNode for TsParenthesizedType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7312,6 +7471,7 @@ impl TsFunctionType {
         self.0
     }
 }
+impl SealedAstNode for TsFunctionType {}
 impl AstNode for TsFunctionType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7342,6 +7502,7 @@ impl TsConstructorType {
         self.0
     }
 }
+impl SealedAstNode for TsConstructorType {}
 impl AstNode for TsConstructorType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7372,6 +7533,7 @@ impl TsTypePredicate {
         self.0
     }
 }
+impl SealedAstNode for TsTypePredicate {}
 impl AstNode for TsTypePredicate {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7402,6 +7564,7 @@ impl TsTypeLiteral {
         self.0
     }
 }
+impl SealedAstNode for TsTypeLiteral {}
 impl AstNode for TsTypeLiteral {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7432,6 +7595,7 @@ impl TsMappedType {
         self.0
     }
 }
+impl SealedAstNode for TsMappedType {}
 impl AstNode for TsMappedType {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7462,6 +7626,7 @@ impl TsPropertySignature {
         self.0
     }
 }
+impl SealedAstNode for TsPropertySignature {}
 impl AstNode for TsPropertySignature {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7492,6 +7657,7 @@ impl TsMethodSignature {
         self.0
     }
 }
+impl SealedAstNode for TsMethodSignature {}
 impl AstNode for TsMethodSignature {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7522,6 +7688,7 @@ impl TsCallSignatureDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsCallSignatureDeclaration {}
 impl AstNode for TsCallSignatureDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7552,6 +7719,7 @@ impl TsConstructSignatureDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsConstructSignatureDeclaration {}
 impl AstNode for TsConstructSignatureDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7582,6 +7750,7 @@ impl TsIndexSignature {
         self.0
     }
 }
+impl SealedAstNode for TsIndexSignature {}
 impl AstNode for TsIndexSignature {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7612,6 +7781,7 @@ impl TsTypeAliasDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsTypeAliasDeclaration {}
 impl AstNode for TsTypeAliasDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7642,6 +7812,7 @@ impl TsInterfaceDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsInterfaceDeclaration {}
 impl AstNode for TsInterfaceDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7672,6 +7843,7 @@ impl TsInterfaceBody {
         self.0
     }
 }
+impl SealedAstNode for TsInterfaceBody {}
 impl AstNode for TsInterfaceBody {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7702,6 +7874,7 @@ impl TsInterfaceHeritage {
         self.0
     }
 }
+impl SealedAstNode for TsInterfaceHeritage {}
 impl AstNode for TsInterfaceHeritage {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7732,6 +7905,7 @@ impl TsClassImplements {
         self.0
     }
 }
+impl SealedAstNode for TsClassImplements {}
 impl AstNode for TsClassImplements {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7762,6 +7936,7 @@ impl TsEnumDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsEnumDeclaration {}
 impl AstNode for TsEnumDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7792,6 +7967,7 @@ impl TsEnumBody {
         self.0
     }
 }
+impl SealedAstNode for TsEnumBody {}
 impl AstNode for TsEnumBody {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7822,6 +7998,7 @@ impl TsEnumMember {
         self.0
     }
 }
+impl SealedAstNode for TsEnumMember {}
 impl AstNode for TsEnumMember {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7852,6 +8029,7 @@ impl TsModuleDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsModuleDeclaration {}
 impl AstNode for TsModuleDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7882,6 +8060,7 @@ impl TsModuleBlock {
         self.0
     }
 }
+impl SealedAstNode for TsModuleBlock {}
 impl AstNode for TsModuleBlock {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7912,6 +8091,7 @@ impl TsGlobalDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsGlobalDeclaration {}
 impl AstNode for TsGlobalDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7942,6 +8122,7 @@ impl TsParameterProperty {
         self.0
     }
 }
+impl SealedAstNode for TsParameterProperty {}
 impl AstNode for TsParameterProperty {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -7972,6 +8153,7 @@ impl TsThisParameter {
         self.0
     }
 }
+impl SealedAstNode for TsThisParameter {}
 impl AstNode for TsThisParameter {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8002,6 +8184,7 @@ impl TsAsExpression {
         self.0
     }
 }
+impl SealedAstNode for TsAsExpression {}
 impl AstNode for TsAsExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8032,6 +8215,7 @@ impl TsSatisfiesExpression {
         self.0
     }
 }
+impl SealedAstNode for TsSatisfiesExpression {}
 impl AstNode for TsSatisfiesExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8062,6 +8246,7 @@ impl TsTypeAssertion {
         self.0
     }
 }
+impl SealedAstNode for TsTypeAssertion {}
 impl AstNode for TsTypeAssertion {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8092,6 +8277,7 @@ impl TsNonNullExpression {
         self.0
     }
 }
+impl SealedAstNode for TsNonNullExpression {}
 impl AstNode for TsNonNullExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8122,6 +8308,7 @@ impl TsInstantiationExpression {
         self.0
     }
 }
+impl SealedAstNode for TsInstantiationExpression {}
 impl AstNode for TsInstantiationExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8152,6 +8339,7 @@ impl TsExportAssignment {
         self.0
     }
 }
+impl SealedAstNode for TsExportAssignment {}
 impl AstNode for TsExportAssignment {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8182,6 +8370,7 @@ impl TsNamespaceExportDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsNamespaceExportDeclaration {}
 impl AstNode for TsNamespaceExportDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8212,6 +8401,7 @@ impl TsImportEqualsDeclaration {
         self.0
     }
 }
+impl SealedAstNode for TsImportEqualsDeclaration {}
 impl AstNode for TsImportEqualsDeclaration {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8242,6 +8432,7 @@ impl TsExternalModuleReference {
         self.0
     }
 }
+impl SealedAstNode for TsExternalModuleReference {}
 impl AstNode for TsExternalModuleReference {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8272,6 +8463,7 @@ impl JsxElementName {
         self.0
     }
 }
+impl SealedAstNode for JsxElementName {}
 impl AstNode for JsxElementName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8319,6 +8511,7 @@ impl JsxMemberExpressionObject {
         self.0
     }
 }
+impl SealedAstNode for JsxMemberExpressionObject {}
 impl AstNode for JsxMemberExpressionObject {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8361,6 +8554,7 @@ impl JsxAttributeName {
         self.0
     }
 }
+impl SealedAstNode for JsxAttributeName {}
 impl AstNode for JsxAttributeName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8403,6 +8597,7 @@ impl JsxAttributeItem {
         self.0
     }
 }
+impl SealedAstNode for JsxAttributeItem {}
 impl AstNode for JsxAttributeItem {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8445,6 +8640,7 @@ impl JsxAttributeValue {
         self.0
     }
 }
+impl SealedAstNode for JsxAttributeValue {}
 impl AstNode for JsxAttributeValue {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8497,6 +8693,7 @@ impl JsxExpression {
         self.0
     }
 }
+impl SealedAstNode for JsxExpression {}
 impl AstNode for JsxExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8539,6 +8736,7 @@ impl JsxChild {
         self.0
     }
 }
+impl SealedAstNode for JsxChild {}
 impl AstNode for JsxChild {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8596,6 +8794,7 @@ impl JsxElement {
         self.0
     }
 }
+impl SealedAstNode for JsxElement {}
 impl AstNode for JsxElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8626,6 +8825,7 @@ impl JsxOpeningElement {
         self.0
     }
 }
+impl SealedAstNode for JsxOpeningElement {}
 impl AstNode for JsxOpeningElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8656,6 +8856,7 @@ impl JsxClosingElement {
         self.0
     }
 }
+impl SealedAstNode for JsxClosingElement {}
 impl AstNode for JsxClosingElement {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8686,6 +8887,7 @@ impl JsxFragment {
         self.0
     }
 }
+impl SealedAstNode for JsxFragment {}
 impl AstNode for JsxFragment {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8716,6 +8918,7 @@ impl JsxOpeningFragment {
         self.0
     }
 }
+impl SealedAstNode for JsxOpeningFragment {}
 impl AstNode for JsxOpeningFragment {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8746,6 +8949,7 @@ impl JsxClosingFragment {
         self.0
     }
 }
+impl SealedAstNode for JsxClosingFragment {}
 impl AstNode for JsxClosingFragment {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8776,6 +8980,7 @@ impl JsxIdentifier {
         self.0
     }
 }
+impl SealedAstNode for JsxIdentifier {}
 impl AstNode for JsxIdentifier {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8806,6 +9011,7 @@ impl JsxNamespacedName {
         self.0
     }
 }
+impl SealedAstNode for JsxNamespacedName {}
 impl AstNode for JsxNamespacedName {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8836,6 +9042,7 @@ impl JsxMemberExpression {
         self.0
     }
 }
+impl SealedAstNode for JsxMemberExpression {}
 impl AstNode for JsxMemberExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8866,6 +9073,7 @@ impl JsxAttribute {
         self.0
     }
 }
+impl SealedAstNode for JsxAttribute {}
 impl AstNode for JsxAttribute {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8896,6 +9104,7 @@ impl JsxSpreadAttribute {
         self.0
     }
 }
+impl SealedAstNode for JsxSpreadAttribute {}
 impl AstNode for JsxSpreadAttribute {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8926,6 +9135,7 @@ impl JsxExpressionContainer {
         self.0
     }
 }
+impl SealedAstNode for JsxExpressionContainer {}
 impl AstNode for JsxExpressionContainer {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8956,6 +9166,7 @@ impl JsxEmptyExpression {
         self.0
     }
 }
+impl SealedAstNode for JsxEmptyExpression {}
 impl AstNode for JsxEmptyExpression {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -8986,6 +9197,7 @@ impl JsxText {
         self.0
     }
 }
+impl SealedAstNode for JsxText {}
 impl AstNode for JsxText {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
@@ -9016,6 +9228,7 @@ impl JsxSpreadChild {
         self.0
     }
 }
+impl SealedAstNode for JsxSpreadChild {}
 impl AstNode for JsxSpreadChild {
     #[inline]
     unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {

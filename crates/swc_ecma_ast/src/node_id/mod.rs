@@ -2,7 +2,8 @@ mod extra_data;
 mod node;
 mod sub_range;
 
-pub use extra_data::*;
+pub(crate) use extra_data::ExtraData;
+pub use extra_data::{ExtraDataId, ExtraDataValue};
 pub use node::*;
 pub use sub_range::*;
 
@@ -55,4 +56,11 @@ macro_rules! define_optional_index_type {
             }
         }
     };
+}
+
+// Only generated, transparent NodeId wrappers may implement AstNode.
+pub(crate) mod sealed {
+    pub trait AstNode {}
+
+    pub trait ExtraDataValue {}
 }
