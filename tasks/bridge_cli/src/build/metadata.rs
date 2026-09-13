@@ -39,7 +39,6 @@ struct Manifest {
 #[serde(rename_all = "camelCase")]
 struct WasmConfig {
     binary_name: String,
-    target: String,
 }
 
 pub(super) struct Component {
@@ -138,13 +137,6 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
         let Some(config) = manifest.wasm else {
             continue;
         };
-        if config.target != TARGET {
-            return Err(format!(
-                "{} has unsupported Wasm target {}",
-                manifest_path.display(),
-                config.target
-            ));
-        }
         if config.binary_name.is_empty()
             || !config
                 .binary_name

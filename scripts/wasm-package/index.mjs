@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { bindingFileNames } from "./files.mjs";
 
-const SUPPORTED_TARGET = "wasm32-unknown-unknown";
+const TARGET = "wasm32-unknown-unknown";
 
 export async function createNpmDirs(userOptions = {}) {
   const context = await readContext(userOptions);
@@ -102,7 +102,7 @@ async function readContext(userOptions) {
     fail(`unsupported tag style: ${options.tagStyle}`);
   }
 
-  const bindingDirectory = path.resolve(options.cwd, options.npmDir, config.target);
+  const bindingDirectory = path.resolve(options.cwd, options.npmDir, TARGET);
   return {
     bindingDirectory,
     config,
@@ -125,9 +125,6 @@ function validateConfig(packageJson, config) {
   }
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     fail("package.json must contain a wasm configuration");
-  }
-  if (config.target !== SUPPORTED_TARGET) {
-    fail(`only ${SUPPORTED_TARGET} is supported`);
   }
   if (
     typeof config.binaryName !== "string" ||
@@ -186,7 +183,7 @@ function bindingManifest(context) {
 }
 
 function bindingReadme(context) {
-  return `# \`${context.config.packageName}\`\n\nThis is the ${context.config.target} binding for \`${context.packageJson.name}\`.\n`;
+  return `# \`${context.config.packageName}\`\n\nThis is the ${TARGET} binding for \`${context.packageJson.name}\`.\n`;
 }
 
 async function validatePackage(context, generated, dryRun) {

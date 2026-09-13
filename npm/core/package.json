@@ -60,7 +60,6 @@
     "@swc-next/encoder": "workspace:*"
   },
   "wasm": {
-    "target": "wasm32-unknown-unknown",
     "binaryName": "swc-next-core",
     "packageName": "@swc-next/core-binding-wasm"
   },

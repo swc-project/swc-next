@@ -61,7 +61,6 @@
     "@swc-next/encoder": "workspace:*"
   },
   "wasm": {
-    "target": "wasm32-unknown-unknown",
     "binaryName": "swc-next-codegen",
     "packageName": "@swc-next/codegen-binding-wasm"
   },
