@@ -61,9 +61,16 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
     entries.sort_by_key(|entry| entry.file_name());
     let mut components = Vec::new();
     for entry in entries {
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
         let directory = entry.path();
         let manifest_path = directory.join("package.json");
-        let source = fs::read(manifest_path)?;
+        let source = match fs::read(manifest_path) {
+            Ok(source) => source,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
         let manifest: Manifest = serde_json::from_slice(&source)?;
         let Some(config) = manifest.wasm else {
             continue;
