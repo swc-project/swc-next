@@ -64,7 +64,6 @@ pub(super) fn expand_metadata(descriptors: &[BridgeDescriptor]) -> syn::Result<T
         const _: () = {
             const BRIDGEN_METADATA: &str = #json;
 
-            #[used]
             #[unsafe(link_section = "__wasm_bindgen_unstable")]
             static _GENERATED: [u8; BRIDGEN_METADATA.len()] = {
                 let mut bytes = [0; BRIDGEN_METADATA.len()];
