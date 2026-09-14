@@ -45,7 +45,6 @@ napi-derive = "3.6.1"
 
 # Bridge tooling
 cargo_metadata = "0.19.2"
-wasm-encoder   = "0.244.0"
 wasmparser     = { version = "0.244.0", default-features = false, features = ["std"] }
 
 # Ast tool

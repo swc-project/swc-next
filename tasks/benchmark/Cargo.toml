@@ -6,10 +6,8 @@ version = "0.1.0"
 
 [features]
 codspeed = []
-tracy    = ["dep:tracy-client"]
+tracy    = []
 
-[dependencies]
-tracy-client = { workspace = true, optional = true }
 
 [dev-dependencies]
 oxc                    = { workspace = true }
@@ -20,6 +18,7 @@ swc_next_ecma_codegen  = { workspace = true }
 swc_next_ecma_parser   = { workspace = true, features = ["unstable"] }
 swc_next_ecma_semantic = { workspace = true }
 swc_next_type_strip    = { workspace = true, features = ["benchmarking"] }
+tracy-client           = { workspace = true }
 
 criterion  = { workspace = true }
 gungraun   = { workspace = true }

@@ -11,6 +11,3 @@ clap           = { workspace = true }
 serde          = { workspace = true, features = ["derive"] }
 serde_json     = { workspace = true }
 wasmparser     = { workspace = true }
-
-[dev-dependencies]
-wasm-encoder = { workspace = true }
