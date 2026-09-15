@@ -683,6 +683,14 @@ enum ArrowHead {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ArrowParseResult {
+    Parsed(Expr),
+    Failed,
+    MissingArrow(Span),
+    LineTerminatorBeforeArrow(Span),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UnambiguousParseAction {
     KeepModule,
     RelabelAsCommonJs,
@@ -8286,7 +8294,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.lang.is_typescript() && CAN_BE_ARROW {
             match self.classify_arrow_head() {
                 ArrowHead::Yes => {
-                    return self.parse_arrow(false, start, true);
+                    return self.parse_arrow_or_report(false, start);
                 }
                 ArrowHead::Maybe => {
                     if let Some(arrow) = self.try_parse_arrow(false, start)? {
@@ -8653,7 +8661,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<Expr> {
         if self.lang.is_typescript() && minimum <= Precedence::Assignment {
             let arrow = match self.classify_arrow_head() {
-                ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start, true)?),
+                ArrowHead::Yes => Some(self.parse_arrow_or_report(true, async_span.start)?),
                 ArrowHead::Maybe => self.try_parse_arrow(true, async_span.start)?,
                 ArrowHead::No => None,
             };
@@ -8676,7 +8684,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if escaped_async {
                 self.report_escaped_keyword(async_span);
             }
-            return self.parse_arrow(true, async_span.start, true);
+            return self.parse_arrow_or_report(true, async_span.start);
         }
         self.cover_to_call_expression(cover, async_identifier)
     }
@@ -8790,9 +8798,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let checkpoint = self.checkpoint();
-        let arrow = match self.parse_arrow(is_async, start, false) {
-            Some(arrow) => arrow,
-            None => {
+        let arrow = match self.parse_arrow(is_async, start) {
+            ArrowParseResult::Parsed(arrow) => arrow,
+            ArrowParseResult::Failed
+            | ArrowParseResult::MissingArrow(_)
+            | ArrowParseResult::LineTerminatorBeforeArrow(_) => {
                 self.rewind(checkpoint);
                 self.not_parenthesized_arrow.insert(position);
                 return Some(None);
@@ -8822,12 +8832,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.try_parse_arrow(is_async, start)
     }
 
-    fn parse_arrow(
-        &mut self,
-        is_async: bool,
-        start: u32,
-        report_diagnostics: bool,
-    ) -> Option<Expr> {
+    fn parse_arrow_or_report(&mut self, is_async: bool, start: u32) -> Option<Expr> {
+        match self.parse_arrow(is_async, start) {
+            ArrowParseResult::Parsed(arrow) => Some(arrow),
+            ArrowParseResult::Failed => None,
+            ArrowParseResult::MissingArrow(span) => {
+                self.report_expected(
+                    span,
+                    "Expected '=>' in arrow function",
+                    ReportOptions::default(),
+                );
+                None
+            }
+            ArrowParseResult::LineTerminatorBeforeArrow(span) => {
+                self.report(
+                    span,
+                    "A line terminator is not allowed before '=>'",
+                    ReportOptions::default(),
+                );
+                None
+            }
+        }
+    }
+
+    fn parse_arrow(&mut self, is_async: bool, start: u32) -> ArrowParseResult {
         let context = if is_async {
             enter_grammar_context![&mut self.context, ?Yield, +Await]
         } else {
@@ -8843,57 +8871,46 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             commonjs_sensitive_new_target,
         );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let result = self.parse_arrow_inner(is_async, start, report_diagnostics);
+        let result = self.parse_arrow_inner(is_async, start);
         self.context = context;
         self.boundary_context = boundary_context;
         result
     }
 
-    fn parse_arrow_inner(
-        &mut self,
-        is_async: bool,
-        start: u32,
-        report_diagnostics: bool,
-    ) -> Option<Expr> {
+    fn parse_arrow_inner(&mut self, is_async: bool, start: u32) -> ArrowParseResult {
         let type_parameters = if is_angle_open(self.current_token.tag) {
-            Some(self.parse_type_parameters()?)
+            let Some(type_parameters) = self.parse_type_parameters() else {
+                return ArrowParseResult::Failed;
+            };
+            Some(type_parameters)
         } else {
             None
         };
         if self.current_token.tag != TokenTag::LeftParen {
-            return None;
+            return ArrowParseResult::Failed;
         }
-        let params =
-            self.parse_formal_parameters(FormalParameterKind::ArrowFormalParameters, false)?;
+        let Some(params) =
+            self.parse_formal_parameters(FormalParameterKind::ArrowFormalParameters, false)
+        else {
+            return ArrowParseResult::Failed;
+        };
         let return_type = if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon
         {
-            Some(self.parse_return_type_annotation()?)
+            let Some(return_type) = self.parse_return_type_annotation() else {
+                return ArrowParseResult::Failed;
+            };
+            Some(return_type)
         } else {
             None
         };
         if self.current_token.tag != TokenTag::Arrow {
-            if !report_diagnostics {
-                return None;
-            }
-            self.report_expected(
-                self.current_token.span,
-                "Expected '=>' in arrow function",
-                ReportOptions::default(),
-            );
-            return None;
+            return ArrowParseResult::MissingArrow(self.current_token.span);
         }
         if self.current_token.has_line_terminator_before() {
-            if !report_diagnostics {
-                return None;
-            }
-            self.report(
-                self.current_token.span,
-                "A line terminator is not allowed before '=>'",
-                ReportOptions::default(),
-            );
-            return None;
+            return ArrowParseResult::LineTerminatorBeforeArrow(self.current_token.span);
         }
         self.build_arrow_function(start, params, is_async, type_parameters, return_type)
+            .map_or(ArrowParseResult::Failed, ArrowParseResult::Parsed)
     }
 
     fn build_arrow_function(
