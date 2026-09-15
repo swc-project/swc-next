@@ -8867,26 +8867,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         if self.current_token.tag != TokenTag::Arrow {
-            // The speculative `try_parse_arrow` path skips diagnostic formatting for performance.
-            if !need_diagnostics {
-                return None;
+            if need_diagnostics {
+                // The speculative `try_parse_arrow` path skips diagnostic formatting for performance.
+                self.report_expected(
+                    self.current_token.span,
+                    "Expected '=>' in arrow function",
+                    ReportOptions::default(),
+                );
             }
-            self.report_expected(
-                self.current_token.span,
-                "Expected '=>' in arrow function",
-                ReportOptions::default(),
-            );
             return None;
         }
         if self.current_token.has_line_terminator_before() {
-            if !need_diagnostics {
-                return None;
+            if need_diagnostics {
+                self.report(
+                    self.current_token.span,
+                    "A line terminator is not allowed before '=>'",
+                    ReportOptions::default(),
+                );
             }
-            self.report(
-                self.current_token.span,
-                "A line terminator is not allowed before '=>'",
-                ReportOptions::default(),
-            );
             return None;
         }
         self.build_arrow_function(start, params, is_async, type_parameters, return_type)
