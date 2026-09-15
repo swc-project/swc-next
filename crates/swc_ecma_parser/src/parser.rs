@@ -8822,7 +8822,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.try_parse_arrow(is_async, start)
     }
 
-    fn parse_arrow(&mut self, is_async: bool, start: u32, need_diagnostic: bool) -> Option<Expr> {
+    fn parse_arrow(&mut self, is_async: bool, start: u32, need_diagnostics: bool) -> Option<Expr> {
         let context = if is_async {
             enter_grammar_context![&mut self.context, ?Yield, +Await]
         } else {
@@ -8838,7 +8838,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             commonjs_sensitive_new_target,
         );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let result = self.parse_arrow_inner(is_async, start, need_diagnostic);
+        let result = self.parse_arrow_inner(is_async, start, need_diagnostics);
         self.context = context;
         self.boundary_context = boundary_context;
         result
@@ -8848,7 +8848,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         is_async: bool,
         start: u32,
-        need_diagnostic: bool,
+        need_diagnostics: bool,
     ) -> Option<Expr> {
         let type_parameters = if is_angle_open(self.current_token.tag) {
             Some(self.parse_type_parameters()?)
@@ -8867,7 +8867,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         if self.current_token.tag != TokenTag::Arrow {
-            if !need_diagnostic {
+            if !need_diagnostics {
                 return None;
             }
             self.report_expected(
@@ -8878,7 +8878,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         if self.current_token.has_line_terminator_before() {
-            if !need_diagnostic {
+            if !need_diagnostics {
                 return None;
             }
             self.report(
