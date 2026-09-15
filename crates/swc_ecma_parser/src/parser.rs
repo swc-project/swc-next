@@ -8286,6 +8286,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.lang.is_typescript() && CAN_BE_ARROW {
             match self.classify_arrow_head() {
                 ArrowHead::Yes => {
+                    // `try_parse_arrow` disables diagnostics to avoid formatting them during speculation.
                     return self.parse_arrow(false, start, true);
                 }
                 ArrowHead::Maybe => {
