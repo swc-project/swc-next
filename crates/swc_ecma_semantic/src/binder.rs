@@ -1,5 +1,6 @@
 use std::hash::BuildHasher;
 
+use hashbrown::hash_map::RawEntryMut;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
@@ -1285,7 +1286,19 @@ impl<'a> SymbolTracker<'a> {
 
         let name_text = tree.get_wtf8(name).as_bytes();
         let declaration_id = DeclarationId::from_usize(self.declarations.len());
-        let id = if let Some(existing) = self.binding(target, name_text) {
+        // Reuse the hash and vacant entry when declaring a new symbol.
+        let hash = self.scope_maps[target.index()].hasher().hash_one(name_text);
+        let entry = self.scope_maps[target.index()]
+            .raw_entry_mut()
+            .from_hash(hash, |key| *key == name_text);
+        let existing = match &entry {
+            RawEntryMut::Occupied(entry) => Some(*entry.get()),
+            RawEntryMut::Vacant(_) => self.hoisting_variables[target.index()]
+                .raw_entry()
+                .from_hash(hash, |key| *key == name_text)
+                .map(|(_, &symbol)| symbol),
+        };
+        let id = if let Some(existing) = existing {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes)
                 || self.pending.allows_annex_b_function_duplicate(symbol.flags)
@@ -1313,8 +1326,11 @@ impl<'a> SymbolTracker<'a> {
                 scope: target,
                 declaration: declaration_id,
             });
-            let key = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
-            self.scope_maps[target.index()].insert(key, new_id);
+            let RawEntryMut::Vacant(entry) = entry else {
+                unreachable!();
+            };
+            let key = name_text.clone_in(self.allocator);
+            entry.insert_hashed_nocheck(hash, key, new_id);
             new_id
         };
 
