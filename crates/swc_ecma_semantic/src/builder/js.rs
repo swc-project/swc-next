@@ -7,13 +7,11 @@ use swc_next_ecma_ast::{
 use super::*;
 
 pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, literal: StringLiteral) {
-    if builder.context.state.in_type_position() || !builder.context.state.scope.is_strict() {
+    if builder.state.in_type_position() || !builder.state.scope.is_strict() {
         return;
     }
-    let span = builder.context.ast.span(literal.node_id());
-    if has_octal_escape(
-        &builder.context.ast.source().as_bytes()[span.start as usize..span.end as usize],
-    ) {
+    let span = builder.ast.span(literal.node_id());
+    if has_octal_escape(&builder.ast.source().as_bytes()[span.start as usize..span.end as usize]) {
         builder.report(
             span,
             "Octal escape sequences are not allowed in strict mode",
@@ -31,11 +29,11 @@ pub(super) fn check_numeric_literal(
     builder: &mut SemanticBuilder<'_, '_>,
     literal: NumericLiteral,
 ) {
-    if builder.context.state.in_type_position() || !builder.context.state.scope.is_strict() {
+    if builder.state.in_type_position() || !builder.state.scope.is_strict() {
         return;
     }
-    let span = builder.context.ast.span(literal.node_id());
-    let raw = &builder.context.ast.source().as_bytes()[span.start as usize..span.end as usize];
+    let span = builder.ast.span(literal.node_id());
+    let raw = &builder.ast.source().as_bytes()[span.start as usize..span.end as usize];
     if !is_legacy_numeric_literal(raw) {
         return;
     }
@@ -62,14 +60,8 @@ pub(super) fn check_numeric_literal(
 }
 
 pub(super) fn check_reg_exp_literal(builder: &mut SemanticBuilder<'_, '_>, literal: RegExpLiteral) {
-    let pattern = builder
-        .context
-        .ast
-        .get_utf8(literal.pattern(builder.context.ast));
-    let flags = builder
-        .context
-        .ast
-        .get_utf8(literal.flags(builder.context.ast));
+    let pattern = builder.ast.get_utf8(literal.pattern(builder.ast));
+    let flags = builder.ast.get_utf8(literal.flags(builder.ast));
     let allocator = Allocator::new();
     if swc_next_regular_expression::LiteralParser::new(
         &allocator,
@@ -81,7 +73,7 @@ pub(super) fn check_reg_exp_literal(builder: &mut SemanticBuilder<'_, '_>, liter
     .is_err()
     {
         builder.report(
-            builder.context.ast.span(literal.node_id()),
+            builder.ast.span(literal.node_id()),
             "Invalid regular expression literal",
             ReportOptions::default(),
         );
@@ -92,19 +84,18 @@ pub(super) fn check_identifier_reference(
     builder: &mut SemanticBuilder<'_, '_>,
     identifier: IdentifierReference,
 ) {
-    if builder.context.state.in_type_position() {
+    if builder.state.in_type_position() {
         return;
     }
     let node_id = identifier.node_id();
     let name = builder
-        .context
         .ast
-        .get_utf8(identifier.name(builder.context.ast))
+        .get_utf8(identifier.name(builder.ast))
         .as_bytes();
     builder.check_strict_reserved(name, node_id, "an identifier");
-    if name == b"arguments" && !is_arguments_available(&builder.context) {
+    if name == b"arguments" && !is_arguments_available(builder) {
         builder.report(
-            builder.context.ast.span(node_id),
+            builder.ast.span(node_id),
             "'arguments' is not allowed in class field initializers or static blocks",
             ReportOptions::default(),
         );
@@ -117,16 +108,15 @@ pub(super) fn check_binding_identifier(
 ) -> Option<PreparedDeclaration> {
     let node_id = identifier.node_id();
     let name = builder
-        .context
         .ast
-        .get_utf8(identifier.name(builder.context.ast))
+        .get_utf8(identifier.name(builder.ast))
         .as_bytes();
-    let flags = builder.context.state.symbols.pending.flags;
+    let flags = builder.state.symbols.pending.flags;
     if flags.is_empty() {
         return None;
     }
-    if !builder.context.state.in_type_position()
-        && builder.context.state.scope.is_strict()
+    if !builder.state.in_type_position()
+        && builder.state.scope.is_strict()
         && !flags.contains(SymbolFlags::AMBIENT)
     {
         builder.check_strict_reserved(name, node_id, "a binding identifier");
@@ -135,26 +125,22 @@ pub(super) fn check_binding_identifier(
                 "'{}' is not allowed as a binding identifier in strict mode",
                 String::from_utf8_lossy(name)
             ));
-            builder.report(
-                builder.context.ast.span(node_id),
-                message,
-                ReportOptions::default(),
-            );
+            builder.report(builder.ast.span(node_id), message, ReportOptions::default());
         }
     } else if flags.contains(SymbolFlags::BLOCK_SCOPED_VAR) && name == b"let" {
         builder.report(
-            builder.context.ast.span(node_id),
+            builder.ast.span(node_id),
             "'let' is not allowed as a variable name in a lexical declaration",
             ReportOptions::default(),
         );
     }
-    let prepared = builder.context.state.symbols.prepare_declaration(
-        builder.context.ast,
-        identifier.name(builder.context.ast).into(),
+    let prepared = builder.state.symbols.prepare_declaration(
+        builder.ast,
+        identifier.name(builder.ast).into(),
         node_id,
     );
     builder.check_redeclaration(node_id, name, prepared);
-    if builder.context.state.symbols.export_state.named().is_some() {
+    if builder.state.symbols.export_state.named().is_some() {
         builder.record_exported_name(name, node_id);
     }
     Some(prepared)
@@ -165,9 +151,8 @@ pub(super) fn check_label_identifier(
     identifier: LabelIdentifier,
 ) {
     let name = builder
-        .context
         .ast
-        .get_utf8(identifier.name(builder.context.ast))
+        .get_utf8(identifier.name(builder.ast))
         .as_bytes();
     builder.check_strict_reserved(name, identifier.node_id(), "a label");
 }
@@ -175,7 +160,7 @@ pub(super) fn check_label_identifier(
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
     fn check_strict_reserved(&mut self, name: &[u8], node: NodeId, as_what: &'static str) {
-        if !self.context.state.scope.is_strict() {
+        if !self.state.scope.is_strict() {
             return;
         }
         if let Some(word) = match_strict_reserved(name) {
@@ -183,11 +168,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 "'{}' is reserved in strict mode and cannot be used as {}",
                 word, as_what
             ));
-            self.report(
-                self.context.ast.span(node),
-                message,
-                ReportOptions::default(),
-            );
+            self.report(self.ast.span(node), message, ReportOptions::default());
         }
     }
 }
@@ -247,25 +228,20 @@ pub(super) fn check_binary_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: BinaryExpression,
 ) {
-    let left = expression.left(builder.context.ast).node_id();
-    if expression.operator(builder.context.ast) == BinaryOperator::In
-        && let NodeKindData::PrivateIdentifier(identifier) = builder.context.ast.kind_data(left)
+    let left = expression.left(builder.ast).node_id();
+    if expression.operator(builder.ast) == BinaryOperator::In
+        && let NodeKindData::PrivateIdentifier(identifier) = builder.ast.kind_data(left)
     {
         let name = builder
-            .context
             .ast
-            .get_utf8(identifier.name(builder.context.ast))
+            .get_utf8(identifier.name(builder.ast))
             .as_bytes();
-        if !is_private_name_declared(&builder.context, name) {
+        if !is_private_name_declared(builder, name) {
             let message = builder.fmt(format_args!(
                 "Private field '#{}' must be declared in an enclosing class",
                 String::from_utf8_lossy(name)
             ));
-            builder.report(
-                builder.context.ast.span(left),
-                message,
-                ReportOptions::default(),
-            );
+            builder.report(builder.ast.span(left), message, ReportOptions::default());
         }
     }
 }
@@ -274,37 +250,30 @@ pub(super) fn check_unary_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: UnaryExpression,
 ) {
-    if expression.operator(builder.context.ast) != UnaryOperator::Delete {
+    if expression.operator(builder.ast) != UnaryOperator::Delete {
         return;
     }
-    let mut target = unwrap_parentheses(
-        builder.context.ast,
-        expression.argument(builder.context.ast).node_id(),
-    );
-    if let NodeKindData::ChainExpression(chain) = builder.context.ast.kind_data(target) {
-        target = unwrap_parentheses(
-            builder.context.ast,
-            chain.expression(builder.context.ast).node_id(),
-        );
+    let mut target = unwrap_parentheses(builder.ast, expression.argument(builder.ast).node_id());
+    if let NodeKindData::ChainExpression(chain) = builder.ast.kind_data(target) {
+        target = unwrap_parentheses(builder.ast, chain.expression(builder.ast).node_id());
     }
-    match builder.context.ast.kind_data(target) {
-        NodeKindData::IdentifierReference(_) if builder.context.state.scope.is_strict() => {
+    match builder.ast.kind_data(target) {
+        NodeKindData::IdentifierReference(_) if builder.state.scope.is_strict() => {
             builder.report(
-                builder.context.ast.span(expression.node_id()),
+                builder.ast.span(expression.node_id()),
                 "Deleting a variable in strict mode is not allowed",
                 ReportOptions::default(),
             );
         }
         NodeKindData::MemberExpression(member)
-            if !member.computed(builder.context.ast)
+            if !member.computed(builder.ast)
                 && builder
-                    .context
                     .ast
-                    .node_kind(member.property(builder.context.ast).node_id())
+                    .node_kind(member.property(builder.ast).node_id())
                     == NodeKind::PrivateIdentifier =>
         {
             builder.report(
-                builder.context.ast.span(expression.node_id()),
+                builder.ast.span(expression.node_id()),
                 "Private fields cannot be deleted",
                 ReportOptions::default(),
             );
@@ -317,14 +286,11 @@ pub(super) fn check_update_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: UpdateExpression,
 ) {
-    if builder.context.state.scope.is_strict()
-        && is_eval_or_arguments_reference(
-            builder.context.ast,
-            expression.argument(builder.context.ast).node_id(),
-        )
+    if builder.state.scope.is_strict()
+        && is_eval_or_arguments_reference(builder.ast, expression.argument(builder.ast).node_id())
     {
         builder.report(
-            builder.context.ast.span(expression.node_id()),
+            builder.ast.span(expression.node_id()),
             "Cannot assign to 'eval' or 'arguments' in strict mode",
             ReportOptions::default(),
         );
@@ -335,8 +301,8 @@ pub(super) fn check_assignment_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: AssignmentExpression,
 ) {
-    if builder.context.state.scope.is_strict() {
-        builder.check_assign_target_eval_arguments(expression.left(builder.context.ast).node_id());
+    if builder.state.scope.is_strict() {
+        builder.check_assign_target_eval_arguments(expression.left(builder.ast).node_id());
     }
 }
 
@@ -345,37 +311,26 @@ pub(super) fn check_object_expression(
     object: ObjectExpression,
 ) {
     let mut first_proto = None;
-    for property in object.properties(builder.context.ast).iter() {
-        let property = builder
-            .context
-            .ast
-            .get_node_in_sub_range(property)
-            .node_id();
-        let NodeKindData::ObjectProperty(item) = builder.context.ast.kind_data(property) else {
+    for property in object.properties(builder.ast).iter() {
+        let property = builder.ast.get_node_in_sub_range(property).node_id();
+        let NodeKindData::ObjectProperty(item) = builder.ast.kind_data(property) else {
             continue;
         };
-        if item.computed(builder.context.ast)
-            || item.method(builder.context.ast)
-            || item.shorthand(builder.context.ast)
-            || item.kind(builder.context.ast) != swc_next_ecma_ast::PropertyKind::Init
+        if item.computed(builder.ast)
+            || item.method(builder.ast)
+            || item.shorthand(builder.ast)
+            || item.kind(builder.ast) != swc_next_ecma_ast::PropertyKind::Init
         {
             continue;
         }
-        let name = match builder
-            .context
-            .ast
-            .kind_data(item.key(builder.context.ast).node_id())
-        {
+        let name = match builder.ast.kind_data(item.key(builder.ast).node_id()) {
             NodeKindData::IdentifierName(identifier) => builder
-                .context
                 .ast
-                .get_utf8(identifier.name(builder.context.ast))
+                .get_utf8(identifier.name(builder.ast))
                 .as_bytes(),
-            NodeKindData::StringLiteral(string) => builder
-                .context
-                .ast
-                .get_wtf8(string.value(builder.context.ast))
-                .as_bytes(),
+            NodeKindData::StringLiteral(string) => {
+                builder.ast.get_wtf8(string.value(builder.ast)).as_bytes()
+            }
             _ => continue,
         };
         if name != b"__proto__" {
@@ -383,12 +338,11 @@ pub(super) fn check_object_expression(
         }
         if let Some(first) = first_proto {
             builder.report(
-                builder.context.ast.span(property),
+                builder.ast.span(property),
                 "Duplicate '__proto__' property in object literal",
                 ReportOptions {
-                    labels: builder.labels(&[
-                        builder.label(builder.context.ast.span(first), "first defined here")
-                    ]),
+                    labels: builder
+                        .labels(&[builder.label(builder.ast.span(first), "first defined here")]),
                     ..ReportOptions::default()
                 },
             );
@@ -402,12 +356,10 @@ pub(super) fn check_member_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: MemberExpression,
 ) {
-    let object = expression.object(builder.context.ast).node_id();
-    if builder.context.ast.node_kind(object) == NodeKind::Super
-        && !is_super_property_valid(&builder.context)
-    {
+    let object = expression.object(builder.ast).node_id();
+    if builder.ast.node_kind(object) == NodeKind::Super && !is_super_property_valid(builder) {
         builder.report(
-            builder.context.ast.span(expression.node_id()),
+            builder.ast.span(expression.node_id()),
             "'super' property access is only valid inside a method or class body",
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -417,28 +369,27 @@ pub(super) fn check_member_expression(
             },
         );
     }
-    let property = expression.property(builder.context.ast).node_id();
-    if !expression.computed(builder.context.ast)
-        && let NodeKindData::PrivateIdentifier(identifier) = builder.context.ast.kind_data(property)
+    let property = expression.property(builder.ast).node_id();
+    if !expression.computed(builder.ast)
+        && let NodeKindData::PrivateIdentifier(identifier) = builder.ast.kind_data(property)
     {
         let name = builder
-            .context
             .ast
-            .get_utf8(identifier.name(builder.context.ast))
+            .get_utf8(identifier.name(builder.ast))
             .as_bytes();
-        if builder.context.ast.node_kind(object) == NodeKind::Super {
+        if builder.ast.node_kind(object) == NodeKind::Super {
             builder.report(
-                builder.context.ast.span(expression.node_id()),
+                builder.ast.span(expression.node_id()),
                 "'super' keyword unexpected here",
                 ReportOptions::default(),
             );
-        } else if !is_private_name_declared(&builder.context, name) {
+        } else if !is_private_name_declared(builder, name) {
             let message = builder.fmt(format_args!(
                 "Private field '#{}' must be declared in an enclosing class",
                 String::from_utf8_lossy(name)
             ));
             builder.report(
-                builder.context.ast.span(property),
+                builder.ast.span(property),
                 message,
                 ReportOptions::default(),
             );
@@ -447,17 +398,12 @@ pub(super) fn check_member_expression(
 }
 
 pub(super) fn check_call_expression(builder: &mut SemanticBuilder<'_, '_>, call: CallExpression) {
-    if builder
-        .context
-        .ast
-        .node_kind(call.callee(builder.context.ast).node_id())
-        == NodeKind::Super
-    {
+    if builder.ast.node_kind(call.callee(builder.ast).node_id()) == NodeKind::Super {
         let message = "'super()' is only valid in a constructor of a derived class";
-        match super_call_validity(&builder.context) {
+        match super_call_validity(builder) {
             SuperCallValidity::Valid => {}
             SuperCallValidity::NotInConstructor => builder.report(
-                builder.context.ast.span(call.node_id()),
+                builder.ast.span(call.node_id()),
                 message,
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -467,7 +413,7 @@ pub(super) fn check_call_expression(builder: &mut SemanticBuilder<'_, '_>, call:
                 },
             ),
             SuperCallValidity::NoExtends => builder.report(
-                builder.context.ast.span(call.node_id()),
+                builder.ast.span(call.node_id()),
                 message,
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -484,10 +430,10 @@ pub(super) fn check_await_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: AwaitExpression,
 ) {
-    let message = await_expression_error(&builder.context);
+    let message = await_expression_error(builder);
     if let Some(message) = message {
         builder.report(
-            builder.context.ast.span(expression.node_id()),
+            builder.ast.span(expression.node_id()),
             message,
             ReportOptions::default(),
         );
@@ -498,9 +444,9 @@ pub(super) fn check_yield_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: YieldExpression,
 ) {
-    if let Some(message) = yield_expression_error(&builder.context) {
+    if let Some(message) = yield_expression_error(builder) {
         builder.report(
-            builder.context.ast.span(expression.node_id()),
+            builder.ast.span(expression.node_id()),
             message,
             ReportOptions::default(),
         );
@@ -509,19 +455,18 @@ pub(super) fn check_yield_expression(
 
 pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, property: MetaProperty) {
     let name = builder
-        .context
         .ast
-        .get_utf8(property.meta(builder.context.ast).name(builder.context.ast));
-    if name == "import" && !builder.context.ast.is_module() {
+        .get_utf8(property.meta(builder.ast).name(builder.ast));
+    if name == "import" && !builder.ast.is_module() {
         builder.report(
-            builder.context.ast.span(property.node_id()),
+            builder.ast.span(property.node_id()),
             "'import.meta' is only valid in module code",
             ReportOptions::default(),
         );
     }
-    if name == "new" && !is_new_target_available(&builder.context) {
+    if name == "new" && !is_new_target_available(builder) {
         builder.report(
-            builder.context.ast.span(property.node_id()),
+            builder.ast.span(property.node_id()),
             "'new.target' is only valid inside functions, class field initializers, or static blocks",
             ReportOptions::default(),
         );
@@ -531,51 +476,44 @@ pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, propert
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// Walks a destructuring assignment target to find `eval`/`arguments` references.
     fn check_assign_target_eval_arguments(&mut self, node: NodeId) {
-        match self.context.ast.kind_data(node) {
+        match self.ast.kind_data(node) {
             NodeKindData::IdentifierReference(identifier) => {
-                if is_eval_or_arguments(
-                    self.context
-                        .ast
-                        .get_utf8(identifier.name(self.context.ast))
-                        .as_bytes(),
-                ) {
+                if is_eval_or_arguments(self.ast.get_utf8(identifier.name(self.ast)).as_bytes()) {
                     self.report(
-                        self.context.ast.span(node),
+                        self.ast.span(node),
                         "Cannot assign to 'eval' or 'arguments' in strict mode",
                         ReportOptions::default(),
                     );
                 }
             }
             NodeKindData::ArrayPattern(array) => {
-                let elements = array.elements(self.context.ast);
+                let elements = array.elements(self.ast);
                 for index in 0..elements.len() {
-                    if let Some(Some(element)) = elements.get_node(self.context.ast, index) {
+                    if let Some(Some(element)) = elements.get_node(self.ast, index) {
                         self.check_assign_target_eval_arguments(element.node_id());
                     }
                 }
-                if let Some(rest) = array.rest(self.context.ast) {
+                if let Some(rest) = array.rest(self.ast) {
                     self.check_assign_target_eval_arguments(rest.node_id());
                 }
             }
             NodeKindData::ObjectPattern(object) => {
-                let properties = object.properties(self.context.ast);
+                let properties = object.properties(self.ast);
                 for index in 0..properties.len() {
                     let property = properties
-                        .get_node(self.context.ast, index)
+                        .get_node(self.ast, index)
                         .expect("object pattern property exists");
-                    self.check_assign_target_eval_arguments(
-                        property.value(self.context.ast).node_id(),
-                    );
+                    self.check_assign_target_eval_arguments(property.value(self.ast).node_id());
                 }
-                if let Some(rest) = object.rest(self.context.ast) {
+                if let Some(rest) = object.rest(self.ast) {
                     self.check_assign_target_eval_arguments(rest.node_id());
                 }
             }
             NodeKindData::AssignmentPattern(pattern) => {
-                self.check_assign_target_eval_arguments(pattern.left(self.context.ast).node_id());
+                self.check_assign_target_eval_arguments(pattern.left(self.ast).node_id());
             }
             NodeKindData::BindingRestElement(rest) => {
-                self.check_assign_target_eval_arguments(rest.argument(self.context.ast).node_id());
+                self.check_assign_target_eval_arguments(rest.argument(self.ast).node_id());
             }
             _ => {}
         }
@@ -597,13 +535,13 @@ fn unwrap_parentheses(tree: &Ast<'_>, node: NodeId) -> NodeId {
     }
 }
 
-fn await_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static str> {
+fn await_expression_error(builder: &SemanticBuilder<'_, '_>) -> Option<&'static str> {
     const OUTSIDE_ASYNC: &str =
         "Await expressions are only allowed within async functions and at the top level of modules";
 
-    let mut child = context.current_node()?;
-    for ancestor in context.ancestors().skip(1) {
-        match context.ast.kind_data(ancestor) {
+    let mut child = builder.current_node()?;
+    for ancestor in builder.ancestors().skip(1) {
+        match builder.ast.kind_data(ancestor) {
             NodeKindData::FormalParameters(_) => {
                 return Some("Await expression is not allowed in formal parameters");
             }
@@ -615,19 +553,19 @@ fn await_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static
             | NodeKindData::TsModuleDeclaration(_) => return Some(OUTSIDE_ASYNC),
             NodeKindData::PropertyDefinition(property)
                 if property
-                    .value(context.ast)
+                    .value(builder.ast)
                     .is_some_and(|value| value.node_id() == child) =>
             {
                 return Some(OUTSIDE_ASYNC);
             }
             NodeKindData::Function(function) => {
-                return (!function.r#async(context.ast)).then_some(OUTSIDE_ASYNC);
+                return (!function.r#async(builder.ast)).then_some(OUTSIDE_ASYNC);
             }
             NodeKindData::ArrowFunctionExpression(function) => {
-                return (!function.r#async(context.ast)).then_some(OUTSIDE_ASYNC);
+                return (!function.r#async(builder.ast)).then_some(OUTSIDE_ASYNC);
             }
             NodeKindData::Program(_) => {
-                return (context.ast.source_type() != swc_next_ecma_ast::SourceType::Module)
+                return (builder.ast.source_type() != swc_next_ecma_ast::SourceType::Module)
                     .then_some(OUTSIDE_ASYNC);
             }
             _ => {}
@@ -637,12 +575,12 @@ fn await_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static
     Some(OUTSIDE_ASYNC)
 }
 
-fn yield_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static str> {
+fn yield_expression_error(builder: &SemanticBuilder<'_, '_>) -> Option<&'static str> {
     const OUTSIDE_GENERATOR: &str = "A yield expression is only allowed in a generator body";
 
-    let mut child = context.current_node()?;
-    for ancestor in context.ancestors().skip(1) {
-        match context.ast.kind_data(ancestor) {
+    let mut child = builder.current_node()?;
+    for ancestor in builder.ancestors().skip(1) {
+        match builder.ast.kind_data(ancestor) {
             NodeKindData::FormalParameters(_) => {
                 return Some("Yield expression is not allowed in formal parameters");
             }
@@ -654,13 +592,13 @@ fn yield_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static
             | NodeKindData::Program(_) => return Some(OUTSIDE_GENERATOR),
             NodeKindData::PropertyDefinition(property)
                 if property
-                    .value(context.ast)
+                    .value(builder.ast)
                     .is_some_and(|value| value.node_id() == child) =>
             {
                 return Some(OUTSIDE_GENERATOR);
             }
             NodeKindData::Function(function) => {
-                return (!function.generator(context.ast)).then_some(OUTSIDE_GENERATOR);
+                return (!function.generator(builder.ast)).then_some(OUTSIDE_GENERATOR);
             }
             _ => {}
         }
@@ -673,17 +611,17 @@ pub(super) fn check_variable_declaration(
     builder: &mut SemanticBuilder<'_, '_>,
     declaration: VariableDeclaration,
 ) {
-    let kind = declaration.kind(builder.context.ast);
+    let kind = declaration.kind(builder.ast);
     if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing)
-        && builder.context.ast.source_type() == swc_next_ecma_ast::SourceType::Script
-        && is_at_program_level(&builder.context)
+        && builder.ast.source_type() == swc_next_ecma_ast::SourceType::Script
+        && is_at_program_level(builder)
     {
         let message = builder.fmt(format_args!(
             "'{}' is not allowed at the top level of a script",
             kind.as_str()
         ));
         builder.report(
-            builder.context.ast.span(declaration.node_id()),
+            builder.ast.span(declaration.node_id()),
             message,
             ReportOptions::default(),
         );
@@ -695,20 +633,19 @@ pub(super) fn check_switch_statement(
     statement: SwitchStatement,
 ) {
     let mut first_default = None;
-    for case in statement.cases(builder.context.ast).iter() {
-        let case = builder.context.ast.get_node_in_sub_range(case);
-        if case.test(builder.context.ast).is_some() {
+    for case in statement.cases(builder.ast).iter() {
+        let case = builder.ast.get_node_in_sub_range(case);
+        if case.test(builder.ast).is_some() {
             continue;
         }
         if let Some(first) = first_default {
             builder.report(
-                builder.context.ast.span(case.node_id()),
+                builder.ast.span(case.node_id()),
                 "A switch statement can only have one default clause",
                 ReportOptions {
-                    labels: builder.labels(&[builder.label(
-                        builder.context.ast.span(first),
-                        "first default defined here",
-                    )]),
+                    labels: builder.labels(&[
+                        builder.label(builder.ast.span(first), "first default defined here")
+                    ]),
                     ..ReportOptions::default()
                 },
             );
@@ -722,9 +659,9 @@ pub(super) fn check_for_in_statement(
     builder: &mut SemanticBuilder<'_, '_>,
     statement: ForInStatement,
 ) {
-    let left = statement.left(builder.context.ast).node_id();
+    let left = statement.left(builder.ast).node_id();
     builder.check_for_in_of_initializer(left, true);
-    if builder.context.state.scope.is_strict() {
+    if builder.state.scope.is_strict() {
         builder.check_assign_target_eval_arguments(left);
     }
 }
@@ -733,19 +670,16 @@ pub(super) fn check_for_of_statement(
     builder: &mut SemanticBuilder<'_, '_>,
     statement: ForOfStatement,
 ) {
-    if statement.r#await(builder.context.ast)
-        && !builder.context.ast.is_ts()
-        && is_inside_static_block(&builder.context)
-    {
+    if statement.r#await(builder.ast) && !builder.ast.is_ts() && is_inside_static_block(builder) {
         builder.report(
-            builder.context.ast.span(statement.node_id()),
+            builder.ast.span(statement.node_id()),
             "Cannot use 'for await' in class static initialization block",
             ReportOptions::default(),
         );
     }
-    let left = statement.left(builder.context.ast).node_id();
+    let left = statement.left(builder.ast).node_id();
     builder.check_for_in_of_initializer(left, false);
-    if builder.context.state.scope.is_strict() {
+    if builder.state.scope.is_strict() {
         builder.check_assign_target_eval_arguments(left);
     }
 }
@@ -754,13 +688,9 @@ pub(super) fn check_break_statement(
     builder: &mut SemanticBuilder<'_, '_>,
     statement: BreakStatement,
 ) {
-    if let Some(label) = statement.label(builder.context.ast) {
-        let name = builder
-            .context
-            .ast
-            .get_utf8(label.name(builder.context.ast))
-            .as_bytes();
-        let result = find_label(&builder.context, name);
+    if let Some(label) = statement.label(builder.ast) {
+        let name = builder.ast.get_utf8(label.name(builder.ast)).as_bytes();
+        let result = find_label(builder, name);
         if result != LabelSearch::Found {
             let message = match result {
                 LabelSearch::NotFound => builder.fmt(format_args!(
@@ -774,14 +704,14 @@ pub(super) fn check_break_statement(
                 LabelSearch::Found => unreachable!(),
             };
             builder.report(
-                builder.context.ast.span(statement.node_id()),
+                builder.ast.span(statement.node_id()),
                 message,
                 ReportOptions::default(),
             );
         }
-    } else if !is_inside_breakable(&builder.context) {
+    } else if !is_inside_breakable(builder) {
         builder.report(
-            builder.context.ast.span(statement.node_id()),
+            builder.ast.span(statement.node_id()),
             "Illegal break statement",
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -797,13 +727,9 @@ pub(super) fn check_continue_statement(
     builder: &mut SemanticBuilder<'_, '_>,
     statement: ContinueStatement,
 ) {
-    if let Some(label) = statement.label(builder.context.ast) {
-        let name = builder
-            .context
-            .ast
-            .get_utf8(label.name(builder.context.ast))
-            .as_bytes();
-        let result = find_label_for_continue(&builder.context, name);
+    if let Some(label) = statement.label(builder.ast) {
+        let name = builder.ast.get_utf8(label.name(builder.ast)).as_bytes();
+        let result = find_label_for_continue(builder, name);
         if result != ContinueLabelSearch::Found {
             let (message, help) = match result {
                 ContinueLabelSearch::NotFound => (
@@ -832,7 +758,7 @@ pub(super) fn check_continue_statement(
                 ContinueLabelSearch::Found => unreachable!(),
             };
             builder.report(
-                builder.context.ast.span(statement.node_id()),
+                builder.ast.span(statement.node_id()),
                 message,
                 ReportOptions {
                     help,
@@ -840,9 +766,9 @@ pub(super) fn check_continue_statement(
                 },
             );
         }
-    } else if !is_inside_iteration(&builder.context) {
+    } else if !is_inside_iteration(builder) {
         builder.report(
-            builder.context.ast.span(statement.node_id()),
+            builder.ast.span(statement.node_id()),
             "Illegal continue statement",
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -859,25 +785,19 @@ pub(super) fn check_labeled_statement(
     statement: LabeledStatement,
 ) {
     let name = builder
-        .context
         .ast
-        .get_utf8(
-            statement
-                .label(builder.context.ast)
-                .name(builder.context.ast),
-        )
+        .get_utf8(statement.label(builder.ast).name(builder.ast))
         .as_bytes();
     let duplicate = {
-        let mut ancestors = builder.context.ancestors();
+        let mut ancestors = builder.ancestors();
         let _ = ancestors.next();
         let mut duplicate = false;
         for ancestor in ancestors {
-            match builder.context.ast.kind_data(ancestor) {
+            match builder.ast.kind_data(ancestor) {
                 NodeKindData::LabeledStatement(outer) => {
                     let outer_name = builder
-                        .context
                         .ast
-                        .get_utf8(outer.label(builder.context.ast).name(builder.context.ast))
+                        .get_utf8(outer.label(builder.ast).name(builder.ast))
                         .as_bytes();
                     if outer_name == name {
                         duplicate = true;
@@ -897,10 +817,7 @@ pub(super) fn check_labeled_statement(
             String::from_utf8_lossy(name)
         ));
         builder.report(
-            builder
-                .context
-                .ast
-                .span(statement.label(builder.context.ast).node_id()),
+            builder.ast.span(statement.label(builder.ast).node_id()),
             message,
             ReportOptions::default(),
         );
@@ -911,9 +828,9 @@ pub(super) fn check_with_statement(
     builder: &mut SemanticBuilder<'_, '_>,
     statement: WithStatement,
 ) {
-    if builder.context.state.scope.is_strict() {
+    if builder.state.scope.is_strict() {
         builder.report(
-            builder.context.ast.span(statement.node_id()),
+            builder.ast.span(statement.node_id()),
             "'with' statements are not allowed in strict mode",
             ReportOptions::default(),
         );
@@ -924,38 +841,34 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// 14.7.5.1 ForBinding must contain exactly one BoundName and, outside
     /// Annex B.3.5, may not have an Initializer.
     fn check_for_in_of_initializer(&mut self, left: NodeId, is_for_in: bool) {
-        let NodeKindData::VariableDeclaration(declaration) = self.context.ast.kind_data(left)
-        else {
+        let NodeKindData::VariableDeclaration(declaration) = self.ast.kind_data(left) else {
             return;
         };
-        let declarators = declaration.declarators(self.context.ast);
+        let declarators = declaration.declarators(self.ast);
         if declarators.len() > 1 {
             self.report(
-                self.context.ast.span(left),
+                self.ast.span(left),
                 "Only a single variable declaration is allowed in a for-in/of statement",
                 ReportOptions::default(),
             );
             return;
         }
         for declarator in declarators.iter() {
-            let declarator = self.context.ast.get_node_in_sub_range(declarator);
-            if declarator.init(self.context.ast).is_none() {
+            let declarator = self.ast.get_node_in_sub_range(declarator);
+            if declarator.init(self.ast).is_none() {
                 continue;
             }
             let annex_b = is_for_in
-                && !self.context.ast.is_ts()
-                && declaration.kind(self.context.ast) == VariableKind::Var
-                && !self.context.state.scope.is_strict()
-                && self
-                    .context
-                    .ast
-                    .node_kind(declarator.id(self.context.ast).node_id())
+                && !self.ast.is_ts()
+                && declaration.kind(self.ast) == VariableKind::Var
+                && !self.state.scope.is_strict()
+                && self.ast.node_kind(declarator.id(self.ast).node_id())
                     == NodeKind::BindingIdentifier;
             if annex_b {
                 continue;
             }
             self.report(
-                self.context.ast.span(declarator.node_id()),
+                self.ast.span(declarator.node_id()),
                 "for-in/of loop variable declaration may not have an initializer",
                 ReportOptions::default(),
             );
@@ -982,9 +895,9 @@ fn is_iteration(kind: NodeKind) -> bool {
     )
 }
 
-fn is_inside_breakable(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    for ancestor in context.ancestors() {
-        let kind = context.ast.node_kind(ancestor);
+fn is_inside_breakable(builder: &SemanticBuilder<'_, '_>) -> bool {
+    for ancestor in builder.ancestors() {
+        let kind = builder.ast.node_kind(ancestor);
         if is_iteration(kind) || kind == NodeKind::SwitchStatement {
             return true;
         }
@@ -995,9 +908,9 @@ fn is_inside_breakable(context: &SemanticVisitCtx<'_, '_>) -> bool {
     false
 }
 
-fn is_inside_iteration(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    for ancestor in context.ancestors() {
-        let kind = context.ast.node_kind(ancestor);
+fn is_inside_iteration(builder: &SemanticBuilder<'_, '_>) -> bool {
+    for ancestor in builder.ancestors() {
+        let kind = builder.ast.node_kind(ancestor);
         if is_iteration(kind) {
             return true;
         }
@@ -1015,15 +928,15 @@ enum LabelSearch {
     CrossedBoundary,
 }
 
-fn find_label(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> LabelSearch {
+fn find_label(builder: &SemanticBuilder<'_, '_>, name: &[u8]) -> LabelSearch {
     debug_assert!(!name.is_empty());
     let mut crossed_boundary = false;
-    for ancestor in context.ancestors() {
-        match context.ast.kind_data(ancestor) {
+    for ancestor in builder.ancestors() {
+        match builder.ast.kind_data(ancestor) {
             NodeKindData::LabeledStatement(statement) => {
-                let label = context
+                let label = builder
                     .ast
-                    .get_utf8(statement.label(context.ast).name(context.ast))
+                    .get_utf8(statement.label(builder.ast).name(builder.ast))
                     .as_bytes();
                 if label == name {
                     return if crossed_boundary {
@@ -1050,21 +963,21 @@ enum ContinueLabelSearch {
     NotIteration,
 }
 
-fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> ContinueLabelSearch {
+fn find_label_for_continue(builder: &SemanticBuilder<'_, '_>, name: &[u8]) -> ContinueLabelSearch {
     debug_assert!(!name.is_empty());
     let mut crossed_boundary = false;
-    for ancestor in context.ancestors() {
-        match context.ast.kind_data(ancestor) {
+    for ancestor in builder.ancestors() {
+        match builder.ast.kind_data(ancestor) {
             NodeKindData::LabeledStatement(statement) => {
-                let label = context
+                let label = builder
                     .ast
-                    .get_utf8(statement.label(context.ast).name(context.ast))
+                    .get_utf8(statement.label(builder.ast).name(builder.ast))
                     .as_bytes();
                 if label == name {
                     if crossed_boundary {
                         return ContinueLabelSearch::CrossedBoundary;
                     }
-                    let body = context.ast.node_kind(statement.body(context.ast).node_id());
+                    let body = builder.ast.node_kind(statement.body(builder.ast).node_id());
                     return if is_iteration(body) || body == NodeKind::LabeledStatement {
                         ContinueLabelSearch::Found
                     } else {
@@ -1082,19 +995,19 @@ fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> C
 }
 
 pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Function) {
-    if function.function_type(builder.context.ast) != FunctionType::FunctionDeclaration {
+    if function.function_type(builder.ast) != FunctionType::FunctionDeclaration {
         return;
     }
-    let strict = builder.context.state.scope.is_strict();
+    let strict = builder.state.scope.is_strict();
     let mut through_labels = false;
-    let mut ancestors = builder.context.ancestors();
+    let mut ancestors = builder.ancestors();
     let _ = ancestors.next();
     let parent = loop {
         let Some(parent) = ancestors.next() else {
             return;
         };
-        if builder.context.ast.node_kind(parent) != NodeKind::LabeledStatement {
-            break builder.context.ast.node_kind(parent);
+        if builder.ast.node_kind(parent) != NodeKind::LabeledStatement {
+            break builder.ast.node_kind(parent);
         }
         through_labels = true;
     };
@@ -1119,7 +1032,7 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
             "In non-strict mode code, functions can only be declared at top level, inside a block, or as the body of an if statement"
         };
         builder.report(
-            builder.context.ast.span(function.node_id()),
+            builder.ast.span(function.node_id()),
             message,
             ReportOptions::default(),
         );
@@ -1127,29 +1040,22 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
 }
 
 pub(super) fn check_directive(builder: &mut SemanticBuilder<'_, '_>, directive: Directive) {
-    if builder
-        .context
-        .ast
-        .get_utf8(directive.value(builder.context.ast))
-        != "use strict"
-    {
+    if builder.ast.get_utf8(directive.value(builder.ast)) != "use strict" {
         return;
     }
     let mut parameter = None;
-    for node in builder.context.ancestors() {
-        match builder.context.ast.kind_data(node) {
+    for node in builder.ancestors() {
+        match builder.ast.kind_data(node) {
             NodeKindData::Function(function) => {
                 parameter = ecmascript::find_non_simple_parameter(
-                    builder.context.ast,
-                    function.params(builder.context.ast),
+                    builder.ast,
+                    function.params(builder.ast),
                 );
                 break;
             }
             NodeKindData::ArrowFunctionExpression(arrow) => {
-                parameter = ecmascript::find_non_simple_parameter(
-                    builder.context.ast,
-                    arrow.params(builder.context.ast),
-                );
+                parameter =
+                    ecmascript::find_non_simple_parameter(builder.ast, arrow.params(builder.ast));
                 break;
             }
             NodeKindData::Program(_) => break,
@@ -1158,12 +1064,11 @@ pub(super) fn check_directive(builder: &mut SemanticBuilder<'_, '_>, directive: 
     }
     if let Some(parameter) = parameter {
         builder.report(
-            builder.context.ast.span(directive.node_id()),
+            builder.ast.span(directive.node_id()),
             "Illegal 'use strict' directive in function with non-simple parameter list",
             ReportOptions {
-                labels: builder.labels(&[
-                    builder.label(builder.context.ast.span(parameter), "non-simple parameter")
-                ]),
+                labels: builder
+                    .labels(&[builder.label(builder.ast.span(parameter), "non-simple parameter")]),
                 ..ReportOptions::default()
             },
         );
@@ -1171,71 +1076,65 @@ pub(super) fn check_directive(builder: &mut SemanticBuilder<'_, '_>, directive: 
 }
 
 pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: ClassBody) {
-    let children = body.body(builder.context.ast);
+    let children = body.body(builder.ast);
     let mut first_constructor = None;
     for index in 0..children.len() {
         let child = children
-            .get_node(builder.context.ast, index)
+            .get_node(builder.ast, index)
             .expect("class child exists")
             .node_id();
         // TypeScript permits constructor overload declarations and leaves duplicate
         // implementation diagnostics to its type checker.
-        if !builder.context.ast.is_ts()
-            && let NodeKindData::MethodDefinition(method) = builder.context.ast.kind_data(child)
-            && method.kind(builder.context.ast)
-                == swc_next_ecma_ast::MethodDefinitionKind::Constructor
+        if !builder.ast.is_ts()
+            && let NodeKindData::MethodDefinition(method) = builder.ast.kind_data(child)
+            && method.kind(builder.ast) == swc_next_ecma_ast::MethodDefinitionKind::Constructor
         {
             if let Some(first) = first_constructor {
                 builder.report(
-                    builder
-                        .context
-                        .ast
-                        .span(method.key(builder.context.ast).node_id()),
+                    builder.ast.span(method.key(builder.ast).node_id()),
                     "A class can only have one constructor",
                     ReportOptions {
-                        labels: builder.labels(&[builder.label(
-                            builder.context.ast.span(first),
-                            "first constructor defined here",
-                        )]),
+                        labels: builder.labels(&[builder
+                            .label(builder.ast.span(first), "first constructor defined here")]),
                         ..ReportOptions::default()
                     },
                 );
             } else {
-                first_constructor = Some(method.key(builder.context.ast).node_id());
+                first_constructor = Some(method.key(builder.ast).node_id());
             }
         }
         // Body-less TypeScript methods are erased overload signatures. They do not
         // introduce runtime private names and must not conflict with the implementation.
-        if builder.context.ast.node_kind(child) == NodeKind::TsMethodDefinition {
+        if builder.ast.node_kind(child) == NodeKind::TsMethodDefinition {
             continue;
         }
-        let Some(name) = private_element_name(builder.context.ast, child) else {
+        let Some(name) = private_element_name(builder.ast, child) else {
             continue;
         };
-        let kind = private_element_kind(builder.context.ast, child);
+        let kind = private_element_kind(builder.ast, child);
         for previous_index in 0..index {
             let previous = children
-                .get_node(builder.context.ast, previous_index)
+                .get_node(builder.ast, previous_index)
                 .expect("class child exists")
                 .node_id();
-            if builder.context.ast.node_kind(previous) == NodeKind::TsMethodDefinition {
+            if builder.ast.node_kind(previous) == NodeKind::TsMethodDefinition {
                 continue;
             }
-            let Some(previous_name) = private_element_name(builder.context.ast, previous) else {
+            let Some(previous_name) = private_element_name(builder.ast, previous) else {
                 continue;
             };
             if previous_name != name {
                 continue;
             }
-            let previous_kind = private_element_kind(builder.context.ast, previous);
+            let previous_kind = private_element_kind(builder.ast, previous);
             let get_set_pair = matches!(
                 (previous_kind, kind),
                 (PrivateElementKind::Getter, PrivateElementKind::Setter)
                     | (PrivateElementKind::Setter, PrivateElementKind::Getter)
             );
             if get_set_pair
-                && private_element_is_static(builder.context.ast, previous)
-                    == private_element_is_static(builder.context.ast, child)
+                && private_element_is_static(builder.ast, previous)
+                    == private_element_is_static(builder.ast, child)
             {
                 continue;
             }
@@ -1244,12 +1143,12 @@ pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: Clas
                 String::from_utf8_lossy(name)
             ));
             builder.report(
-                builder.context.ast.span(child),
+                builder.ast.span(child),
                 message,
                 ReportOptions {
-                    labels: builder
-                        .labels(&[builder
-                            .label(builder.context.ast.span(previous), "first declared here")]),
+                    labels: builder.labels(&[
+                        builder.label(builder.ast.span(previous), "first declared here")
+                    ]),
                     ..ReportOptions::default()
                 },
             );
@@ -1305,14 +1204,14 @@ fn private_element_is_static(tree: &Ast<'_>, node: NodeId) -> bool {
 
 /// 15.7.7 AllPrivateIdentifiersValid. Walks ancestor ClassBody nodes,
 /// collecting PrivateBoundIdentifiers at each level.
-fn is_private_name_declared(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> bool {
-    for ancestor in context.ancestors() {
-        let NodeKindData::ClassBody(body) = context.ast.kind_data(ancestor) else {
+fn is_private_name_declared(builder: &SemanticBuilder<'_, '_>, name: &[u8]) -> bool {
+    for ancestor in builder.ancestors() {
+        let NodeKindData::ClassBody(body) = builder.ast.kind_data(ancestor) else {
             continue;
         };
-        for child in body.body(context.ast).iter() {
-            let child = context.ast.get_node_in_sub_range(child).node_id();
-            if private_element_name(context.ast, child) == Some(name) {
+        for child in body.body(builder.ast).iter() {
+            let child = builder.ast.get_node_in_sub_range(child).node_id();
+            if private_element_name(builder.ast, child) == Some(name) {
                 return true;
             }
         }
@@ -1329,20 +1228,20 @@ enum SuperCallValidity {
 
 /// `super()` is permitted only inside a constructor of a derived class.
 /// Arrow functions are transparent (Section 8.5.1); regular functions are opaque.
-fn super_call_validity(context: &SemanticVisitCtx<'_, '_>) -> SuperCallValidity {
-    let mut ancestors = context.ancestors();
+fn super_call_validity(builder: &SemanticBuilder<'_, '_>) -> SuperCallValidity {
+    let mut ancestors = builder.ancestors();
     while let Some(ancestor) = ancestors.next() {
-        match context.ast.node_kind(ancestor) {
+        match builder.ast.node_kind(ancestor) {
             NodeKind::ArrowFunctionExpression => {}
             NodeKind::Function => {
                 if let Some(parent) = ancestors.next()
-                    && let NodeKindData::MethodDefinition(method) = context.ast.kind_data(parent)
-                    && method.kind(context.ast)
+                    && let NodeKindData::MethodDefinition(method) = builder.ast.kind_data(parent)
+                    && method.kind(builder.ast)
                         == swc_next_ecma_ast::MethodDefinitionKind::Constructor
                 {
                     for class in ancestors {
-                        if let NodeKindData::Class(class) = context.ast.kind_data(class) {
-                            return if class.super_class(context.ast).is_some() {
+                        if let NodeKindData::Class(class) = builder.ast.kind_data(class) {
+                            return if class.super_class(builder.ast).is_some() {
                                 SuperCallValidity::Valid
                             } else {
                                 SuperCallValidity::NoExtends
@@ -1363,18 +1262,18 @@ fn super_call_validity(context: &SemanticVisitCtx<'_, '_>) -> SuperCallValidity 
 
 /// `super.property` is valid in class methods, object methods, field
 /// initializers, static blocks, and arrows inheriting from those contexts.
-fn is_super_property_valid(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    let mut ancestors = context.ancestors();
+fn is_super_property_valid(builder: &SemanticBuilder<'_, '_>) -> bool {
+    let mut ancestors = builder.ancestors();
     while let Some(ancestor) = ancestors.next() {
-        match context.ast.node_kind(ancestor) {
+        match builder.ast.node_kind(ancestor) {
             NodeKind::ArrowFunctionExpression => {}
             NodeKind::Function => {
                 if let Some(parent) = ancestors.next() {
-                    match context.ast.kind_data(parent) {
+                    match builder.ast.kind_data(parent) {
                         NodeKindData::MethodDefinition(_) => return true,
                         NodeKindData::ObjectProperty(property)
-                            if property.method(context.ast)
-                                || property.kind(context.ast)
+                            if property.method(builder.ast)
+                                || property.kind(builder.ast)
                                     != swc_next_ecma_ast::PropertyKind::Init =>
                         {
                             return true;
@@ -1392,9 +1291,9 @@ fn is_super_property_valid(context: &SemanticVisitCtx<'_, '_>) -> bool {
     false
 }
 
-fn is_new_target_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    for ancestor in context.ancestors() {
-        match context.ast.node_kind(ancestor) {
+fn is_new_target_available(builder: &SemanticBuilder<'_, '_>) -> bool {
+    for ancestor in builder.ancestors() {
+        match builder.ast.node_kind(ancestor) {
             NodeKind::Function | NodeKind::StaticBlock | NodeKind::PropertyDefinition => {
                 return true;
             }
@@ -1403,13 +1302,13 @@ fn is_new_target_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
         }
     }
     // CommonJS top level is a function body.
-    context.ast.source_type() == swc_next_ecma_ast::SourceType::CommonJs
+    builder.ast.source_type() == swc_next_ecma_ast::SourceType::CommonJs
 }
 
 // True when the nearest enclosing boundary is a static block.
-fn is_inside_static_block(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    for ancestor in context.ancestors() {
-        match context.ast.node_kind(ancestor) {
+fn is_inside_static_block(builder: &SemanticBuilder<'_, '_>) -> bool {
+    for ancestor in builder.ancestors() {
+        match builder.ast.node_kind(ancestor) {
             NodeKind::StaticBlock => return true,
             NodeKind::Function | NodeKind::ArrowFunctionExpression => return false,
             _ => {}
@@ -1420,14 +1319,14 @@ fn is_inside_static_block(context: &SemanticVisitCtx<'_, '_>) -> bool {
 
 /// `arguments` is available inside regular functions but not in class field
 /// initializers or static blocks (arrow functions are transparent).
-fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
+fn is_arguments_available(builder: &SemanticBuilder<'_, '_>) -> bool {
     let mut child = None;
-    for ancestor in context.ancestors() {
-        match context.ast.kind_data(ancestor) {
+    for ancestor in builder.ancestors() {
+        match builder.ast.kind_data(ancestor) {
             NodeKindData::Function(_) => return true,
             NodeKindData::PropertyDefinition(property) => {
                 if property
-                    .value(context.ast)
+                    .value(builder.ast)
                     .is_some_and(|value| Some(value.node_id()) == child)
                 {
                     return false;
@@ -1455,7 +1354,7 @@ pub(super) fn check_import_declaration(
         "import statement",
         "'import' declaration",
     );
-    builder.check_duplicate_with_attributes(declaration.attributes(builder.context.ast));
+    builder.check_duplicate_with_attributes(declaration.attributes(builder.ast));
 }
 
 pub(super) fn check_export_named_declaration(
@@ -1467,18 +1366,16 @@ pub(super) fn check_export_named_declaration(
         "'export' declaration",
         "'export' declaration",
     );
-    builder.check_duplicate_with_attributes(declaration.attributes(builder.context.ast));
+    builder.check_duplicate_with_attributes(declaration.attributes(builder.ast));
 }
 
 pub(super) fn check_export_default_declaration(
     builder: &mut SemanticBuilder<'_, '_>,
     declaration: ExportDefaultDeclaration,
 ) {
-    let export = declaration.declaration(builder.context.ast);
-    if let ExportDefaultDeclarationKindData::Expr(expression) = builder
-        .context
-        .ast
-        .export_default_declaration_kind_data(export)
+    let export = declaration.declaration(builder.ast);
+    if let ExportDefaultDeclarationKindData::Expr(expression) =
+        builder.ast.export_default_declaration_kind_data(export)
     {
         ts::check_ts_ambient_export_assignment_expression(builder, expression.node_id());
     }
@@ -1499,35 +1396,31 @@ pub(super) fn check_export_all_declaration(
         "'export *' declaration",
         "'export *' declaration",
     );
-    if let Some(exported) = declaration.exported(builder.context.ast) {
-        let name = module_export_name(builder.context.ast, exported.node_id());
+    if let Some(exported) = declaration.exported(builder.ast) {
+        let name = module_export_name(builder.ast, exported.node_id());
         builder.record_exported_name(name, declaration.node_id());
     }
-    builder.check_duplicate_with_attributes(declaration.attributes(builder.context.ast));
+    builder.check_duplicate_with_attributes(declaration.attributes(builder.ast));
 }
 
 pub(super) fn check_export_specifier(
     builder: &mut SemanticBuilder<'_, '_>,
     specifier: ExportSpecifier,
 ) {
-    let exported_name = module_export_name(
-        builder.context.ast,
-        specifier.exported(builder.context.ast).node_id(),
-    );
+    let exported_name = module_export_name(builder.ast, specifier.exported(builder.ast).node_id());
     builder.record_exported_name(exported_name, specifier.node_id());
     // TypeScript export targets, including global augmentation members, are
     // resolved and checked together after traversal by the alias pass.
-    if builder.context.ast.is_ts()
-        || specifier.export_kind(builder.context.ast) == ImportOrExportKind::Type
-        || builder.context.state.in_ts_namespace()
+    if builder.ast.is_ts()
+        || specifier.export_kind(builder.ast) == ImportOrExportKind::Type
+        || builder.state.in_ts_namespace()
     {
         return;
     }
-    if let Some(parent) = builder.context.parent()
-        && let NodeKindData::ExportNamedDeclaration(declaration) =
-            builder.context.ast.kind_data(parent)
-        && declaration.source(builder.context.ast).is_none()
-        && declaration.export_kind(builder.context.ast) != ImportOrExportKind::Type
+    if let Some(parent) = builder.parent()
+        && let NodeKindData::ExportNamedDeclaration(declaration) = builder.ast.kind_data(parent)
+        && declaration.source(builder.ast).is_none()
+        && declaration.export_kind(builder.ast) != ImportOrExportKind::Type
     {
         builder.export_specifiers.push(specifier);
     }
@@ -1537,20 +1430,14 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// Post-traversal check that all local export specifiers refer to
     /// declared bindings.
     fn check_unresolved_exports(&mut self) {
-        let tree = self.context.ast;
+        let tree = self.ast;
         if !tree.is_module() {
             return;
         }
         for index in 0..self.export_specifiers.len() {
             let specifier = self.export_specifiers[index];
             let name = module_export_name(tree, specifier.local(tree).node_id());
-            if self
-                .context
-                .state
-                .symbols
-                .binding(ScopeId::MODULE, name)
-                .is_none()
-            {
+            if self.state.symbols.binding(ScopeId::MODULE, name).is_none() {
                 self.report_unresolved_export(tree, name, specifier.node_id());
             }
         }
@@ -1562,11 +1449,11 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         out_of_module_label: &'static str,
         top_level_label: &'static str,
     ) {
-        let Some(parent) = self.context.parent() else {
+        let Some(parent) = self.parent() else {
             return;
         };
-        let message = match self.context.ast.node_kind(parent) {
-            NodeKind::Program if !self.context.ast.is_module() => Some(self.fmt(format_args!(
+        let message = match self.ast.node_kind(parent) {
+            NodeKind::Program if !self.ast.is_module() => Some(self.fmt(format_args!(
                 "Cannot use {} outside a module",
                 out_of_module_label
             ))),
@@ -1577,11 +1464,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             ))),
         };
         if let Some(message) = message {
-            self.report(
-                self.context.ast.span(node),
-                message,
-                ReportOptions::default(),
-            );
+            self.report(self.ast.span(node), message, ReportOptions::default());
         }
     }
 
@@ -1591,19 +1474,18 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     ) {
         for index in 0..attributes.len() {
             let attribute = attributes
-                .get_node(self.context.ast, index)
+                .get_node(self.ast, index)
                 .expect("import attribute exists");
-            let key = attribute.key(self.context.ast).node_id();
-            let Some(key_name) = import_attribute_name(self.context.ast, key) else {
+            let key = attribute.key(self.ast).node_id();
+            let Some(key_name) = import_attribute_name(self.ast, key) else {
                 continue;
             };
             for previous_index in 0..index {
                 let previous = attributes
-                    .get_node(self.context.ast, previous_index)
+                    .get_node(self.ast, previous_index)
                     .expect("import attribute exists");
-                let previous_key = previous.key(self.context.ast).node_id();
-                let Some(previous_key_name) = import_attribute_name(self.context.ast, previous_key)
-                else {
+                let previous_key = previous.key(self.ast).node_id();
+                let Some(previous_key_name) = import_attribute_name(self.ast, previous_key) else {
                     continue;
                 };
                 if key_name == previous_key_name {
@@ -1612,11 +1494,11 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                         String::from_utf8_lossy(key_name)
                     ));
                     self.report(
-                        self.context.ast.span(key),
+                        self.ast.span(key),
                         message,
                         ReportOptions {
                             labels: self.labels(&[
-                                self.label(self.context.ast.span(previous_key), "first used here")
+                                self.label(self.ast.span(previous_key), "first used here")
                             ]),
                             ..ReportOptions::default()
                         },
@@ -1630,12 +1512,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     /// Records an exported name and reports a duplicate if one already exists.
     fn record_exported_name(&mut self, name: &'traverse [u8], node: NodeId) {
         // TypeScript declarations can merge across the type and value namespaces. Duplicate
-        // exports are therefore builder diagnostics rather than parser-level early errors.
-        if self.context.ast.is_ts() {
+        // exports are therefore checker diagnostics rather than parser-level early errors.
+        if self.ast.is_ts() {
             return;
         }
         // Exports inside a TS namespace are namespace-scoped, not module-scoped.
-        if !self.context.ast.is_module() || self.context.state.in_ts_namespace() {
+        if !self.ast.is_module() || self.state.in_ts_namespace() {
             return;
         }
         let first = match self.exported_names.entry(name) {
@@ -1650,12 +1532,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             String::from_utf8_lossy(name)
         ));
         self.report(
-            self.context.ast.span(node),
+            self.ast.span(node),
             message,
             ReportOptions {
                 labels: self.labels(&[
-                    self.label(self.context.ast.span(first), "first exported here"),
-                    self.label(self.context.ast.span(node), "exported again here"),
+                    self.label(self.ast.span(first), "first exported here"),
+                    self.label(self.ast.span(node), "exported again here"),
                 ]),
                 ..ReportOptions::default()
             },
@@ -1663,10 +1545,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 }
 
-fn is_at_program_level(context: &SemanticVisitCtx<'_, '_>) -> bool {
-    context.parent().is_none_or(|parent| {
+fn is_at_program_level(builder: &SemanticBuilder<'_, '_>) -> bool {
+    builder.parent().is_none_or(|parent| {
         matches!(
-            context.ast.node_kind(parent),
+            builder.ast.node_kind(parent),
             NodeKind::Program | NodeKind::TsModuleBlock
         )
     })

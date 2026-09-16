@@ -4,7 +4,7 @@ pub(super) fn check_prepared_redeclaration(
     builder: &mut SemanticBuilder<'_, '_>,
     prepared: PreparedDeclaration,
 ) {
-    let name = builder.context.ast.get_wtf8(prepared.name()).as_bytes();
+    let name = builder.ast.get_wtf8(prepared.name()).as_bytes();
     builder.check_redeclaration(prepared.node(), name, prepared);
 }
 
@@ -22,54 +22,37 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         debug_assert!(!name.is_empty() || flags.contains(SymbolFlags::ENUM_MEMBER));
         for candidate in prepared.conflict_candidates() {
             let existing_id = candidate.symbol;
-            let (existing_flags, existing_node) = self
-                .context
-                .state
-                .symbols
-                .conflict_candidate_info(candidate);
-            if self.context.ast.is_ts()
+            let (existing_flags, existing_node) =
+                self.state.symbols.conflict_candidate_info(candidate);
+            if self.ast.is_ts()
                 && (flags.contains(SymbolFlags::EXPORTED)
                     || existing_flags.contains(SymbolFlags::EXPORTED))
                 && self
-                    .context
                     .state
                     .symbols
                     .has_same_scope_export_visibility_conflict(prepared, existing_id)
             {
-                self.report_redeclaration(
-                    self.context.ast,
-                    name,
-                    node,
-                    existing_node,
-                    existing_flags,
-                );
+                self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
                 return;
             }
-            let import_value_conflict = !self.context.ast.is_ts()
-                && self.context.ast.is_module()
+            let import_value_conflict = !self.ast.is_ts()
+                && self.ast.is_module()
                 && target == ScopeId::MODULE
                 && ((flags.contains(SymbolFlags::IMPORT) && existing_flags.in_value_space())
                     || (flags.in_value_space() && existing_flags.contains(SymbolFlags::IMPORT)));
             let declaration_conflict = existing_flags.intersects(excludes) || import_value_conflict;
             let invalid_class_function_merge = !declaration_conflict
-                && self.context.ast.is_ts()
+                && self.ast.is_ts()
                 && flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
                 && existing_flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
                 && self
-                    .context
                     .state
                     .symbols
                     .has_non_ambient_class_declaration(candidate, flags);
             if (declaration_conflict || invalid_class_function_merge)
                 && !prepared.allows_annex_b_function_duplicate(existing_flags)
             {
-                self.report_redeclaration(
-                    self.context.ast,
-                    name,
-                    node,
-                    existing_node,
-                    existing_flags,
-                );
+                self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
                 return;
             }
 
@@ -79,25 +62,18 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             // non-simple cases.
             if existing_flags.contains(SymbolFlags::PARAMETER)
                 && flags.contains(SymbolFlags::PARAMETER)
-                && let Some(parameters) = find_formal_parameters(&self.context)
+                && let Some(parameters) = find_formal_parameters(self)
             {
-                let kind = parameters.kind(self.context.ast);
-                let must_be_unique = self.context.state.scope.is_strict()
+                let kind = parameters.kind(self.ast);
+                let must_be_unique = self.state.scope.is_strict()
                     || matches!(
                         kind,
                         swc_next_ecma_ast::FormalParameterKind::UniqueFormalParameters
                             | swc_next_ecma_ast::FormalParameterKind::ArrowFormalParameters
                     )
-                    || ecmascript::find_non_simple_parameter(self.context.ast, parameters)
-                        .is_some();
+                    || ecmascript::find_non_simple_parameter(self.ast, parameters).is_some();
                 if must_be_unique {
-                    self.report_redeclaration(
-                        self.context.ast,
-                        name,
-                        node,
-                        existing_node,
-                        existing_flags,
-                    );
+                    self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
                 }
             }
         }
@@ -128,39 +104,33 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         //   function f(a = 1) { let a }   // still an error
         //   function f(a = 1) { var a }   // legal, var stays out
         if !flags.intersects(SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::FUNCTION) {
-            let target_scope = self.context.state.scope.get(target);
+            let target_scope = self.state.scope.get(target);
             let outer = target_scope.parent;
             let outer_holds_parameters = outer.is_some_and(|outer| match target_scope.kind {
                 ScopeKind::FunctionBody => true,
-                ScopeKind::Block => {
-                    match self
-                        .context
-                        .ast
-                        .kind_data(self.context.state.scope.get(outer).node)
-                    {
-                        NodeKindData::CatchClause(catch) => {
-                            catch.body(self.context.ast).node_id() == target_scope.node
-                        }
-                        _ => false,
+                ScopeKind::Block => match self.ast.kind_data(self.state.scope.get(outer).node) {
+                    NodeKindData::CatchClause(catch) => {
+                        catch.body(self.ast).node_id() == target_scope.node
                     }
-                }
+                    _ => false,
+                },
                 _ => false,
             });
             if outer_holds_parameters
                 && let Some(outer) = outer
-                && let Some(symbol_id) = self.context.state.symbols.own_binding(outer, name)
+                && let Some(symbol_id) = self.state.symbols.own_binding(outer, name)
             {
-                let existing = self.context.state.symbols.symbol(symbol_id);
+                let existing = self.state.symbols.symbol(symbol_id);
                 if existing
                     .flags
                     .intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR)
                     && existing.flags.intersects(excludes)
                 {
                     self.report_redeclaration(
-                        self.context.ast,
+                        self.ast,
                         name,
                         node,
-                        self.context.state.symbols.first_decl_of(symbol_id),
+                        self.state.symbols.first_decl_of(symbol_id),
                         existing.flags,
                     );
                 }
@@ -180,25 +150,20 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         // Per 14.2.1, a hoisting var conflicts with block-scoped names
         // in any intermediate block it passes through.
         if flags.is_hoisting_var() {
-            for scope_id in self
-                .context
-                .state
-                .scope
-                .ancestors(Some(self.context.state.scope.current))
-            {
+            for scope_id in self.state.scope.ancestors(Some(self.state.scope.current)) {
                 if scope_id == target {
                     break;
                 }
-                let Some(symbol_id) = self.context.state.symbols.own_binding(scope_id, name) else {
+                let Some(symbol_id) = self.state.symbols.own_binding(scope_id, name) else {
                     continue;
                 };
-                let existing = self.context.state.symbols.symbol(symbol_id);
+                let existing = self.state.symbols.symbol(symbol_id);
                 if existing.flags.is_block_scoped_like() {
                     self.report_redeclaration(
-                        self.context.ast,
+                        self.ast,
                         name,
                         node,
-                        self.context.state.symbols.first_decl_of(symbol_id),
+                        self.state.symbols.first_decl_of(symbol_id),
                         existing.flags,
                     );
                     break;
@@ -208,21 +173,19 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                     // (14.15.1): a var colliding with a catch parameter is a
                     // syntax error, except for the Annex B.3.4 simple-binding
                     // web-compat carve-out.
-                    let catch_node = self.context.state.scope.get(scope_id).node;
-                    let NodeKindData::CatchClause(catch) = self.context.ast.kind_data(catch_node)
-                    else {
+                    let catch_node = self.state.scope.get(scope_id).node;
+                    let NodeKindData::CatchClause(catch) = self.ast.kind_data(catch_node) else {
                         unreachable!()
                     };
-                    let simple_parameter = catch.param(self.context.ast).is_some_and(|parameter| {
-                        self.context.ast.node_kind(parameter.node_id())
-                            == NodeKind::BindingIdentifier
+                    let simple_parameter = catch.param(self.ast).is_some_and(|parameter| {
+                        self.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
                     });
                     if !simple_parameter {
                         self.report_redeclaration(
-                            self.context.ast,
+                            self.ast,
                             name,
                             node,
-                            self.context.state.symbols.first_decl_of(symbol_id),
+                            self.state.symbols.first_decl_of(symbol_id),
                             existing.flags,
                         );
                         break;
@@ -234,10 +197,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 }
 
 fn find_formal_parameters(
-    context: &SemanticVisitCtx<'_, '_>,
+    builder: &SemanticBuilder<'_, '_>,
 ) -> Option<swc_next_ecma_ast::FormalParameters> {
-    for ancestor in context.ancestors() {
-        match context.ast.kind_data(ancestor) {
+    for ancestor in builder.ancestors() {
+        match builder.ast.kind_data(ancestor) {
             NodeKindData::FormalParameters(parameters) => {
                 return Some(parameters);
             }

@@ -1,5 +1,3 @@
-use std::vec::Vec;
-
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId,
 };
@@ -10,58 +8,6 @@ use crate::{
     module_record::ModuleRecordBuilder,
     scope::{DecoratorSite, ScopeTracker},
 };
-
-pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
-    pub state: SemanticContext<'ast>,
-    pub ast: &'traverse Ast<'ast>,
-    path: Vec<NodeId>,
-}
-
-impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
-    pub fn new(ast: &'traverse Ast<'ast>, state: SemanticContext<'ast>) -> Self {
-        Self {
-            state,
-            ast,
-            path: Vec::with_capacity(64),
-        }
-    }
-
-    pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
-        self.path.push(node);
-        self.state.enter_node()
-    }
-
-    pub fn leave_node(&mut self, node: NodeId) {
-        let current = self.path.pop();
-        debug_assert_eq!(current, Some(node));
-    }
-
-    pub fn parent(&self) -> Option<NodeId> {
-        self.path.iter().rev().nth(1).copied()
-    }
-
-    pub fn current_node(&self) -> Option<NodeId> {
-        self.path.last().copied()
-    }
-
-    pub fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
-        self.path.iter().rev().copied()
-    }
-
-    pub fn record_ts_expando_assignment(&mut self, node: swc_next_ecma_ast::AssignmentExpression) {
-        self.state.symbols.record_ts_expando_assignment(
-            self.ast,
-            node,
-            &self.state.scope,
-            self.path.iter().rev().copied(),
-        );
-    }
-
-    pub fn finalize(self) -> Semantic<'ast> {
-        debug_assert!(self.path.is_empty());
-        self.state.finalize(self.ast)
-    }
-}
 
 /// Walk context combining the current node, scope tracker, symbol tracker,
 /// and reference state. Visitor hooks use it to inspect surrounding source
