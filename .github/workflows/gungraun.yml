@@ -71,23 +71,26 @@ jobs:
         run: |
           git checkout --detach "$BASE_SHA"
 
-          # Bootstrap the benchmark harness while this workflow is not on the
-          # base branch yet. Later PRs benchmark the base branch as-is.
-          if ! git cat-file -e \
-            "${BASE_SHA}:tasks/benchmark/benches/gungraun.rs" 2>/dev/null
-          then
-            git checkout "$COMPARE_SHA" -- \
-              Cargo.toml \
-              Cargo.lock \
-              tasks/benchmark/Cargo.toml \
-              tasks/benchmark/benches/gungraun.rs
-          fi
+          git checkout "$COMPARE_SHA" -- tasks/benchmark/benches/gungraun.rs tasks/benchmark/files/react-post-loader.bin
 
           cargo bench --quiet -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --callgrind-args=cycle-estimation=yes \
             --callgrind-metrics=Ir,Ct \
             --save-baseline=base
+
+      - name: Save original string scanning benchmark
+        env:
+          COMPARE_SHA: ${{ github.sha }}
+          GUNGRAUN_COLOR: never
+        run: |
+          git checkout --detach 5a75077dbde3cd5ddc95f8e9c53e23577cde00ed
+          git checkout "$COMPARE_SHA" -- tasks/benchmark/benches/gungraun.rs tasks/benchmark/files/react-post-loader.bin
+          cargo bench --quiet -p benchmark --bench gungraun -- \
+            --home="$RUNNER_TEMP/gungraun" \
+            --callgrind-args=cycle-estimation=yes \
+            --callgrind-metrics=Ir,Ct \
+            --save-baseline=original
 
       - name: Compare merge benchmark
         env:

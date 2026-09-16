@@ -291,6 +291,59 @@ fn bench_traverse(mut ast: Ast<'static>) {
     black_box(counter.count);
 }
 
+struct CorpusInput {
+    allocator: Allocator,
+    source: &'static str,
+    source_type: SourceType,
+}
+
+fn setup_react(icons_only: bool) -> &'static [CorpusInput] {
+    let mut bytes = include_bytes!("../files/react-post-loader.bin").as_slice();
+    let mut inputs = Vec::new();
+    while !bytes.is_empty() {
+        let source_type = match bytes[0] {
+            0 => SourceType::Module,
+            1 => SourceType::CommonJs,
+            _ => SourceType::Unambiguous,
+        };
+        let icon = bytes[1] != 0;
+        let len = u32::from_le_bytes(bytes[2..6].try_into().unwrap()) as usize;
+        let source = std::str::from_utf8(&bytes[6..6 + len]).unwrap();
+        bytes = &bytes[6 + len..];
+        if !icons_only || icon {
+            inputs.push(CorpusInput {
+                allocator: Allocator::new(),
+                source,
+                source_type,
+            });
+        }
+    }
+    Box::leak(inputs.into_boxed_slice())
+}
+
+#[library_benchmark]
+#[bench::react_10k(setup_react(false))]
+#[bench::react_icons(setup_react(true))]
+fn bench_corpus(inputs: &'static [CorpusInput]) {
+    for input in inputs {
+        let result = Parser::init(
+            &input.allocator,
+            black_box(input.source),
+            Options {
+                source_type: input.source_type,
+                lang: Lang::Js,
+                preserve_parens: false,
+                comments: CommentMode::Flat,
+            },
+            swc_next_ecma_parser::TokenParserConfig,
+        )
+        .parse();
+        assert!(black_box(&result).diagnostics.is_empty());
+    }
+}
+
+library_benchmark_group!(name = corpus, benchmarks = bench_corpus);
+
 library_benchmark_group!(name = parser, benchmarks = bench_parser);
 
 library_benchmark_group!(
@@ -314,5 +367,7 @@ main!(
         LibraryBenchmarkConfig::default().tool(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
-    library_benchmark_groups = [parser, semantic, resolver, codegen, type_strip, visit]
+    library_benchmark_groups = [
+        parser, semantic, resolver, codegen, type_strip, visit, corpus
+    ]
 );
