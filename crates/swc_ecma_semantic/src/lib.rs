@@ -27,12 +27,12 @@ use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
     binder::{Range, TsMemberIndex},
-    checker::Checker,
+    builder::SemanticBuilder,
     scope::ScopeTree,
 };
 
 mod binder;
-mod checker;
+mod builder;
 mod context;
 mod ecmascript;
 mod module_record;
@@ -609,7 +609,7 @@ pub struct AnalyzeOptions {
 /// module record is empty.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = Checker::new(ast, options.check_syntax, options.build_module_record);
+    let mut visitor = SemanticBuilder::new(ast, options.check_syntax, options.build_module_record);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {

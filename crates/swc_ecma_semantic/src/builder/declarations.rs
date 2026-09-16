@@ -1,16 +1,16 @@
 use super::*;
 
 pub(super) fn check_prepared_redeclaration(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     prepared: PreparedDeclaration,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let name = context.ast.get_wtf8(prepared.name()).as_bytes();
     checks.check_redeclaration(prepared.node(), name, prepared, context);
 }
 
-impl<'traverse, 'a> CheckerState<'traverse, 'a> {
+impl<'traverse, 'a> BuilderState<'traverse, 'a> {
     #[inline(always)]
     pub(super) fn check_redeclaration(
         &mut self,

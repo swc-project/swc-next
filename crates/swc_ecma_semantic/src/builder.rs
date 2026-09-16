@@ -1,4 +1,4 @@
-//! The early-error checker, a semantic-traverser visitor that reports
+//! The semantic builder, a visitor that builds the semantic model and reports
 //! the scope-dependent early errors the specification requires.
 
 mod declarations;
@@ -45,17 +45,17 @@ use crate::{
     scope::{DecoratorSite, ScopeKind},
 };
 
-pub struct Checker<'traverse, 'a> {
-    checks: CheckerState<'traverse, 'a>,
+pub struct SemanticBuilder<'traverse, 'a> {
+    checks: BuilderState<'traverse, 'a>,
     context: SemanticVisitCtx<'traverse, 'a>,
     check_syntax: bool,
     in_ts_module_name: bool,
 }
 
-impl<'traverse, 'a> Checker<'traverse, 'a> {
+impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
         Self {
-            checks: CheckerState::new(),
+            checks: BuilderState::new(),
             context: SemanticVisitCtx::new(ast, SemanticContext::init(ast, build_module_record)),
             check_syntax,
             in_ts_module_name: false,
@@ -192,7 +192,7 @@ impl<'traverse, 'a> Checker<'traverse, 'a> {
     }
 }
 
-impl Checker<'_, '_> {
+impl SemanticBuilder<'_, '_> {
     #[inline(always)]
     fn check(&mut self, node_data: NodeKindData) {
         match node_data {
@@ -240,7 +240,7 @@ impl Checker<'_, '_> {
     }
 }
 
-impl<'a> Visit<'a> for Checker<'_, 'a> {
+impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn ast(&self) -> &Ast<'a> {
         self.context.ast
     }
@@ -1632,7 +1632,7 @@ fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
     }
 }
 
-struct CheckerState<'traverse, 'a> {
+struct BuilderState<'traverse, 'a> {
     exported_names: FxHashMap<&'traverse [u8], NodeId>,
     export_specifiers: Vec<ExportSpecifier>,
     diagnostics: Vec<Diagnostic<'a>>,
@@ -1654,7 +1654,7 @@ impl Default for ReportOptions<'_> {
     }
 }
 
-impl<'traverse, 'a> CheckerState<'traverse, 'a> {
+impl<'traverse, 'a> BuilderState<'traverse, 'a> {
     pub fn new() -> Self {
         Self {
             exported_names: FxHashMap::default(),

@@ -6,9 +6,9 @@ use swc_next_ecma_ast::{
 
 use super::*;
 
-pub(super) fn check_string_literal(checker: &mut Checker<'_, '_>, literal: StringLiteral) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, literal: StringLiteral) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.state.in_type_position() || !context.state.scope.is_strict() {
         return;
     }
@@ -27,9 +27,12 @@ pub(super) fn check_string_literal(checker: &mut Checker<'_, '_>, literal: Strin
     }
 }
 
-pub(super) fn check_numeric_literal(checker: &mut Checker<'_, '_>, literal: NumericLiteral) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_numeric_literal(
+    builder: &mut SemanticBuilder<'_, '_>,
+    literal: NumericLiteral,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.state.in_type_position() || !context.state.scope.is_strict() {
         return;
     }
@@ -60,9 +63,9 @@ pub(super) fn check_numeric_literal(checker: &mut Checker<'_, '_>, literal: Nume
     );
 }
 
-pub(super) fn check_reg_exp_literal(checker: &mut Checker<'_, '_>, literal: RegExpLiteral) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_reg_exp_literal(builder: &mut SemanticBuilder<'_, '_>, literal: RegExpLiteral) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let pattern = context.ast.get_utf8(literal.pattern(context.ast));
     let flags = context.ast.get_utf8(literal.flags(context.ast));
     let allocator = Allocator::new();
@@ -84,11 +87,11 @@ pub(super) fn check_reg_exp_literal(checker: &mut Checker<'_, '_>, literal: RegE
 }
 
 pub(super) fn check_identifier_reference(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     identifier: IdentifierReference,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.state.in_type_position() {
         return;
     }
@@ -108,11 +111,11 @@ pub(super) fn check_identifier_reference(
 }
 
 pub(super) fn check_binding_identifier(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     identifier: BindingIdentifier,
 ) -> Option<PreparedDeclaration> {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let node_id = identifier.node_id();
     let name = context
         .ast
@@ -153,9 +156,12 @@ pub(super) fn check_binding_identifier(
     Some(prepared)
 }
 
-pub(super) fn check_label_identifier(checker: &mut Checker<'_, '_>, identifier: LabelIdentifier) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_label_identifier(
+    builder: &mut SemanticBuilder<'_, '_>,
+    identifier: LabelIdentifier,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let name = context
         .ast
         .get_utf8(identifier.name(context.ast))
@@ -163,7 +169,7 @@ pub(super) fn check_label_identifier(checker: &mut Checker<'_, '_>, identifier: 
     checks.check_strict_reserved(name, identifier.node_id(), context, "a label");
 }
 
-impl<'traverse, 'a> CheckerState<'traverse, 'a> {
+impl<'traverse, 'a> BuilderState<'traverse, 'a> {
     /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
     fn check_strict_reserved(
         &mut self,
@@ -236,9 +242,12 @@ fn has_octal_escape(value: &[u8]) -> bool {
     false
 }
 
-pub(super) fn check_binary_expression(checker: &mut Checker<'_, '_>, expression: BinaryExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_binary_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    expression: BinaryExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let left = expression.left(context.ast).node_id();
     if expression.operator(context.ast) == BinaryOperator::In
         && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(left)
@@ -257,9 +266,12 @@ pub(super) fn check_binary_expression(checker: &mut Checker<'_, '_>, expression:
     }
 }
 
-pub(super) fn check_unary_expression(checker: &mut Checker<'_, '_>, expression: UnaryExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_unary_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    expression: UnaryExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if expression.operator(context.ast) != UnaryOperator::Delete {
         return;
     }
@@ -292,9 +304,12 @@ pub(super) fn check_unary_expression(checker: &mut Checker<'_, '_>, expression: 
     }
 }
 
-pub(super) fn check_update_expression(checker: &mut Checker<'_, '_>, expression: UpdateExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_update_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    expression: UpdateExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.state.scope.is_strict()
         && is_eval_or_arguments_reference(context.ast, expression.argument(context.ast).node_id())
     {
@@ -307,19 +322,22 @@ pub(super) fn check_update_expression(checker: &mut Checker<'_, '_>, expression:
 }
 
 pub(super) fn check_assignment_expression(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     expression: AssignmentExpression,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.state.scope.is_strict() {
         checks.check_assign_target_eval_arguments(expression.left(context.ast).node_id(), context);
     }
 }
 
-pub(super) fn check_object_expression(checker: &mut Checker<'_, '_>, object: ObjectExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_object_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    object: ObjectExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let mut first_proto = None;
     for property in object.properties(context.ast).iter() {
         let property = context.ast.get_node_in_sub_range(property).node_id();
@@ -362,9 +380,12 @@ pub(super) fn check_object_expression(checker: &mut Checker<'_, '_>, object: Obj
     }
 }
 
-pub(super) fn check_member_expression(checker: &mut Checker<'_, '_>, expression: MemberExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_member_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    expression: MemberExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let object = expression.object(context.ast).node_id();
     if context.ast.node_kind(object) == NodeKind::Super && !is_super_property_valid(context) {
         checks.report(
@@ -406,9 +427,9 @@ pub(super) fn check_member_expression(checker: &mut Checker<'_, '_>, expression:
     }
 }
 
-pub(super) fn check_call_expression(checker: &mut Checker<'_, '_>, call: CallExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_call_expression(builder: &mut SemanticBuilder<'_, '_>, call: CallExpression) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.ast.node_kind(call.callee(context.ast).node_id()) == NodeKind::Super {
         let message = "'super()' is only valid in a constructor of a derived class";
         match super_call_validity(context) {
@@ -437,9 +458,12 @@ pub(super) fn check_call_expression(checker: &mut Checker<'_, '_>, call: CallExp
     }
 }
 
-pub(super) fn check_await_expression(checker: &mut Checker<'_, '_>, expression: AwaitExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_await_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    expression: AwaitExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let message = await_expression_error(context);
     if let Some(message) = message {
         checks.report(
@@ -450,9 +474,12 @@ pub(super) fn check_await_expression(checker: &mut Checker<'_, '_>, expression: 
     }
 }
 
-pub(super) fn check_yield_expression(checker: &mut Checker<'_, '_>, expression: YieldExpression) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_yield_expression(
+    builder: &mut SemanticBuilder<'_, '_>,
+    expression: YieldExpression,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if let Some(message) = yield_expression_error(context) {
         checks.report(
             context.ast.span(expression.node_id()),
@@ -462,9 +489,9 @@ pub(super) fn check_yield_expression(checker: &mut Checker<'_, '_>, expression: 
     }
 }
 
-pub(super) fn check_meta_property(checker: &mut Checker<'_, '_>, property: MetaProperty) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, property: MetaProperty) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let name = context
         .ast
         .get_utf8(property.meta(context.ast).name(context.ast));
@@ -484,7 +511,7 @@ pub(super) fn check_meta_property(checker: &mut Checker<'_, '_>, property: MetaP
     }
 }
 
-impl<'traverse, 'a> CheckerState<'traverse, 'a> {
+impl<'traverse, 'a> BuilderState<'traverse, 'a> {
     /// Walks a destructuring assignment target to find `eval`/`arguments` references.
     fn check_assign_target_eval_arguments(
         &mut self,
@@ -637,11 +664,11 @@ fn yield_expression_error(context: &SemanticVisitCtx<'_, '_>) -> Option<&'static
 }
 
 pub(super) fn check_variable_declaration(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     declaration: VariableDeclaration,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let kind = declaration.kind(context.ast);
     if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing)
         && context.ast.source_type() == swc_next_ecma_ast::SourceType::Script
@@ -659,9 +686,12 @@ pub(super) fn check_variable_declaration(
     }
 }
 
-pub(super) fn check_switch_statement(checker: &mut Checker<'_, '_>, statement: SwitchStatement) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_switch_statement(
+    builder: &mut SemanticBuilder<'_, '_>,
+    statement: SwitchStatement,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let mut first_default = None;
     for case in statement.cases(context.ast).iter() {
         let case = context.ast.get_node_in_sub_range(case);
@@ -685,9 +715,12 @@ pub(super) fn check_switch_statement(checker: &mut Checker<'_, '_>, statement: S
     }
 }
 
-pub(super) fn check_for_in_statement(checker: &mut Checker<'_, '_>, statement: ForInStatement) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_for_in_statement(
+    builder: &mut SemanticBuilder<'_, '_>,
+    statement: ForInStatement,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let left = statement.left(context.ast).node_id();
     checks.check_for_in_of_initializer(context, left, true);
     if context.state.scope.is_strict() {
@@ -695,9 +728,12 @@ pub(super) fn check_for_in_statement(checker: &mut Checker<'_, '_>, statement: F
     }
 }
 
-pub(super) fn check_for_of_statement(checker: &mut Checker<'_, '_>, statement: ForOfStatement) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_for_of_statement(
+    builder: &mut SemanticBuilder<'_, '_>,
+    statement: ForOfStatement,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if statement.r#await(context.ast) && !context.ast.is_ts() && is_inside_static_block(context) {
         checks.report(
             context.ast.span(statement.node_id()),
@@ -712,9 +748,12 @@ pub(super) fn check_for_of_statement(checker: &mut Checker<'_, '_>, statement: F
     }
 }
 
-pub(super) fn check_break_statement(checker: &mut Checker<'_, '_>, statement: BreakStatement) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_break_statement(
+    builder: &mut SemanticBuilder<'_, '_>,
+    statement: BreakStatement,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if let Some(label) = statement.label(context.ast) {
         let name = context.ast.get_utf8(label.name(context.ast)).as_bytes();
         let result = find_label(context, name);
@@ -751,11 +790,11 @@ pub(super) fn check_break_statement(checker: &mut Checker<'_, '_>, statement: Br
 }
 
 pub(super) fn check_continue_statement(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     statement: ContinueStatement,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if let Some(label) = statement.label(context.ast) {
         let name = context.ast.get_utf8(label.name(context.ast)).as_bytes();
         let result = find_label_for_continue(context, name);
@@ -809,9 +848,12 @@ pub(super) fn check_continue_statement(
     }
 }
 
-pub(super) fn check_labeled_statement(checker: &mut Checker<'_, '_>, statement: LabeledStatement) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_labeled_statement(
+    builder: &mut SemanticBuilder<'_, '_>,
+    statement: LabeledStatement,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let name = context
         .ast
         .get_utf8(statement.label(context.ast).name(context.ast))
@@ -852,9 +894,12 @@ pub(super) fn check_labeled_statement(checker: &mut Checker<'_, '_>, statement: 
     }
 }
 
-pub(super) fn check_with_statement(checker: &mut Checker<'_, '_>, statement: WithStatement) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_with_statement(
+    builder: &mut SemanticBuilder<'_, '_>,
+    statement: WithStatement,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.state.scope.is_strict() {
         checks.report(
             context.ast.span(statement.node_id()),
@@ -864,7 +909,7 @@ pub(super) fn check_with_statement(checker: &mut Checker<'_, '_>, statement: Wit
     }
 }
 
-impl<'traverse, 'a> CheckerState<'traverse, 'a> {
+impl<'traverse, 'a> BuilderState<'traverse, 'a> {
     /// 14.7.5.1 ForBinding must contain exactly one BoundName and, outside
     /// Annex B.3.5, may not have an Initializer.
     fn check_for_in_of_initializer(
@@ -1026,9 +1071,9 @@ fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> C
     ContinueLabelSearch::NotFound
 }
 
-pub(super) fn check_function(checker: &mut Checker<'_, '_>, function: Function) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Function) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if function.function_type(context.ast) != FunctionType::FunctionDeclaration {
         return;
     }
@@ -1072,9 +1117,9 @@ pub(super) fn check_function(checker: &mut Checker<'_, '_>, function: Function) 
     }
 }
 
-pub(super) fn check_directive(checker: &mut Checker<'_, '_>, directive: Directive) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_directive(builder: &mut SemanticBuilder<'_, '_>, directive: Directive) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     if context.ast.get_utf8(directive.value(context.ast)) != "use strict" {
         return;
     }
@@ -1110,9 +1155,9 @@ pub(super) fn check_directive(checker: &mut Checker<'_, '_>, directive: Directiv
     }
 }
 
-pub(super) fn check_class_body(checker: &mut Checker<'_, '_>, body: ClassBody) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: ClassBody) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let children = body.body(context.ast);
     let mut first_constructor = None;
     for index in 0..children.len() {
@@ -1378,18 +1423,18 @@ fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     true
 }
 
-pub(super) fn check_program(checker: &mut Checker<'_, '_>) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_program(builder: &mut SemanticBuilder<'_, '_>) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     checks.check_unresolved_exports(context.ast, &context.state.symbols);
 }
 
 pub(super) fn check_import_declaration(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     declaration: ImportDeclaration,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     checks.check_import_export_position(
         declaration.node_id(),
         "import statement",
@@ -1400,11 +1445,11 @@ pub(super) fn check_import_declaration(
 }
 
 pub(super) fn check_export_named_declaration(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     declaration: ExportNamedDeclaration,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     checks.check_import_export_position(
         declaration.node_id(),
         "'export' declaration",
@@ -1415,19 +1460,19 @@ pub(super) fn check_export_named_declaration(
 }
 
 pub(super) fn check_export_default_declaration(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     declaration: ExportDefaultDeclaration,
 ) {
-    let export = declaration.declaration(checker.context.ast);
-    if let ExportDefaultDeclarationKindData::Expr(expression) = checker
+    let export = declaration.declaration(builder.context.ast);
+    if let ExportDefaultDeclarationKindData::Expr(expression) = builder
         .context
         .ast
         .export_default_declaration_kind_data(export)
     {
-        ts::check_ts_ambient_export_assignment_expression(checker, expression.node_id());
+        ts::check_ts_ambient_export_assignment_expression(builder, expression.node_id());
     }
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     checks.check_import_export_position(
         declaration.node_id(),
         "'export default' declaration",
@@ -1438,11 +1483,11 @@ pub(super) fn check_export_default_declaration(
 }
 
 pub(super) fn check_export_all_declaration(
-    checker: &mut Checker<'_, '_>,
+    builder: &mut SemanticBuilder<'_, '_>,
     declaration: ExportAllDeclaration,
 ) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     checks.check_import_export_position(
         declaration.node_id(),
         "'export *' declaration",
@@ -1456,9 +1501,12 @@ pub(super) fn check_export_all_declaration(
     checks.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
 }
 
-pub(super) fn check_export_specifier(checker: &mut Checker<'_, '_>, specifier: ExportSpecifier) {
-    let checks = &mut checker.checks;
-    let context = &mut checker.context;
+pub(super) fn check_export_specifier(
+    builder: &mut SemanticBuilder<'_, '_>,
+    specifier: ExportSpecifier,
+) {
+    let checks = &mut builder.checks;
+    let context = &mut builder.context;
     let exported_name = module_export_name(context.ast, specifier.exported(context.ast).node_id());
     checks.record_exported_name(exported_name, specifier.node_id(), context);
     // TypeScript export targets, including global augmentation members, are
@@ -1478,7 +1526,7 @@ pub(super) fn check_export_specifier(checker: &mut Checker<'_, '_>, specifier: E
     }
 }
 
-impl<'traverse, 'a> CheckerState<'traverse, 'a> {
+impl<'traverse, 'a> BuilderState<'traverse, 'a> {
     /// Post-traversal check that all local export specifiers refer to
     /// declared bindings.
     pub fn check_unresolved_exports(
@@ -1575,7 +1623,7 @@ impl<'traverse, 'a> CheckerState<'traverse, 'a> {
         context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         // TypeScript declarations can merge across the type and value namespaces. Duplicate
-        // exports are therefore checker diagnostics rather than parser-level early errors.
+        // exports are therefore builder diagnostics rather than parser-level early errors.
         if context.ast.is_ts() {
             return;
         }
