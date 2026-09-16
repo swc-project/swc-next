@@ -370,7 +370,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     pos = self.cursor;
                     continue;
                 }
-                debug_assert_eq!(c, b'\n');
                 self.cursor = pos;
                 return Err(LexicalError::UnterminatedString);
             }
