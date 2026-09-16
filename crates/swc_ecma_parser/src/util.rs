@@ -195,7 +195,13 @@ pub fn decode_string_escapes(raw_str: &str, out: &mut Wtf8Buf) {
         let run_start = i;
 
         // Both delimiters are ASCII, so the copied run ends on a UTF-8 boundary.
-        i += memchr2(b'\\', b'\r', &raw[i..]).unwrap_or(raw.len() - i);
+        if raw.len() - i >= 32 {
+            i += memchr2(b'\\', b'\r', &raw[i..]).unwrap_or(raw.len() - i);
+        } else {
+            while i < raw.len() && raw[i] != b'\\' && raw[i] != b'\r' {
+                i += 1;
+            }
+        }
 
         if i > run_start {
             out.push_str(&raw_str[run_start..i]);

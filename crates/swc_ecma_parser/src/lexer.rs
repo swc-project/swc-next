@@ -345,33 +345,38 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let mut pos = self.cursor + 1;
 
         if self.mode == LexerMode::Normal {
-            while (pos as usize) < self.source.len() {
+            'scan: while (pos as usize) < self.source.len() {
+                // Bound the short prefix once, keeping one loop limit per byte.
+                let short_end = (pos as usize).saturating_add(32).min(self.source.len());
+                while (pos as usize) < short_end {
+                    let c = self.source[pos as usize];
+                    if c == quote {
+                        pos += 1;
+                        self.cursor = pos;
+                        return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
+                    }
+                    if c == b'\\' {
+                        self.cursor = pos;
+                        self.consume_escape(EscapeContext::String)?;
+                        pos = self.cursor;
+                        continue 'scan;
+                    }
+                    if c == b'\n' || c == b'\r' {
+                        self.cursor = pos;
+                        return Err(LexicalError::UnterminatedString);
+                    }
+                    pos += 1;
+                }
+
                 let rest = &self.source[pos as usize..];
                 let end = memchr3(quote, b'\\', b'\n', rest).unwrap_or(rest.len());
-                // CR must be checked before the next quote/escape/LF so errors keep
-                // pointing at the first line terminator.
+                // Report the first line terminator, even when it precedes a
+                // quote, escape, or LF found by the bulk search.
                 if let Some(offset) = memchr(b'\r', &rest[..end]) {
                     self.cursor = pos + offset as u32;
                     return Err(LexicalError::UnterminatedString);
                 }
                 pos += end as u32;
-                if pos as usize == self.source.len() {
-                    break;
-                }
-                let c = self.source[pos as usize];
-                if c == quote {
-                    pos += 1;
-                    self.cursor = pos;
-                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                }
-                if c == b'\\' {
-                    self.cursor = pos;
-                    self.consume_escape(EscapeContext::String)?;
-                    pos = self.cursor;
-                    continue;
-                }
-                self.cursor = pos;
-                return Err(LexicalError::UnterminatedString);
             }
         } else {
             if let Some(offset) = memchr(quote, &self.source[pos as usize..]) {
