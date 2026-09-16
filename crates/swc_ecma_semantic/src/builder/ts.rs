@@ -39,10 +39,8 @@ fn check_ts_namespace_export_alias_missing(
     name: swc_next_ecma_ast::AstUtf8,
     node: NodeId,
 ) {
-    let checks = &mut builder.checks;
-    let context = &builder.context;
-    let name = context.ast.get_utf8(name).as_bytes();
-    checks.report_unresolved_export(context.ast, name, node);
+    let name = builder.context.ast.get_utf8(name).as_bytes();
+    builder.report_unresolved_export(builder.context.ast, name, node);
 }
 
 fn check_ts_namespace_export_alias_non_local(
@@ -50,10 +48,8 @@ fn check_ts_namespace_export_alias_non_local(
     name: swc_next_ecma_ast::AstUtf8,
     node: NodeId,
 ) {
-    let checks = &mut builder.checks;
-    let context = &builder.context;
-    let name = context.ast.get_utf8(name).as_bytes();
-    checks.report_non_local_export(context.ast, name, node);
+    let name = builder.context.ast.get_utf8(name).as_bytes();
+    builder.report_non_local_export(builder.context.ast, name, node);
 }
 
 fn check_ts_namespace_export_alias_duplicate(
@@ -78,25 +74,27 @@ fn check_ts_namespace_export_alias_conflict_with_kind(
     previous: NodeId,
     duplicate: bool,
 ) {
-    let checks = &mut builder.checks;
-    let context = &builder.context;
-    let NodeKindData::ExportSpecifier(specifier) = context.ast.kind_data(node) else {
+    let NodeKindData::ExportSpecifier(specifier) = builder.context.ast.kind_data(node) else {
         unreachable!("namespace export aliases are export specifiers")
     };
-    let exported = specifier.exported(context.ast).node_id();
-    let name = module_export_name(context.ast, exported);
-    checks.report_ts_namespace_export_alias_conflict(context.ast, name, node, previous, duplicate);
+    let exported = specifier.exported(builder.context.ast).node_id();
+    let name = module_export_name(builder.context.ast, exported);
+    builder.report_ts_namespace_export_alias_conflict(
+        builder.context.ast,
+        name,
+        node,
+        previous,
+        duplicate,
+    );
 }
 
 fn check_ts_import_alias_conflict(
     builder: &mut SemanticBuilder<'_, '_>,
     issue: crate::binder::TsImportAliasConflictIssue,
 ) {
-    let checks = &mut builder.checks;
-    let context = &builder.context;
-    let name = context.ast.get_wtf8(issue.name).as_bytes();
-    checks.report_redeclaration(
-        context.ast,
+    let name = builder.context.ast.get_wtf8(issue.name).as_bytes();
+    builder.report_redeclaration(
+        builder.context.ast,
         name,
         issue.node,
         issue.previous,
@@ -109,12 +107,10 @@ fn check_ts_import_alias_type_only_export(
     node: NodeId,
     export: NodeId,
 ) {
-    builder
-        .checks
-        .report_ts_import_alias_type_only_export(builder.context.ast, node, export);
+    builder.report_ts_import_alias_type_only_export(builder.context.ast, node, export);
 }
 
-impl<'traverse, 'a> BuilderState<'traverse, 'a> {
+impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     fn report_ts_namespace_export_alias_conflict(
         &mut self,
         tree: &Ast<'a>,
@@ -186,15 +182,14 @@ pub(super) fn check_ts_ambient_export_assignment_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: NodeId,
 ) {
-    let context = &builder.context;
-    if !context.state.symbols.in_ambient_context()
-        || is_ts_entity_name_expression(context.ast, expression)
-        || !is_export_assignment_container(context)
+    if !builder.context.state.symbols.in_ambient_context()
+        || is_ts_entity_name_expression(builder.context.ast, expression)
+        || !is_export_assignment_container(&builder.context)
     {
         return;
     }
-    builder.checks.report(
-        context.ast.span(expression),
+    builder.report(
+        builder.context.ast.span(expression),
         "The expression of an export assignment must be an identifier or qualified name in an ambient context",
         ReportOptions::default(),
     );

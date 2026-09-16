@@ -46,7 +46,9 @@ use crate::{
 };
 
 pub struct SemanticBuilder<'traverse, 'a> {
-    checks: BuilderState<'traverse, 'a>,
+    exported_names: FxHashMap<&'traverse [u8], NodeId>,
+    export_specifiers: Vec<ExportSpecifier>,
+    diagnostics: Vec<Diagnostic<'a>>,
     context: SemanticVisitCtx<'traverse, 'a>,
     check_syntax: bool,
     in_ts_module_name: bool,
@@ -55,7 +57,9 @@ pub struct SemanticBuilder<'traverse, 'a> {
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
         Self {
-            checks: BuilderState::new(),
+            exported_names: FxHashMap::default(),
+            export_specifiers: Vec::new(),
+            diagnostics: Vec::new(),
             context: SemanticVisitCtx::new(ast, SemanticContext::init(ast, build_module_record)),
             check_syntax,
             in_ts_module_name: false,
@@ -74,7 +78,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             ts::check_ts_alias_issues(&mut self, export_alias_issues, import_alias_issues);
         }
         let semantic = self.context.finalize();
-        (semantic, self.checks.into_diagnostics())
+        (semantic, self.diagnostics)
     }
 
     #[inline]
@@ -1632,12 +1636,6 @@ fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
     }
 }
 
-struct BuilderState<'traverse, 'a> {
-    exported_names: FxHashMap<&'traverse [u8], NodeId>,
-    export_specifiers: Vec<ExportSpecifier>,
-    diagnostics: Vec<Diagnostic<'a>>,
-}
-
 struct ReportOptions<'a> {
     severity: Severity,
     help: Option<Cow<'a, str>>,
@@ -1654,19 +1652,7 @@ impl Default for ReportOptions<'_> {
     }
 }
 
-impl<'traverse, 'a> BuilderState<'traverse, 'a> {
-    pub fn new() -> Self {
-        Self {
-            exported_names: FxHashMap::default(),
-            export_specifiers: Vec::new(),
-            diagnostics: Vec::new(),
-        }
-    }
-
-    pub fn into_diagnostics(self) -> Vec<Diagnostic<'a>> {
-        self.diagnostics
-    }
-
+impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     fn report_unresolved_export(&mut self, tree: &Ast<'a>, name: &[u8], node: NodeId) {
         let message = self.unresolved_export_message(name);
         self.report(tree.span(node), message, ReportOptions::default());
