@@ -2876,6 +2876,7 @@ dependencies = [
  "bitflags",
  "clap",
  "hashbrown 0.17.1",
+ "memchr",
  "oxc_index",
  "rustc-hash",
  "swc_next_allocator",
