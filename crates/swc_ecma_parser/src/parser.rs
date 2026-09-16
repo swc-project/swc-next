@@ -793,6 +793,11 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
 }
 
 impl<C: ParserConfig> Peek<'_, '_, C> {
+    /// Keeps the scanned tokens and their lexer side effects.
+    fn commit(mut self) {
+        self.active = false;
+    }
+
     fn end(mut self) {
         self.restore();
     }
@@ -1805,11 +1810,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_import_declaration_or_expression(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Import);
-        let next = self.peek_ahead()?;
+        let import = self.current_token;
+        let mut peek = self.begin_peek();
+        // Keep the previous-token boundary identical to `advance`.
+        peek.lexer.state.prev_token_end = import.span.end;
+        let next = peek.next()?;
         if matches!(next.tag, TokenTag::LeftParen | TokenTag::Dot) {
+            peek.end();
             return self.parse_expression_statement();
         }
-        self.parse_import_declaration()
+        peek.commit();
+        self.check_escaped_keyword();
+        self.current_token = next;
+        self.parse_import_declaration_from(import.span.start)
     }
 
     fn is_let_identifier(&mut self) -> Option<bool> {
@@ -3755,19 +3768,28 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let mut phase = None;
         let mut import_kind = ImportOrExportKind::Value;
-        let next = self.peek_ahead()?;
-        if self.lang.is_typescript()
-            && self.current_token.tag == TokenTag::Type
-            && self.is_type_import_modifier(next)
-        {
-            import_kind = ImportOrExportKind::Type;
-            self.advance()?;
-        } else if self.current_token.tag == TokenTag::Source && self.is_source_phase_import(next) {
-            phase = Some(ImportPhase::Source);
-            self.advance()?;
-        } else if self.current_token.tag == TokenTag::Defer && next.tag == TokenTag::Star {
-            phase = Some(ImportPhase::Defer);
-            self.advance()?;
+        // Ordinary imports do not need another token to classify the clause.
+        let tag = self.current_token.tag;
+        match tag {
+            TokenTag::Type if self.lang.is_typescript() => {
+                let next = self.peek_ahead()?;
+                if self.is_type_import_modifier(next) {
+                    import_kind = ImportOrExportKind::Type;
+                    self.advance()?;
+                }
+            }
+            TokenTag::Source => {
+                let next = self.peek_ahead()?;
+                if self.is_source_phase_import(next) {
+                    phase = Some(ImportPhase::Source);
+                    self.advance()?;
+                }
+            }
+            TokenTag::Defer if self.peek_ahead()?.tag == TokenTag::Star => {
+                phase = Some(ImportPhase::Defer);
+                self.advance()?;
+            }
+            _ => {}
         }
 
         if self.lang.is_typescript()
@@ -13782,6 +13804,18 @@ mod tests {
         );
         assert_eq!(comments.len(), 1);
         check!(comments[0], 0, 20, Leading, 21);
+
+        let comments = parse_comments("import // c\nx from 'x';", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 11, Trailing, 6);
+
+        let comments = parse_comments("import /* c */ x from 'x';", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 14, Leading, 15);
+
+        let comments = parse_comments("import // c\n('x');", Lang::Js);
+        assert_eq!(comments.len(), 1);
+        check!(comments[0], 7, 11, Trailing, 6);
 
         let comments = parse_comments(
             "const foo = <h1>/* no */{/* 1 */ bar /* 2 */}/* no */</h1>;",
