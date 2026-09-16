@@ -267,6 +267,7 @@ impl Default for ReportOptions {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct ScratchBuffer {
+    // Allocate on the first append and reuse the capacity after reset.
     items: Vec<NodeId>,
 }
 
@@ -1503,11 +1504,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn ensure_capacity(&mut self) {
         let (estimated_nodes, estimated_extra) = estimate_ast_capacity(self.source.len());
         self.ast.reserve(estimated_nodes, estimated_extra);
-        self.scratch_cover.items.reserve(256);
-        self.scratch_statements.items.reserve(256);
-        self.scratch_a.items.reserve(256);
-        self.scratch_b.items.reserve(256);
-        self.scratch_decorators.items.reserve(128);
     }
 
     // ScriptBody :
