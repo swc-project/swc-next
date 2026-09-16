@@ -346,6 +346,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         if self.mode == LexerMode::Normal {
             while (pos as usize) < self.source.len() {
+                let rest = &self.source[pos as usize..];
+                let end = memchr3(quote, b'\\', b'\n', rest).unwrap_or(rest.len());
+                // CR must be checked before the next quote/escape/LF so errors keep
+                // pointing at the first line terminator.
+                if let Some(offset) = memchr(b'\r', &rest[..end]) {
+                    self.cursor = pos + offset as u32;
+                    return Err(LexicalError::UnterminatedString);
+                }
+                pos += end as u32;
+                if pos as usize == self.source.len() {
+                    break;
+                }
                 let c = self.source[pos as usize];
                 if c == quote {
                     pos += 1;
@@ -358,21 +370,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     pos = self.cursor;
                     continue;
                 }
-                if c == b'\n' || c == b'\r' {
-                    self.cursor = pos;
-                    return Err(LexicalError::UnterminatedString);
-                }
-                pos += 1;
+                debug_assert_eq!(c, b'\n');
+                self.cursor = pos;
+                return Err(LexicalError::UnterminatedString);
             }
         } else {
-            while (pos as usize) < self.source.len() {
-                if self.source[pos as usize] == quote {
-                    pos += 1;
-                    self.cursor = pos;
-                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                }
-                pos += 1;
+            if let Some(offset) = memchr(quote, &self.source[pos as usize..]) {
+                pos += offset as u32 + 1;
+                self.cursor = pos;
+                return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
             }
+            pos = self.source.len() as u32;
         }
 
         self.cursor = pos;

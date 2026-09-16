@@ -1,3 +1,4 @@
+use memchr::memchr2;
 use swc_next_allocator::wtf8::{CodePoint as Wtf8CodePoint, Wtf8Buf};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -193,9 +194,8 @@ pub fn decode_string_escapes(raw_str: &str, out: &mut Wtf8Buf) {
     while i < raw.len() {
         let run_start = i;
 
-        while i < raw.len() && raw[i] != b'\\' && raw[i] != b'\r' {
-            i += 1;
-        }
+        // Both delimiters are ASCII, so the copied run ends on a UTF-8 boundary.
+        i += memchr2(b'\\', b'\r', &raw[i..]).unwrap_or(raw.len() - i);
 
         if i > run_start {
             out.push_str(&raw_str[run_start..i]);
