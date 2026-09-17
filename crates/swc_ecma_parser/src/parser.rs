@@ -742,12 +742,12 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// assignment target. The same target must be rejected if cover grammar
     /// later establishes that it is a binding pattern.
     stripped_paren: Option<NodeId>,
-    /// Start offsets which failed speculative parenthesized-arrow parsing.
+    /// Token start offsets whose TypeScript speculation was rejected.
     ///
     /// This cache is intentionally not part of [`Checkpoint`]: a failed
     /// speculation remains impossible after rewinding and must not be retried
     /// by an enclosing speculative parse.
-    not_parenthesized_arrow: FxHashSet<u32>,
+    ts_rejected_speculations: FxHashSet<u32>,
 }
 
 pub struct ParseReturn<'a> {
@@ -901,7 +901,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             state: ParserState::default(),
             cover_has_trailing_comma: None,
             stripped_paren: None,
-            not_parenthesized_arrow: FxHashSet::default(),
+            ts_rejected_speculations: FxHashSet::default(),
         }
     }
 
@@ -1451,6 +1451,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             stripped_paren: self.stripped_paren,
             boundary_context: self.boundary_context,
         }
+    }
+
+    fn reject_ts_speculation(&mut self, position: u32) {
+        let inserted = self.ts_rejected_speculations.insert(position);
+        debug_assert!(inserted, "TypeScript speculation was already rejected");
     }
 
     /// Restores parser state captured by [`Parser::checkpoint`].
@@ -6018,6 +6023,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(None);
         }
 
+        let position = self.current_token.span.start;
+        let conditional_allowed = !self.ts_context.disallow_conditional_types();
+        if conditional_allowed && self.ts_rejected_speculations.contains(&position) {
+            return Some(None);
+        }
+
         let checkpoint = self.checkpoint();
         self.advance()?;
         self.ts_context
@@ -6034,10 +6045,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             checkpoint.ts_context.disallow_conditional_types(),
         );
 
-        if !checkpoint.ts_context.disallow_conditional_types()
-            && self.current_token.tag == TokenTag::Question
-        {
+        if conditional_allowed && self.current_token.tag == TokenTag::Question {
             self.rewind(checkpoint);
+            self.reject_ts_speculation(position);
             return Some(None);
         }
         Some(Some(constraint))
@@ -8900,7 +8910,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn try_parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
         let position = self.current_token.span.start;
-        if self.not_parenthesized_arrow.contains(&position) {
+        if self.ts_rejected_speculations.contains(&position) {
             return Some(None);
         }
 
@@ -8909,7 +8919,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Some(arrow) => arrow,
             None => {
                 self.rewind(checkpoint);
-                self.not_parenthesized_arrow.insert(position);
+                self.reject_ts_speculation(position);
                 return Some(None);
             }
         };
@@ -8922,7 +8932,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && self.current_token.tag != TokenTag::Colon
         {
             self.rewind(checkpoint);
-            self.not_parenthesized_arrow.insert(position);
+            self.reject_ts_speculation(position);
             return Some(None);
         }
         Some(Some(arrow))
