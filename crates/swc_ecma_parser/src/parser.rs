@@ -2571,7 +2571,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = context;
         self.boundary_context = boundary_context;
         let (params, body, type_parameters, return_type, params_end, end) = tail?;
-        if !self.statement_context.permits_declaration() {
+        // Only declarations are restricted here. A function expression is a valid
+        // operand in any expression position, for example:
+        //   if (a) c(function* () {});
+        // even though the surrounding statement context does not permit declarations.
+        if !is_function_expression && !self.statement_context.permits_declaration() {
             if opts.is_async {
                 self.report(
                     self.current_token.span,
@@ -14131,5 +14135,24 @@ mod tests {
         check!(comments[0], 0, 5, Leading, 11);
         check!(comments[1], 7, 10, Trailing, 7);
         check!(comments[2], 14, 17, Trailing, 12);
+    }
+
+    #[test]
+    fn single_statement_function_expressions() {
+        fn parse_js_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig)
+                .parse()
+                .diagnostics
+        }
+
+        let diagnostics = parse_js_diagnostics("if (a) c(function* () {});");
+        assert!(diagnostics.is_empty());
+
+        let diagnostics = parse_js_diagnostics("if (a) c(async function () {});");
+        assert!(diagnostics.is_empty());
+
+        let diagnostics = parse_js_diagnostics("if (a) function* f() {}");
+        assert_eq!(diagnostics.len(), 1);
     }
 }
