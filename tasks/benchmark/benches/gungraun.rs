@@ -271,10 +271,10 @@ fn bench_visit_mut(mut ast: Ast<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-fn bench_traverse(mut ast: Ast<'static>) {
+fn bench_traverse(ast: Ast<'static>) {
     let program = ast.root_program();
     let mut counter = TraverseCounter { count: 0 };
-    program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut ast, ()));
+    program.traverse_with(&mut counter, &mut TraverseCtx::new(&ast, ()));
     black_box(counter.count);
 }
 

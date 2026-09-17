@@ -1,5 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::single_match)]
-use crate::visit::TraverseCtx;
+use crate::visit::{TraverseCtx, TraverseMutCtx};
 use crate::*;
 pub trait Visit<'a> {
     fn ast(&self) -> &Ast<'a>;
@@ -13504,7 +13504,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JsxAttributeVa
         self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
-/// Hooks invoked before and after traversing each concrete AST node.
+///Hooks invoked before and after each concrete node, with immutable AST access.
 /// Children are always traversed between the enter and exit hooks.
 pub trait Traverse<'a, State = ()> {
     #[inline]
@@ -21561,8 +21561,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<Hashbang> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <Hashbang as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <Hashbang as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21612,8 +21612,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsTypeAnnotation> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <TsTypeAnnotation as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <TsTypeAnnotation as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21624,8 +21624,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<BindingPattern> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <BindingPattern as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <BindingPattern as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21651,8 +21651,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<BindingRestElement> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <BindingRestElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <BindingRestElement as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21689,8 +21689,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<Expr> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <Expr as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <Expr as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21701,8 +21701,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<Stmt> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <Stmt as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <Stmt as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21726,8 +21726,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<ForStatementInit> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <ForStatementInit as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <ForStatementInit as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21738,8 +21738,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<CatchClause> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <CatchClause as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <CatchClause as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21750,8 +21750,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<BlockStatement> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <BlockStatement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <BlockStatement as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21762,8 +21762,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<LabelIdentifier> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <LabelIdentifier as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <LabelIdentifier as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21774,8 +21774,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<BindingIdentifier> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <BindingIdentifier as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <BindingIdentifier as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21786,9 +21786,9 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsTypeParameterDeclaration> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
+        if let Some(child) = self {
             <TsTypeParameterDeclaration as TraverseWith<'a, State>>::traverse_with(
-                it, traverser, ctx,
+                child, traverser, ctx,
             );
         }
     }
@@ -21800,9 +21800,9 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsTypeParameterInstantiation>
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
+        if let Some(child) = self {
             <TsTypeParameterInstantiation as TraverseWith<'a, State>>::traverse_with(
-                it, traverser, ctx,
+                child, traverser, ctx,
             );
         }
     }
@@ -21853,8 +21853,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<Argument> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <Argument as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <Argument as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21932,8 +21932,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<Decl> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <Decl as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <Decl as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21957,8 +21957,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<StringLiteral> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <StringLiteral as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <StringLiteral as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21969,8 +21969,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<ModuleExportName> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <ModuleExportName as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <ModuleExportName as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -21981,8 +21981,10 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsImportTypeQualifier> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <TsImportTypeQualifier as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <TsImportTypeQualifier as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            );
         }
     }
 }
@@ -21993,8 +21995,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsType> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <TsType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <TsType as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -22096,8 +22098,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<TsModuleBody> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <TsModuleBody as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <TsModuleBody as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -22121,8 +22123,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<JsxClosingElement> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <JsxClosingElement as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <JsxClosingElement as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -22146,8 +22148,8 @@ impl<'a, State> TraverseWith<'a, State> for Option<JsxAttributeValue> {
         traverser: &mut T,
         ctx: &mut TraverseCtx<'_, 'a, State>,
     ) {
-        if let Some(it) = self {
-            <JsxAttributeValue as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
+        if let Some(child) = self {
+            <JsxAttributeValue as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
         }
     }
 }
@@ -24850,6 +24852,11780 @@ fn walk_jsx_spread_child<'a, State, T: ?Sized + Traverse<'a, State>>(
     traverser.enter_jsx_spread_child(node, ctx);
     let child = node.expression(ctx.ast);
     <Expr as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx);
+    traverser.exit_jsx_spread_child(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+///Hooks invoked before and after each concrete node, with mutable AST access.
+/// Children are always traversed between the enter and exit hooks.
+pub trait TraverseMut<'a, State = ()> {
+    #[inline]
+    fn enter_node(&mut self, node_id: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_node(&mut self, node_id: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_program(&mut self, node: Program, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_program(&mut self, node: Program, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_super(&mut self, node: Super, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_super(&mut self, node: Super, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_this_expression(
+        &mut self,
+        node: ThisExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_this_expression(
+        &mut self,
+        node: ThisExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_string_literal(
+        &mut self,
+        node: StringLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_string_literal(
+        &mut self,
+        node: StringLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_numeric_literal(
+        &mut self,
+        node: NumericLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_numeric_literal(
+        &mut self,
+        node: NumericLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_big_int_literal(
+        &mut self,
+        node: BigIntLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_big_int_literal(
+        &mut self,
+        node: BigIntLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_boolean_literal(
+        &mut self,
+        node: BooleanLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_boolean_literal(
+        &mut self,
+        node: BooleanLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_null_literal(&mut self, node: NullLiteral, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_null_literal(&mut self, node: NullLiteral, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_reg_exp_literal(
+        &mut self,
+        node: RegExpLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_reg_exp_literal(
+        &mut self,
+        node: RegExpLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_template_literal(
+        &mut self,
+        node: TemplateLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_template_literal(
+        &mut self,
+        node: TemplateLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_template_element(
+        &mut self,
+        node: TemplateElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_template_element(
+        &mut self,
+        node: TemplateElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_private_identifier(
+        &mut self,
+        node: PrivateIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_private_identifier(
+        &mut self,
+        node: PrivateIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_binding_identifier(
+        &mut self,
+        node: BindingIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_binding_identifier(
+        &mut self,
+        node: BindingIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_identifier_name(
+        &mut self,
+        node: IdentifierName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_identifier_name(
+        &mut self,
+        node: IdentifierName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_label_identifier(
+        &mut self,
+        node: LabelIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_label_identifier(
+        &mut self,
+        node: LabelIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_assignment_pattern(
+        &mut self,
+        node: AssignmentPattern,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_assignment_pattern(
+        &mut self,
+        node: AssignmentPattern,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_binding_rest_element(
+        &mut self,
+        node: BindingRestElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_binding_rest_element(
+        &mut self,
+        node: BindingRestElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_array_pattern(&mut self, node: ArrayPattern, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn exit_array_pattern(&mut self, node: ArrayPattern, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_object_pattern(
+        &mut self,
+        node: ObjectPattern,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_object_pattern(
+        &mut self,
+        node: ObjectPattern,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_binding_property(
+        &mut self,
+        node: BindingProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_binding_property(
+        &mut self,
+        node: BindingProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_binary_expression(
+        &mut self,
+        node: BinaryExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_binary_expression(
+        &mut self,
+        node: BinaryExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_logical_expression(
+        &mut self,
+        node: LogicalExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_logical_expression(
+        &mut self,
+        node: LogicalExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_conditional_expression(
+        &mut self,
+        node: ConditionalExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_conditional_expression(
+        &mut self,
+        node: ConditionalExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_unary_expression(
+        &mut self,
+        node: UnaryExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_unary_expression(
+        &mut self,
+        node: UnaryExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_update_expression(
+        &mut self,
+        node: UpdateExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_update_expression(
+        &mut self,
+        node: UpdateExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_assignment_expression(
+        &mut self,
+        node: AssignmentExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_assignment_expression(
+        &mut self,
+        node: AssignmentExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_variable_declaration(
+        &mut self,
+        node: VariableDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_variable_declaration(
+        &mut self,
+        node: VariableDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_variable_declarator(
+        &mut self,
+        node: VariableDeclarator,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_variable_declarator(
+        &mut self,
+        node: VariableDeclarator,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_if_statement(&mut self, node: IfStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_if_statement(&mut self, node: IfStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_switch_statement(
+        &mut self,
+        node: SwitchStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_switch_statement(
+        &mut self,
+        node: SwitchStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_switch_case(&mut self, node: SwitchCase, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_switch_case(&mut self, node: SwitchCase, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_for_statement(&mut self, node: ForStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn exit_for_statement(&mut self, node: ForStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_for_in_statement(
+        &mut self,
+        node: ForInStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_for_in_statement(
+        &mut self,
+        node: ForInStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_for_of_statement(
+        &mut self,
+        node: ForOfStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_for_of_statement(
+        &mut self,
+        node: ForOfStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_try_statement(&mut self, node: TryStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn exit_try_statement(&mut self, node: TryStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_catch_clause(&mut self, node: CatchClause, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_catch_clause(&mut self, node: CatchClause, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_break_statement(
+        &mut self,
+        node: BreakStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_break_statement(
+        &mut self,
+        node: BreakStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_continue_statement(
+        &mut self,
+        node: ContinueStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_continue_statement(
+        &mut self,
+        node: ContinueStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_labeled_statement(
+        &mut self,
+        node: LabeledStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_labeled_statement(
+        &mut self,
+        node: LabeledStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_expression_statement(
+        &mut self,
+        node: ExpressionStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_expression_statement(
+        &mut self,
+        node: ExpressionStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_return_statement(
+        &mut self,
+        node: ReturnStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_return_statement(
+        &mut self,
+        node: ReturnStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_throw_statement(
+        &mut self,
+        node: ThrowStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_throw_statement(
+        &mut self,
+        node: ThrowStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_debugger_statement(
+        &mut self,
+        node: DebuggerStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_debugger_statement(
+        &mut self,
+        node: DebuggerStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_empty_statement(
+        &mut self,
+        node: EmptyStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_empty_statement(
+        &mut self,
+        node: EmptyStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_directive(&mut self, node: Directive, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_directive(&mut self, node: Directive, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_decorator(&mut self, node: Decorator, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_decorator(&mut self, node: Decorator, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_class(&mut self, node: Class, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_class(&mut self, node: Class, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_class_body(&mut self, node: ClassBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_class_body(&mut self, node: ClassBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_method_definition(
+        &mut self,
+        node: MethodDefinition,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_method_definition(
+        &mut self,
+        node: MethodDefinition,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_property_definition(
+        &mut self,
+        node: PropertyDefinition,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_property_definition(
+        &mut self,
+        node: PropertyDefinition,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_static_block(&mut self, node: StaticBlock, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_static_block(&mut self, node: StaticBlock, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_function(&mut self, node: Function, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_function(&mut self, node: Function, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_function_body(&mut self, node: FunctionBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn exit_function_body(&mut self, node: FunctionBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_block_statement(
+        &mut self,
+        node: BlockStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_block_statement(
+        &mut self,
+        node: BlockStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_while_statement(
+        &mut self,
+        node: WhileStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_while_statement(
+        &mut self,
+        node: WhileStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_do_while_statement(
+        &mut self,
+        node: DoWhileStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_do_while_statement(
+        &mut self,
+        node: DoWhileStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_with_statement(
+        &mut self,
+        node: WithStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_with_statement(
+        &mut self,
+        node: WithStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_formal_parameters(
+        &mut self,
+        node: FormalParameters,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_formal_parameters(
+        &mut self,
+        node: FormalParameters,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_formal_parameter(
+        &mut self,
+        node: FormalParameter,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_formal_parameter(
+        &mut self,
+        node: FormalParameter,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_array_expression(
+        &mut self,
+        node: ArrayExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_array_expression(
+        &mut self,
+        node: ArrayExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_object_expression(
+        &mut self,
+        node: ObjectExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_object_expression(
+        &mut self,
+        node: ObjectExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_spread_element(
+        &mut self,
+        node: SpreadElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_spread_element(
+        &mut self,
+        node: SpreadElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_object_property(
+        &mut self,
+        node: ObjectProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_object_property(
+        &mut self,
+        node: ObjectProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_parenthesized_expression(
+        &mut self,
+        node: ParenthesizedExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_parenthesized_expression(
+        &mut self,
+        node: ParenthesizedExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_arrow_function_expression(
+        &mut self,
+        node: ArrowFunctionExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_arrow_function_expression(
+        &mut self,
+        node: ArrowFunctionExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_sequence_expression(
+        &mut self,
+        node: SequenceExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_sequence_expression(
+        &mut self,
+        node: SequenceExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_member_expression(
+        &mut self,
+        node: MemberExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_member_expression(
+        &mut self,
+        node: MemberExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_chain_expression(
+        &mut self,
+        node: ChainExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_chain_expression(
+        &mut self,
+        node: ChainExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_tagged_template_expression(
+        &mut self,
+        node: TaggedTemplateExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_tagged_template_expression(
+        &mut self,
+        node: TaggedTemplateExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_new_expression(
+        &mut self,
+        node: NewExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_new_expression(
+        &mut self,
+        node: NewExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_await_expression(
+        &mut self,
+        node: AwaitExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_await_expression(
+        &mut self,
+        node: AwaitExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_yield_expression(
+        &mut self,
+        node: YieldExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_yield_expression(
+        &mut self,
+        node: YieldExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_meta_property(&mut self, node: MetaProperty, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn exit_meta_property(&mut self, node: MetaProperty, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_import_expression(
+        &mut self,
+        node: ImportExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_import_expression(
+        &mut self,
+        node: ImportExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_declaration(
+        &mut self,
+        node: ImportDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_import_declaration(
+        &mut self,
+        node: ImportDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_specifier(
+        &mut self,
+        node: ImportSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_import_specifier(
+        &mut self,
+        node: ImportSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_default_specifier(
+        &mut self,
+        node: ImportDefaultSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_import_default_specifier(
+        &mut self,
+        node: ImportDefaultSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_namespace_specifier(
+        &mut self,
+        node: ImportNamespaceSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_import_namespace_specifier(
+        &mut self,
+        node: ImportNamespaceSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_attribute(
+        &mut self,
+        node: ImportAttribute,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_import_attribute(
+        &mut self,
+        node: ImportAttribute,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_named_declaration(
+        &mut self,
+        node: ExportNamedDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_export_named_declaration(
+        &mut self,
+        node: ExportNamedDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_default_declaration(
+        &mut self,
+        node: ExportDefaultDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_export_default_declaration(
+        &mut self,
+        node: ExportDefaultDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_all_declaration(
+        &mut self,
+        node: ExportAllDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_export_all_declaration(
+        &mut self,
+        node: ExportAllDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_specifier(
+        &mut self,
+        node: ExportSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_export_specifier(
+        &mut self,
+        node: ExportSpecifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_function(&mut self, node: TsFunction, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_function(&mut self, node: TsFunction, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_method_definition(
+        &mut self,
+        node: TsMethodDefinition,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_method_definition(
+        &mut self,
+        node: TsMethodDefinition,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_annotation(
+        &mut self,
+        node: TsTypeAnnotation,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_annotation(
+        &mut self,
+        node: TsTypeAnnotation,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_any_keyword(
+        &mut self,
+        node: TsAnyKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_any_keyword(&mut self, node: TsAnyKeyword, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn enter_ts_unknown_keyword(
+        &mut self,
+        node: TsUnknownKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_unknown_keyword(
+        &mut self,
+        node: TsUnknownKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_never_keyword(
+        &mut self,
+        node: TsNeverKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_never_keyword(
+        &mut self,
+        node: TsNeverKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_void_keyword(
+        &mut self,
+        node: TsVoidKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_void_keyword(
+        &mut self,
+        node: TsVoidKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_null_keyword(
+        &mut self,
+        node: TsNullKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_null_keyword(
+        &mut self,
+        node: TsNullKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_undefined_keyword(
+        &mut self,
+        node: TsUndefinedKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_undefined_keyword(
+        &mut self,
+        node: TsUndefinedKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_string_keyword(
+        &mut self,
+        node: TsStringKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_string_keyword(
+        &mut self,
+        node: TsStringKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_number_keyword(
+        &mut self,
+        node: TsNumberKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_number_keyword(
+        &mut self,
+        node: TsNumberKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_big_int_keyword(
+        &mut self,
+        node: TsBigIntKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_big_int_keyword(
+        &mut self,
+        node: TsBigIntKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_boolean_keyword(
+        &mut self,
+        node: TsBooleanKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_boolean_keyword(
+        &mut self,
+        node: TsBooleanKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_symbol_keyword(
+        &mut self,
+        node: TsSymbolKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_symbol_keyword(
+        &mut self,
+        node: TsSymbolKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_object_keyword(
+        &mut self,
+        node: TsObjectKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_object_keyword(
+        &mut self,
+        node: TsObjectKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_intrinsic_keyword(
+        &mut self,
+        node: TsIntrinsicKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_intrinsic_keyword(
+        &mut self,
+        node: TsIntrinsicKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_this_type(&mut self, node: TsThisType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_this_type(&mut self, node: TsThisType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_type_reference(
+        &mut self,
+        node: TsTypeReference,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_reference(
+        &mut self,
+        node: TsTypeReference,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_qualified_name(
+        &mut self,
+        node: TsQualifiedName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_qualified_name(
+        &mut self,
+        node: TsQualifiedName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_query(&mut self, node: TsTypeQuery, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_type_query(&mut self, node: TsTypeQuery, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_import_type(
+        &mut self,
+        node: TsImportType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_import_type(&mut self, node: TsImportType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn enter_ts_type_parameter(
+        &mut self,
+        node: TsTypeParameter,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_parameter(
+        &mut self,
+        node: TsTypeParameter,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_parameter_declaration(
+        &mut self,
+        node: TsTypeParameterDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_parameter_declaration(
+        &mut self,
+        node: TsTypeParameterDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_parameter_instantiation(
+        &mut self,
+        node: TsTypeParameterInstantiation,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_parameter_instantiation(
+        &mut self,
+        node: TsTypeParameterInstantiation,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_literal_type(
+        &mut self,
+        node: TsLiteralType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_literal_type(
+        &mut self,
+        node: TsLiteralType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_template_literal_type(
+        &mut self,
+        node: TsTemplateLiteralType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_template_literal_type(
+        &mut self,
+        node: TsTemplateLiteralType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_array_type(&mut self, node: TsArrayType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_array_type(&mut self, node: TsArrayType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_indexed_access_type(
+        &mut self,
+        node: TsIndexedAccessType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_indexed_access_type(
+        &mut self,
+        node: TsIndexedAccessType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_tuple_type(&mut self, node: TsTupleType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_tuple_type(&mut self, node: TsTupleType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_named_tuple_member(
+        &mut self,
+        node: TsNamedTupleMember,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_named_tuple_member(
+        &mut self,
+        node: TsNamedTupleMember,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_optional_type(
+        &mut self,
+        node: TsOptionalType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_optional_type(
+        &mut self,
+        node: TsOptionalType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_rest_type(&mut self, node: TsRestType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_rest_type(&mut self, node: TsRestType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_js_doc_nullable_type(
+        &mut self,
+        node: TsJsDocNullableType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_js_doc_nullable_type(
+        &mut self,
+        node: TsJsDocNullableType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_js_doc_non_nullable_type(
+        &mut self,
+        node: TsJsDocNonNullableType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_js_doc_non_nullable_type(
+        &mut self,
+        node: TsJsDocNonNullableType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_js_doc_unknown_type(
+        &mut self,
+        node: TsJsDocUnknownType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_js_doc_unknown_type(
+        &mut self,
+        node: TsJsDocUnknownType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_union_type(&mut self, node: TsUnionType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_union_type(&mut self, node: TsUnionType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_intersection_type(
+        &mut self,
+        node: TsIntersectionType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_intersection_type(
+        &mut self,
+        node: TsIntersectionType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_conditional_type(
+        &mut self,
+        node: TsConditionalType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_conditional_type(
+        &mut self,
+        node: TsConditionalType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_infer_type(&mut self, node: TsInferType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_infer_type(&mut self, node: TsInferType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_type_operator(
+        &mut self,
+        node: TsTypeOperator,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_operator(
+        &mut self,
+        node: TsTypeOperator,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_parenthesized_type(
+        &mut self,
+        node: TsParenthesizedType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_parenthesized_type(
+        &mut self,
+        node: TsParenthesizedType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_function_type(
+        &mut self,
+        node: TsFunctionType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_function_type(
+        &mut self,
+        node: TsFunctionType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_constructor_type(
+        &mut self,
+        node: TsConstructorType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_constructor_type(
+        &mut self,
+        node: TsConstructorType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_predicate(
+        &mut self,
+        node: TsTypePredicate,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_predicate(
+        &mut self,
+        node: TsTypePredicate,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_literal(
+        &mut self,
+        node: TsTypeLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_literal(
+        &mut self,
+        node: TsTypeLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_mapped_type(
+        &mut self,
+        node: TsMappedType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_mapped_type(&mut self, node: TsMappedType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn enter_ts_property_signature(
+        &mut self,
+        node: TsPropertySignature,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_property_signature(
+        &mut self,
+        node: TsPropertySignature,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_method_signature(
+        &mut self,
+        node: TsMethodSignature,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_method_signature(
+        &mut self,
+        node: TsMethodSignature,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_call_signature_declaration(
+        &mut self,
+        node: TsCallSignatureDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_call_signature_declaration(
+        &mut self,
+        node: TsCallSignatureDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_construct_signature_declaration(
+        &mut self,
+        node: TsConstructSignatureDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_construct_signature_declaration(
+        &mut self,
+        node: TsConstructSignatureDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_index_signature(
+        &mut self,
+        node: TsIndexSignature,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_index_signature(
+        &mut self,
+        node: TsIndexSignature,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_alias_declaration(
+        &mut self,
+        node: TsTypeAliasDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_alias_declaration(
+        &mut self,
+        node: TsTypeAliasDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_interface_declaration(
+        &mut self,
+        node: TsInterfaceDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_interface_declaration(
+        &mut self,
+        node: TsInterfaceDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_interface_body(
+        &mut self,
+        node: TsInterfaceBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_interface_body(
+        &mut self,
+        node: TsInterfaceBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_interface_heritage(
+        &mut self,
+        node: TsInterfaceHeritage,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_interface_heritage(
+        &mut self,
+        node: TsInterfaceHeritage,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_class_implements(
+        &mut self,
+        node: TsClassImplements,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_class_implements(
+        &mut self,
+        node: TsClassImplements,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_enum_declaration(
+        &mut self,
+        node: TsEnumDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_enum_declaration(
+        &mut self,
+        node: TsEnumDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_enum_body(&mut self, node: TsEnumBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_ts_enum_body(&mut self, node: TsEnumBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_enum_member(
+        &mut self,
+        node: TsEnumMember,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_enum_member(&mut self, node: TsEnumMember, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn enter_ts_module_declaration(
+        &mut self,
+        node: TsModuleDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_module_declaration(
+        &mut self,
+        node: TsModuleDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_module_block(
+        &mut self,
+        node: TsModuleBlock,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_module_block(
+        &mut self,
+        node: TsModuleBlock,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_global_declaration(
+        &mut self,
+        node: TsGlobalDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_global_declaration(
+        &mut self,
+        node: TsGlobalDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_parameter_property(
+        &mut self,
+        node: TsParameterProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_parameter_property(
+        &mut self,
+        node: TsParameterProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_this_parameter(
+        &mut self,
+        node: TsThisParameter,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_this_parameter(
+        &mut self,
+        node: TsThisParameter,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_as_expression(
+        &mut self,
+        node: TsAsExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_as_expression(
+        &mut self,
+        node: TsAsExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_satisfies_expression(
+        &mut self,
+        node: TsSatisfiesExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_satisfies_expression(
+        &mut self,
+        node: TsSatisfiesExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_assertion(
+        &mut self,
+        node: TsTypeAssertion,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_type_assertion(
+        &mut self,
+        node: TsTypeAssertion,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_non_null_expression(
+        &mut self,
+        node: TsNonNullExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_non_null_expression(
+        &mut self,
+        node: TsNonNullExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_instantiation_expression(
+        &mut self,
+        node: TsInstantiationExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_instantiation_expression(
+        &mut self,
+        node: TsInstantiationExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_export_assignment(
+        &mut self,
+        node: TsExportAssignment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_export_assignment(
+        &mut self,
+        node: TsExportAssignment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_namespace_export_declaration(
+        &mut self,
+        node: TsNamespaceExportDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_namespace_export_declaration(
+        &mut self,
+        node: TsNamespaceExportDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_import_equals_declaration(
+        &mut self,
+        node: TsImportEqualsDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_import_equals_declaration(
+        &mut self,
+        node: TsImportEqualsDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_external_module_reference(
+        &mut self,
+        node: TsExternalModuleReference,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_ts_external_module_reference(
+        &mut self,
+        node: TsExternalModuleReference,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_element(&mut self, node: JsxElement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_jsx_element(&mut self, node: JsxElement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_jsx_opening_element(
+        &mut self,
+        node: JsxOpeningElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_opening_element(
+        &mut self,
+        node: JsxOpeningElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_closing_element(
+        &mut self,
+        node: JsxClosingElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_closing_element(
+        &mut self,
+        node: JsxClosingElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_fragment(&mut self, node: JsxFragment, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_jsx_fragment(&mut self, node: JsxFragment, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_jsx_opening_fragment(
+        &mut self,
+        node: JsxOpeningFragment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_opening_fragment(
+        &mut self,
+        node: JsxOpeningFragment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_closing_fragment(
+        &mut self,
+        node: JsxClosingFragment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_closing_fragment(
+        &mut self,
+        node: JsxClosingFragment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_identifier(
+        &mut self,
+        node: JsxIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_identifier(
+        &mut self,
+        node: JsxIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_namespaced_name(
+        &mut self,
+        node: JsxNamespacedName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_namespaced_name(
+        &mut self,
+        node: JsxNamespacedName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_member_expression(
+        &mut self,
+        node: JsxMemberExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_member_expression(
+        &mut self,
+        node: JsxMemberExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_attribute(&mut self, node: JsxAttribute, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    }
+    #[inline]
+    fn exit_jsx_attribute(&mut self, node: JsxAttribute, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_jsx_spread_attribute(
+        &mut self,
+        node: JsxSpreadAttribute,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_spread_attribute(
+        &mut self,
+        node: JsxSpreadAttribute,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_expression_container(
+        &mut self,
+        node: JsxExpressionContainer,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_expression_container(
+        &mut self,
+        node: JsxExpressionContainer,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_empty_expression(
+        &mut self,
+        node: JsxEmptyExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_empty_expression(
+        &mut self,
+        node: JsxEmptyExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_text(&mut self, node: JsxText, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn exit_jsx_text(&mut self, node: JsxText, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_jsx_spread_child(
+        &mut self,
+        node: JsxSpreadChild,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+    #[inline]
+    fn exit_jsx_spread_child(
+        &mut self,
+        node: JsxSpreadChild,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+    }
+}
+/// Walks AST nodes and invokes their traversal hooks.
+pub trait TraverseMutWith<'a, State = ()> {
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    );
+}
+impl<'a, State> TraverseMutWith<'a, State> for Program {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_program(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Stmt {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BlockStatement => {
+                <BlockStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BlockStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BreakStatement => {
+                <BreakStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BreakStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ContinueStatement => {
+                <ContinueStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ContinueStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::DebuggerStatement => {
+                <DebuggerStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    DebuggerStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::DoWhileStatement => {
+                <DoWhileStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    DoWhileStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::EmptyStatement => {
+                <EmptyStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    EmptyStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ExpressionStatement => {
+                <ExpressionStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ExpressionStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ForInStatement => {
+                <ForInStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ForInStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ForOfStatement => {
+                <ForOfStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ForOfStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ForStatement => {
+                <ForStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ForStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IfStatement => {
+                <IfStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IfStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LabeledStatement => {
+                <LabeledStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LabeledStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ReturnStatement => {
+                <ReturnStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ReturnStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SwitchStatement => {
+                <SwitchStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SwitchStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThrowStatement => {
+                <ThrowStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThrowStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TryStatement => {
+                <TryStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TryStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::WhileStatement => {
+                <WhileStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    WhileStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::WithStatement => {
+                <WithStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    WithStatement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::VariableDeclaration => {
+                <VariableDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    VariableDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsFunction => {
+                <TsFunction as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsFunction(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAliasDeclaration => {
+                <TsTypeAliasDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAliasDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                <TsInterfaceDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInterfaceDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsEnumDeclaration => {
+                <TsEnumDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsEnumDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsModuleDeclaration => {
+                <TsModuleDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsModuleDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsGlobalDeclaration => {
+                <TsGlobalDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsGlobalDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsImportEqualsDeclaration => {
+                <TsImportEqualsDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsImportEqualsDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportDeclaration => {
+                <ImportDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ExportNamedDeclaration => {
+                <ExportNamedDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ExportNamedDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ExportDefaultDeclaration => {
+                <ExportDefaultDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ExportDefaultDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ExportAllDeclaration => {
+                <ExportAllDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ExportAllDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsExportAssignment => {
+                <TsExportAssignment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsExportAssignment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNamespaceExportDeclaration => {
+                <TsNamespaceExportDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNamespaceExportDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Decl {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                <VariableDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    VariableDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsFunction => {
+                <TsFunction as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsFunction(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAliasDeclaration => {
+                <TsTypeAliasDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAliasDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                <TsInterfaceDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInterfaceDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsEnumDeclaration => {
+                <TsEnumDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsEnumDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsModuleDeclaration => {
+                <TsModuleDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsModuleDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsGlobalDeclaration => {
+                <TsGlobalDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsGlobalDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsImportEqualsDeclaration => {
+                <TsImportEqualsDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsImportEqualsDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Expr {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BindingPattern {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BindingIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentPattern => {
+                <AssignmentPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BindingRestElement => {
+                <BindingRestElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BindingRestElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayPattern => {
+                <ArrayPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectPattern => {
+                <ObjectPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for AssignmentTarget {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayPattern => {
+                <ArrayPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectPattern => {
+                <ObjectPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SimpleAssignmentTarget {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for PropertyKey {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ModuleExportName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Argument {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SpreadElement => {
+                <SpreadElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SpreadElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ObjectPropertyKind {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ObjectProperty => {
+                <ObjectProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SpreadElement => {
+                <SpreadElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SpreadElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ForStatementInit {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                <VariableDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    VariableDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ForStatementLeft {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::VariableDeclaration => {
+                <VariableDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    VariableDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayPattern => {
+                <ArrayPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectPattern => {
+                <ObjectPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ArrowFunctionBody {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FunctionBody => {
+                <FunctionBody as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    FunctionBody(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for FormalParameterItem {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::FormalParameter => {
+                <FormalParameter as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    FormalParameter(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsParameterProperty => {
+                <TsParameterProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsParameterProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for FormalParameterPattern {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BindingIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentPattern => {
+                <AssignmentPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BindingRestElement => {
+                <BindingRestElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BindingRestElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayPattern => {
+                <ArrayPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectPattern => {
+                <ObjectPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectPattern(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsThisParameter => {
+                <TsThisParameter as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsThisParameter(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ClassElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::MethodDefinition => {
+                <MethodDefinition as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MethodDefinition(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PropertyDefinition => {
+                <PropertyDefinition as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PropertyDefinition(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StaticBlock => {
+                <StaticBlock as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StaticBlock(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsMethodDefinition => {
+                <TsMethodDefinition as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsMethodDefinition(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIndexSignature => {
+                <TsIndexSignature as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIndexSignature(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportDeclarationSpecifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::ImportSpecifier => {
+                <ImportSpecifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportSpecifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportDefaultSpecifier => {
+                <ImportDefaultSpecifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportDefaultSpecifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportNamespaceSpecifier => {
+                <ImportNamespaceSpecifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportNamespaceSpecifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ExportDefaultDeclarationKind {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsFunction => {
+                <TsFunction as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsFunction(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                <TsInterfaceDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInterfaceDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Super {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_super(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ThisExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_this_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for StringLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_string_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for NumericLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_numeric_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BigIntLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_big_int_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BooleanLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_boolean_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for NullLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_null_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for RegExpLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_reg_exp_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TemplateLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_template_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TemplateElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_template_element(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for IdentifierReference {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_identifier_reference(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for PrivateIdentifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_private_identifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BindingIdentifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_binding_identifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for IdentifierName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_identifier_name(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for LabelIdentifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_label_identifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for AssignmentPattern {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_assignment_pattern(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BindingRestElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_binding_rest_element(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ArrayPattern {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_array_pattern(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ObjectPattern {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_object_pattern(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BindingProperty {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_binding_property(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BinaryExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_binary_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for LogicalExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_logical_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ConditionalExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_conditional_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for UnaryExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_unary_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for UpdateExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_update_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for AssignmentExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_assignment_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for VariableDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_variable_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for VariableDeclarator {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_variable_declarator(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for IfStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_if_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SwitchStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_switch_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SwitchCase {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_switch_case(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ForStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_for_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ForInStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_for_in_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ForOfStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_for_of_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TryStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_try_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for CatchClause {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_catch_clause(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BreakStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_break_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ContinueStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_continue_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for LabeledStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_labeled_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ExpressionStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_expression_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ReturnStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_return_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ThrowStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_throw_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for DebuggerStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_debugger_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for EmptyStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_empty_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Directive {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_directive(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Decorator {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_decorator(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Class {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_class(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ClassBody {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_class_body(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for MethodDefinition {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_method_definition(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for PropertyDefinition {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_property_definition(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for StaticBlock {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_static_block(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Function {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_function(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for FunctionBody {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_function_body(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for BlockStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_block_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for WhileStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_while_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for DoWhileStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_do_while_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for WithStatement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_with_statement(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for FormalParameters {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_formal_parameters(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for FormalParameter {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_formal_parameter(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ArrayExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_array_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ObjectExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_object_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SpreadElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_spread_element(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ObjectProperty {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_object_property(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ParenthesizedExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_parenthesized_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ArrowFunctionExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_arrow_function_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SequenceExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_sequence_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for MemberExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_member_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for CallExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_call_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ChainExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_chain_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TaggedTemplateExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_tagged_template_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for NewExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_new_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for AwaitExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_await_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for YieldExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_yield_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for MetaProperty {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_meta_property(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_import_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_import_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportSpecifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_import_specifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportDefaultSpecifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_import_default_specifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportNamespaceSpecifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_import_namespace_specifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ImportAttribute {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_import_attribute(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ExportNamedDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_export_named_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ExportDefaultDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_export_default_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ExportAllDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_export_all_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for ExportSpecifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_export_specifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Hashbang {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_hashbang(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword => {
+                <TsAnyKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAnyKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsUnknownKeyword => {
+                <TsUnknownKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsUnknownKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNeverKeyword => {
+                <TsNeverKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNeverKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsVoidKeyword => {
+                <TsVoidKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsVoidKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNullKeyword => {
+                <TsNullKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNullKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsUndefinedKeyword => {
+                <TsUndefinedKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsUndefinedKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsStringKeyword => {
+                <TsStringKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsStringKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNumberKeyword => {
+                <TsNumberKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNumberKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsBigIntKeyword => {
+                <TsBigIntKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsBigIntKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsBooleanKeyword => {
+                <TsBooleanKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsBooleanKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSymbolKeyword => {
+                <TsSymbolKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSymbolKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsObjectKeyword => {
+                <TsObjectKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsObjectKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIntrinsicKeyword => {
+                <TsIntrinsicKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIntrinsicKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsThisType => {
+                <TsThisType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsThisType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeReference => {
+                <TsTypeReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeQuery => {
+                <TsTypeQuery as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeQuery(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsImportType => {
+                <TsImportType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsImportType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsLiteralType => {
+                <TsLiteralType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsLiteralType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTemplateLiteralType => {
+                <TsTemplateLiteralType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTemplateLiteralType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsArrayType => {
+                <TsArrayType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsArrayType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIndexedAccessType => {
+                <TsIndexedAccessType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIndexedAccessType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTupleType => {
+                <TsTupleType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTupleType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsOptionalType => {
+                <TsOptionalType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsOptionalType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsRestType => {
+                <TsRestType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsRestType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsJsDocNullableType => {
+                <TsJsDocNullableType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsJsDocNullableType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsJsDocNonNullableType => {
+                <TsJsDocNonNullableType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsJsDocNonNullableType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsJsDocUnknownType => {
+                <TsJsDocUnknownType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsJsDocUnknownType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsUnionType => {
+                <TsUnionType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsUnionType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIntersectionType => {
+                <TsIntersectionType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIntersectionType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsConditionalType => {
+                <TsConditionalType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsConditionalType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInferType => {
+                <TsInferType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInferType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeOperator => {
+                <TsTypeOperator as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeOperator(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsParenthesizedType => {
+                <TsParenthesizedType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsParenthesizedType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsFunctionType => {
+                <TsFunctionType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsFunctionType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsConstructorType => {
+                <TsConstructorType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsConstructorType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypePredicate => {
+                <TsTypePredicate as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypePredicate(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeLiteral => {
+                <TsTypeLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsMappedType => {
+                <TsMappedType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsMappedType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsQualifiedName => {
+                <TsQualifiedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsQualifiedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsQualifiedNameLeft {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierName => {
+                <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BindingIdentifier => {
+                <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BindingIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsQualifiedName => {
+                <TsQualifiedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsQualifiedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsImportTypeQualifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsQualifiedName => {
+                <TsQualifiedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsQualifiedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeQueryExprName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsQualifiedName => {
+                <TsQualifiedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsQualifiedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsImportType => {
+                <TsImportType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsImportType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTupleElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsAnyKeyword => {
+                <TsAnyKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAnyKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsUnknownKeyword => {
+                <TsUnknownKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsUnknownKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNeverKeyword => {
+                <TsNeverKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNeverKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsVoidKeyword => {
+                <TsVoidKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsVoidKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNullKeyword => {
+                <TsNullKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNullKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsUndefinedKeyword => {
+                <TsUndefinedKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsUndefinedKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsStringKeyword => {
+                <TsStringKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsStringKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNumberKeyword => {
+                <TsNumberKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNumberKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsBigIntKeyword => {
+                <TsBigIntKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsBigIntKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsBooleanKeyword => {
+                <TsBooleanKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsBooleanKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSymbolKeyword => {
+                <TsSymbolKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSymbolKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsObjectKeyword => {
+                <TsObjectKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsObjectKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIntrinsicKeyword => {
+                <TsIntrinsicKeyword as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIntrinsicKeyword(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsThisType => {
+                <TsThisType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsThisType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeReference => {
+                <TsTypeReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeQuery => {
+                <TsTypeQuery as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeQuery(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsImportType => {
+                <TsImportType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsImportType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsLiteralType => {
+                <TsLiteralType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsLiteralType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTemplateLiteralType => {
+                <TsTemplateLiteralType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTemplateLiteralType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsArrayType => {
+                <TsArrayType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsArrayType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIndexedAccessType => {
+                <TsIndexedAccessType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIndexedAccessType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTupleType => {
+                <TsTupleType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTupleType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsOptionalType => {
+                <TsOptionalType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsOptionalType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsRestType => {
+                <TsRestType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsRestType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsJsDocNullableType => {
+                <TsJsDocNullableType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsJsDocNullableType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsJsDocNonNullableType => {
+                <TsJsDocNonNullableType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsJsDocNonNullableType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsJsDocUnknownType => {
+                <TsJsDocUnknownType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsJsDocUnknownType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsUnionType => {
+                <TsUnionType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsUnionType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIntersectionType => {
+                <TsIntersectionType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIntersectionType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsConditionalType => {
+                <TsConditionalType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsConditionalType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInferType => {
+                <TsInferType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInferType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeOperator => {
+                <TsTypeOperator as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeOperator(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsParenthesizedType => {
+                <TsParenthesizedType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsParenthesizedType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsFunctionType => {
+                <TsFunctionType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsFunctionType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsConstructorType => {
+                <TsConstructorType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsConstructorType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypePredicate => {
+                <TsTypePredicate as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypePredicate(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeLiteral => {
+                <TsTypeLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsMappedType => {
+                <TsMappedType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsMappedType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNamedTupleMember => {
+                <TsNamedTupleMember as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNamedTupleMember(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsPropertySignature => {
+                <TsPropertySignature as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsPropertySignature(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsMethodSignature => {
+                <TsMethodSignature as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsMethodSignature(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsCallSignatureDeclaration => {
+                <TsCallSignatureDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsCallSignatureDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsConstructSignatureDeclaration => {
+                <TsConstructSignatureDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsConstructSignatureDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsIndexSignature => {
+                <TsIndexSignature as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsIndexSignature(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypePredicateName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsThisType => {
+                <TsThisType as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsThisType(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsEnumMemberName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierName => {
+                <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsModuleName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BindingIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsQualifiedName => {
+                <TsQualifiedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsQualifiedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsModuleBody {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::TsModuleBlock => {
+                <TsModuleBlock as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsModuleBlock(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsModuleDeclaration => {
+                <TsModuleDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsModuleDeclaration(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsModuleReference {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsQualifiedName => {
+                <TsQualifiedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsQualifiedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsExternalModuleReference => {
+                <TsExternalModuleReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsExternalModuleReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsFunction {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_function(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsMethodDefinition {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_method_definition(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeAnnotation {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_annotation(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsAnyKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_any_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsUnknownKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_unknown_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsNeverKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_never_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsVoidKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_void_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsNullKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_null_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsUndefinedKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_undefined_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsStringKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_string_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsNumberKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_number_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsBigIntKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_big_int_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsBooleanKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_boolean_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsSymbolKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_symbol_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsObjectKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_object_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsIntrinsicKeyword {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_intrinsic_keyword(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsThisType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_this_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeReference {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_reference(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsQualifiedName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_qualified_name(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeQuery {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_query(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsImportType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_import_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameter {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_parameter(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameterDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_parameter_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameterInstantiation {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_parameter_instantiation(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsLiteralType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_literal_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTemplateLiteralType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_template_literal_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsArrayType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_array_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsIndexedAccessType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_indexed_access_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTupleType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_tuple_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsNamedTupleMember {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_named_tuple_member(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsOptionalType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_optional_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsRestType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_rest_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsJsDocNullableType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_js_doc_nullable_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsJsDocNonNullableType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_js_doc_non_nullable_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsJsDocUnknownType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_js_doc_unknown_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsUnionType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_union_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsIntersectionType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_intersection_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsConditionalType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_conditional_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsInferType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_infer_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeOperator {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_operator(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsParenthesizedType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_parenthesized_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsFunctionType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_function_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsConstructorType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_constructor_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypePredicate {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_predicate(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeLiteral {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_literal(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsMappedType {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_mapped_type(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsPropertySignature {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_property_signature(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsMethodSignature {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_method_signature(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsCallSignatureDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_call_signature_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsConstructSignatureDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_construct_signature_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsIndexSignature {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_index_signature(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeAliasDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_alias_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_interface_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceBody {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_interface_body(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceHeritage {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_interface_heritage(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsClassImplements {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_class_implements(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsEnumDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_enum_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsEnumBody {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_enum_body(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsEnumMember {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_enum_member(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsModuleDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_module_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsModuleBlock {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_module_block(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsGlobalDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_global_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsParameterProperty {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_parameter_property(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsThisParameter {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_this_parameter(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsAsExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_as_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsSatisfiesExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_satisfies_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsTypeAssertion {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_type_assertion(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsNonNullExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_non_null_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsInstantiationExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_instantiation_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsExportAssignment {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_export_assignment(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsNamespaceExportDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_namespace_export_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsImportEqualsDeclaration {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_import_equals_declaration(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for TsExternalModuleReference {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_ts_external_module_reference(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxElementName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                <JsxIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxNamespacedName => {
+                <JsxNamespacedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxNamespacedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxMemberExpression => {
+                <JsxMemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxMemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxMemberExpressionObject {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                <JsxIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxMemberExpression => {
+                <JsxMemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxMemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxIdentifier => {
+                <JsxIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxNamespacedName => {
+                <JsxNamespacedName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxNamespacedName(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeItem {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxAttribute => {
+                <JsxAttribute as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxAttribute(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxSpreadAttribute => {
+                <JsxSpreadAttribute as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxSpreadAttribute(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeValue {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxExpressionContainer => {
+                <JsxExpressionContainer as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxExpressionContainer(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::IdentifierReference => {
+                <IdentifierReference as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    IdentifierReference(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ThisExpression => {
+                <ThisExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ThisExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Super => {
+                <Super as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Super(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MetaProperty => {
+                <MetaProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MetaProperty(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::StringLiteral => {
+                <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    StringLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NumericLiteral => {
+                <NumericLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NumericLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BigIntLiteral => {
+                <BigIntLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BigIntLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BooleanLiteral => {
+                <BooleanLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BooleanLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NullLiteral => {
+                <NullLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NullLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::RegExpLiteral => {
+                <RegExpLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    RegExpLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TemplateLiteral => {
+                <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TemplateLiteral(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::BinaryExpression => {
+                <BinaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    BinaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::LogicalExpression => {
+                <LogicalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    LogicalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UnaryExpression => {
+                <UnaryExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UnaryExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::UpdateExpression => {
+                <UpdateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    UpdateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AssignmentExpression => {
+                <AssignmentExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AssignmentExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ConditionalExpression => {
+                <ConditionalExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ConditionalExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::SequenceExpression => {
+                <SequenceExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    SequenceExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::MemberExpression => {
+                <MemberExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    MemberExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::CallExpression => {
+                <CallExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    CallExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ChainExpression => {
+                <ChainExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ChainExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::NewExpression => {
+                <NewExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    NewExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TaggedTemplateExpression => {
+                <TaggedTemplateExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TaggedTemplateExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrowFunctionExpression => {
+                <ArrowFunctionExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrowFunctionExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ArrayExpression => {
+                <ArrayExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ArrayExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ObjectExpression => {
+                <ObjectExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ObjectExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ParenthesizedExpression => {
+                <ParenthesizedExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ParenthesizedExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Function => {
+                <Function as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Function(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::Class => {
+                <Class as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    Class(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::ImportExpression => {
+                <ImportExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    ImportExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::AwaitExpression => {
+                <AwaitExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    AwaitExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::YieldExpression => {
+                <YieldExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    YieldExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::PrivateIdentifier => {
+                <PrivateIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    PrivateIdentifier(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsAsExpression => {
+                <TsAsExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsAsExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsSatisfiesExpression => {
+                <TsSatisfiesExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsSatisfiesExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsTypeAssertion => {
+                <TsTypeAssertion as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsTypeAssertion(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsNonNullExpression => {
+                <TsNonNullExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsNonNullExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::TsInstantiationExpression => {
+                <TsInstantiationExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    TsInstantiationExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxEmptyExpression => {
+                <JsxEmptyExpression as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxEmptyExpression(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxChild {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        let kind = unsafe { *ctx.ast.nodes.kind_unchecked(self.0) };
+        match kind {
+            NodeKind::JsxText => {
+                <JsxText as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxText(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxExpressionContainer => {
+                <JsxExpressionContainer as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxExpressionContainer(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxSpreadChild => {
+                <JsxSpreadChild as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxSpreadChild(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxElement => {
+                <JsxElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxElement(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            NodeKind::JsxFragment => {
+                <JsxFragment as TraverseMutWith<'a, State>>::traverse_mut_with(
+                    JsxFragment(self.0),
+                    traverser,
+                    ctx,
+                );
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_element(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxOpeningElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_opening_element(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxClosingElement {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_closing_element(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxFragment {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_fragment(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxOpeningFragment {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_opening_fragment(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxClosingFragment {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_closing_fragment(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxIdentifier {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_identifier(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxNamespacedName {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_namespaced_name(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxMemberExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_member_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxAttribute {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_attribute(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxSpreadAttribute {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_spread_attribute(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxExpressionContainer {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_expression_container(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxEmptyExpression {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_empty_expression(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxText {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_text(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for JsxSpreadChild {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        walk_mut_jsx_spread_child(self, traverser, ctx)
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Directive> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Directive as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Stmt> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<Hashbang> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <Hashbang as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TemplateElement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TemplateElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Expr> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Decorator> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Decorator as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <TsTypeAnnotation as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<BindingPattern> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <BindingPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Option<BindingPattern>> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Option<BindingPattern> as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<BindingRestElement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <BindingRestElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<BindingProperty> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <BindingProperty as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<VariableDeclarator> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <VariableDeclarator as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<Expr> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<Stmt> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<SwitchCase> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <SwitchCase as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<ForStatementInit> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <ForStatementInit as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<CatchClause> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <CatchClause as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<BlockStatement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <BlockStatement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<LabelIdentifier> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <LabelIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<BindingIdentifier> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeParameterDeclaration> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <TsTypeParameterDeclaration as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeParameterInstantiation> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <TsTypeParameterInstantiation as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsClassImplements> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsClassImplements as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<ClassElement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <ClassElement as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<FormalParameterItem> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <FormalParameterItem as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<Argument> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <Argument as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Option<Argument>> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Option<Argument> as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<ObjectPropertyKind> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <ObjectPropertyKind as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<Argument> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <Argument as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportDeclarationSpecifier> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <ImportDeclarationSpecifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportAttribute> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <ImportAttribute as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<Decl> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <Decl as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<ExportSpecifier> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <ExportSpecifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<StringLiteral> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<ModuleExportName> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <ModuleExportName as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsImportTypeQualifier> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <TsImportTypeQualifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsType> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeParameter> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsTypeParameter as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsType> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTupleElement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsTupleElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeElement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsTypeElement as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<BindingIdentifier> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsInterfaceHeritage> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsInterfaceHeritage as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsEnumMember> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <TsEnumMember as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsModuleBody> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <TsModuleBody as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<JsxChild> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <JsxChild as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<JsxClosingElement> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <JsxClosingElement as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for SubRange<JsxAttributeItem> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            <JsxAttributeItem as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<JsxAttributeValue> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            <JsxAttributeValue as TraverseMutWith<'a, State>>::traverse_mut_with(
+                child, traverser, ctx,
+            );
+        }
+    }
+}
+#[inline]
+fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Program,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_program(node, ctx);
+    let child = node.directives(ctx.ast);
+    <SubRange<Directive> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.hashbang(ctx.ast);
+    <Option<Hashbang> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_program(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_super<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Super,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_super(node, ctx);
+    traverser.exit_super(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_this_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ThisExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_this_expression(node, ctx);
+    traverser.exit_this_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: StringLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_string_literal(node, ctx);
+    traverser.exit_string_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_numeric_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: NumericLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_numeric_literal(node, ctx);
+    traverser.exit_numeric_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_big_int_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BigIntLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_big_int_literal(node, ctx);
+    traverser.exit_big_int_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_boolean_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BooleanLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_boolean_literal(node, ctx);
+    traverser.exit_boolean_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_null_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: NullLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_null_literal(node, ctx);
+    traverser.exit_null_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_reg_exp_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: RegExpLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_reg_exp_literal(node, ctx);
+    traverser.exit_reg_exp_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TemplateLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_template_literal(node, ctx);
+    let child = node.quasis(ctx.ast);
+    <SubRange<TemplateElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.expressions(ctx.ast);
+    <SubRange<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_template_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_template_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TemplateElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_template_element(node, ctx);
+    traverser.exit_template_element(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_identifier_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: IdentifierReference,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_identifier_reference(node, ctx);
+    traverser.exit_identifier_reference(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_private_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: PrivateIdentifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_private_identifier(node, ctx);
+    traverser.exit_private_identifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_binding_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BindingIdentifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_binding_identifier(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_binding_identifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_identifier_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: IdentifierName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_identifier_name(node, ctx);
+    traverser.exit_identifier_name(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_label_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: LabelIdentifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_label_identifier(node, ctx);
+    traverser.exit_label_identifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_assignment_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: AssignmentPattern,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_assignment_pattern(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.left(ctx.ast);
+    <BindingPattern as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.right(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_assignment_pattern(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BindingRestElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_binding_rest_element(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.argument(ctx.ast);
+    <BindingPattern as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_binding_rest_element(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ArrayPattern,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_array_pattern(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.elements(ctx.ast);
+    <SubRange<Option<BindingPattern>> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.rest(ctx.ast);
+    <Option<BindingRestElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_array_pattern(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ObjectPattern,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_object_pattern(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.properties(ctx.ast);
+    <SubRange<BindingProperty> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.rest(ctx.ast);
+    <Option<BindingRestElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_object_pattern(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_binding_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BindingProperty,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_binding_property(node, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.value(ctx.ast);
+    <BindingPattern as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_binding_property(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_binary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BinaryExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_binary_expression(node, ctx);
+    let child = node.left(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.right(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_binary_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_logical_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: LogicalExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_logical_expression(node, ctx);
+    let child = node.left(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.right(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_logical_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ConditionalExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_conditional_expression(node, ctx);
+    let child = node.test(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.consequent(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.alternate(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_conditional_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: UnaryExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_unary_expression(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_unary_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: UpdateExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_update_expression(node, ctx);
+    let child = node.argument(ctx.ast);
+    <SimpleAssignmentTarget as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_update_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_assignment_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: AssignmentExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_assignment_expression(node, ctx);
+    let child = node.left(ctx.ast);
+    <AssignmentTarget as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.right(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_assignment_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_variable_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: VariableDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_variable_declaration(node, ctx);
+    let child = node.declarators(ctx.ast);
+    <SubRange<VariableDeclarator> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_variable_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: VariableDeclarator,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_variable_declarator(node, ctx);
+    let child = node.id(ctx.ast);
+    <BindingPattern as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.init(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_variable_declarator(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: IfStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_if_statement(node, ctx);
+    let child = node.test(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.consequent(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.alternate(ctx.ast);
+    <Option<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_if_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_switch_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: SwitchStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_switch_statement(node, ctx);
+    let child = node.discriminant(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.cases(ctx.ast);
+    <SubRange<SwitchCase> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_switch_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_switch_case<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: SwitchCase,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_switch_case(node, ctx);
+    let child = node.test(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.consequent(ctx.ast);
+    <SubRange<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_switch_case(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_for_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ForStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_for_statement(node, ctx);
+    let child = node.init(ctx.ast);
+    <Option<ForStatementInit> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.test(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.update(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_for_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_for_in_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ForInStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_for_in_statement(node, ctx);
+    let child = node.left(ctx.ast);
+    <ForStatementLeft as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.right(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_for_in_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_for_of_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ForOfStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_for_of_statement(node, ctx);
+    let child = node.left(ctx.ast);
+    <ForStatementLeft as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.right(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_for_of_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_try_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TryStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_try_statement(node, ctx);
+    let child = node.block(ctx.ast);
+    <BlockStatement as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.handler(ctx.ast);
+    <Option<CatchClause> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.finalizer(ctx.ast);
+    <Option<BlockStatement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_try_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: CatchClause,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_catch_clause(node, ctx);
+    let child = node.param(ctx.ast);
+    <Option<BindingPattern> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.body(ctx.ast);
+    <BlockStatement as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_catch_clause(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_break_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BreakStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_break_statement(node, ctx);
+    let child = node.label(ctx.ast);
+    <Option<LabelIdentifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_break_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_continue_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ContinueStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_continue_statement(node, ctx);
+    let child = node.label(ctx.ast);
+    <Option<LabelIdentifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_continue_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_labeled_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: LabeledStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_labeled_statement(node, ctx);
+    let child = node.label(ctx.ast);
+    <LabelIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_labeled_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_expression_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ExpressionStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_expression_statement(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_expression_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_return_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ReturnStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_return_statement(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_return_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_throw_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ThrowStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_throw_statement(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_throw_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_debugger_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: DebuggerStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_debugger_statement(node, ctx);
+    traverser.exit_debugger_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_empty_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: EmptyStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_empty_statement(node, ctx);
+    traverser.exit_empty_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_directive<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Directive,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_directive(node, ctx);
+    let child = node.expression(ctx.ast);
+    <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_directive(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_decorator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Decorator,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_decorator(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_decorator(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Class,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_class(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.id(ctx.ast);
+    <Option<BindingIdentifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.super_class(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.super_type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.implements(ctx.ast);
+    <SubRange<TsClassImplements> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.body(ctx.ast);
+    <ClassBody as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_class(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_class_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ClassBody,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_class_body(node, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<ClassElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_class_body(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: MethodDefinition,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_method_definition(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.value(ctx.ast);
+    <Function as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_method_definition(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: PropertyDefinition,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_property_definition(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.value(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_property_definition(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_static_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: StaticBlock,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_static_block(node, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_static_block(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Function,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_function(node, ctx);
+    let child = node.id(ctx.ast);
+    <Option<BindingIdentifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.body(ctx.ast);
+    <FunctionBody as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_function(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: FunctionBody,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_function_body(node, ctx);
+    let child = node.directives(ctx.ast);
+    <SubRange<Directive> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_function_body(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_block_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: BlockStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_block_statement(node, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_block_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: WhileStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_while_statement(node, ctx);
+    let child = node.test(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_while_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_do_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: DoWhileStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_do_while_statement(node, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.test(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_do_while_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_with_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: WithStatement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_with_statement(node, ctx);
+    let child = node.object(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Stmt as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_with_statement(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_formal_parameters<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: FormalParameters,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_formal_parameters(node, ctx);
+    let child = node.items(ctx.ast);
+    <SubRange<FormalParameterItem> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.rest(ctx.ast);
+    <Option<BindingRestElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_formal_parameters(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: FormalParameter,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_formal_parameter(node, ctx);
+    let child = node.pattern(ctx.ast);
+    <FormalParameterPattern as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_formal_parameter(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ArrayExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_array_expression(node, ctx);
+    let child = node.elements(ctx.ast);
+    <SubRange<Option<Argument>> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_array_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ObjectExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_object_expression(node, ctx);
+    let child = node.properties(ctx.ast);
+    <SubRange<ObjectPropertyKind> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_object_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: SpreadElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_spread_element(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_spread_element(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_object_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ObjectProperty,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_object_property(node, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.value(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_object_property(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ParenthesizedExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_parenthesized_expression(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_parenthesized_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ArrowFunctionExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_arrow_function_expression(node, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.body(ctx.ast);
+    <ArrowFunctionBody as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_arrow_function_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: SequenceExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_sequence_expression(node, ctx);
+    let child = node.expressions(ctx.ast);
+    <SubRange<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_sequence_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: MemberExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_member_expression(node, ctx);
+    let child = node.object(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.property(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_member_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: CallExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_call_expression(node, ctx);
+    let child = node.callee(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.arguments(ctx.ast);
+    <SubRange<Argument> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_call_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ChainExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_chain_expression(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_chain_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TaggedTemplateExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_tagged_template_expression(node, ctx);
+    let child = node.tag(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.quasi(ctx.ast);
+    <TemplateLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_tagged_template_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: NewExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_new_expression(node, ctx);
+    let child = node.callee(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.arguments(ctx.ast);
+    <SubRange<Argument> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_new_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: AwaitExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_await_expression(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_await_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: YieldExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_yield_expression(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_yield_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: MetaProperty,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_meta_property(node, ctx);
+    let child = node.meta(ctx.ast);
+    <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.property(ctx.ast);
+    <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_meta_property(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_import_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ImportExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_import_expression(node, ctx);
+    let child = node.source(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.options(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_import_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ImportDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_import_declaration(node, ctx);
+    let child = node.specifiers(ctx.ast);
+    <SubRange<ImportDeclarationSpecifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.source(ctx.ast);
+    <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.attributes(ctx.ast);
+    <SubRange<ImportAttribute> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_import_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_import_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ImportSpecifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_import_specifier(node, ctx);
+    let child = node.imported(ctx.ast);
+    <ModuleExportName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.local(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_import_specifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_import_default_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ImportDefaultSpecifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_import_default_specifier(node, ctx);
+    let child = node.local(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_import_default_specifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_import_namespace_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ImportNamespaceSpecifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_import_namespace_specifier(node, ctx);
+    let child = node.local(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_import_namespace_specifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_import_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ImportAttribute,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_import_attribute(node, ctx);
+    let child = node.key(ctx.ast);
+    <ModuleExportName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.value(ctx.ast);
+    <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_import_attribute(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ExportNamedDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_export_named_declaration(node, ctx);
+    let child = node.declaration(ctx.ast);
+    <Option<Decl> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.specifiers(ctx.ast);
+    <SubRange<ExportSpecifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.source(ctx.ast);
+    <Option<StringLiteral> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.attributes(ctx.ast);
+    <SubRange<ImportAttribute> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_export_named_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_export_default_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ExportDefaultDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_export_default_declaration(node, ctx);
+    let child = node.declaration(ctx.ast);
+    <ExportDefaultDeclarationKind as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_export_default_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ExportAllDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_export_all_declaration(node, ctx);
+    let child = node.exported(ctx.ast);
+    <Option<ModuleExportName> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.source(ctx.ast);
+    <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.attributes(ctx.ast);
+    <SubRange<ImportAttribute> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_export_all_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_export_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ExportSpecifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_export_specifier(node, ctx);
+    let child = node.local(ctx.ast);
+    <ModuleExportName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.exported(ctx.ast);
+    <ModuleExportName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_export_specifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_hashbang<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Hashbang,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_hashbang(node, ctx);
+    traverser.exit_hashbang(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsFunction,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_function(node, ctx);
+    let child = node.id(ctx.ast);
+    <Option<BindingIdentifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_function(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsMethodDefinition,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_method_definition(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.value(ctx.ast);
+    <TsFunction as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_method_definition(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_annotation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeAnnotation,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_annotation(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_type_annotation(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_any_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsAnyKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_any_keyword(node, ctx);
+    traverser.exit_ts_any_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_unknown_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsUnknownKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_unknown_keyword(node, ctx);
+    traverser.exit_ts_unknown_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_never_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsNeverKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_never_keyword(node, ctx);
+    traverser.exit_ts_never_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_void_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsVoidKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_void_keyword(node, ctx);
+    traverser.exit_ts_void_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_null_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsNullKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_null_keyword(node, ctx);
+    traverser.exit_ts_null_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_undefined_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsUndefinedKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_undefined_keyword(node, ctx);
+    traverser.exit_ts_undefined_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_string_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsStringKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_string_keyword(node, ctx);
+    traverser.exit_ts_string_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_number_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsNumberKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_number_keyword(node, ctx);
+    traverser.exit_ts_number_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_big_int_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsBigIntKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_big_int_keyword(node, ctx);
+    traverser.exit_ts_big_int_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_boolean_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsBooleanKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_boolean_keyword(node, ctx);
+    traverser.exit_ts_boolean_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_symbol_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsSymbolKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_symbol_keyword(node, ctx);
+    traverser.exit_ts_symbol_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_object_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsObjectKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_object_keyword(node, ctx);
+    traverser.exit_ts_object_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_intrinsic_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsIntrinsicKeyword,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_intrinsic_keyword(node, ctx);
+    traverser.exit_ts_intrinsic_keyword(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_this_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsThisType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_this_type(node, ctx);
+    traverser.exit_ts_this_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeReference,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_reference(node, ctx);
+    let child = node.type_name(ctx.ast);
+    <TsTypeName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_type_reference(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_qualified_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsQualifiedName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_qualified_name(node, ctx);
+    let child = node.left(ctx.ast);
+    <TsQualifiedNameLeft as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.right(ctx.ast);
+    <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_qualified_name(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeQuery,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_query(node, ctx);
+    let child = node.expr_name(ctx.ast);
+    <TsTypeQueryExprName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_type_query(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsImportType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_import_type(node, ctx);
+    let child = node.source(ctx.ast);
+    <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.options(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.qualifier(ctx.ast);
+    <Option<TsImportTypeQualifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_import_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeParameter,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_parameter(node, ctx);
+    let child = node.name(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.constraint(ctx.ast);
+    <Option<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.default(ctx.ast);
+    <Option<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_type_parameter(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_parameter_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeParameterDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_parameter_declaration(node, ctx);
+    let child = node.params(ctx.ast);
+    <SubRange<TsTypeParameter> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_type_parameter_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_parameter_instantiation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeParameterInstantiation,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_parameter_instantiation(node, ctx);
+    let child = node.params(ctx.ast);
+    <SubRange<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_type_parameter_instantiation(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteralType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_literal_type(node, ctx);
+    let child = node.literal(ctx.ast);
+    <TsLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_literal_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_template_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTemplateLiteralType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_template_literal_type(node, ctx);
+    let child = node.quasis(ctx.ast);
+    <SubRange<TemplateElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.types(ctx.ast);
+    <SubRange<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_template_literal_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsArrayType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_array_type(node, ctx);
+    let child = node.element_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_array_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsIndexedAccessType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_indexed_access_type(node, ctx);
+    let child = node.object_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.index_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_indexed_access_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTupleType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_tuple_type(node, ctx);
+    let child = node.element_types(ctx.ast);
+    <SubRange<TsTupleElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_tuple_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_named_tuple_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsNamedTupleMember,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_named_tuple_member(node, ctx);
+    let child = node.label(ctx.ast);
+    <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.element_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_named_tuple_member(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsOptionalType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_optional_type(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_optional_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsRestType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_rest_type(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_rest_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsJsDocNullableType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_js_doc_nullable_type(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_js_doc_nullable_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_js_doc_non_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsJsDocNonNullableType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_js_doc_non_nullable_type(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_js_doc_non_nullable_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_js_doc_unknown_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsJsDocUnknownType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_js_doc_unknown_type(node, ctx);
+    traverser.exit_ts_js_doc_unknown_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_union_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsUnionType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_union_type(node, ctx);
+    let child = node.types(ctx.ast);
+    <SubRange<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_union_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_intersection_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsIntersectionType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_intersection_type(node, ctx);
+    let child = node.types(ctx.ast);
+    <SubRange<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_intersection_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsConditionalType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_conditional_type(node, ctx);
+    let child = node.check_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.extends_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.true_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.false_type(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_conditional_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsInferType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_infer_type(node, ctx);
+    let child = node.type_parameter(ctx.ast);
+    <TsTypeParameter as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_infer_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeOperator,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_operator(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_type_operator(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsParenthesizedType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_parenthesized_type(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_parenthesized_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsFunctionType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_function_type(node, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <TsTypeAnnotation as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_function_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsConstructorType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_constructor_type(node, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <TsTypeAnnotation as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_constructor_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypePredicate,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_predicate(node, ctx);
+    let child = node.parameter_name(ctx.ast);
+    <TsTypePredicateName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_type_predicate(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_literal(node, ctx);
+    let child = node.members(ctx.ast);
+    <SubRange<TsTypeElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_type_literal(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsMappedType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_mapped_type(node, ctx);
+    let child = node.key(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.constraint(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.name_type(ctx.ast);
+    <Option<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsType> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_mapped_type(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_property_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsPropertySignature,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_property_signature(node, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_property_signature(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsMethodSignature,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_method_signature(node, ctx);
+    let child = node.key(ctx.ast);
+    <PropertyKey as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_method_signature(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsCallSignatureDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_call_signature_declaration(node, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_call_signature_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsConstructSignatureDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_construct_signature_declaration(node, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.params(ctx.ast);
+    <FormalParameters as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.return_type(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_construct_signature_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsIndexSignature,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_index_signature(node, ctx);
+    let child = node.parameters(ctx.ast);
+    <SubRange<BindingIdentifier> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_annotation(ctx.ast);
+    <TsTypeAnnotation as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_index_signature(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeAliasDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_alias_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_type_alias_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_interface_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsInterfaceDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_interface_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_parameters(ctx.ast);
+    <Option<TsTypeParameterDeclaration> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.extends(ctx.ast);
+    <SubRange<TsInterfaceHeritage> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.body(ctx.ast);
+    <TsInterfaceBody as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_interface_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_interface_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsInterfaceBody,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_interface_body(node, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<TsTypeElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_interface_body(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsInterfaceHeritage,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_interface_heritage(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_interface_heritage(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsClassImplements,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_class_implements(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_class_implements(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_enum_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsEnumDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_enum_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <TsEnumBody as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_enum_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_enum_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsEnumBody,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_enum_body(node, ctx);
+    let child = node.members(ctx.ast);
+    <SubRange<TsEnumMember> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_enum_body(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_enum_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsEnumMember,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_enum_member(node, ctx);
+    let child = node.id(ctx.ast);
+    <TsEnumMemberName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.initializer(ctx.ast);
+    <Option<Expr> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_enum_member(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_module_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsModuleDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_module_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <TsModuleName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <Option<TsModuleBody> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_module_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_module_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsModuleBlock,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_module_block(node, ctx);
+    let child = node.directives(ctx.ast);
+    <SubRange<Directive> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <SubRange<Stmt> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_module_block(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_global_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsGlobalDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_global_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.body(ctx.ast);
+    <TsModuleBlock as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_global_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsParameterProperty,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_parameter_property(node, ctx);
+    let child = node.decorators(ctx.ast);
+    <SubRange<Decorator> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.parameter(ctx.ast);
+    <BindingPattern as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_parameter_property(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_this_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsThisParameter,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_this_parameter(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <Option<TsTypeAnnotation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_this_parameter(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsAsExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_as_expression(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_as_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsSatisfiesExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_satisfies_expression(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_satisfies_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeAssertion,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_type_assertion(node, ctx);
+    let child = node.type_annotation(ctx.ast);
+    <TsType as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_type_assertion(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsNonNullExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_non_null_expression(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_non_null_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsInstantiationExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_instantiation_expression(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <TsTypeParameterInstantiation as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_ts_instantiation_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_export_assignment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsExportAssignment,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_export_assignment(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_export_assignment(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_namespace_export_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsNamespaceExportDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_namespace_export_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <IdentifierName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_namespace_export_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_import_equals_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsImportEqualsDeclaration,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_import_equals_declaration(node, ctx);
+    let child = node.id(ctx.ast);
+    <BindingIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.module_reference(ctx.ast);
+    <TsModuleReference as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_import_equals_declaration(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_ts_external_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsExternalModuleReference,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_ts_external_module_reference(node, ctx);
+    let child = node.expression(ctx.ast);
+    <StringLiteral as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_ts_external_module_reference(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_element(node, ctx);
+    let child = node.opening_element(ctx.ast);
+    <JsxOpeningElement as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.children(ctx.ast);
+    <SubRange<JsxChild> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.closing_element(ctx.ast);
+    <Option<JsxClosingElement> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_jsx_element(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxOpeningElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_opening_element(node, ctx);
+    let child = node.name(ctx.ast);
+    <JsxElementName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.type_arguments(ctx.ast);
+    <Option<TsTypeParameterInstantiation> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.attributes(ctx.ast);
+    <SubRange<JsxAttributeItem> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_jsx_opening_element(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_closing_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxClosingElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_closing_element(node, ctx);
+    let child = node.name(ctx.ast);
+    <JsxElementName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_jsx_closing_element(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxFragment,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_fragment(node, ctx);
+    let child = node.opening_fragment(ctx.ast);
+    <JsxOpeningFragment as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.children(ctx.ast);
+    <SubRange<JsxChild> as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.closing_fragment(ctx.ast);
+    <JsxClosingFragment as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_jsx_fragment(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_opening_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxOpeningFragment,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_opening_fragment(node, ctx);
+    traverser.exit_jsx_opening_fragment(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_closing_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxClosingFragment,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_closing_fragment(node, ctx);
+    traverser.exit_jsx_closing_fragment(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxIdentifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_identifier(node, ctx);
+    traverser.exit_jsx_identifier(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_namespaced_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxNamespacedName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_namespaced_name(node, ctx);
+    let child = node.namespace(ctx.ast);
+    <JsxIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.name(ctx.ast);
+    <JsxIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_jsx_namespaced_name(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxMemberExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_member_expression(node, ctx);
+    let child = node.object(ctx.ast);
+    <JsxMemberExpressionObject as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    let child = node.property(ctx.ast);
+    <JsxIdentifier as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_jsx_member_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxAttribute,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_attribute(node, ctx);
+    let child = node.name(ctx.ast);
+    <JsxAttributeName as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    let child = node.value(ctx.ast);
+    <Option<JsxAttributeValue> as TraverseMutWith<'a, State>>::traverse_mut_with(
+        child, traverser, ctx,
+    );
+    traverser.exit_jsx_attribute(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_spread_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxSpreadAttribute,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_spread_attribute(node, ctx);
+    let child = node.argument(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_jsx_spread_attribute(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxExpressionContainer,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_expression_container(node, ctx);
+    let child = node.expression(ctx.ast);
+    <JsxExpression as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
+    traverser.exit_jsx_expression_container(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_empty_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxEmptyExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_empty_expression(node, ctx);
+    traverser.exit_jsx_empty_expression(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_text<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxText,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_text(node, ctx);
+    traverser.exit_jsx_text(node, ctx);
+    traverser.exit_node(node_id, ctx);
+}
+#[inline]
+fn walk_mut_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxSpreadChild,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) {
+    let node_id = node.node_id();
+    traverser.enter_node(node_id, ctx);
+    traverser.enter_jsx_spread_child(node, ctx);
+    let child = node.expression(ctx.ast);
+    <Expr as TraverseMutWith<'a, State>>::traverse_mut_with(child, traverser, ctx);
     traverser.exit_jsx_spread_child(node, ctx);
     traverser.exit_node(node_id, ctx);
 }

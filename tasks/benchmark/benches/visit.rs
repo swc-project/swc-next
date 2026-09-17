@@ -182,12 +182,12 @@ fn bench_traverse(b: &mut Bencher, src: &'static str, lang: Lang) {
     }
 
     let allocator = Allocator::new();
-    let mut ast = parse_program(src, &allocator, lang);
+    let ast = parse_program(src, &allocator, lang);
     let program = ast.root_program();
 
     b.iter(|| {
         let mut counter = Counter { count: 0 };
-        program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut ast, ()));
+        program.traverse_with(&mut counter, &mut TraverseCtx::new(&ast, ()));
         std::hint::black_box(counter.count);
     });
 }

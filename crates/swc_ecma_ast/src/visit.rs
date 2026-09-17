@@ -1,27 +1,36 @@
 use crate::{
     Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, ClassType,
     FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
-    MethodDefinitionKind, NodeId, NodeKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
+    MethodDefinitionKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
     TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
     UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith,
 };
 
-/// Mutable AST state passed to every [`crate::Traverse`] hook.
+/// Shared AST and mutable user state passed to every [`crate::Traverse`] hook.
+///
+/// AST mutation requires [`TraverseMutCtx`]:
 pub struct TraverseCtx<'traverse, 'ast, State = ()> {
     pub state: State,
-    pub ast: &'traverse mut Ast<'ast>,
+    pub ast: &'traverse Ast<'ast>,
 }
 
 impl<'traverse, 'ast, State> TraverseCtx<'traverse, 'ast, State> {
     #[inline]
-    pub fn new(ast: &'traverse mut Ast<'ast>, state: State) -> Self {
+    pub fn new(ast: &'traverse Ast<'ast>, state: State) -> Self {
         Self { state, ast }
     }
+}
 
-    /// Returns the concrete kind currently stored for `node_id`.
+/// Mutable AST state passed to every [`crate::TraverseMut`] hook.
+pub struct TraverseMutCtx<'traverse, 'ast, State = ()> {
+    pub state: State,
+    pub ast: &'traverse mut Ast<'ast>,
+}
+
+impl<'traverse, 'ast, State> TraverseMutCtx<'traverse, 'ast, State> {
     #[inline]
-    pub fn node_kind(&self, node_id: NodeId) -> NodeKind {
-        self.ast.node_kind(node_id)
+    pub fn new(ast: &'traverse mut Ast<'ast>, state: State) -> Self {
+        Self { state, ast }
     }
 }
 
