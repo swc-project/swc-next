@@ -5,8 +5,8 @@ use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit, VisitMut,
-    VisitMutWith, VisitWith,
+    PrivateIdentifier, Traverse, TraverseCtx, TraverseWith, Visit, VisitMut, VisitMutWith,
+    VisitWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
@@ -144,45 +144,40 @@ fn bench_traverse(b: &mut Bencher, src: &'static str, lang: Lang) {
             &mut self,
             _node: IdentifierReference,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction<IdentifierReference> {
+        ) {
             self.count += 1;
-            TraverseAction::Proceed
         }
 
         fn enter_private_identifier(
             &mut self,
             _node: PrivateIdentifier,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction<PrivateIdentifier> {
+        ) {
             self.count += 1;
-            TraverseAction::Proceed
         }
 
         fn enter_binding_identifier(
             &mut self,
             _node: BindingIdentifier,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction<BindingIdentifier> {
+        ) {
             self.count += 1;
-            TraverseAction::Proceed
         }
 
         fn enter_identifier_name(
             &mut self,
             _node: IdentifierName,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction<IdentifierName> {
+        ) {
             self.count += 1;
-            TraverseAction::Proceed
         }
 
         fn enter_label_identifier(
             &mut self,
             _node: LabelIdentifier,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction<LabelIdentifier> {
+        ) {
             self.count += 1;
-            TraverseAction::Proceed
         }
     }
 
@@ -192,7 +187,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str, lang: Lang) {
 
     b.iter(|| {
         let mut counter = Counter { count: 0 };
-        let _ = program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut ast, ()));
+        program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut ast, ()));
         std::hint::black_box(counter.count);
     });
 }

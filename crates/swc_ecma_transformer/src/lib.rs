@@ -1,6 +1,5 @@
 use swc_next_ecma_ast::{
-    Ast, ObjectProperty, Program, RegExpLiteral, Traverse, TraverseAction, TraverseCtx,
-    TraverseWith,
+    Ast, ObjectProperty, Program, RegExpLiteral, Traverse, TraverseCtx, TraverseWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -41,18 +40,13 @@ impl Transformer {
         let state = TransformerState {
             assumptions: options.assumptions,
         };
-        let _ = program.traverse_with(&mut transformer, &mut TraverseCtx::new(ast, state));
+        program.traverse_with(&mut transformer, &mut TraverseCtx::new(ast, state));
     }
 }
 
 impl<'a> Traverse<'a, TransformerState> for TransformerImpl<'_> {
-    fn enter_program(
-        &mut self,
-        node: Program,
-        ctx: &mut TransformerCtx<'_, 'a>,
-    ) -> TraverseAction<Program> {
+    fn enter_program(&mut self, node: Program, ctx: &mut TransformerCtx<'_, 'a>) {
         self.x0_es2015.transform(node, self.semantic, ctx);
-        TraverseAction::Proceed
     }
 
     fn exit_object_property(&mut self, node: ObjectProperty, ctx: &mut TransformerCtx<'_, 'a>) {
