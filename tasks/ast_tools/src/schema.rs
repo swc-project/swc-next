@@ -178,7 +178,6 @@ pub struct EstreeAttrs {
     pub ts_alias: Option<String>,
     pub ts_type: Option<String>,
     pub add_ts_def: Option<String>,
-    pub add_ts_variants: Option<String>,
     pub add_fields: Vec<(String, String)>,
 }
 

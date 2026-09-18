@@ -77,8 +77,6 @@
     "tinypool": "catalog:",
     "typescript": "catalog:",
     "yuku-parser": "catalog:",
-    "acorn": "^8.18.0",
-    "@types/estree": "^1.0.9",
     "@swc-next/parser": "workspace:*",
     "@swc-next/codegen": "workspace:*",
     "@swc-next/core-browser": "workspace:*"

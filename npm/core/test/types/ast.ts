@@ -1,22 +1,9 @@
-import { parse } from "acorn";
-import type * as ESTree from "estree";
 import { parseSync, printSync, type Program, type AST } from "../../src-js/index.js";
 import { printSync as printCodegen } from "@swc-next/codegen";
 import { parseSync as parseParser } from "@swc-next/parser";
 import { printSync as printBrowser, parseSync as parseBrowser } from "@swc-next/core-browser";
 import { encode } from "@swc-next/encoder";
 import { decode } from "@swc-next/decoder";
-
-const acornProgram: Program = parse("function f(x) { return x + 1; }", { ecmaVersion: "latest" });
-printSync(acornProgram);
-printCodegen(parse("export const x = 1", { ecmaVersion: "latest", sourceType: "module" }));
-printBrowser(acornProgram);
-encode(acornProgram);
-
-// The ESTree declarations also permit synthetic nodes with no positions.
-declare const estreeProgram: ESTree.Program;
-const compatible: Program = estreeProgram;
-printCodegen(compatible);
 
 const parsed: Program = parseSync("const x = 1").program;
 const focused: Program = parseParser("const x = 1").program;
@@ -25,10 +12,14 @@ const decoded: Program = decode(encode(parsed), "const x = 1").program;
 printSync(focused);
 printSync(browser);
 printSync(decoded);
+printCodegen(parsed);
+printBrowser(parsed);
 
 const declaration: AST.TSDeclareFunction = {
   type: "TSDeclareFunction",
-  id: { type: "Identifier", name: "f" },
+  start: 0,
+  end: 20,
+  id: { type: "Identifier", start: 0, end: 1, name: "f" },
   generator: false,
   async: false,
   params: [],
@@ -38,15 +29,15 @@ const declaration: AST.TSDeclareFunction = {
   body: null,
   expression: false,
 };
-printSync({ type: "Program", sourceType: "module", body: [declaration] });
+printSync({ type: "Program", start: 0, end: 20, hashbang: null, sourceType: "module", body: [declaration] });
 
-// Keep useful structure checks despite accepting multiple ESTree producers.
+// Keep useful structure checks on the public AST.
 // @ts-expect-error The discriminant is required.
-const missingType: Program = { body: [], sourceType: "module" };
+const missingType: Program = { start: 0, end: 0, hashbang: null, body: [], sourceType: "module" };
 // @ts-expect-error Statement lists cannot contain primitive values.
-printSync({ type: "Program", sourceType: "module", body: [42] });
+printSync({ type: "Program", start: 0, end: 20, hashbang: null, sourceType: "module", body: [42] });
 // @ts-expect-error A TS declaration cannot acquire a function body.
-declaration.body = { type: "BlockStatement", body: [] };
+declaration.body = { type: "BlockStatement", start: 0, end: 2, body: [] };
 for (const statement of parsed.body) {
   if (statement.type === "VariableDeclaration") {
     statement.declarations[0].id;

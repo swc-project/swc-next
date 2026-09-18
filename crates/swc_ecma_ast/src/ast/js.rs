@@ -359,8 +359,6 @@ pub struct Program {
 }
 
 #[ast(repr, nested)]
-// @types/estree includes static blocks in its public Statement union.
-#[estree(add_ts_variants = "StaticBlock")]
 pub enum Stmt {
     BlockStatement(BlockStatement),
     BreakStatement(BreakStatement),
@@ -583,14 +581,8 @@ pub struct ThisExpression {}
 /// ```
 #[ast]
 #[estree(
-    ts_alias = "Literal",
-    add_ts_def = r#"interface Literal extends BaseNode {
-  type: "Literal";
-  value?: string | number | bigint | boolean | RegExp | null;
-  raw?: string;
-  regex?: { pattern: string; flags: string };
-  bigint?: string;
-}"#
+    ts_type = r#""Literal""#,
+    add_ts_def = "type Literal = StringLiteral | NumericLiteral | BigIntLiteral | BooleanLiteral | NullLiteral | RegExpLiteral;"
 )]
 pub struct StringLiteral {
     /// decoded content with escape sequences resolved and quotes stripped
@@ -610,7 +602,7 @@ pub struct StringLiteral {
 /// 1_000_000   // separators are stripped when computing `value`
 /// ```
 #[ast]
-#[estree(ts_alias = "Literal")]
+#[estree(ts_type = r#""Literal""#)]
 pub struct NumericLiteral {
     /// The authoritative ECMAScript Number value.
     #[ast(invalidates(raw))]
@@ -618,6 +610,7 @@ pub struct NumericLiteral {
     /// The source lexeme, including prefix (`0x`, `0b`, `0o`) and separators.
     ///
     /// `None` when no source spelling should be preserved.
+    #[estree(ts_type = "string")]
     raw: Option<AstUtf8>,
 }
 
@@ -634,7 +627,7 @@ pub struct NumericLiteral {
 /// // raw = "0xff"
 /// ```
 #[ast]
-#[estree(ts_alias = "Literal")]
+#[estree(ts_type = r#""Literal""#, add_fields(value = BigIntValue, bigint = StringValue))]
 pub struct BigIntLiteral {
     /// digits without the trailing `n`
     raw: AstUtf8,
@@ -642,7 +635,7 @@ pub struct BigIntLiteral {
 
 /// A `true` or `false` literal.
 #[ast]
-#[estree(ts_alias = "Literal")]
+#[estree(ts_type = r#""Literal""#, add_fields(raw = Raw))]
 pub struct BooleanLiteral {
     value: bool,
 }
@@ -655,7 +648,7 @@ pub struct BooleanLiteral {
 /// //        ^^^^ NullLiteral
 /// ```
 #[ast]
-#[estree(ts_alias = "Literal")]
+#[estree(ts_type = r#""Literal""#, add_fields(value = Null, raw = NullRaw))]
 pub struct NullLiteral {}
 
 /// A regular expression literal.
@@ -669,9 +662,11 @@ pub struct NullLiteral {}
 /// //     ^^ flags
 /// ```
 #[ast]
-#[estree(ts_alias = "Literal")]
+#[estree(ts_type = r#""Literal""#, add_fields(value = RegExpValue, raw = Raw, regex = RegExpPattern))]
 pub struct RegExpLiteral {
+    #[estree(ts_skip)]
     pattern: AstUtf8,
+    #[estree(ts_skip)]
     flags: AstUtf8,
 }
 
@@ -986,7 +981,6 @@ pub struct UnaryExpression {
 pub struct UpdateExpression {
     /// any assignment target. In practice an `identifier_reference` or
     /// `member_expression`.
-    #[estree(ts_type = "Expression")]
     argument: SimpleAssignmentTarget,
     operator: UpdateOperator,
     prefix: bool,
@@ -1004,7 +998,6 @@ pub struct UpdateExpression {
 #[ast]
 pub struct AssignmentExpression {
     /// any assignment target
-    #[estree(ts_type = "BindingPattern")]
     left: AssignmentTarget,
     /// any expression
     right: Expr,
@@ -1134,7 +1127,6 @@ pub struct ForStatement {
 #[ast]
 pub struct ForInStatement {
     /// `variable_declaration` or any assignment target
-    #[estree(ts_type = "VariableDeclaration | BindingPattern")]
     left: ForStatementLeft,
     /// any expression
     right: Expr,
@@ -1155,7 +1147,6 @@ pub struct ForInStatement {
 #[ast]
 pub struct ForOfStatement {
     /// `variable_declaration` or any assignment target
-    #[estree(ts_type = "VariableDeclaration | BindingPattern")]
     left: ForStatementLeft,
     /// any expression
     right: Expr,
@@ -1364,17 +1355,18 @@ pub struct Class {
     #[estree(ts_skip)]
     class_type: ClassType,
     /// `decorator[]`
-    #[estree(ts_optional)]
     decorators: SubRange<Decorator>,
     /// `binding_identifier`. `None` for anonymous class expressions.
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when the class has no `<T, U>`
     /// parameters.
+    #[estree(ts_optional)]
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// any expression. `None` when the class has no `extends` clause.
     super_class: Option<Expr>,
     /// `ts_type_parameter_instantiation`. `None` when `extends` has no `<T>`
     /// arguments.
+    #[estree(ts_optional)]
     super_type_arguments: Option<TsTypeParameterInstantiation>,
     /// `ts_class_implements[]`. Empty when the class has no `implements`
     /// clause.
@@ -1420,7 +1412,6 @@ pub struct ClassBody {
 #[estree(ts_type = r#""MethodDefinition" | "TSAbstractMethodDefinition""#)]
 pub struct MethodDefinition {
     /// `decorator[]`
-    #[estree(ts_optional)]
     decorators: SubRange<Decorator>,
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
@@ -1461,12 +1452,12 @@ pub struct MethodDefinition {
 )]
 pub struct PropertyDefinition {
     /// `decorator[]`
-    #[estree(ts_optional)]
     decorators: SubRange<Decorator>,
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
     /// `ts_type_annotation`. `None` when the field has no annotation.
+    #[estree(ts_optional)]
     type_annotation: Option<TsTypeAnnotation>,
     /// any expression. `None` when the field has no initializer.
     value: Option<Expr>,
@@ -1528,7 +1519,7 @@ pub struct StaticBlock {
 /// //                              ^^^^^^^^^^^^ body
 /// ```
 #[ast]
-#[estree(ts_type = "FunctionType", add_fields(expression = OptionalFalse, declare = TsFalse), add_ts_def = r#"type FunctionDeclaration = Function & { type: "FunctionDeclaration" };
+#[estree(ts_type = "FunctionType", add_fields(expression = False, declare = TsFalse), add_ts_def = r#"type FunctionDeclaration = Function & { type: "FunctionDeclaration" };
 export type FunctionExpression = Function & { type: "FunctionExpression" };"#)]
 pub struct Function {
     #[estree(ts_skip)]
@@ -1536,19 +1527,19 @@ pub struct Function {
     /// `binding_identifier`. `None` for anonymous functions.
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when absent.
+    #[estree(ts_optional)]
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
+    #[estree(ts_optional)]
     return_type: Option<TsTypeAnnotation>,
     /// `function_body`
     #[estree(ts_type = "BlockStatement | null")]
     body: FunctionBody,
-    #[estree(ts_optional)]
     generator: bool,
-    #[estree(ts_optional)]
     r#async: bool,
 }
 
@@ -1730,7 +1721,6 @@ pub struct ObjectProperty {
     key: PropertyKey,
     /// any expression for `init` properties. `function` for methods, getters,
     /// and setters.
-    #[estree(ts_type = "Expression | BindingPattern")]
     value: Expr,
     kind: PropertyKind,
     /// true when written as the shorthand method form `b() {}`.
@@ -1769,18 +1759,19 @@ pub struct ParenthesizedExpression {
 /// //                    ^ body (expression = true)
 /// ```
 #[ast]
-#[estree(add_fields(id = OptionalIdentifier, generator = OptionalFalse))]
+#[estree(add_fields(id = Null, generator = False))]
 pub struct ArrowFunctionExpression {
     /// true for a concise body `() => expr`. false for a block body
     /// `() => { ... }`.
     expression: bool,
-    #[estree(ts_optional)]
     r#async: bool,
     /// `ts_type_parameter_declaration`. `None` when absent.
+    #[estree(ts_optional)]
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// `formal_parameters`
     params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
+    #[estree(ts_optional)]
     return_type: Option<TsTypeAnnotation>,
     /// `function_body` when `expression` is false. any expression otherwise.
     body: ArrowFunctionBody,
@@ -2007,7 +1998,6 @@ pub struct ImportDeclaration {
     /// `string_literal`
     source: StringLiteral,
     /// `import_attribute[]`
-    #[estree(ts_optional)]
     attributes: SubRange<ImportAttribute>,
     /// `null` for a regular import.
     phase: Option<ImportPhase>,
@@ -2101,7 +2091,6 @@ pub struct ExportNamedDeclaration {
     /// `string_literal`. `None` when there is no `from` clause.
     source: Option<StringLiteral>,
     /// `import_attribute[]`
-    #[estree(ts_optional)]
     attributes: SubRange<ImportAttribute>,
     /// `Type` for `export type { ... }`.
     export_kind: ImportOrExportKind,
@@ -2140,7 +2129,6 @@ pub struct ExportAllDeclaration {
     /// `string_literal`
     source: StringLiteral,
     /// `import_attribute[]`
-    #[estree(ts_optional)]
     attributes: SubRange<ImportAttribute>,
     /// `Type` for `export type * from "..."`.
     export_kind: ImportOrExportKind,

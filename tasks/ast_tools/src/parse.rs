@@ -267,8 +267,6 @@ fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
                     &mut estree.ts_alias
                 } else if meta.path.is_ident("ts_type") {
                     &mut estree.ts_type
-                } else if meta.path.is_ident("add_ts_variants") {
-                    &mut estree.add_ts_variants
                 } else if meta.path.is_ident("add_ts_def") {
                     &mut estree.add_ts_def
                 } else {

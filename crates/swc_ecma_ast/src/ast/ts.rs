@@ -257,7 +257,6 @@ pub struct TsFunction {
 #[estree(ts_type = r#""MethodDefinition" | "TSAbstractMethodDefinition""#)]
 pub struct TsMethodDefinition {
     /// `decorator[]`
-    #[estree(ts_optional)]
     decorators: SubRange<Decorator>,
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
@@ -1473,6 +1472,7 @@ pub struct TsModuleDeclaration {
     id: TsModuleName,
     /// `ts_module_block`. `None` for body-less forward declarations like
     /// `declare module "foo";`.
+    #[estree(ts_optional)]
     body: Option<TsModuleBody>,
     kind: TsModuleDeclarationKind,
     /// true when preceded by the `declare` modifier.
