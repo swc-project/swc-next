@@ -77,7 +77,7 @@ impl Default for Options {
 }
 
 bitflags! {
-    /// Expression grammatical parameters and TypeScript arrow disambiguation state.
+    /// The active values of ECMAScript expression grammatical parameters.
     ///
     /// See <https://tc39.es/ecma262/multipage/notational-conventions.html#sec-grammatical-parameters>.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -88,13 +88,6 @@ bitflags! {
         const YIELD = 1 << 1;
         /// The grammar's `[Await]` parameter.
         const AWAIT = 1 << 2;
-        /// Whether a speculatively parsed arrow with a return type can commit
-        /// without an outer `:`.
-        ///
-        /// Restricted in a conditional consequent so speculative arrows leave its `:`.
-        /// Independent expression boundaries temporarily allow return types; assignment
-        /// RHSs, yield arguments and concise arrow bodies inherit the restriction.
-        const ALLOW_ARROW_RETURN_TYPE = 1 << 3;
     }
 }
 
@@ -102,7 +95,6 @@ bitflags! {
 ///
 /// The modifiers mirror ECMA-262 grammatical arguments: `+` enables a
 /// parameter, `~` disables it, and `?` inherits its current value.
-/// `ArrowReturnType` applies the same scoping to TypeScript arrow disambiguation.
 macro_rules! enter_grammar_context {
     (@flag In) => {
         Context::IN
@@ -112,9 +104,6 @@ macro_rules! enter_grammar_context {
     };
     (@flag Await) => {
         Context::AWAIT
-    };
-    (@flag ArrowReturnType) => {
-        Context::ALLOW_ARROW_RETURN_TYPE
     };
     (@set $context:ident, + $parameter:ident) => {
         $context.insert(enter_grammar_context!(@flag $parameter));
@@ -133,7 +122,7 @@ macro_rules! enter_grammar_context {
 
 impl Default for Context {
     fn default() -> Self {
-        Self::IN | Self::ALLOW_ARROW_RETURN_TYPE
+        Self::IN
     }
 }
 
@@ -146,10 +135,6 @@ impl From<SourceType> for Context {
 }
 
 impl Context {
-    fn allow_arrow_return_type(self) -> bool {
-        self.contains(Self::ALLOW_ARROW_RETURN_TYPE)
-    }
-
     fn for_fragment(
         source_type: SourceType,
         fragment_context: FragmentContext,
@@ -195,7 +180,10 @@ impl BoundaryContext {
 }
 
 bitflags! {
-    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    /// Lexically scoped TypeScript parsing state. Nested parsers restore their
+    /// changes before returning, so expression boundaries can save and restore
+    /// the entire context without masking individual flags.
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     struct TsContext: u8 {
         /// Whether parsing is inside a `declare`-prefixed declaration.
         ///
@@ -205,9 +193,22 @@ bitflags! {
         /// Whether a trailing `?` after a type is forbidden from starting a new
         /// conditional type.
         const DISALLOW_CONDITIONAL_TYPES = 1 << 1;
+        /// Whether a speculatively parsed arrow with a return type can commit
+        /// without an outer `:`.
+        ///
+        /// Restricted in a conditional consequent so speculative arrows leave its `:`.
+        /// Independent expression boundaries temporarily allow return types; assignment
+        /// RHSs, yield arguments and concise arrow bodies inherit the restriction.
+        const ALLOW_ARROW_RETURN_TYPE = 1 << 2;
         /// Whether parsing is inside a TypeScript declaration body that is
         /// outside ECMAScript module grammar.
         const IN_TS_CONTAINER_BODY = 1 << 3;
+    }
+}
+
+impl Default for TsContext {
+    fn default() -> Self {
+        Self::ALLOW_ARROW_RETURN_TYPE
     }
 }
 
@@ -218,6 +219,10 @@ impl TsContext {
 
     fn disallow_conditional_types(self) -> bool {
         self.contains(Self::DISALLOW_CONDITIONAL_TYPES)
+    }
+
+    fn allow_arrow_return_type(self) -> bool {
+        self.contains(Self::ALLOW_ARROW_RETURN_TYPE)
     }
 
     fn in_ts_container_body(self) -> bool {
@@ -2781,7 +2786,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let checkpoint = self.scratch_a.begin();
-        let arrow_context = enter_grammar_context![&mut self.context, +ArrowReturnType];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
                 if self.eat(TokenTag::Semicolon)? {
@@ -2803,7 +2809,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let elements = self.add_extra_from_scratch_a(checkpoint);
             Some(self.ast.class_body(Span::new(start, end), elements))
         })();
-        self.context = arrow_context;
+        self.ts_context = ts_context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -3510,7 +3516,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let checkpoint = self.scratch_a.begin();
-        let arrow_context = enter_grammar_context![&mut self.context, +ArrowReturnType];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let mut rest = None;
             while self.current_token.tag != TokenTag::RightParen
@@ -3567,7 +3574,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .formal_parameters(Span::new(start, end), items, rest, kind),
             )
         })();
-        self.context = arrow_context;
+        self.ts_context = ts_context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -3737,13 +3744,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
         let boundary_context = self.boundary_context;
         self.boundary_context.insert(BoundaryContext::IN_FUNCTION);
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let ParsedBody { directives, body } = self.parse_body(
             Some(TokenTag::RightBrace),
             StatementContext::StatementListItem,
         );
+        self.ts_context = ts_context;
         self.context = grammar_context;
         self.boundary_context = boundary_context;
         let end = self.current_token.span.end;
@@ -8295,7 +8305,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let quasis_checkpoint = self.scratch_a.begin();
         let expressions_checkpoint = self.scratch_b.begin();
         let head = self.current_token;
-        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let head = self.add_template_element(head, false, tagged);
             self.scratch_a.append(head);
@@ -8351,6 +8363,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .template_literal(Span::new(start, end), quasis, expressions),
             )
         })();
+        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_a.reset(quasis_checkpoint);
         self.scratch_b.reset(expressions_checkpoint);
@@ -8448,7 +8461,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let arrow_context = enter_grammar_context![&mut self.context, +ArrowReturnType];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let mut end = start + 1;
             let mut has_trailing_comma = false;
@@ -8516,7 +8530,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 has_trailing_comma,
             })
         })();
-        self.context = arrow_context;
+        self.ts_context = ts_context;
         self.scratch_cover.reset(checkpoint);
         result
     }
@@ -8932,7 +8946,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .as_arrow_function_expression(&self.ast)
             .expect("arrow speculation produces an arrow function")
             .return_type(&self.ast);
-        if !self.context.allow_arrow_return_type()
+        if !self.ts_context.allow_arrow_return_type()
             && return_type.is_some()
             && self.current_token.tag != TokenTag::Colon
         {
@@ -9887,7 +9901,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let mut end = start + 1;
             while self.current_token.tag != TokenTag::RightBracket
@@ -9953,6 +9969,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 end,
             })
         })();
+        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
@@ -9983,7 +10000,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let mut end = start + 1;
             while self.current_token.tag != TokenTag::RightBrace
@@ -10044,6 +10063,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 end,
             })
         })();
+        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
@@ -10532,8 +10552,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = object.span(&self.ast).start;
         let open_bracket_span = self.current_token.span;
         self.advance()?;
-        let context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
+        self.ts_context = ts_context;
         self.context = context;
         let expression = expression?;
         let property = PropertyKey::Expr(expression);
@@ -10772,7 +10795,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   ArgumentList[?Yield, ?Await] `,` `...` AssignmentExpression[+In, ?Yield, ?Await]
     fn parse_arguments(&mut self) -> Option<SubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
-        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
@@ -10797,6 +10822,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             Some(self.add_extra_from_scratch_a(checkpoint))
         })();
+        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_a.reset(checkpoint);
         result
@@ -10969,7 +10995,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after import", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
+        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let source = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
             let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
@@ -10999,6 +11027,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 sync,
             ))
         })();
+        self.ts_context = ts_context;
         self.context = grammar_context;
         result
     }
@@ -11031,9 +11060,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_jsx_expression(&mut self) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
-        let arrow_context = enter_grammar_context![&mut self.context, +ArrowReturnType];
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = self.parse_jsx_element(JsxElementContext::TopLevel);
-        self.context = arrow_context;
+        self.ts_context = ts_context;
         result
     }
 
@@ -12110,9 +12140,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = test.span(&self.ast).start;
         debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         self.advance()?;
-        let context = enter_grammar_context![&mut self.context, +In, ~ArrowReturnType];
+        let context = enter_grammar_context![&mut self.context, +In];
+        let ts_context = self.ts_context;
+        self.ts_context.remove(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let consequent = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
         self.context = context;
+        self.ts_context = ts_context;
         let consequent = consequent?;
         if !self.expect(
             TokenTag::Colon,
