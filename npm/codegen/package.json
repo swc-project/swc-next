@@ -58,7 +58,8 @@
     ]
   },
   "dependencies": {
-    "@swc-next/encoder": "workspace:*"
+    "@swc-next/encoder": "workspace:*",
+    "@swc-next/types": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-codegen",

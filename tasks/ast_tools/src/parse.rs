@@ -13,7 +13,7 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstSubRange, AstType, FieldLocation, Layout, LayoutMode, Schema, TypeId,
+    AstStructField, AstSubRange, AstType, EstreeAttrs, FieldLocation, Layout, LayoutMode, Schema, TypeId,
 };
 
 const PAYLOAD_SIZE: usize = 16;
@@ -245,9 +245,41 @@ fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
     let mut has_ast_attr = false;
     let mut ast_attrs = HashSet::new();
     let mut generate_derives = HashSet::new();
+    let mut estree = EstreeAttrs::default();
 
-    // Find #[ast] and #[generate_derive]
+    // Find AST metadata before the proc macro consumes the original fields.
     for attr in attrs {
+        if attr.path().is_ident("estree") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("add_fields") {
+                    return meta.parse_nested_meta(|field| {
+                        let name = field
+                            .path
+                            .get_ident()
+                            .ok_or_else(|| field.error("expected field name"))?
+                            .to_string();
+                        let converter: Ident = field.value()?.parse()?;
+                        estree.add_fields.push((name, converter.to_string()));
+                        Ok(())
+                    });
+                }
+                let target = if meta.path.is_ident("ts_alias") {
+                    &mut estree.ts_alias
+                } else if meta.path.is_ident("ts_type") {
+                    &mut estree.ts_type
+                } else if meta.path.is_ident("add_ts_variants") {
+                    &mut estree.add_ts_variants
+                } else if meta.path.is_ident("add_ts_def") {
+                    &mut estree.add_ts_def
+                } else {
+                    return Err(meta.error("unknown ESTree type attribute"));
+                };
+                *target = Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                Ok(())
+            })
+            .expect("Unable to parse ESTree type attributes");
+            continue;
+        }
         match &attr.meta {
             Meta::Path(path) => {
                 if path.is_ident("ast") {
@@ -280,6 +312,7 @@ fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
     Some(AstAttrs {
         ast_attrs,
         generate_derives,
+        estree,
     })
 }
 
@@ -443,11 +476,33 @@ impl Parser {
                 let args = meta_list
                     .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                     .expect("Unable to parse `#[estree]`");
-                field_attrs.estree_skip = args.into_iter().any(|arg| match arg {
-                    Meta::Path(path) => path.is_ident("skip"),
-                    Meta::List(list) => list.path.is_ident("skip"),
-                    Meta::NameValue(name_value) => name_value.path.is_ident("skip"),
-                });
+            for arg in args {
+                let path = arg.path();
+                if path.is_ident("skip") {
+                    field_attrs.estree_skip = true;
+                } else if path.is_ident("ts_skip") && matches!(arg, Meta::Path(_)) {
+                    field_attrs.ts_skip = true;
+                } else if path.is_ident("ts_optional") && matches!(arg, Meta::Path(_)) {
+                    field_attrs.ts_optional = true;
+                } else if path.is_ident("ts_type") || path.is_ident("ts_rename") {
+                    let Meta::NameValue(value) = &arg else {
+                        panic!("Expected ESTree string attribute")
+                    };
+                    let syn::Expr::Lit(value) = &value.value else {
+                        panic!("Expected ESTree string literal")
+                    };
+                    let syn::Lit::Str(value) = &value.lit else {
+                        panic!("Expected ESTree string literal")
+                    };
+                    if path.is_ident("ts_type") {
+                        field_attrs.ts_type = Some(value.value());
+                    } else {
+                        field_attrs.ts_rename = Some(value.value());
+                    }
+                } else {
+                    panic!("Unknown ESTree field attribute: {}", arg.to_token_stream());
+                }
+            }
                 continue;
             }
             if meta_list.path.is_ident("ast") {

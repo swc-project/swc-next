@@ -36,7 +36,8 @@
   },
   "dependencies": {
     "@swc-next/decoder": "workspace:*",
-    "@swc-next/encoder": "workspace:*"
+    "@swc-next/encoder": "workspace:*",
+    "@swc-next/types": "workspace:*"
   },
   "keywords": [
     "ast",

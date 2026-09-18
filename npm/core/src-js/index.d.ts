@@ -1,3 +1,16 @@
+import type { Program } from "@swc-next/types";
+export type {
+  Program,
+  Node,
+  Expression,
+  Statement,
+  Declaration,
+  Pattern,
+  Identifier,
+  Literal,
+} from "@swc-next/types";
+export type * as AST from "@swc-next/types";
+
 import type {
   CodegenOptions,
   CodegenOutput,
@@ -31,7 +44,7 @@ export interface Diagnostic extends DiagnosticLabel {
 
 export interface ParseResult {
   readonly meta: AstMeta;
-  readonly program: any;
+  readonly program: Program;
   readonly comments: Comment[];
   /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
   readonly diagnostics: Diagnostic[];
@@ -43,7 +56,7 @@ export declare function parseSync(
 ): ParseResult;
 
 export declare function printSync(
-  program: any,
+  program: Program,
   options?: CodegenOptions | undefined | null,
   meta?: Partial<AstMeta>,
 ): CodegenOutput;

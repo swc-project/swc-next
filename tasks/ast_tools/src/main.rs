@@ -4,6 +4,7 @@ use crate::{
         ast_builder::ast_builder, ast_compare::ast_compare, ast_node::ast_node,
         ast_payload::ast_payload, ast_property::ast_property, ast_visitor::ast_visitor,
         estree_decoder::estree_decoder, estree_encoder::estree_encoder,
+        typescript::typescript,
     },
     parse::parse_files,
 };
@@ -25,6 +26,8 @@ const AST_CRATE_PATH: &str = "swc_ecma_ast";
 
 fn main() -> std::io::Result<()> {
     let schema = parse_files(SOURCE_PATHS);
+
+    typescript(&schema).write_to_file()?;
 
     let ast_builder = ast_builder(&schema);
     ast_builder.write_to_file().unwrap();

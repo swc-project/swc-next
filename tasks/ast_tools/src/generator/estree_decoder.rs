@@ -1,13 +1,12 @@
 use std::fmt::Write;
 
-use convert_case::{Case, Casing};
 
 use crate::{
     output::RawOutput,
     schema::{AstStruct, AstType, FieldLocation, Schema},
 };
 
-use super::js_minifier::minify;
+use super::{estree::{ENUMS, estree_field_name, estree_type, is_ts_field, ts_extra_fields}, js_minifier::minify};
 
 const OUTPUT_DIR: &str = "packages/decoder";
 
@@ -33,11 +32,15 @@ pub fn estree_decoder(schema: &Schema) -> Vec<RawOutput> {
 
 fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     let mut output = String::new();
-    output.push_str(PREAMBLE);
-    if is_ts {
-        output.push_str(TS_ENUMS);
+    let mut enums = String::from("const ENUMS = Object.freeze({\n");
+    for (name, values) in ENUMS {
+        if !is_ts && (*name == "Accessibility" || *name == "ImportOrExportKind" || name.starts_with("Ts")) {
+            continue;
+        }
+        writeln!(enums, "  {name}: [{}],", values.join(", ")).unwrap();
     }
-    output.push_str(PREAMBLE_END);
+    enums.push_str("\n});");
+    output.push_str(&PREAMBLE.replace("__ENUMS__", &enums));
     output.push_str(DECODE_HELPERS);
     writeln!(
         output,
@@ -746,106 +749,6 @@ fn references_field(body: &str, field: &str) -> bool {
     })
 }
 
-fn estree_type(name: &str) -> String {
-    match name {
-        "BindingRestElement" | "FormalParameterRest" => "RestElement".into(),
-        "ObjectProperty" => "Property".into(),
-        "IdentifierReference" | "BindingIdentifier" | "IdentifierName" | "LabelIdentifier" => {
-            "Identifier".into()
-        }
-        "TsBigIntKeyword" => "TSBigIntKeyword".into(),
-        "TsJsDocNullableType" => "TSJSDocNullableType".into(),
-        "TsJsDocNonNullableType" => "TSJSDocNonNullableType".into(),
-        "TsJsDocUnknownType" => "TSJSDocUnknownType".into(),
-        _ if name.starts_with("Jsx") => format!("JSX{}", &name[3..]),
-        _ if name.starts_with("Ts") => format!("TS{}", &name[2..]),
-        _ => name.into(),
-    }
-}
-
-fn is_ts_field(node: &str, field: &str) -> bool {
-    matches!(
-        (node, field),
-        ("VariableDeclaration", "declare")
-            | ("VariableDeclarator", "definite")
-            | ("CallExpression", "typeArguments")
-            | ("NewExpression", "typeArguments")
-            | ("TaggedTemplateExpression", "typeArguments")
-            | ("JsxOpeningElement", "typeArguments")
-            | ("ImportDeclaration", "importKind")
-            | ("ImportSpecifier", "importKind")
-            | ("ExportNamedDeclaration", "exportKind")
-            | ("ExportAllDeclaration", "exportKind")
-            | ("ExportSpecifier", "exportKind")
-            | (
-                "BindingRestElement",
-                "decorators" | "optional" | "typeAnnotation"
-            )
-            | (
-                "BindingIdentifier",
-                "decorators" | "optional" | "typeAnnotation"
-            )
-            | (
-                "AssignmentPattern",
-                "decorators" | "optional" | "typeAnnotation"
-            )
-            | (
-                "ObjectPattern",
-                "decorators" | "optional" | "typeAnnotation"
-            )
-            | ("ArrayPattern", "decorators" | "optional" | "typeAnnotation")
-            | ("TsIndexSignature", "static")
-    )
-}
-
-const IDENTIFIER_TS_EXTRAS: &[(&str, &str)] = &[
-    ("decorators", "[]"),
-    ("optional", "false"),
-    ("typeAnnotation", "null"),
-];
-const OBJECT_PROPERTY_TS_EXTRAS: &[(&str, &str)] = &[("optional", "false")];
-const EXPRESSION_STATEMENT_TS_EXTRAS: &[(&str, &str)] = &[("directive", "null")];
-const BINDING_REST_TS_EXTRAS: &[(&str, &str)] = &[
-    ("value", "null"),
-    ("decorators", "[]"),
-    ("optional", "false"),
-    ("typeAnnotation", "null"),
-];
-const EXPORT_DEFAULT_TS_EXTRAS: &[(&str, &str)] = &[("exportKind", "\"value\"")];
-const TS_PROPERTY_SIGNATURE_EXTRAS: &[(&str, &str)] =
-    &[("accessibility", "null"), ("static", "false")];
-const TS_INDEX_SIGNATURE_EXTRAS: &[(&str, &str)] = &[("accessibility", "null")];
-const TS_PARAMETER_PROPERTY_EXTRAS: &[(&str, &str)] = &[("static", "false")];
-
-fn ts_extra_fields(name: &str) -> &'static [(&'static str, &'static str)] {
-    match name {
-        "IdentifierReference"
-        | "IdentifierName"
-        | "LabelIdentifier"
-        | "BindingIdentifier"
-        | "AssignmentPattern" => IDENTIFIER_TS_EXTRAS,
-        "ObjectProperty" => OBJECT_PROPERTY_TS_EXTRAS,
-        "ExpressionStatement" => EXPRESSION_STATEMENT_TS_EXTRAS,
-        "BindingRestElement" => BINDING_REST_TS_EXTRAS,
-        "ExportDefaultDeclaration" => EXPORT_DEFAULT_TS_EXTRAS,
-        "TsPropertySignature" => TS_PROPERTY_SIGNATURE_EXTRAS,
-        "TsIndexSignature" => TS_INDEX_SIGNATURE_EXTRAS,
-        "TsParameterProperty" => TS_PARAMETER_PROPERTY_EXTRAS,
-        _ => &[],
-    }
-}
-
-fn estree_field_name(node: &str, field: &str) -> String {
-    let field = field.strip_prefix("r#").unwrap_or(field);
-    if node == "VariableDeclaration" && field == "declarators" {
-        return "declarations".into();
-    }
-    if node == "TsEnumDeclaration" && field == "is_const" {
-        return "const".into();
-    }
-    field.to_case(Case::Camel)
-}
-
 const PREAMBLE: &str = r#"// generated by tasks/ast_tools, do not edit
 
 const NULL = -1;
@@ -871,33 +774,7 @@ for (let length = 0; length <= 64; length++) {
   shortStringChars[length] = Array(length).fill(0);
 }
 
-const ENUMS = Object.freeze({
-  Lang: ["js", "ts", "jsx", "tsx", "dts"],
-  SourceType: ["module", "script", "commonjs", "unambiguous"],
-  MethodDefinitionKind: ["constructor", "method", "get", "set"],
-  ClassType: ["ClassDeclaration", "ClassExpression"],
-  BinaryOperator: ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"],
-  LogicalOperator: ["&&", "||", "??"],
-  UnaryOperator: ["-", "+", "!", "~", "typeof", "void", "delete"],
-  UpdateOperator: ["++", "--"],
-  AssignmentOperator: ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="],
-  VariableKind: ["var", "let", "const", "using", "await using"],
-  FunctionType: ["FunctionDeclaration", "FunctionExpression"],
-  FormalParameterKind: ["formal", "unique", "arrow", "signature"],
-  PropertyKind: ["init", "get", "set"],
-  ImportPhase: ["source", "defer"],
-"#;
-
-const TS_ENUMS: &str = r#"  Accessibility: [null, "public", "private", "protected"],
-  ImportOrExportKind: ["value", "type"],
-  TsTypeOperatorKind: ["keyof", "unique", "readonly"],
-  TsMethodSignatureKind: ["method", "get", "set"],
-  TsModuleDeclarationKind: ["namespace", "module"],
-  TsMappedTypeModifier: [null, true, "+", "-"],
-"#;
-
-const PREAMBLE_END: &str = r#"
-});
+__ENUMS__
 "#;
 
 const DECODE_HELPERS: &str = r#"

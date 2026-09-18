@@ -1,3 +1,16 @@
+import type { Program } from "@swc-next/types";
+export type {
+  Program,
+  Node,
+  Expression,
+  Statement,
+  Declaration,
+  Pattern,
+  Identifier,
+  Literal,
+} from "@swc-next/types";
+export type * as AST from "@swc-next/types";
+
 /** Language and source type associated with an ESTree Program. */
 export interface AstMeta {
   readonly lang: "js" | "jsx" | "ts" | "tsx" | "dts";
@@ -8,6 +21,6 @@ export interface AstMeta {
  * Pass the decoder result's meta to retain its language and source type.
  * Without metadata, infer JS/TS from the nodes using the TypeScript-capable encoder.
  */
-export declare function encode(program: any, meta?: Partial<AstMeta>): Uint8Array;
-export declare function encodeJs(program: any, meta?: Partial<AstMeta>): Uint8Array;
-export declare function encodeTs(program: any, meta?: Partial<AstMeta>): Uint8Array;
+export declare function encode(program: Program, meta?: Partial<AstMeta>): Uint8Array;
+export declare function encodeJs(program: Program, meta?: Partial<AstMeta>): Uint8Array;
+export declare function encodeTs(program: Program, meta?: Partial<AstMeta>): Uint8Array;

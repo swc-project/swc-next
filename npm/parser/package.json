@@ -58,7 +58,8 @@
     ]
   },
   "dependencies": {
-    "@swc-next/decoder": "workspace:*"
+    "@swc-next/decoder": "workspace:*",
+    "@swc-next/types": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-parser",

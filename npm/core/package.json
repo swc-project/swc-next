@@ -32,7 +32,8 @@
     "test": "node --test test/*.test.js",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts",
-    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts"
+    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts",
+    "test:types": "tsc -p test/types/tsconfig.json"
   },
   "keywords": [],
   "author": "",
@@ -58,7 +59,8 @@
   },
   "dependencies": {
     "@swc-next/decoder": "workspace:*",
-    "@swc-next/encoder": "workspace:*"
+    "@swc-next/encoder": "workspace:*",
+    "@swc-next/types": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-core",
@@ -74,6 +76,11 @@
     "tinybench": "catalog:",
     "tinypool": "catalog:",
     "typescript": "catalog:",
-    "yuku-parser": "catalog:"
+    "yuku-parser": "catalog:",
+    "acorn": "^8.18.0",
+    "@types/estree": "^1.0.9",
+    "@swc-next/parser": "workspace:*",
+    "@swc-next/codegen": "workspace:*",
+    "@swc-next/core-browser": "workspace:*"
   }
 }

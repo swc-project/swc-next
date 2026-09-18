@@ -1,3 +1,16 @@
+import type { Program } from "@swc-next/types";
+export type {
+  Program,
+  Node,
+  Expression,
+  Statement,
+  Declaration,
+  Pattern,
+  Identifier,
+  Literal,
+} from "@swc-next/types";
+export type * as AST from "@swc-next/types";
+
 import type { ParserOptions } from "./binding.js";
 import type { AstMeta } from "@swc-next/decoder";
 export type { AstMeta } from "@swc-next/decoder";
@@ -27,7 +40,7 @@ export interface Diagnostic extends DiagnosticLabel {
 
 export interface ParseResult {
   readonly meta: AstMeta;
-  readonly program: any;
+  readonly program: Program;
   readonly comments: Comment[];
   /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
   readonly diagnostics: Diagnostic[];
