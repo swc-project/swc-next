@@ -77,7 +77,7 @@ impl Default for Options {
 }
 
 bitflags! {
-    /// The active values of ECMAScript expression grammatical parameters.
+    /// ECMAScript grammatical parameters and TypeScript parsing context.
     ///
     /// See <https://tc39.es/ecma262/multipage/notational-conventions.html#sec-grammatical-parameters>.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -88,6 +88,23 @@ bitflags! {
         const YIELD = 1 << 1;
         /// The grammar's `[Await]` parameter.
         const AWAIT = 1 << 2;
+        /// Whether parsing is inside a `declare`-prefixed declaration.
+        ///
+        /// Nested declarations inherit ambient-context rules such as body-less
+        /// functions and initializer-less `const` declarations.
+        const AMBIENT = 1 << 3;
+        /// Whether a trailing `?` after a type is forbidden from starting a new
+        /// conditional type.
+        const DISALLOW_CONDITIONAL_TYPES = 1 << 4;
+        /// Whether a speculatively parsed arrow with a return type can commit
+        /// without an outer `:`.
+        ///
+        /// Restricted in conditional consequents so `(x): T => ...` leaves the
+        /// ternary `:` intact; reset at independent expression boundaries.
+        const ALLOW_ARROW_RETURN_TYPE = 1 << 5;
+        /// Whether parsing is inside a TypeScript declaration body that is
+        /// outside ECMAScript module grammar.
+        const IN_TS_CONTAINER_BODY = 1 << 6;
     }
 }
 
@@ -95,6 +112,7 @@ bitflags! {
 ///
 /// The modifiers mirror ECMA-262 grammatical arguments: `+` enables a
 /// parameter, `~` disables it, and `?` inherits its current value.
+/// `ArrowReturnType` scopes the TypeScript arrow-disambiguation flag.
 macro_rules! enter_grammar_context {
     (@flag In) => {
         Context::IN
@@ -104,6 +122,9 @@ macro_rules! enter_grammar_context {
     };
     (@flag Await) => {
         Context::AWAIT
+    };
+    (@flag ArrowReturnType) => {
+        Context::ALLOW_ARROW_RETURN_TYPE
     };
     (@set $context:ident, + $parameter:ident) => {
         $context.insert(enter_grammar_context!(@flag $parameter));
@@ -122,7 +143,7 @@ macro_rules! enter_grammar_context {
 
 impl Default for Context {
     fn default() -> Self {
-        Self::IN
+        Self::IN | Self::ALLOW_ARROW_RETURN_TYPE
     }
 }
 
@@ -135,6 +156,22 @@ impl From<SourceType> for Context {
 }
 
 impl Context {
+    fn ambient(self) -> bool {
+        self.contains(Self::AMBIENT)
+    }
+
+    fn disallow_conditional_types(self) -> bool {
+        self.contains(Self::DISALLOW_CONDITIONAL_TYPES)
+    }
+
+    fn allow_arrow_return_type(self) -> bool {
+        self.contains(Self::ALLOW_ARROW_RETURN_TYPE)
+    }
+
+    fn in_ts_container_body(self) -> bool {
+        self.contains(Self::IN_TS_CONTAINER_BODY)
+    }
+
     fn for_fragment(
         source_type: SourceType,
         fragment_context: FragmentContext,
@@ -176,53 +213,6 @@ impl BoundaryContext {
 
     fn can_be_commonjs(self) -> bool {
         self.contains(Self::CAN_BE_COMMONJS)
-    }
-}
-
-bitflags! {
-    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-    struct TsContext: u8 {
-        /// Whether parsing is inside a `declare`-prefixed declaration.
-        ///
-        /// Nested declarations inherit ambient-context rules such as body-less
-        /// functions and initializer-less `const` declarations.
-        const AMBIENT = 1 << 0;
-        /// Whether a trailing `?` after a type is forbidden from starting a new
-        /// conditional type.
-        const DISALLOW_CONDITIONAL_TYPES = 1 << 1;
-        /// Whether a speculatively parsed arrow with a return type can commit
-        /// without an outer `:`.
-        ///
-        /// Restricted in conditional consequents so `(x): T => ...` leaves the
-        /// ternary `:` intact; reset at independent expression boundaries.
-        const ALLOW_ARROW_RETURN_TYPE = 1 << 2;
-        /// Whether parsing is inside a TypeScript declaration body that is
-        /// outside ECMAScript module grammar.
-        const IN_TS_CONTAINER_BODY = 1 << 3;
-    }
-}
-
-impl Default for TsContext {
-    fn default() -> Self {
-        Self::ALLOW_ARROW_RETURN_TYPE
-    }
-}
-
-impl TsContext {
-    fn ambient(self) -> bool {
-        self.contains(Self::AMBIENT)
-    }
-
-    fn disallow_conditional_types(self) -> bool {
-        self.contains(Self::DISALLOW_CONDITIONAL_TYPES)
-    }
-
-    fn allow_arrow_return_type(self) -> bool {
-        self.contains(Self::ALLOW_ARROW_RETURN_TYPE)
-    }
-
-    fn in_ts_container_body(self) -> bool {
-        self.contains(Self::IN_TS_CONTAINER_BODY)
     }
 }
 
@@ -734,7 +724,6 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     scratch_b: ScratchBuffer,
     context: Context,
     statement_context: StatementContext,
-    ts_context: TsContext,
     state: ParserState,
     /// Start offset of an array or object cover grammar with a trailing comma.
     cover_has_trailing_comma: Option<u32>,
@@ -775,7 +764,6 @@ struct Checkpoint {
     // Parser flags, copied by value.
     context: Context,
     statement_context: StatementContext,
-    ts_context: TsContext,
     state: ParserState,
     cover_has_trailing_comma: Option<u32>,
     stripped_paren: Option<NodeId>,
@@ -891,13 +879,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             scratch_decorators: ScratchBuffer::default(),
             scratch_a: ScratchBuffer::default(),
             scratch_b: ScratchBuffer::default(),
-            context: Context::default(),
-            statement_context: StatementContext::default(),
-            ts_context: {
-                let mut context = TsContext::default();
-                context.set(TsContext::AMBIENT, options.lang == Lang::Dts);
+            context: {
+                let mut context = Context::default();
+                context.set(Context::AMBIENT, options.lang == Lang::Dts);
                 context
             },
+            statement_context: StatementContext::default(),
             state: ParserState::default(),
             cover_has_trailing_comma: None,
             stripped_paren: None,
@@ -971,6 +958,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) {
         self.set_source_type(source_type);
         self.context = Context::from(source_type);
+        self.context.set(Context::AMBIENT, self.lang == Lang::Dts);
         self.boundary_context.set(
             BoundaryContext::IN_FUNCTION,
             source_type == SourceType::CommonJs,
@@ -1119,6 +1107,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let statement_context = fragment_context.statement_context(source_type);
         self.set_source_type(source_type);
         self.context = Context::for_fragment(source_type, fragment_context, statement_context);
+        self.context.set(Context::AMBIENT, self.lang == Lang::Dts);
         self.boundary_context.set(
             BoundaryContext::IN_FUNCTION,
             fragment_context.is_function() || source_type == SourceType::CommonJs,
@@ -1445,7 +1434,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 .len(),
             context: self.context,
             statement_context: self.statement_context,
-            ts_context: self.ts_context,
             state: self.state,
             cover_has_trailing_comma: self.cover_has_trailing_comma,
             stripped_paren: self.stripped_paren,
@@ -1476,7 +1464,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .truncate(checkpoint.commonjs_conditional_diagnostic_indices_len);
         self.context = checkpoint.context;
         self.statement_context = checkpoint.statement_context;
-        self.ts_context = checkpoint.ts_context;
         self.state = checkpoint.state;
         self.cover_has_trailing_comma = checkpoint.cover_has_trailing_comma;
         self.stripped_paren = checkpoint.stripped_paren;
@@ -2227,7 +2214,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
         let declaration_start = start_from_param.unwrap_or(self.current_token.span.start);
         let kind = self.parse_variable_kind(opts.await_using)?;
-        let context = if opts.is_declare || self.ts_context.ambient() {
+        let context = if opts.is_declare || self.context.ambient() {
             DeclaratorCtx::Declare
         } else {
             DeclaratorCtx::Normal
@@ -2436,7 +2423,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = grammar_context;
         let right = right?;
         let span = Span::new(left.span(&self.ast).start, right.span(&self.ast).end);
-        if self.ts_context.ambient() {
+        if self.context.ambient() {
             self.report(
                 span,
                 "A parameter initializer is only allowed in a function or constructor implementation",
@@ -2547,7 +2534,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let return_type_end =
                 return_type.map_or(params_end, |return_type| return_type.span(&self.ast).end);
             let ambient_declaration =
-                (opts.is_declare || self.ts_context.ambient()) && !is_function_expression;
+                (opts.is_declare || self.context.ambient()) && !is_function_expression;
             if ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
                 self.report(
                     self.current_token.span,
@@ -2782,8 +2769,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let checkpoint = self.scratch_a.begin();
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let context = enter_grammar_context![&mut self.context, +ArrowReturnType];
         let result = (|| {
             while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
                 if self.eat(TokenTag::Semicolon)? {
@@ -2805,7 +2791,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let elements = self.add_extra_from_scratch_a(checkpoint);
             Some(self.ast.class_body(Span::new(start, end), elements))
         })();
-        self.ts_context = ts_context;
+        self.context = context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -3151,7 +3137,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         key: PropertyKey,
         kind: StaticMemberKind,
     ) {
-        if !self.ts_context.ambient()
+        if !self.context.ambient()
             && let Some(span) = self.prop_name_eq(key, "prototype")
         {
             self.report(
@@ -3512,8 +3498,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let checkpoint = self.scratch_a.begin();
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let context = enter_grammar_context![&mut self.context, +ArrowReturnType];
         let result = (|| {
             let mut rest = None;
             while self.current_token.tag != TokenTag::RightParen
@@ -3530,7 +3515,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if self.current_token.tag == TokenTag::Spread {
                     rest = Some(self.parse_binding_rest_element(decorators)?);
                     if self.eat(TokenTag::Comma)?
-                        && (!self.ts_context.ambient()
+                        && (!self.context.ambient()
                             || self.current_token.tag != TokenTag::RightParen)
                     {
                         return {
@@ -3570,7 +3555,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .formal_parameters(Span::new(start, end), items, rest, kind),
             )
         })();
-        self.ts_context = ts_context;
+        self.context = context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -3740,16 +3725,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let boundary_context = self.boundary_context;
         self.boundary_context.insert(BoundaryContext::IN_FUNCTION);
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let ParsedBody { directives, body } = self.parse_body(
             Some(TokenTag::RightBrace),
             StatementContext::StatementListItem,
         );
-        self.ts_context = ts_context;
         self.context = grammar_context;
         self.boundary_context = boundary_context;
         let end = self.current_token.span.end;
@@ -5001,9 +4983,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        let ambient = self.ts_context.ambient();
-        self.ts_context
-            .set(TsContext::AMBIENT, ambient || modifiers.declare);
+        let ambient = self.context.ambient();
+        self.context
+            .set(Context::AMBIENT, ambient || modifiers.declare);
         let result = (|| match self.current_token.tag {
             TokenTag::Type => self.parse_type_alias_declaration(start, modifiers.declare),
             TokenTag::Interface => self.parse_interface_declaration(start, modifiers.declare),
@@ -5066,7 +5048,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Global => self.parse_global_declaration(start, modifiers.declare),
             _ => None,
         })();
-        self.ts_context.set(TsContext::AMBIENT, ambient);
+        self.context.set(Context::AMBIENT, ambient);
         result
     }
 
@@ -5242,8 +5224,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let checkpoint = self.scratch_a.begin();
         let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
-        let in_ts_container_body = self.ts_context.in_ts_container_body();
-        self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
+        self.context.insert(Context::IN_TS_CONTAINER_BODY);
         let boundary_context = mem::take(&mut self.boundary_context);
         let result = (|| {
             while self.current_token.tag != TokenTag::RightBrace
@@ -5266,8 +5247,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let members = self.add_extra_from_scratch_a(checkpoint);
             Some(self.ast.ts_enum_body(Span::new(start, end), members))
         })();
-        self.ts_context
-            .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
         self.context = context;
         self.boundary_context = boundary_context;
         self.scratch_a.reset(checkpoint);
@@ -5361,11 +5340,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             self.parse_module_name()?
         };
-        let outer_ambient = self.ts_context.ambient();
-        self.ts_context
-            .set(TsContext::AMBIENT, outer_ambient || declare);
+        let outer_ambient = self.context.ambient();
+        self.context.set(Context::AMBIENT, outer_ambient || declare);
         let body = self.parse_optional_module_block();
-        self.ts_context.set(TsContext::AMBIENT, outer_ambient);
+        self.context.set(Context::AMBIENT, outer_ambient);
         let body = body?;
         let end = if let Some(body) = body {
             body.span(&self.ast).end
@@ -5384,11 +5362,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let name = self.identifier_name(token);
         let id = self.ast.identifier_name(token.span, name);
-        let outer_ambient = self.ts_context.ambient();
-        self.ts_context
-            .set(TsContext::AMBIENT, outer_ambient || declare);
+        let outer_ambient = self.context.ambient();
+        self.context.set(Context::AMBIENT, outer_ambient || declare);
         let body = self.parse_module_block();
-        self.ts_context.set(TsContext::AMBIENT, outer_ambient);
+        self.context.set(Context::AMBIENT, outer_ambient);
         let body = body?;
         let end = body.span(&self.ast).end;
         let declaration = self
@@ -5431,14 +5408,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let context = enter_grammar_context![&mut self.context, ~Await];
-        let in_ts_container_body = self.ts_context.in_ts_container_body();
-        self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
+        self.context.insert(Context::IN_TS_CONTAINER_BODY);
         let boundary_context = mem::take(&mut self.boundary_context);
         let ParsedBody { directives, body } =
             self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
         self.boundary_context = boundary_context;
-        self.ts_context
-            .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
         self.context = context;
         let end = self.current_token.span.end;
         if !self.expect(
@@ -5579,9 +5553,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type(&mut self) -> Option<TsType> {
-        let saved = self.ts_context.disallow_conditional_types();
-        self.ts_context
-            .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        let saved = self.context.disallow_conditional_types();
+        self.context.remove(Context::DISALLOW_CONDITIONAL_TYPES);
         let result = (|| {
             if self.is_start_of_function_or_constructor_type()? {
                 self.parse_function_or_constructor_type()
@@ -5596,8 +5569,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 })
             }
         })();
-        self.ts_context
-            .set(TsContext::DISALLOW_CONDITIONAL_TYPES, saved);
+        self.context.set(Context::DISALLOW_CONDITIONAL_TYPES, saved);
         result
     }
 
@@ -5618,19 +5590,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_conditional_type(&mut self) -> Option<TsType> {
         let check_type = self.parse_union_type()?;
-        if self.ts_context.disallow_conditional_types()
+        if self.context.disallow_conditional_types()
             || self.current_token.tag != TokenTag::Extends
             || self.current_token.has_line_terminator_before()
         {
             return Some(check_type);
         }
         self.advance()?;
-        let saved = self.ts_context.disallow_conditional_types();
-        self.ts_context
-            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        let saved = self.context.disallow_conditional_types();
+        self.context.insert(Context::DISALLOW_CONDITIONAL_TYPES);
         let extends_type = self.parse_type_no_conditional();
-        self.ts_context
-            .set(TsContext::DISALLOW_CONDITIONAL_TYPES, saved);
+        self.context.set(Context::DISALLOW_CONDITIONAL_TYPES, saved);
         let extends_type = extends_type?;
         if !self.expect(
             TokenTag::Question,
@@ -6037,15 +6007,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let position = self.current_token.span.start;
-        let conditional_allowed = !self.ts_context.disallow_conditional_types();
+        let conditional_allowed = !self.context.disallow_conditional_types();
         if conditional_allowed && self.ts_rejected_speculations.contains(&position) {
             return Some(None);
         }
 
         let checkpoint = self.checkpoint();
         self.advance()?;
-        self.ts_context
-            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        self.context.insert(Context::DISALLOW_CONDITIONAL_TYPES);
         let constraint = match self.parse_union_type() {
             Some(constraint) => constraint,
             None => {
@@ -6053,9 +6022,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return Some(None);
             }
         };
-        self.ts_context.set(
-            TsContext::DISALLOW_CONDITIONAL_TYPES,
-            checkpoint.ts_context.disallow_conditional_types(),
+        self.context.set(
+            Context::DISALLOW_CONDITIONAL_TYPES,
+            checkpoint.context.disallow_conditional_types(),
         );
 
         if conditional_allowed && self.current_token.tag == TokenTag::Question {
@@ -8085,7 +8054,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // constructor target in `new import.meta()`. Import calls share
             // this parser entry and are rejected by `parse_new_expression`.
             TokenTag::Import => self.parse_import_expression(),
-            TokenTag::Await | TokenTag::Yield if self.ts_context.in_ts_container_body() => {
+            TokenTag::Await | TokenTag::Yield if self.context.in_ts_container_body() => {
                 self.parse_ts_container_await_or_yield(minimum)
             }
             tag if tag.is_identifier_like() => self.parse_identifier(),
@@ -8112,7 +8081,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[cold]
     fn parse_ts_container_await_or_yield(&mut self, minimum: Precedence) -> Option<Expr> {
-        debug_assert!(self.ts_context.in_ts_container_body());
+        debug_assert!(self.context.in_ts_container_body());
         debug_assert!(!self.boundary_context.can_be_module());
         let tag = self.current_token.tag;
         if minimum >= Precedence::Add && tag == TokenTag::Yield {
@@ -8301,9 +8270,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let quasis_checkpoint = self.scratch_a.begin();
         let expressions_checkpoint = self.scratch_b.begin();
         let head = self.current_token;
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let result = (|| {
             let head = self.add_template_element(head, false, tagged);
             self.scratch_a.append(head);
@@ -8359,7 +8326,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .template_literal(Span::new(start, end), quasis, expressions),
             )
         })();
-        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_a.reset(quasis_checkpoint);
         self.scratch_b.reset(expressions_checkpoint);
@@ -8457,8 +8423,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let context = enter_grammar_context![&mut self.context, +ArrowReturnType];
         let result = (|| {
             let mut end = start + 1;
             let mut has_trailing_comma = false;
@@ -8526,7 +8491,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 has_trailing_comma,
             })
         })();
-        self.ts_context = ts_context;
+        self.context = context;
         self.scratch_cover.reset(checkpoint);
         result
     }
@@ -8942,7 +8907,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .as_arrow_function_expression(&self.ast)
             .expect("arrow speculation produces an arrow function")
             .return_type(&self.ast);
-        if !self.ts_context.allow_arrow_return_type()
+        if !self.context.allow_arrow_return_type()
             && return_type.is_some()
             && self.current_token.tag != TokenTag::Colon
         {
@@ -9897,9 +9862,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let result = (|| {
             let mut end = start + 1;
             while self.current_token.tag != TokenTag::RightBracket
@@ -9965,7 +9928,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 end,
             })
         })();
-        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
@@ -9996,9 +9958,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let result = (|| {
             let mut end = start + 1;
             while self.current_token.tag != TokenTag::RightBrace
@@ -10059,7 +10019,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 end,
             })
         })();
-        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
@@ -10548,11 +10507,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = object.span(&self.ast).start;
         let open_bracket_span = self.current_token.span;
         self.advance()?;
-        let context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
-        self.ts_context = ts_context;
         self.context = context;
         let expression = expression?;
         let property = PropertyKey::Expr(expression);
@@ -10791,9 +10747,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   ArgumentList[?Yield, ?Await] `,` `...` AssignmentExpression[+In, ?Yield, ?Await]
     fn parse_arguments(&mut self) -> Option<SubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let result = (|| {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
@@ -10818,7 +10772,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             Some(self.add_extra_from_scratch_a(checkpoint))
         })();
-        self.ts_context = ts_context;
         self.context = grammar_context;
         self.scratch_a.reset(checkpoint);
         result
@@ -10991,9 +10944,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after import", None) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +ArrowReturnType];
         let result = (|| {
             let source = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
             let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
@@ -11023,7 +10974,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 sync,
             ))
         })();
-        self.ts_context = ts_context;
         self.context = grammar_context;
         result
     }
@@ -11056,10 +11006,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_jsx_expression(&mut self) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
-        let ts_context = self.ts_context;
-        self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let context = enter_grammar_context![&mut self.context, +ArrowReturnType];
         let result = self.parse_jsx_element(JsxElementContext::TopLevel);
-        self.ts_context = ts_context;
+        self.context = context;
         result
     }
 
@@ -12136,12 +12085,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = test.span(&self.ast).start;
         debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         self.advance()?;
-        let context = enter_grammar_context![&mut self.context, +In];
-        let ts_context = self.ts_context;
-        self.ts_context.remove(TsContext::ALLOW_ARROW_RETURN_TYPE);
+        let context = enter_grammar_context![&mut self.context, +In, ~ArrowReturnType];
         let consequent = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
         self.context = context;
-        self.ts_context = ts_context;
         let consequent = consequent?;
         if !self.expect(
             TokenTag::Colon,
@@ -12369,8 +12315,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
         let await_is_reserved = self.context.contains(Context::AWAIT)
-            || self.source_type == SourceType::Module && !self.ts_context.in_ts_container_body();
-        if token.tag == TokenTag::Await && !self.ts_context.ambient() && await_is_reserved {
+            || self.source_type == SourceType::Module && !self.context.in_ts_container_body();
+        if token.tag == TokenTag::Await && !self.context.ambient() && await_is_reserved {
             self.report(
                 token.span,
                 Cow::Owned(format!(
