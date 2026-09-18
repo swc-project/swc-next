@@ -180,9 +180,6 @@ impl BoundaryContext {
 }
 
 bitflags! {
-    /// Lexically scoped TypeScript parsing state. Nested parsers restore their
-    /// changes before returning, so expression boundaries can save and restore
-    /// the entire context without masking individual flags.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     struct TsContext: u8 {
         /// Whether parsing is inside a `declare`-prefixed declaration.
@@ -196,9 +193,8 @@ bitflags! {
         /// Whether a speculatively parsed arrow with a return type can commit
         /// without an outer `:`.
         ///
-        /// Restricted in a conditional consequent so speculative arrows leave its `:`.
-        /// Independent expression boundaries temporarily allow return types; assignment
-        /// RHSs, yield arguments and concise arrow bodies inherit the restriction.
+        /// Restricted in conditional consequents so `(x): T => ...` leaves the
+        /// ternary `:` intact; reset at independent expression boundaries.
         const ALLOW_ARROW_RETURN_TYPE = 1 << 2;
         /// Whether parsing is inside a TypeScript declaration body that is
         /// outside ECMAScript module grammar.
@@ -14195,5 +14191,233 @@ mod tests {
 
         let diagnostics = parse_js_diagnostics("if (a) function* f() {}");
         assert_eq!(diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn typed_arrow_context() {
+        fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
+            let result = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+            assert!(result.diagnostics.is_empty());
+            assert_eq!(result.ast.root_program().body(&result.ast).len(), 1);
+            result.ast
+        }
+
+        fn conditional(ast: &Ast<'_>) -> ConditionalExpression {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+                .as_conditional_expression(ast)
+                .unwrap()
+        }
+
+        fn assert_identifier(ast: &Ast<'_>, expression: Expr, expected: &str) {
+            let identifier = expression.as_identifier_reference(ast).unwrap();
+            assert_eq!(ast.get_utf8(identifier.name(ast)), expected);
+        }
+
+        fn assert_parenthesized_a(ast: &Ast<'_>, expression: Expr) {
+            let parenthesized = expression.as_parenthesized_expression(ast).unwrap();
+            assert_identifier(ast, parenthesized.expression(ast), "a");
+        }
+
+        fn assert_alternate(ast: &Ast<'_>, expression: ConditionalExpression) {
+            let arrow = expression
+                .alternate(ast)
+                .as_arrow_function_expression(ast)
+                .unwrap();
+            let params = arrow.params(ast).items(ast);
+            assert_eq!(params.len(), 1);
+            let parameter = params
+                .get_node(ast, 0)
+                .unwrap()
+                .as_formal_parameter(ast)
+                .unwrap();
+            let binding = parameter.pattern(ast).as_binding_pattern(ast).unwrap();
+            let identifier = binding.as_binding_identifier(ast).unwrap();
+            assert_eq!(ast.get_utf8(identifier.name(ast)), "b");
+            assert!(arrow.return_type(ast).is_none());
+        }
+
+        fn return_types(ast: &Ast<'_>, expression: Expr) -> Vec<String> {
+            struct TypedArrows<'ast, 'a> {
+                ast: &'ast Ast<'a>,
+                return_types: Vec<String>,
+            }
+
+            impl<'a> Visit<'a> for TypedArrows<'_, 'a> {
+                fn ast(&self) -> &Ast<'a> {
+                    self.ast
+                }
+
+                fn visit_arrow_function_expression(&mut self, arrow: ArrowFunctionExpression) {
+                    if let Some(annotation) = arrow.return_type(self.ast) {
+                        let ty = annotation
+                            .type_annotation(self.ast)
+                            .as_ts_type_reference(self.ast)
+                            .unwrap();
+                        let name = ty
+                            .type_name(self.ast)
+                            .as_identifier_reference(self.ast)
+                            .unwrap();
+                        self.return_types
+                            .push(self.ast.get_utf8(name.name(self.ast)).to_owned());
+                    }
+                    arrow.visit_children_with(self);
+                }
+            }
+
+            let mut visitor = TypedArrows {
+                ast,
+                return_types: Vec::new(),
+            };
+            expression.visit_with(&mut visitor);
+            visitor.return_types
+        }
+
+        fn parse_boundary(source: &str, options: Options) -> Vec<String> {
+            let allocator = Allocator::new();
+            let plain_source = format!("cond ? {source} : undefined;");
+            let ast = parse(&allocator, &plain_source, options);
+            let expression = conditional(&ast);
+            assert_identifier(&ast, expression.alternate(&ast), "undefined");
+            let plain_types = return_types(&ast, expression.consequent(&ast));
+
+            let nested_source = format!("cond ? inner ? {source} : (a) : b => b;");
+            let ast = parse(&allocator, &nested_source, options);
+            let expression = conditional(&ast);
+            assert_alternate(&ast, expression);
+            let inner = expression
+                .consequent(&ast)
+                .as_conditional_expression(&ast)
+                .unwrap();
+            assert_parenthesized_a(&ast, inner.alternate(&ast));
+            let nested_types = return_types(&ast, inner.consequent(&ast));
+            assert_eq!(nested_types, plain_types);
+            plain_types
+        }
+
+        let ts = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let tsx = Options {
+            lang: Lang::Tsx,
+            ..ts
+        };
+
+        let types = parse_boundary("items.map((item): Item => item)", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("items.map(([a, b]): Item => ({ a, b }))", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("items.map?.((item): Item => item)", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("new Factory((item): Item => item)", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("[(item): Item => item]", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("{ f: (item): Item => item }", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("items[(item): Item => item]", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("consume(...(item): Item => item)", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("function f(x = (item): Item => item) {}", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("function f() { return (item): Item => item; }", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("() => { return (item): Item => item; }", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("class { f = (item): Item => item; }", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("`${(item): Item => item}`", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("import((item): Item => item)", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("<Component render={(item): Item => item} />", tsx);
+        assert_eq!(types, ["Item"]);
+
+        let allocator = Allocator::new();
+
+        let ast = parse(&allocator, "cond ? f((x): T => x) + (a) : b => b;", ts);
+        let expression = conditional(&ast);
+        assert_alternate(&ast, expression);
+        let binary = expression
+            .consequent(&ast)
+            .as_binary_expression(&ast)
+            .unwrap();
+        assert_parenthesized_a(&ast, binary.right(&ast));
+
+        let ast = parse(&allocator, "cond ? x = (a) : b => b;", ts);
+        let expression = conditional(&ast);
+        assert_alternate(&ast, expression);
+        let assignment = expression
+            .consequent(&ast)
+            .as_assignment_expression(&ast)
+            .unwrap();
+        assert_parenthesized_a(&ast, assignment.right(&ast));
+
+        let ast = parse(&allocator, "cond ? inner ? yes : (a) : b => b;", ts);
+        let expression = conditional(&ast);
+        assert_alternate(&ast, expression);
+        let inner = expression
+            .consequent(&ast)
+            .as_conditional_expression(&ast)
+            .unwrap();
+        assert_parenthesized_a(&ast, inner.alternate(&ast));
+
+        let ast = parse(&allocator, "cond ? x => (a) : b => b;", ts);
+        let expression = conditional(&ast);
+        assert_alternate(&ast, expression);
+        let arrow = expression
+            .consequent(&ast)
+            .as_arrow_function_expression(&ast)
+            .unwrap();
+        assert_parenthesized_a(&ast, arrow.body(&ast).as_expr(&ast).unwrap());
+
+        let ast = parse(&allocator, "function* f(){return c ? yield(a) : b=>b}", ts);
+        let declaration = ast
+            .root_program()
+            .body(&ast)
+            .get_node(&ast, 0)
+            .unwrap()
+            .as_declaration(&ast)
+            .unwrap();
+        let function = declaration.as_function(&ast).unwrap();
+        let statement = function
+            .body(&ast)
+            .body(&ast)
+            .get_node(&ast, 0)
+            .unwrap()
+            .as_return_statement(&ast)
+            .unwrap();
+        let expression = statement
+            .argument(&ast)
+            .unwrap()
+            .as_conditional_expression(&ast)
+            .unwrap();
+        assert_alternate(&ast, expression);
+        let yielded = expression
+            .consequent(&ast)
+            .as_yield_expression(&ast)
+            .unwrap();
+        assert_parenthesized_a(&ast, yielded.argument(&ast).unwrap());
     }
 }
