@@ -236,6 +236,12 @@ test("parseSync parses typed arrows at nested expression boundaries", () => {
     ["{ f: (item): Item => item }", ["properties", 0, "value"]],
     ["items[(item): Item => item]", ["property"]],
     ["consume(...(item): Item => item)", ["arguments", 0, "argument"]],
+    ["function f(x = (item): Item => item) {}", ["params", 0, "right"]],
+    ["function f() { return (item): Item => item; }", ["body", "body", 0, "argument"]],
+    ["() => { return (item): Item => item; }", ["body", "body", 0, "argument"]],
+    ["class { f = (item): Item => item; }", ["body", "body", 0, "value"]],
+    ["`${(item): Item => item}`", ["expressions", 0]],
+    ["import((item): Item => item)", ["source"]],
   ]) {
     const result = parseSync(`const x = cond ? ${source} : undefined;`, options);
     assert.deepEqual(result.diagnostics, []);
@@ -245,6 +251,14 @@ test("parseSync parses typed arrows at nested expression boundaries", () => {
     const arrow = path.reduce((node, key) => node[key], expression.consequent);
     assert.equal(arrow.type, "ArrowFunctionExpression");
     assert.equal(arrow.returnType.typeAnnotation.typeName.name, "Item");
+
+    const nested = parseSync(`const x = cond ? inner ? ${source} : (a) : b => b;`, options);
+    assert.deepEqual(nested.diagnostics, []);
+    const conditional = nested.program.body[0].declarations[0].init;
+    assert.equal(conditional.consequent.type, "ConditionalExpression");
+    assert.equal(conditional.consequent.alternate.expression.name, "a");
+    assert.equal(conditional.alternate.type, "ArrowFunctionExpression");
+    assert.equal(conditional.alternate.params[0].name, "b");
   }
 });
 
@@ -284,5 +298,19 @@ test("parseSync preserves conditional colon disambiguation", () => {
   assert.equal(yielded.consequent.type, "YieldExpression");
   assert.equal(yielded.consequent.argument.expression.name, "a");
   assert.equal(yielded.alternate.type, "ArrowFunctionExpression");
+});
 
+test("parseSync scopes typed arrow disambiguation in JSX", () => {
+  const result = parseSync("const x = cond ? inner ? <Component render={(item): Item => item} /> : (a) : b => b;", {
+    lang: Lang.Tsx,
+    sourceType: SourceType.Module,
+  });
+  assert.deepEqual(result.diagnostics, []);
+  const conditional = result.program.body[0].declarations[0].init;
+  const arrow = conditional.consequent.consequent.openingElement.attributes[0].value.expression;
+  assert.equal(arrow.type, "ArrowFunctionExpression");
+  assert.equal(arrow.returnType.typeAnnotation.typeName.name, "Item");
+  assert.equal(conditional.consequent.alternate.expression.name, "a");
+  assert.equal(conditional.alternate.type, "ArrowFunctionExpression");
+  assert.equal(conditional.alternate.params[0].name, "b");
 });
