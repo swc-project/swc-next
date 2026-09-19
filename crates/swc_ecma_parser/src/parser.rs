@@ -8457,6 +8457,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
+        let grammar_context = enter_grammar_context![&mut self.context, +In, ?Yield, ?Await];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
@@ -8476,13 +8477,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         argument,
                     ))
                 } else {
-                    let grammar_context = enter_grammar_context![&mut self.context, +In];
                     let expression = self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts { in_cover: true },
-                    );
-                    self.context = grammar_context;
-                    Argument::Expr(expression?)
+                    )?;
+                    Argument::Expr(expression)
                 };
                 end = element.span(&self.ast).end;
                 self.scratch_cover.append(element);
@@ -8527,6 +8526,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             })
         })();
         self.ts_context = ts_context;
+        self.context = grammar_context;
         self.scratch_cover.reset(checkpoint);
         result
     }
@@ -13115,6 +13115,18 @@ mod tests {
         let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
         assert_eq!(result.ast.root_program().body(&result.ast).len(), 2);
+    }
+
+    #[test]
+    fn in_grammar_context() {
+        let allocator = Allocator::new();
+        let source = "for (true || async(...a in b); console.log('parsed'), false;);";
+        let options = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
     }
 
     #[test]
