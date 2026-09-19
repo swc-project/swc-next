@@ -2,6 +2,7 @@
 *.json.gz
 callgrind*
 input.*
+!crates/swc_ecma_minifier/tests/fixtures/**/input.js
 profile.json
 local
 tasks/testsuite/fixtures

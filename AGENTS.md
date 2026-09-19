@@ -59,6 +59,17 @@ Debug one fixture with:
 cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver> --case <test262|typescript|babel|swc_resolver> --filter '<unique substring>'
 ```
 
+### Minifier Fixtures
+
+Run `cargo test -p swc_next_ecma_minifier --locked` for the local minifier suite.
+Filter individual cases with
+`cargo test -p swc_next_ecma_minifier --test fixtures -- '<feature>/<case>'`.
+Add `input.js`, `output.js`, and optional `options.json` under
+`crates/swc_ecma_minifier/tests/fixtures/<feature>/<case>/`; see the crate README
+for options. The runner validates syntax and semantics, compares compact output,
+and checks minification stability. Expected outputs are maintained manually.
+These tests run in the existing workspace test CI without external fixtures.
+
 ### Debugging with Examples
 
 Use a small `input.js`/`.ts`/`.tsx` file.

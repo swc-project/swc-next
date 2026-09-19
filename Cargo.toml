@@ -74,10 +74,12 @@ clap          = { version = "4.5.51", features = ["derive"] }
 criterion     = { package = "codspeed-criterion-compat", version = "5.0.0" }
 gungraun      = "0.19.4"
 jwalk         = "0.8.1"
+libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.137.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.137.0"
 saphyr        = "0.0.6"
+tempfile      = "3.23.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 
 [profile.bench]
