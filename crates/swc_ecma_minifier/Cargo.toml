@@ -1,0 +1,14 @@
+[package]
+description           = "JavaScript minification for the SWC Next AST"
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_ecma_minifier"
+repository.workspace  = true
+version               = "0.2.1"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+
+swc_next_ecma_ast = { workspace = true }

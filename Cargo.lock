@@ -2858,6 +2858,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_ecma_minifier"
+version = "0.2.1"
+dependencies = [
+ "serde",
+ "swc_next_ecma_ast",
+]
+
+[[package]]
 name = "swc_next_ecma_parser"
 version = "0.2.1"
 dependencies = [
