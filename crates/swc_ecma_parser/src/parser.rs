@@ -8964,6 +8964,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_arrow(&mut self, is_async: bool, start: u32, need_diagnostics: bool) -> Option<Expr> {
         let context = if is_async {
+            // AsyncArrowHead reparses its formals with ~Yield, but the enclosing
+            // cover grammar has a separate Early Error when it Contains a
+            // YieldExpression. Preserve the outer [Yield] context so the AST
+            // retains that expression for the semantic check.
             enter_grammar_context![&mut self.context, ?Yield, +Await]
         } else {
             enter_grammar_context![&mut self.context, ?Yield, ?Await]

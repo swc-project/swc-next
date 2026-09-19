@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1595/2992 (53.31%)
+Negative Passed: 1596/2992 (53.34%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -1413,7 +1413,6 @@ Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerC
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerNumericLiteral2.ts - scannerNumericLiteral2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerNumericLiteral8.ts - scannerNumericLiteral8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerNumericLiteral9.ts - scannerNumericLiteral9.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarations.14.ts - awaitUsingDeclarations.14.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarationsInForOf.4.ts - awaitUsingDeclarationsInForOf.4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarations.14.ts - usingDeclarations.14.ts: semantic: 'using' is not allowed at the top level of a script at 0..13
 Failed: fixtures/typescript/tests/cases/conformance/statements/for-inStatements/for-inStatementsArrayErrors.ts - for-inStatementsArrayErrors.ts: expected a parse or early error, but pipeline succeeded
