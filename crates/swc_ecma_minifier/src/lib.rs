@@ -4,7 +4,8 @@
 //! `swc_next_ecma_parser` and `swc_next_ecma_codegen`. Use the code generator's
 //! `minify` option to print the optimized AST compactly.
 //!
-//! This initial scaffold traverses the AST without applying optimizations.
+//! Compression currently shortens boolean expressions: `true` becomes `!0`
+//! and `false` becomes `!1`.
 
 #![deny(clippy::all)]
 #![deny(unused)]

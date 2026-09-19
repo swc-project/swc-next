@@ -5,10 +5,11 @@
 print it with `swc_next_ecma_codegen` and `minify: true`. Recompute semantic
 analysis if it is needed after minification.
 
-The initial scaffold traverses the AST without applying optimizations.
-`MinifierOptions::default()` enables compression; `compress: None` leaves the
-AST unchanged. Parsing, TypeScript/JSX lowering, mangling, and printing are
-separate concerns.
+Compression currently shortens boolean expressions: `true` becomes `!0` and
+`false` becomes `!1`. `MinifierOptions::default()` enables compression with
+`CompressOptions { booleans: true }`; setting `booleans: false` disables this
+optimization, while `compress: None` leaves the entire AST unchanged. Parsing,
+TypeScript/JSX lowering, mangling, and printing are separate concerns.
 
 ## Local fixtures
 
@@ -40,6 +41,10 @@ Source type defaults to `module`; `script` is the other supported value.
 Omitted minifier options use their Rust defaults. `compress: null` disables
 compression. Unknown options, malformed JSON, missing inputs/outputs, parser
 errors, and semantic errors fail the test.
+
+To disable only boolean shortening, use
+`{"minify":{"compress":{"booleans":false}}}`. An empty compression object
+(`{"minify":{"compress":{}}}`) uses the default compression settings.
 
 Every case parses and checks the input, minifies it, and prints compact output.
 It then reparses and checks the output, minifies it again, and requires identical

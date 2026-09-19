@@ -1,0 +1,1 @@
+const text="true false";

@@ -1,0 +1,7 @@
+{
+  "minify": {
+    "compress": {
+      "booleans": false
+    }
+  }
+}

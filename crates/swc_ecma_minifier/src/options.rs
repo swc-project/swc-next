@@ -17,8 +17,16 @@ impl Default for MinifierOptions {
 }
 
 /// Settings for the compression visitor.
-///
-/// Individual optimizations will be introduced with their options.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct CompressOptions {}
+pub struct CompressOptions {
+    /// Shorten boolean expressions: `true` to `!0` and `false` to `!1`.
+    /// Enabled by default.
+    pub booleans: bool,
+}
+
+impl Default for CompressOptions {
+    fn default() -> Self {
+        Self { booleans: true }
+    }
+}
