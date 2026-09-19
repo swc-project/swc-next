@@ -77,7 +77,7 @@ impl Default for Options {
 }
 
 bitflags! {
-    /// The active values of ECMAScript expression grammatical parameters.
+    /// The active values of ECMAScript grammatical parameters.
     ///
     /// See <https://tc39.es/ecma262/multipage/notational-conventions.html#sec-grammatical-parameters>.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -88,6 +88,8 @@ bitflags! {
         const YIELD = 1 << 1;
         /// The grammar's `[Await]` parameter.
         const AWAIT = 1 << 2;
+        /// The grammar's `[Return]` parameter.
+        const RETURN = 1 << 3;
     }
 }
 
@@ -104,6 +106,9 @@ macro_rules! enter_grammar_context {
     };
     (@flag Await) => {
         Context::AWAIT
+    };
+    (@flag Return) => {
+        Context::RETURN
     };
     (@set $context:ident, + $parameter:ident) => {
         $context.insert(enter_grammar_context!(@flag $parameter));
@@ -130,6 +135,7 @@ impl From<SourceType> for Context {
     fn from(source_type: SourceType) -> Self {
         let mut context = Self::default();
         context.set(Self::AWAIT, source_type == SourceType::Module);
+        context.set(Self::RETURN, source_type == SourceType::CommonJs);
         context
     }
 }
@@ -146,6 +152,10 @@ impl Context {
             || source_type == SourceType::Module
                 && statement_context == StatementContext::ModuleItem;
         context.set(Self::AWAIT, allows_await);
+        context.set(
+            Self::RETURN,
+            fragment_context.is_function() || source_type == SourceType::CommonJs,
+        );
         context
     }
 }
@@ -154,22 +164,16 @@ bitflags! {
     /// Parser state inherited across syntactic boundaries.
     #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
     struct BoundaryContext: u8 {
-        /// Whether parsing is inside a function.
-        const IN_FUNCTION = 1 << 0;
         /// Whether module-only syntax at the current position can classify an
         /// unambiguous Program as a Module.
-        const CAN_BE_MODULE = 1 << 1;
+        const CAN_BE_MODULE = 1 << 0;
         /// Whether CommonJS-wrapper syntax at the current position can classify
         /// an unambiguous Program as CommonJS.
-        const CAN_BE_COMMONJS = 1 << 2;
+        const CAN_BE_COMMONJS = 1 << 1;
     }
 }
 
 impl BoundaryContext {
-    fn in_function(self) -> bool {
-        self.contains(Self::IN_FUNCTION)
-    }
-
     fn can_be_module(self) -> bool {
         self.contains(Self::CAN_BE_MODULE)
     }
@@ -971,10 +975,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) {
         self.set_source_type(source_type);
         self.context = Context::from(source_type);
-        self.boundary_context.set(
-            BoundaryContext::IN_FUNCTION,
-            source_type == SourceType::CommonJs,
-        );
         self.boundary_context
             .set(BoundaryContext::CAN_BE_MODULE, can_be_module);
         self.boundary_context
@@ -1119,10 +1119,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let statement_context = fragment_context.statement_context(source_type);
         self.set_source_type(source_type);
         self.context = Context::for_fragment(source_type, fragment_context, statement_context);
-        self.boundary_context.set(
-            BoundaryContext::IN_FUNCTION,
-            fragment_context.is_function() || source_type == SourceType::CommonJs,
-        );
         self.boundary_context.set(
             BoundaryContext::CAN_BE_MODULE,
             can_be_module && statement_context == StatementContext::ModuleItem,
@@ -1516,6 +1512,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //
     // ModuleBody :
     //   ModuleItemList
+    //
+    // ModuleItem :
+    //   StatementListItem[~Yield, +Await, ~Return]
     //
     // FunctionBody[Yield, Await] :
     //   FunctionStatementList[?Yield, ?Await]
@@ -2014,7 +2013,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Return);
         let start = self.current_token.span.start;
         self.advance()?;
-        if !self.boundary_context.in_function() {
+        if !self.context.contains(Context::RETURN) {
             let diagnostic_index = self.diagnostics.len();
             self.report(
                 Span::new(start, self.lexer.state.prev_token_end),
@@ -2520,8 +2519,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = context;
         let id = id?;
         let context = enter_function_grammar_context(&mut self.context, generator, opts.is_async);
-        let boundary_context =
-            mem::replace(&mut self.boundary_context, BoundaryContext::IN_FUNCTION);
+        let boundary_context = mem::take(&mut self.boundary_context);
         let tail = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && self.current_token.tag == TokenTag::LessThan {
@@ -3039,7 +3037,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let context = enter_grammar_context![&mut self.context, +In, ~Yield, +Await];
+        let context = enter_grammar_context![&mut self.context, +In, ~Yield, +Await, ~Return];
         let boundary_context = mem::take(&mut self.boundary_context);
         let checkpoint = self.scratch_statements.begin();
         let body = {
@@ -3199,8 +3197,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             modifiers.is_generator,
             modifiers.is_async,
         );
-        let boundary_context =
-            mem::replace(&mut self.boundary_context, BoundaryContext::IN_FUNCTION);
+        let boundary_context = mem::take(&mut self.boundary_context);
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag) {
@@ -3740,9 +3737,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let boundary_context = self.boundary_context;
-        self.boundary_context.insert(BoundaryContext::IN_FUNCTION);
+        let grammar_context = enter_grammar_context![&mut self.context, +In, +Return];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let ParsedBody { directives, body } = self.parse_body(
@@ -3751,7 +3746,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
         self.ts_context = ts_context;
         self.context = grammar_context;
-        self.boundary_context = boundary_context;
         let end = self.current_token.span.end;
         if !self.expect(
             TokenTag::RightBrace,
@@ -5430,7 +5424,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let context = enter_grammar_context![&mut self.context, ~Await];
+        // A TypeScript module block is a declaration container, not a function
+        // body, so it does not inherit an enclosing function's [Return].
+        let context = enter_grammar_context![&mut self.context, ~Await, ~Return];
         let in_ts_container_body = self.ts_context.in_ts_container_body();
         self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
         let boundary_context = mem::take(&mut self.boundary_context);
@@ -8971,7 +8967,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // Non-async arrow parameters inherit [Await] from the surrounding grammar.
         let module_sensitive_await = !is_async && self.boundary_context.can_be_module();
         let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
-        let mut arrow_boundary_context = BoundaryContext::IN_FUNCTION;
+        let mut arrow_boundary_context = BoundaryContext::default();
         arrow_boundary_context.set(BoundaryContext::CAN_BE_MODULE, module_sensitive_await);
         arrow_boundary_context.set(
             BoundaryContext::CAN_BE_COMMONJS,
@@ -9041,7 +9037,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let context = enter_function_grammar_context(&mut self.context, false, async_function);
         let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
-        let mut arrow_boundary_context = BoundaryContext::IN_FUNCTION;
+        let mut arrow_boundary_context = BoundaryContext::default();
         arrow_boundary_context.set(
             BoundaryContext::CAN_BE_COMMONJS,
             commonjs_sensitive_new_target,
@@ -10338,8 +10334,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let function_start = self.current_token.span.start;
         let context = enter_function_grammar_context(&mut self.context, generator, async_function);
-        let boundary_context =
-            mem::replace(&mut self.boundary_context, BoundaryContext::IN_FUNCTION);
+        let boundary_context = mem::take(&mut self.boundary_context);
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag) {
