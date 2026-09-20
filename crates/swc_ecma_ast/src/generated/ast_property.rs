@@ -6613,50 +6613,12 @@ impl TsEnumMemberName {
         ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
-    pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        )
+    pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::StringLiteral
+    }
+    #[inline]
+    pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
@@ -6668,52 +6630,19 @@ impl TsEnumMemberName {
         }
     }
     #[inline]
-    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+    pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
         let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
-        if matches!(
-            kind,
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
-        ) {
-            Some(Expr(self.0))
+        if matches!(kind, NodeKind::StringLiteral) {
+            Some(StringLiteral(self.0))
+        } else {
+            None
+        }
+    }
+    #[inline]
+    pub fn as_template_literal(self, ast: &Ast<'_>) -> Option<TemplateLiteral> {
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::TemplateLiteral) {
+            Some(TemplateLiteral(self.0))
         } else {
             None
         }

@@ -2639,6 +2639,9 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierName(n);
+      case "Literal":
+        if (typeof n.value === "string") return encStringLiteral(n);
+        return encStringLiteral(n);
       default: return encNode(n);
     }
   }

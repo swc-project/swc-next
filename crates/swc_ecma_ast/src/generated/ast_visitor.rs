@@ -3882,48 +3882,13 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMemberName {
                 let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            NodeKind::IdentifierReference
-            | NodeKind::ThisExpression
-            | NodeKind::Super
-            | NodeKind::MetaProperty
-            | NodeKind::StringLiteral
-            | NodeKind::NumericLiteral
-            | NodeKind::BigIntLiteral
-            | NodeKind::BooleanLiteral
-            | NodeKind::NullLiteral
-            | NodeKind::RegExpLiteral
-            | NodeKind::TemplateLiteral
-            | NodeKind::BinaryExpression
-            | NodeKind::LogicalExpression
-            | NodeKind::UnaryExpression
-            | NodeKind::UpdateExpression
-            | NodeKind::AssignmentExpression
-            | NodeKind::ConditionalExpression
-            | NodeKind::SequenceExpression
-            | NodeKind::MemberExpression
-            | NodeKind::CallExpression
-            | NodeKind::ChainExpression
-            | NodeKind::NewExpression
-            | NodeKind::TaggedTemplateExpression
-            | NodeKind::ArrowFunctionExpression
-            | NodeKind::ArrayExpression
-            | NodeKind::ObjectExpression
-            | NodeKind::ParenthesizedExpression
-            | NodeKind::Function
-            | NodeKind::Class
-            | NodeKind::ImportExpression
-            | NodeKind::AwaitExpression
-            | NodeKind::YieldExpression
-            | NodeKind::PrivateIdentifier
-            | NodeKind::TsAsExpression
-            | NodeKind::TsSatisfiesExpression
-            | NodeKind::TsTypeAssertion
-            | NodeKind::TsNonNullExpression
-            | NodeKind::TsInstantiationExpression
-            | NodeKind::JsxElement
-            | NodeKind::JsxFragment => {
-                let it = Expr(self.0);
-                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
+                <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
@@ -10737,49 +10702,15 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumMemberName {
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::IdentifierName)
             }
-            NodeKind::IdentifierReference
-            | NodeKind::ThisExpression
-            | NodeKind::Super
-            | NodeKind::MetaProperty
-            | NodeKind::StringLiteral
-            | NodeKind::NumericLiteral
-            | NodeKind::BigIntLiteral
-            | NodeKind::BooleanLiteral
-            | NodeKind::NullLiteral
-            | NodeKind::RegExpLiteral
-            | NodeKind::TemplateLiteral
-            | NodeKind::BinaryExpression
-            | NodeKind::LogicalExpression
-            | NodeKind::UnaryExpression
-            | NodeKind::UpdateExpression
-            | NodeKind::AssignmentExpression
-            | NodeKind::ConditionalExpression
-            | NodeKind::SequenceExpression
-            | NodeKind::MemberExpression
-            | NodeKind::CallExpression
-            | NodeKind::ChainExpression
-            | NodeKind::NewExpression
-            | NodeKind::TaggedTemplateExpression
-            | NodeKind::ArrowFunctionExpression
-            | NodeKind::ArrayExpression
-            | NodeKind::ObjectExpression
-            | NodeKind::ParenthesizedExpression
-            | NodeKind::Function
-            | NodeKind::Class
-            | NodeKind::ImportExpression
-            | NodeKind::AwaitExpression
-            | NodeKind::YieldExpression
-            | NodeKind::PrivateIdentifier
-            | NodeKind::TsAsExpression
-            | NodeKind::TsSatisfiesExpression
-            | NodeKind::TsTypeAssertion
-            | NodeKind::TsNonNullExpression
-            | NodeKind::TsInstantiationExpression
-            | NodeKind::JsxElement
-            | NodeKind::JsxFragment => {
-                let it = Expr(self.0);
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsEnumMemberName::Expr)
+            NodeKind::StringLiteral => {
+                let it = StringLiteral(self.0);
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                    .map(TsEnumMemberName::StringLiteral)
+            }
+            NodeKind::TemplateLiteral => {
+                let it = TemplateLiteral(self.0);
+                <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+                    .map(TsEnumMemberName::TemplateLiteral)
             }
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
@@ -23326,49 +23257,11 @@ fn walk_ts_enum_member_name<'a, State, T: ?Sized + Traverse<'a, State>>(
         NodeKind::IdentifierName => {
             walk_identifier_name(IdentifierName(node.0), traverser, ctx);
         }
-        NodeKind::IdentifierReference
-        | NodeKind::ThisExpression
-        | NodeKind::Super
-        | NodeKind::MetaProperty
-        | NodeKind::StringLiteral
-        | NodeKind::NumericLiteral
-        | NodeKind::BigIntLiteral
-        | NodeKind::BooleanLiteral
-        | NodeKind::NullLiteral
-        | NodeKind::RegExpLiteral
-        | NodeKind::TemplateLiteral
-        | NodeKind::BinaryExpression
-        | NodeKind::LogicalExpression
-        | NodeKind::UnaryExpression
-        | NodeKind::UpdateExpression
-        | NodeKind::AssignmentExpression
-        | NodeKind::ConditionalExpression
-        | NodeKind::SequenceExpression
-        | NodeKind::MemberExpression
-        | NodeKind::CallExpression
-        | NodeKind::ChainExpression
-        | NodeKind::NewExpression
-        | NodeKind::TaggedTemplateExpression
-        | NodeKind::ArrowFunctionExpression
-        | NodeKind::ArrayExpression
-        | NodeKind::ObjectExpression
-        | NodeKind::ParenthesizedExpression
-        | NodeKind::Function
-        | NodeKind::Class
-        | NodeKind::ImportExpression
-        | NodeKind::AwaitExpression
-        | NodeKind::YieldExpression
-        | NodeKind::PrivateIdentifier
-        | NodeKind::TsAsExpression
-        | NodeKind::TsSatisfiesExpression
-        | NodeKind::TsTypeAssertion
-        | NodeKind::TsNonNullExpression
-        | NodeKind::TsInstantiationExpression
-        | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
+        NodeKind::StringLiteral => {
+            walk_string_literal(StringLiteral(node.0), traverser, ctx);
+        }
+        NodeKind::TemplateLiteral => {
+            walk_template_literal(TemplateLiteral(node.0), traverser, ctx);
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     }
@@ -35676,49 +35569,11 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
         }
-        NodeKind::IdentifierReference
-        | NodeKind::ThisExpression
-        | NodeKind::Super
-        | NodeKind::MetaProperty
-        | NodeKind::StringLiteral
-        | NodeKind::NumericLiteral
-        | NodeKind::BigIntLiteral
-        | NodeKind::BooleanLiteral
-        | NodeKind::NullLiteral
-        | NodeKind::RegExpLiteral
-        | NodeKind::TemplateLiteral
-        | NodeKind::BinaryExpression
-        | NodeKind::LogicalExpression
-        | NodeKind::UnaryExpression
-        | NodeKind::UpdateExpression
-        | NodeKind::AssignmentExpression
-        | NodeKind::ConditionalExpression
-        | NodeKind::SequenceExpression
-        | NodeKind::MemberExpression
-        | NodeKind::CallExpression
-        | NodeKind::ChainExpression
-        | NodeKind::NewExpression
-        | NodeKind::TaggedTemplateExpression
-        | NodeKind::ArrowFunctionExpression
-        | NodeKind::ArrayExpression
-        | NodeKind::ObjectExpression
-        | NodeKind::ParenthesizedExpression
-        | NodeKind::Function
-        | NodeKind::Class
-        | NodeKind::ImportExpression
-        | NodeKind::AwaitExpression
-        | NodeKind::YieldExpression
-        | NodeKind::PrivateIdentifier
-        | NodeKind::TsAsExpression
-        | NodeKind::TsSatisfiesExpression
-        | NodeKind::TsTypeAssertion
-        | NodeKind::TsNonNullExpression
-        | NodeKind::TsInstantiationExpression
-        | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
+        NodeKind::StringLiteral => {
+            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+        }
+        NodeKind::TemplateLiteral => {
+            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     }

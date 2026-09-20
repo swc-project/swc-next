@@ -4468,14 +4468,11 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
-            TsEnumMemberNameData::Expr(expression) => match self.ast.expr_data(expression) {
-                ExprData::StringLiteral(s) => {
-                    self.add_source_mapping(s.span(self.ast).start);
-                    self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
-                }
-                ExprData::TemplateLiteral(t) => self.print_template(t, false),
-                _ => self.print_expr(expression, Precedence::Lowest),
-            },
+            TsEnumMemberNameData::StringLiteral(s) => {
+                self.add_source_mapping(s.span(self.ast).start);
+                self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
+            }
+            TsEnumMemberNameData::TemplateLiteral(t) => self.print_template(t, false),
         }
         if computed {
             self.print("]");

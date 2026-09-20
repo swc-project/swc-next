@@ -776,47 +776,7 @@ impl NodeKind {
     pub const fn is_ts_enum_member_name(self) -> bool {
         matches!(
             self,
-            Self::IdentifierName
-                | Self::IdentifierReference
-                | Self::ThisExpression
-                | Self::Super
-                | Self::MetaProperty
-                | Self::StringLiteral
-                | Self::NumericLiteral
-                | Self::BigIntLiteral
-                | Self::BooleanLiteral
-                | Self::NullLiteral
-                | Self::RegExpLiteral
-                | Self::TemplateLiteral
-                | Self::BinaryExpression
-                | Self::LogicalExpression
-                | Self::UnaryExpression
-                | Self::UpdateExpression
-                | Self::AssignmentExpression
-                | Self::ConditionalExpression
-                | Self::SequenceExpression
-                | Self::MemberExpression
-                | Self::CallExpression
-                | Self::ChainExpression
-                | Self::NewExpression
-                | Self::TaggedTemplateExpression
-                | Self::ArrowFunctionExpression
-                | Self::ArrayExpression
-                | Self::ObjectExpression
-                | Self::ParenthesizedExpression
-                | Self::Function
-                | Self::Class
-                | Self::ImportExpression
-                | Self::AwaitExpression
-                | Self::YieldExpression
-                | Self::PrivateIdentifier
-                | Self::TsAsExpression
-                | Self::TsSatisfiesExpression
-                | Self::TsTypeAssertion
-                | Self::TsNonNullExpression
-                | Self::TsInstantiationExpression
-                | Self::JsxElement
-                | Self::JsxFragment
+            Self::IdentifierName | Self::StringLiteral | Self::TemplateLiteral
         )
     }
     #[inline]
@@ -1223,11 +1183,12 @@ pub enum TsTypePredicateNameData {
     IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
     TsThisType(TsThisType) = NodeKind::TsThisType as u8,
 }
-#[repr(C, u32)]
+#[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TsEnumMemberNameData {
-    IdentifierName(IdentifierName) = 1u32,
-    Expr(Expr) = 2u32,
+    IdentifierName(IdentifierName) = NodeKind::IdentifierName as u8,
+    StringLiteral(StringLiteral) = NodeKind::StringLiteral as u8,
+    TemplateLiteral(TemplateLiteral) = NodeKind::TemplateLiteral as u8,
 }
 #[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -6020,7 +5981,12 @@ impl TsEnumMemberName {
     }
     #[allow(non_snake_case)]
     #[inline]
-    pub fn Expr(node: Expr) -> Self {
+    pub fn StringLiteral(node: StringLiteral) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn TemplateLiteral(node: TemplateLiteral) -> Self {
         Self(node.node_id())
     }
 }
@@ -9934,51 +9900,13 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn ts_enum_member_name_data(&self, node: TsEnumMemberName) -> TsEnumMemberNameData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::IdentifierName => {
-                TsEnumMemberNameData::IdentifierName(IdentifierName(node.0))
-            }
-            NodeKind::IdentifierReference => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ThisExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::Super => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::MetaProperty => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::StringLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::NumericLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::BigIntLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::BooleanLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::NullLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::RegExpLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TemplateLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::BinaryExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::LogicalExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::UnaryExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::UpdateExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::AssignmentExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ConditionalExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::SequenceExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::MemberExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::CallExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ChainExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::NewExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TaggedTemplateExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ArrowFunctionExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ArrayExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ObjectExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ParenthesizedExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::Function => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::Class => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::ImportExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::AwaitExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::YieldExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::PrivateIdentifier => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TsAsExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TsSatisfiesExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TsTypeAssertion => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TsNonNullExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::TsInstantiationExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::JsxElement => TsEnumMemberNameData::Expr(Expr(node.0)),
-            NodeKind::JsxFragment => TsEnumMemberNameData::Expr(Expr(node.0)),
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_ts_enum_member_name());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]

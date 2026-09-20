@@ -5293,55 +5293,47 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    // ComputedPropertyName[Yield, Await] :
-    //   `[` AssignmentExpression[+In, ?Yield, ?Await] `]`
     fn parse_enum_member_name(&mut self) -> Option<(TsEnumMemberName, bool)> {
+        let computed = self.eat(TokenTag::LeftBracket)?;
         let token = self.current_token;
-        if self.eat(TokenTag::LeftBracket)? {
-            // The program or function/static block entry already establishes +In.
-            let expression =
-                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
-            if !self.expect(
+        let name = match token.tag {
+            tag if !computed && tag.is_identifier_like() => {
+                TsEnumMemberName::IdentifierName(self.parse_identifier_name()?)
+            }
+            TokenTag::NoSubstitutionTemplate if computed => {
+                TsEnumMemberName::TemplateLiteral(self.parse_no_substitution_template(false)?)
+            }
+            TokenTag::StringLiteral => {
+                TsEnumMemberName::StringLiteral(self.parse_string_literal()?)
+            }
+            _ => {
+                let found = self.describe_token(token);
+                self.report(
+                    token.span,
+                    Cow::Owned(format!(
+                        "Unexpected token '{}' as enum member name",
+                        found.as_ref()
+                    )),
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Enum member names must be identifiers, string literals, or no-substitution templates.",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+                return None;
+            }
+        };
+        if computed
+            && !self.expect(
                 TokenTag::RightBracket,
                 "Expected ']' to close a computed enum member name",
                 Some("A computed enum member name is written '[\"name\"]'"),
-            ) {
-                return None;
-            }
-            return Some((TsEnumMemberName::Expr(expression), true));
+            )
+        {
+            return None;
         }
-        if token.tag.is_identifier_like() {
-            return Some((
-                TsEnumMemberName::IdentifierName(self.parse_identifier_name()?),
-                false,
-            ));
-        }
-        if token.tag == TokenTag::StringLiteral {
-            let literal = self.parse_string_literal()?;
-            return Some((TsEnumMemberName::Expr(Expr::StringLiteral(literal)), false));
-        }
-        if token.tag == TokenTag::NoSubstitutionTemplate {
-            let literal = self.parse_no_substitution_template(false)?;
-            return Some((
-                TsEnumMemberName::Expr(Expr::TemplateLiteral(literal)),
-                false,
-            ));
-        }
-        let found = self.describe_token(self.current_token);
-        self.report(
-            self.current_token.span,
-            Cow::Owned(format!(
-                "Unexpected token '{}' as enum member name",
-                found.as_ref()
-            )),
-            ReportOptions {
-                help: Some(Cow::Borrowed(
-                    "Enum member names must be identifiers, string literals, or computed expressions '[name]'.",
-                )),
-                ..ReportOptions::default()
-            },
-        );
-        None
+        Some((name, computed))
     }
 
     fn parse_module_declaration(

@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1596/2992 (53.34%)
+Negative Passed: 1600/2992 (53.48%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -1279,7 +1279,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ClassDecl
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ClassDeclarations/parserClassDeclaration8.ts - parserClassDeclaration8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ClassDeclarations/parserClassDeclaration9.ts - parserClassDeclaration9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ComputedPropertyNames/parserES5ComputedPropertyName4.ts - parserES5ComputedPropertyName4.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ComputedPropertyNames/parserES5ComputedPropertyName6.ts - parserES5ComputedPropertyName6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration10.ts - parserConstructorDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration2.ts - parserConstructorDeclaration2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration4.ts - parserConstructorDeclaration4.ts: expected a parse or early error, but pipeline succeeded
@@ -1376,9 +1375,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRea
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource14.ts - parserRealSource14.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource6.ts - parserRealSource6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource8.ts - parserRealSource8.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName16.ts - parserComputedPropertyName16.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName26.ts - parserComputedPropertyName26.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName34.ts - parserComputedPropertyName34.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName37.ts - parserComputedPropertyName37.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName4.ts - parserComputedPropertyName4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName41.ts - parserComputedPropertyName41.ts: expected a parse or early error, but pipeline succeeded
