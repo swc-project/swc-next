@@ -22,7 +22,7 @@ impl Shorthand {
             let span = property.key(ctx.ast).span(ctx.ast);
             let ast = &mut *ctx.ast;
             let value = ast.add_wtf8("__proto__".into());
-            let key = ast.property_key_string_literal(span, value, ast.empty_utf8());
+            let key = ast.property_key_expr_string_literal(span, value, ast.empty_utf8());
             property.set_key(ast, key);
             property.set_computed(ast, true);
         }
@@ -40,7 +40,9 @@ impl Shorthand {
         if let Some(identifier) = key.as_identifier_name(ast) {
             return ast.get_utf8(identifier.name(ast)) == "__proto__";
         }
-        if let Some(string) = key.as_string_literal(ast) {
+        if let Some(expression) = key.as_expr(ast)
+            && let Some(string) = expression.as_string_literal(ast)
+        {
             return ast.get_wtf8(string.value(ast)).as_bytes() == b"__proto__";
         }
         false

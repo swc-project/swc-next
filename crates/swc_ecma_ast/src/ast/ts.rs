@@ -183,8 +183,6 @@ pub enum TsTypePredicateName {
 #[ast(repr, nested)]
 pub enum TsEnumMemberName {
     IdentifierName(IdentifierName),
-    StringLiteral(StringLiteral),
-    TemplateLiteral(TemplateLiteral),
     Expr(Expr),
 }
 

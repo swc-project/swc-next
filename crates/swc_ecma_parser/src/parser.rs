@@ -3069,11 +3069,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if computed {
             return;
         }
-        if matches!(
-            self.ast.property_key_data(key),
-            PropertyKeyData::PrivateIdentifier(private)
-                if self.ast.get_utf8(private.name(&self.ast)) == "constructor"
-        ) {
+        if let Some(expression) = key.as_expr(&self.ast)
+            && let ExprData::PrivateIdentifier(private) = self.ast.expr_data(expression)
+            && self.ast.get_utf8(private.name(&self.ast)) == "constructor"
+        {
             self.report(
                 key.span(&self.ast),
                 "Classes can't have a private field named '#constructor'",
@@ -3445,10 +3444,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             PropertyKeyData::IdentifierName(identifier) => {
                 self.ast.get_utf8(identifier.name(&self.ast)) == expected
             }
-            PropertyKeyData::StringLiteral(string) => {
-                self.ast.get_wtf8(string.value(&self.ast)) == expected
-            }
-            _ => false,
+            PropertyKeyData::Expr(expression) => matches!(
+                self.ast.expr_data(expression),
+                ExprData::StringLiteral(string)
+                    if self.ast.get_wtf8(string.value(&self.ast)) == expected
+            ),
         };
         if matches {
             Some(key.span(&self.ast))
@@ -5318,11 +5318,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         if token.tag == TokenTag::StringLiteral {
             let literal = self.parse_string_literal()?;
-            return Some((TsEnumMemberName::StringLiteral(literal), false));
+            return Some((TsEnumMemberName::Expr(Expr::StringLiteral(literal)), false));
         }
         if token.tag == TokenTag::NoSubstitutionTemplate {
             let literal = self.parse_no_substitution_template(false)?;
-            return Some((TsEnumMemberName::TemplateLiteral(literal), false));
+            return Some((
+                TsEnumMemberName::Expr(Expr::TemplateLiteral(literal)),
+                false,
+            ));
         }
         let found = self.describe_token(self.current_token);
         self.report(
@@ -10419,16 +10422,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let key = if token.tag == TokenTag::PrivateIdentifier {
-            PropertyKey::PrivateIdentifier(self.parse_private_identifier()?)
+            PropertyKey::Expr(Expr::PrivateIdentifier(self.parse_private_identifier()?))
         } else if token.tag == TokenTag::StringLiteral {
-            PropertyKey::StringLiteral(self.parse_string_literal()?)
+            PropertyKey::Expr(Expr::StringLiteral(self.parse_string_literal()?))
         } else if token.tag.is_numeric_literal() {
-            let expression = self.parse_numeric_literal()?;
-            match self.ast.expr_data(expression) {
-                ExprData::NumericLiteral(literal) => PropertyKey::NumericLiteral(literal),
-                ExprData::BigIntLiteral(literal) => PropertyKey::BigIntLiteral(literal),
-                _ => unreachable!(),
-            }
+            PropertyKey::Expr(self.parse_numeric_literal()?)
         } else if token.tag.is_identifier_like() {
             self.advance_without_escape_check()?;
             let name = self.identifier_name(token);
@@ -10483,16 +10481,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 Some(PropertyKey::Expr(expression))
             }
-            TokenTag::StringLiteral => {
-                Some(PropertyKey::StringLiteral(self.parse_string_literal()?))
-            }
+            TokenTag::StringLiteral => Some(PropertyKey::Expr(Expr::StringLiteral(
+                self.parse_string_literal()?,
+            ))),
             tag if tag.is_numeric_literal() => {
-                let expression = self.parse_numeric_literal()?;
-                match self.ast.expr_data(expression) {
-                    ExprData::NumericLiteral(literal) => Some(PropertyKey::NumericLiteral(literal)),
-                    ExprData::BigIntLiteral(literal) => Some(PropertyKey::BigIntLiteral(literal)),
-                    _ => unreachable!(),
-                }
+                Some(PropertyKey::Expr(self.parse_numeric_literal()?))
             }
             tag if tag.is_identifier_like() => {
                 Some(PropertyKey::IdentifierName(self.parse_identifier_name()?))
@@ -10602,7 +10595,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let property = if token.tag == TokenTag::PrivateIdentifier {
-            PropertyKey::PrivateIdentifier(self.parse_private_identifier()?)
+            PropertyKey::Expr(Expr::PrivateIdentifier(self.parse_private_identifier()?))
         } else {
             PropertyKey::IdentifierName(self.parse_identifier_name()?)
         };

@@ -300,16 +300,13 @@ impl<'a> CloneIn<'a> for PropertyKey {
         let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
         match kind {
             NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
-            NodeKind::PrivateIdentifier => {
-                Self::PrivateIdentifier(PrivateIdentifier(self.0).clone_in(ast))
-            }
-            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
-            NodeKind::NumericLiteral => Self::NumericLiteral(NumericLiteral(self.0).clone_in(ast)),
-            NodeKind::BigIntLiteral => Self::BigIntLiteral(BigIntLiteral(self.0).clone_in(ast)),
             NodeKind::IdentifierReference
             | NodeKind::ThisExpression
             | NodeKind::Super
             | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
             | NodeKind::BooleanLiteral
             | NodeKind::NullLiteral
             | NodeKind::RegExpLiteral
@@ -335,6 +332,7 @@ impl<'a> CloneIn<'a> for PropertyKey {
             | NodeKind::ImportExpression
             | NodeKind::AwaitExpression
             | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
             | NodeKind::TsAsExpression
             | NodeKind::TsSatisfiesExpression
             | NodeKind::TsTypeAssertion
@@ -1944,19 +1942,17 @@ impl<'a> CloneIn<'a> for TsEnumMemberName {
         let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
         match kind {
             NodeKind::IdentifierName => Self::IdentifierName(IdentifierName(self.0).clone_in(ast)),
-            NodeKind::StringLiteral => Self::StringLiteral(StringLiteral(self.0).clone_in(ast)),
-            NodeKind::TemplateLiteral => {
-                Self::TemplateLiteral(TemplateLiteral(self.0).clone_in(ast))
-            }
             NodeKind::IdentifierReference
             | NodeKind::ThisExpression
             | NodeKind::Super
             | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
             | NodeKind::NumericLiteral
             | NodeKind::BigIntLiteral
             | NodeKind::BooleanLiteral
             | NodeKind::NullLiteral
             | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
             | NodeKind::BinaryExpression
             | NodeKind::LogicalExpression
             | NodeKind::UnaryExpression

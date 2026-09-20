@@ -472,10 +472,6 @@ pub enum SimpleAssignmentTarget {
 #[ast(repr, nested)]
 pub enum PropertyKey {
     IdentifierName(IdentifierName),
-    PrivateIdentifier(PrivateIdentifier),
-    StringLiteral(StringLiteral),
-    NumericLiteral(NumericLiteral),
-    BigIntLiteral(BigIntLiteral),
     Expr(Expr),
 }
 

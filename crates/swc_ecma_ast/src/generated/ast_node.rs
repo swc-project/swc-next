@@ -333,14 +333,13 @@ impl NodeKind {
         matches!(
             self,
             Self::IdentifierName
-                | Self::PrivateIdentifier
-                | Self::StringLiteral
-                | Self::NumericLiteral
-                | Self::BigIntLiteral
                 | Self::IdentifierReference
                 | Self::ThisExpression
                 | Self::Super
                 | Self::MetaProperty
+                | Self::StringLiteral
+                | Self::NumericLiteral
+                | Self::BigIntLiteral
                 | Self::BooleanLiteral
                 | Self::NullLiteral
                 | Self::RegExpLiteral
@@ -366,6 +365,7 @@ impl NodeKind {
                 | Self::ImportExpression
                 | Self::AwaitExpression
                 | Self::YieldExpression
+                | Self::PrivateIdentifier
                 | Self::TsAsExpression
                 | Self::TsSatisfiesExpression
                 | Self::TsTypeAssertion
@@ -777,17 +777,17 @@ impl NodeKind {
         matches!(
             self,
             Self::IdentifierName
-                | Self::StringLiteral
-                | Self::TemplateLiteral
                 | Self::IdentifierReference
                 | Self::ThisExpression
                 | Self::Super
                 | Self::MetaProperty
+                | Self::StringLiteral
                 | Self::NumericLiteral
                 | Self::BigIntLiteral
                 | Self::BooleanLiteral
                 | Self::NullLiteral
                 | Self::RegExpLiteral
+                | Self::TemplateLiteral
                 | Self::BinaryExpression
                 | Self::LogicalExpression
                 | Self::UnaryExpression
@@ -1045,11 +1045,7 @@ pub enum SimpleAssignmentTargetData {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PropertyKeyData {
     IdentifierName(IdentifierName) = 1u32,
-    PrivateIdentifier(PrivateIdentifier) = 2u32,
-    StringLiteral(StringLiteral) = 3u32,
-    NumericLiteral(NumericLiteral) = 4u32,
-    BigIntLiteral(BigIntLiteral) = 5u32,
-    Expr(Expr) = 6u32,
+    Expr(Expr) = 2u32,
 }
 #[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1231,9 +1227,7 @@ pub enum TsTypePredicateNameData {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TsEnumMemberNameData {
     IdentifierName(IdentifierName) = 1u32,
-    StringLiteral(StringLiteral) = 2u32,
-    TemplateLiteral(TemplateLiteral) = 3u32,
-    Expr(Expr) = 4u32,
+    Expr(Expr) = 2u32,
 }
 #[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -2214,26 +2208,6 @@ impl PropertyKey {
     #[allow(non_snake_case)]
     #[inline]
     pub fn IdentifierName(node: IdentifierName) -> Self {
-        Self(node.node_id())
-    }
-    #[allow(non_snake_case)]
-    #[inline]
-    pub fn PrivateIdentifier(node: PrivateIdentifier) -> Self {
-        Self(node.node_id())
-    }
-    #[allow(non_snake_case)]
-    #[inline]
-    pub fn StringLiteral(node: StringLiteral) -> Self {
-        Self(node.node_id())
-    }
-    #[allow(non_snake_case)]
-    #[inline]
-    pub fn NumericLiteral(node: NumericLiteral) -> Self {
-        Self(node.node_id())
-    }
-    #[allow(non_snake_case)]
-    #[inline]
-    pub fn BigIntLiteral(node: BigIntLiteral) -> Self {
         Self(node.node_id())
     }
     #[allow(non_snake_case)]
@@ -6046,16 +6020,6 @@ impl TsEnumMemberName {
     }
     #[allow(non_snake_case)]
     #[inline]
-    pub fn StringLiteral(node: StringLiteral) -> Self {
-        Self(node.node_id())
-    }
-    #[allow(non_snake_case)]
-    #[inline]
-    pub fn TemplateLiteral(node: TemplateLiteral) -> Self {
-        Self(node.node_id())
-    }
-    #[allow(non_snake_case)]
-    #[inline]
     pub fn Expr(node: Expr) -> Self {
         Self(node.node_id())
     }
@@ -9417,16 +9381,13 @@ impl<'a> Ast<'a> {
     pub fn property_key_data(&self, node: PropertyKey) -> PropertyKeyData {
         match unsafe { *self.nodes.kind_unchecked(node.0) } {
             NodeKind::IdentifierName => PropertyKeyData::IdentifierName(IdentifierName(node.0)),
-            NodeKind::PrivateIdentifier => {
-                PropertyKeyData::PrivateIdentifier(PrivateIdentifier(node.0))
-            }
-            NodeKind::StringLiteral => PropertyKeyData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::NumericLiteral => PropertyKeyData::NumericLiteral(NumericLiteral(node.0)),
-            NodeKind::BigIntLiteral => PropertyKeyData::BigIntLiteral(BigIntLiteral(node.0)),
             NodeKind::IdentifierReference => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::ThisExpression => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::Super => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::MetaProperty => PropertyKeyData::Expr(Expr(node.0)),
+            NodeKind::StringLiteral => PropertyKeyData::Expr(Expr(node.0)),
+            NodeKind::NumericLiteral => PropertyKeyData::Expr(Expr(node.0)),
+            NodeKind::BigIntLiteral => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => PropertyKeyData::Expr(Expr(node.0)),
@@ -9452,6 +9413,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => PropertyKeyData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => PropertyKeyData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => PropertyKeyData::Expr(Expr(node.0)),
@@ -9976,19 +9938,17 @@ impl<'a> Ast<'a> {
             NodeKind::IdentifierName => {
                 TsEnumMemberNameData::IdentifierName(IdentifierName(node.0))
             }
-            NodeKind::StringLiteral => TsEnumMemberNameData::StringLiteral(StringLiteral(node.0)),
-            NodeKind::TemplateLiteral => {
-                TsEnumMemberNameData::TemplateLiteral(TemplateLiteral(node.0))
-            }
             NodeKind::IdentifierReference => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::ThisExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::Super => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::MetaProperty => TsEnumMemberNameData::Expr(Expr(node.0)),
+            NodeKind::StringLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::NumericLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::BigIntLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::BooleanLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::NullLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::RegExpLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
+            NodeKind::TemplateLiteral => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::BinaryExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::LogicalExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::UnaryExpression => TsEnumMemberNameData::Expr(Expr(node.0)),

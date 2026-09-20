@@ -164,7 +164,7 @@ fn synthesized_number_property_keys() {
 fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify: bool) -> String {
     let allocator = Allocator::new();
     let mut ast = Ast::new("", &allocator);
-    let key = ast.property_key_numeric_literal(DUMMY_SP, key_value, None);
+    let key = ast.property_key_expr_numeric_literal(DUMMY_SP, key_value, None);
     let value = ast.expr_numeric_literal(DUMMY_SP, 0.0, None);
     let property = ast.object_property(
         DUMMY_SP,

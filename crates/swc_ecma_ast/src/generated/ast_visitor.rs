@@ -1901,26 +1901,13 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyKey {
                 let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            NodeKind::PrivateIdentifier => {
-                let it = PrivateIdentifier(self.0);
-                <PrivateIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            NodeKind::StringLiteral => {
-                let it = StringLiteral(self.0);
-                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            NodeKind::NumericLiteral => {
-                let it = NumericLiteral(self.0);
-                <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            NodeKind::BigIntLiteral => {
-                let it = BigIntLiteral(self.0);
-                <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
             NodeKind::IdentifierReference
             | NodeKind::ThisExpression
             | NodeKind::Super
             | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
             | NodeKind::BooleanLiteral
             | NodeKind::NullLiteral
             | NodeKind::RegExpLiteral
@@ -1946,6 +1933,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyKey {
             | NodeKind::ImportExpression
             | NodeKind::AwaitExpression
             | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
             | NodeKind::TsAsExpression
             | NodeKind::TsSatisfiesExpression
             | NodeKind::TsTypeAssertion
@@ -3894,23 +3882,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMemberName {
                 let it = IdentifierName(self.0);
                 <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            NodeKind::StringLiteral => {
-                let it = StringLiteral(self.0);
-                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            NodeKind::TemplateLiteral => {
-                let it = TemplateLiteral(self.0);
-                <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
             NodeKind::IdentifierReference
             | NodeKind::ThisExpression
             | NodeKind::Super
             | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
             | NodeKind::NumericLiteral
             | NodeKind::BigIntLiteral
             | NodeKind::BooleanLiteral
             | NodeKind::NullLiteral
             | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
             | NodeKind::BinaryExpression
             | NodeKind::LogicalExpression
             | NodeKind::UnaryExpression
@@ -7957,30 +7939,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyKey {
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(PropertyKey::IdentifierName)
             }
-            NodeKind::PrivateIdentifier => {
-                let it = PrivateIdentifier(self.0);
-                <PrivateIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::PrivateIdentifier)
-            }
-            NodeKind::StringLiteral => {
-                let it = StringLiteral(self.0);
-                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::StringLiteral)
-            }
-            NodeKind::NumericLiteral => {
-                let it = NumericLiteral(self.0);
-                <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::NumericLiteral)
-            }
-            NodeKind::BigIntLiteral => {
-                let it = BigIntLiteral(self.0);
-                <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(PropertyKey::BigIntLiteral)
-            }
             NodeKind::IdentifierReference
             | NodeKind::ThisExpression
             | NodeKind::Super
             | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
+            | NodeKind::NumericLiteral
+            | NodeKind::BigIntLiteral
             | NodeKind::BooleanLiteral
             | NodeKind::NullLiteral
             | NodeKind::RegExpLiteral
@@ -8006,6 +7971,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyKey {
             | NodeKind::ImportExpression
             | NodeKind::AwaitExpression
             | NodeKind::YieldExpression
+            | NodeKind::PrivateIdentifier
             | NodeKind::TsAsExpression
             | NodeKind::TsSatisfiesExpression
             | NodeKind::TsTypeAssertion
@@ -10771,25 +10737,17 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumMemberName {
                 <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsEnumMemberName::IdentifierName)
             }
-            NodeKind::StringLiteral => {
-                let it = StringLiteral(self.0);
-                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsEnumMemberName::StringLiteral)
-            }
-            NodeKind::TemplateLiteral => {
-                let it = TemplateLiteral(self.0);
-                <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsEnumMemberName::TemplateLiteral)
-            }
             NodeKind::IdentifierReference
             | NodeKind::ThisExpression
             | NodeKind::Super
             | NodeKind::MetaProperty
+            | NodeKind::StringLiteral
             | NodeKind::NumericLiteral
             | NodeKind::BigIntLiteral
             | NodeKind::BooleanLiteral
             | NodeKind::NullLiteral
             | NodeKind::RegExpLiteral
+            | NodeKind::TemplateLiteral
             | NodeKind::BinaryExpression
             | NodeKind::LogicalExpression
             | NodeKind::UnaryExpression
@@ -20418,22 +20376,13 @@ fn walk_property_key<'a, State, T: ?Sized + Traverse<'a, State>>(
         NodeKind::IdentifierName => {
             walk_identifier_name(IdentifierName(node.0), traverser, ctx);
         }
-        NodeKind::PrivateIdentifier => {
-            walk_private_identifier(PrivateIdentifier(node.0), traverser, ctx);
-        }
-        NodeKind::StringLiteral => {
-            walk_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::NumericLiteral => {
-            walk_numeric_literal(NumericLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::BigIntLiteral => {
-            walk_big_int_literal(BigIntLiteral(node.0), traverser, ctx);
-        }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
         | NodeKind::MetaProperty
+        | NodeKind::StringLiteral
+        | NodeKind::NumericLiteral
+        | NodeKind::BigIntLiteral
         | NodeKind::BooleanLiteral
         | NodeKind::NullLiteral
         | NodeKind::RegExpLiteral
@@ -20459,6 +20408,7 @@ fn walk_property_key<'a, State, T: ?Sized + Traverse<'a, State>>(
         | NodeKind::ImportExpression
         | NodeKind::AwaitExpression
         | NodeKind::YieldExpression
+        | NodeKind::PrivateIdentifier
         | NodeKind::TsAsExpression
         | NodeKind::TsSatisfiesExpression
         | NodeKind::TsTypeAssertion
@@ -23376,21 +23326,17 @@ fn walk_ts_enum_member_name<'a, State, T: ?Sized + Traverse<'a, State>>(
         NodeKind::IdentifierName => {
             walk_identifier_name(IdentifierName(node.0), traverser, ctx);
         }
-        NodeKind::StringLiteral => {
-            walk_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::TemplateLiteral => {
-            walk_template_literal(TemplateLiteral(node.0), traverser, ctx);
-        }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
         | NodeKind::MetaProperty
+        | NodeKind::StringLiteral
         | NodeKind::NumericLiteral
         | NodeKind::BigIntLiteral
         | NodeKind::BooleanLiteral
         | NodeKind::NullLiteral
         | NodeKind::RegExpLiteral
+        | NodeKind::TemplateLiteral
         | NodeKind::BinaryExpression
         | NodeKind::LogicalExpression
         | NodeKind::UnaryExpression
@@ -32776,22 +32722,13 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
         }
-        NodeKind::PrivateIdentifier => {
-            walk_mut_private_identifier(PrivateIdentifier(node.0), traverser, ctx);
-        }
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::NumericLiteral => {
-            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::BigIntLiteral => {
-            walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx);
-        }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
         | NodeKind::MetaProperty
+        | NodeKind::StringLiteral
+        | NodeKind::NumericLiteral
+        | NodeKind::BigIntLiteral
         | NodeKind::BooleanLiteral
         | NodeKind::NullLiteral
         | NodeKind::RegExpLiteral
@@ -32817,6 +32754,7 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::ImportExpression
         | NodeKind::AwaitExpression
         | NodeKind::YieldExpression
+        | NodeKind::PrivateIdentifier
         | NodeKind::TsAsExpression
         | NodeKind::TsSatisfiesExpression
         | NodeKind::TsTypeAssertion
@@ -35738,21 +35676,17 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
         }
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
-        }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
         | NodeKind::MetaProperty
+        | NodeKind::StringLiteral
         | NodeKind::NumericLiteral
         | NodeKind::BigIntLiteral
         | NodeKind::BooleanLiteral
         | NodeKind::NullLiteral
         | NodeKind::RegExpLiteral
+        | NodeKind::TemplateLiteral
         | NodeKind::BinaryExpression
         | NodeKind::LogicalExpression
         | NodeKind::UnaryExpression

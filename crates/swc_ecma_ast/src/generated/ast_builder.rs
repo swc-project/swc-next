@@ -1299,32 +1299,6 @@ impl<'a> Ast<'a> {
         PropertyKey::IdentifierName(self.identifier_name(span, name).into())
     }
     #[inline]
-    pub fn property_key_private_identifier(&mut self, span: Span, name: AstUtf8) -> PropertyKey {
-        PropertyKey::PrivateIdentifier(self.private_identifier(span, name).into())
-    }
-    #[inline]
-    pub fn property_key_string_literal(
-        &mut self,
-        span: Span,
-        value: AstWtf8,
-        raw: AstUtf8,
-    ) -> PropertyKey {
-        PropertyKey::StringLiteral(self.string_literal(span, value, raw).into())
-    }
-    #[inline]
-    pub fn property_key_numeric_literal(
-        &mut self,
-        span: Span,
-        value: f64,
-        raw: Option<AstUtf8>,
-    ) -> PropertyKey {
-        PropertyKey::NumericLiteral(self.numeric_literal(span, value, raw).into())
-    }
-    #[inline]
-    pub fn property_key_big_int_literal(&mut self, span: Span, raw: AstUtf8) -> PropertyKey {
-        PropertyKey::BigIntLiteral(self.big_int_literal(span, raw).into())
-    }
-    #[inline]
     pub fn property_key_expr_identifier_reference(
         &mut self,
         span: Span,
@@ -6713,24 +6687,6 @@ impl<'a> Ast<'a> {
         name: AstUtf8,
     ) -> TsEnumMemberName {
         TsEnumMemberName::IdentifierName(self.identifier_name(span, name).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_string_literal(
-        &mut self,
-        span: Span,
-        value: AstWtf8,
-        raw: AstUtf8,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::StringLiteral(self.string_literal(span, value, raw).into())
-    }
-    #[inline]
-    pub fn ts_enum_member_name_template_literal(
-        &mut self,
-        span: Span,
-        quasis: SubRange<TemplateElement>,
-        expressions: SubRange<Expr>,
-    ) -> TsEnumMemberName {
-        TsEnumMemberName::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
     }
     #[inline]
     pub fn ts_enum_member_name_expr_identifier_reference(
