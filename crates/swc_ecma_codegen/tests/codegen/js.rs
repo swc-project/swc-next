@@ -256,6 +256,29 @@ fn test_directive_string_value() {
 }
 
 #[test]
+fn test_computed_key_comments() {
+    expect_printed(
+        "({ [/* @__PURE__ */ 'x']: make() })",
+        "({ [ /* @__PURE__ */ \"x\"]: make() });\n",
+    );
+
+    expect_printed_minify(
+        "({ [/* @__PURE__ */ 'x']: make() })",
+        "({[ /* @__PURE__ */ \"x\"]:make()});",
+    );
+
+    expect_printed_minify(
+        "({ [/* @__PURE__ */ 1]: make() })",
+        "({[ /* @__PURE__ */ 1]:make()});",
+    );
+
+    expect_printed_minify(
+        "({ [/* @__PURE__ */ 1n]: make() })",
+        "({[ /* @__PURE__ */ 1n]:make()});",
+    );
+}
+
+#[test]
 fn test_multiline_block_comment_is_stable() {
     // The newline inside the comment triggers ASI before the apparent label.
     expect_printed(

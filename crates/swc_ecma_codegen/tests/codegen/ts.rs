@@ -100,6 +100,19 @@ fn test_enum_member_names() {
 }
 
 #[test]
+fn test_computed_enum_name_comments() {
+    expect_printed_ts(
+        "enum E { [/* @__PURE__ */ 'x'] = make() }",
+        "enum E {\n  [ /* @__PURE__ */ \"x\"] = make(),\n}\n",
+    );
+
+    expect_printed_ts_minify(
+        "enum E { [/* @__PURE__ */ `x`] = make() }",
+        "enum E{[ /* @__PURE__ */ `x`]=make(),}",
+    );
+}
+
+#[test]
 fn test_type_assertion_generic_function_type() {
     let type_assertion = "const f = < <T>(value: T) => T > identity;";
     let type_assertion_expected = "const f = < <T>(value: T) => T>identity;\n";

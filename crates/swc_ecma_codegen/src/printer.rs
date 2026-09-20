@@ -2646,6 +2646,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(key.span(self.ast).start);
         if computed {
             self.print("[");
+            self.print_comments_before(key.span(self.ast).start, false, true);
             self.print_property_key_expr(key);
             self.print("]");
         } else {
@@ -4461,6 +4462,7 @@ impl<'a> Printer<'a> {
     fn print_ts_enum_name(&mut self, n: TsEnumMemberName, computed: bool) {
         if computed {
             self.print("[");
+            self.print_comments_before(n.span(self.ast).start, false, true);
         }
         match self.ast.ts_enum_member_name_data(n) {
             TsEnumMemberNameData::IdentifierName(i) => {
