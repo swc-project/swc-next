@@ -1483,12 +1483,11 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!((start as usize) <= source.len());
     let mut position = start as usize;
 
-    'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
+    while source.len() - position >= IDENTIFIER_BATCH_SIZE {
         let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
         for (offset, byte) in batch.iter().enumerate() {
             if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
-                position += offset;
-                break 'search;
+                return (position + offset) as u32;
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
