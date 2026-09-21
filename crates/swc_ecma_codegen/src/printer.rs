@@ -2764,10 +2764,9 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
-            match self
-                .ast
-                .object_property_kind_data(self.ast.get_node_in_sub_range(id))
-            {
+            let property = self.ast.get_node_in_sub_range(id);
+            self.print_comments_before(property.span(self.ast).start, false, true);
+            match self.ast.object_property_kind_data(property) {
                 ObjectPropertyKindData::SpreadElement(s) => {
                     self.print("...");
                     self.print_expr(s.argument(self.ast), Precedence::Assignment);
