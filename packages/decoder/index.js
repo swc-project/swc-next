@@ -21,6 +21,7 @@ export function encodeOptions(options) {
   value |= encodeOptionEnum(options.lang, "lang", OPTION_LANGS) << 4;
   value |= encodeOptionBoolean(options.preserveParens, "preserveParens") << 7;
   value |= encodeOptionEnum(options.comments, "comments", OPTION_COMMENT_MODES) << 9;
+  value |= encodeOptionBoolean(options.semanticErrors, "semanticErrors") << 11;
   return value >>> 0;
 }
 

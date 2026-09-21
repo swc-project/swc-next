@@ -15,8 +15,15 @@ const PRESERVE_PARENS_MASK: u32 = 0b11 << PRESERVE_PARENS_SHIFT;
 const COMMENTS_SHIFT: u32 = 9;
 const COMMENTS_MASK: u32 = 0b11 << COMMENTS_SHIFT;
 
-const KNOWN_MASK: u32 =
-    OPTIONS_PRESENT | SOURCE_TYPE_MASK | LANG_MASK | PRESERVE_PARENS_MASK | COMMENTS_MASK;
+const SEMANTIC_ERRORS_SHIFT: u32 = 11;
+const SEMANTIC_ERRORS_MASK: u32 = 0b11 << SEMANTIC_ERRORS_SHIFT;
+
+const KNOWN_MASK: u32 = OPTIONS_PRESENT
+    | SOURCE_TYPE_MASK
+    | LANG_MASK
+    | PRESERVE_PARENS_MASK
+    | COMMENTS_MASK
+    | SEMANTIC_ERRORS_MASK;
 
 #[bridge]
 impl BridgeDecode for Option<ParserOptions> {
@@ -60,11 +67,19 @@ impl BridgeDecode for Option<ParserOptions> {
             _ => return None,
         };
 
+        let semantic_errors = match field(value, SEMANTIC_ERRORS_MASK, SEMANTIC_ERRORS_SHIFT) {
+            0 => None,
+            1 => Some(false),
+            2 => Some(true),
+            _ => return None,
+        };
+
         Some(Some(ParserOptions {
             source_type,
             lang,
             preserve_parens,
             comments,
+            semantic_errors,
         }))
     }
 }

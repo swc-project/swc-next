@@ -107,6 +107,11 @@ pub struct ParserOptions {
     ///
     /// @default "flat"
     pub comments: Option<CommentMode>,
+    /// Run semantic early-error checks after parsing succeeds and include their
+    /// diagnostics. This performs an additional AST pass.
+    ///
+    /// @default false
+    pub semantic_errors: Option<bool>,
 }
 
 impl From<ParserOptions> for AstParserOptions {

@@ -163,6 +163,40 @@ test("parseSync returns an empty diagnostics array for valid input", () => {
   assert.deepEqual(empty.diagnostics, []);
 });
 
+test("parseSync makes semantic early-error checking optional", () => {
+  const source = "let value; let value;";
+  assert.deepEqual(parseSync(source).diagnostics, []);
+  assert.deepEqual(parseSync(source, { semanticErrors: false }).diagnostics, []);
+
+  const checked = parseSync(source, { semanticErrors: true });
+  assert.equal(checked.diagnostics.length, 1);
+  assert.equal(checked.diagnostics[0].severity, "error");
+  assert.equal(checked.program.body.length, 2);
+
+  const valid = parseSync("let value; { let value; }", { semanticErrors: true });
+  assert.deepEqual(valid.diagnostics, []);
+  assert.throws(() => parseSync(source, { semanticErrors: 1 }), TypeError);
+});
+
+test("semantic diagnostics preserve Unicode offsets and related labels", () => {
+  const source = "/* 😀 */ let 文; let 文;";
+  const result = parseSync(source, { semanticErrors: true, comments: CommentMode.None });
+  const [error] = result.diagnostics;
+  assert.equal(error.start, source.lastIndexOf("文"));
+  assert.equal(error.end, source.lastIndexOf("文") + 1);
+  assert.ok(error.labels.some((label) => label.start === source.indexOf("文")));
+  assert.ok(error.message.includes("文"));
+  assert.deepEqual(result.comments, []);
+});
+
+test("semantic checking preserves parser recovery diagnostics", () => {
+  const source = "const = 1; let value; let value;";
+  const unchecked = parseSync(source);
+  const checked = parseSync(source, { semanticErrors: true });
+  assert.deepEqual(checked.diagnostics, unchecked.diagnostics);
+  assert.deepEqual(checked.program, unchecked.program);
+});
+
 test("parseSync reports diagnostics with UTF-16 offsets", () => {
   const source = "/* 文😀 */ const = 1";
   const result = parseSync(source);

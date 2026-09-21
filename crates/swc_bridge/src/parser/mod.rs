@@ -4,6 +4,7 @@ mod options_wire;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
 use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 
 pub use self::options::{CommentMode, Lang, ParserOptions, SourceType};
 
@@ -18,19 +19,28 @@ pub unsafe fn parse_to_buffer(
 ) -> Vec<u8> {
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let allocator = Allocator::default();
-    let result = Parser::init(
-        &allocator,
-        source,
-        options.unwrap_or_default().into(),
-        NoTokenParserConfig,
-    )
-    .parse();
+    let options = options.unwrap_or_default();
+    let semantic_errors = options.semantic_errors.unwrap_or(false);
+    let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
 
-    let buffer_size = buffer_size(&result.ast, &result.diagnostics);
+    let diagnostics = if semantic_errors && result.diagnostics.is_empty() {
+        let semantic = analyze(
+            &result.ast,
+            AnalyzeOptions {
+                check_syntax: true,
+                ..AnalyzeOptions::default()
+            },
+        );
+        semantic.diagnostics
+    } else {
+        result.diagnostics
+    };
+
+    let buffer_size = buffer_size(&result.ast, &diagnostics);
     let mut buffer = vec![0; buffer_size];
     serialize_into(
         &result.ast,
-        &result.diagnostics,
+        &diagnostics,
         &mut buffer,
         source_utf16_len as usize,
     );

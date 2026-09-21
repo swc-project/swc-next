@@ -34,7 +34,7 @@ export interface ParseResult {
   readonly meta: AstMeta;
   readonly program: any;
   readonly comments: Comment[];
-  /** Parser diagnostics, decoded lazily. Empty when parsing succeeds without diagnostics. */
+  /** Parser diagnostics and, when semanticErrors is enabled, semantic early errors. Decoded lazily. */
   readonly diagnostics: Diagnostic[];
 }
 
