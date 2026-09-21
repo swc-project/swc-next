@@ -2845,7 +2845,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_allocator"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "allocator-api2",
  "bumpalo",
@@ -2856,7 +2856,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ast_macros"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2865,7 +2865,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_bridge"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "napi",
  "napi-build",
@@ -2879,7 +2879,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_bridge_macros"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2890,7 +2890,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_codegen_bridge"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
@@ -2898,7 +2898,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_core_bridge"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
@@ -2907,7 +2907,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_ast"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "oxc_index",
  "swc_next_allocator",
@@ -2917,7 +2917,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_codegen"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "arrayvec",
  "clap",
@@ -2930,7 +2930,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_minifier"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "libtest-mimic",
  "serde",
@@ -2945,7 +2945,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_parser"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bitflags",
  "clap",
@@ -2957,7 +2957,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_semantic"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bitflags",
  "clap",
@@ -2974,7 +2974,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_transformer"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "swc_next_ecma_ast",
@@ -2983,7 +2983,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_parser_bridge"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
@@ -2992,7 +2992,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_regular_expression"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bitflags",
  "phf 0.14.0",
@@ -3003,7 +3003,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_type_strip"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",
