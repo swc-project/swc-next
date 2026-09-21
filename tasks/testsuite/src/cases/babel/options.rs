@@ -99,6 +99,7 @@ impl From<BabelOptions> for TransformerOptions {
     fn from(options: BabelOptions) -> Self {
         let plugins = options.plugins;
         Self {
+            source_path: None,
             assumptions: options.assumptions,
             typescript: plugins.typescript,
             es2022: ES2022Options {
@@ -107,6 +108,7 @@ impl From<BabelOptions> for TransformerOptions {
             proposal: ProposalOptions {
                 prevent_extensions: plugins.static_blocks,
             },
+            jsx: plugins.react_jsx_dev.or(plugins.react_jsx).map(Box::new),
         }
     }
 }
@@ -247,8 +249,8 @@ impl BabelOptions {
     pub fn is_jsx(&self) -> bool {
         self.plugins.syntax_jsx
             || self.presets.jsx
-            || self.plugins.react_jsx
-            || self.plugins.react_jsx_dev
+            || self.plugins.react_jsx.is_some()
+            || self.plugins.react_jsx_dev.is_some()
     }
 
     /// Returns `true` when TypeScript parsing is enabled.

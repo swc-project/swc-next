@@ -1,3 +1,4 @@
+use crate::syntax::FollowingTransform;
 use swc_next_ecma_ast::{
     BindingIdentifier, BindingPattern, Decl, ExportNamedDeclaration, Expr, GetSpan,
     ImportDeclaration, ImportDeclarationSpecifierData, ImportOrExportKind, PropertyKey, Stmt,
@@ -8,7 +9,7 @@ use swc_next_ecma_ast::{
 
 use super::TypeScriptLowerer;
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
     pub(super) fn lower_import_declaration(&mut self, declaration: ImportDeclaration) -> bool {
         if declaration.import_kind(self.ast_ref()) == ImportOrExportKind::Type {
             return false;

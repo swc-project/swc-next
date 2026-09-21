@@ -1,3 +1,4 @@
+use crate::syntax::FollowingTransform;
 use rustc_hash::FxHashSet;
 
 use swc_next_ecma_ast::{
@@ -10,7 +11,7 @@ use swc_next_ecma_semantic::Semantic;
 use super::{StatementExpansion, TypeScriptLowerer, runtime::RuntimeTarget};
 use crate::typescript::analysis::TsEnumConstantValue;
 
-impl TypeScriptLowerer<'_, '_> {
+impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
     pub(super) fn lower_enum(
         &mut self,
         declaration: TsEnumDeclaration,

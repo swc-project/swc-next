@@ -177,7 +177,14 @@ impl TransformCase for BabelTransformCase {
     }
 
     fn transformer_options(&self) -> TransformerOptions {
-        self.options.clone().into()
+        let mut options: TransformerOptions = self.options.clone().into();
+        let babel_root = fixtures().join("babel");
+        let relative_path = self
+            .path
+            .strip_prefix(babel_root)
+            .expect("Babel fixture path");
+        options.source_path = Some(format!("<CWD>/{}", relative_path.to_string_lossy()));
+        options
     }
 
     fn codegen_options(&self) -> CodegenOptions {
