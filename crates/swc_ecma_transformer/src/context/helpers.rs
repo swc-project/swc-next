@@ -127,7 +127,9 @@ impl TransformCtx<'_, '_> {
     fn call<const N: usize>(&mut self, callee: Expr, arguments: [Argument; N]) -> Expr {
         let arguments = self.ast.add_sub_range(arguments);
         Expr::CallExpression(
-            self.add_node(|ast| ast.call_expression(DUMMY_SP, callee, None, arguments, false)),
+            self.add_node(|ast| {
+                ast.call_expression(DUMMY_SP, callee, None, arguments, false, false)
+            }),
         )
     }
 

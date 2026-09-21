@@ -1155,6 +1155,10 @@ impl Compare for CallExpression {
         let right = other.optional(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "CallExpression.optional"))?;
+        let left = self.pure(asts.left);
+        let right = other.pure(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "CallExpression.pure"))?;
         Ok(())
     }
 }

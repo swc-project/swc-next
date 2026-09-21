@@ -239,9 +239,10 @@ fn materialize_block(
     }
     let span = block.span(ctx.ast());
     let arrow = block_to_arrow(block, false, parent, ctx);
-    let mut expression = Expr::CallExpression(
-        ctx.add_node(|ast| ast.call_expression(span, arrow, None, SubRange::empty(), false)),
-    );
+    let mut expression =
+        Expr::CallExpression(ctx.add_node(|ast| {
+            ast.call_expression(span, arrow, None, SubRange::empty(), false, false)
+        }));
     if block_has_comments(block, ctx.ast()) {
         let span = if first { DUMMY_SP } else { span };
         expression = Expr::ParenthesizedExpression(
@@ -678,7 +679,7 @@ fn transform_class_as_private_fields(
                 let span = block.span(ctx.ast());
                 let arrow = block_to_arrow(block, false, ctx.current_scope(), ctx);
                 Expr::CallExpression(ctx.add_node(|ast| {
-                    ast.call_expression(span, arrow, None, SubRange::empty(), false)
+                    ast.call_expression(span, arrow, None, SubRange::empty(), false, false)
                 }))
             };
             let field = private_field(key, value, block.span(ctx.ast()), ctx);
@@ -712,6 +713,7 @@ fn call_generated_after_class(name: BoundIdentifier, ctx: &mut TransformCtx<'_, 
             Expr::IdentifierReference(callee),
             None,
             SubRange::empty(),
+            false,
             false,
         )
     }))
