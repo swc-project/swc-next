@@ -223,7 +223,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             {
                 self.cursor = pos;
                 *target = self.create_token(
-                    get_keyword_type(&self.source[start as usize..pos as usize]),
+                    if current_char.is_ascii_lowercase() && (2..=11).contains(&(pos - start)) {
+                        get_keyword_type(&self.source[start as usize..pos as usize])
+                    } else {
+                        TokenTag::Identifier
+                    },
                     start,
                     pos,
                 );
