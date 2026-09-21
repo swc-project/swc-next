@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
-    StmtData, SubRange, UnaryOperator,
+    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey,
+    PropertyKind, Stmt, StmtData, SubRange, UnaryOperator, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -10,6 +10,84 @@ use crate::{
     expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
     expect_printed_script, expect_printed_with_options, expect_stable,
 };
+
+fn pure_calls(source: &str, options: &PrintOptions) -> String {
+    struct PureCalls<'visit, 'ast>(&'visit mut Ast<'ast>);
+
+    impl<'ast> VisitMut<'ast> for PureCalls<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+
+        fn visit_mut_call_expression(&mut self, call: CallExpression) -> Option<CallExpression> {
+            let pure = match self.0.expr_data(call.callee(self.0)) {
+                ExprData::IdentifierReference(callee) => {
+                    self.0.get_utf8(callee.name(self.0)) == "pure"
+                }
+                ExprData::Function(_) | ExprData::Class(_) | ExprData::ObjectExpression(_) => true,
+                _ => false,
+            };
+            if pure {
+                call.set_pure(self.0, true);
+            }
+            call.visit_mut_children_with(self)
+        }
+    }
+
+    let allocator = Allocator::new();
+    let parsed = Parser::init(
+        &allocator,
+        source,
+        ParseOptions {
+            preserve_parens: false,
+            ..ParseOptions::default()
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty());
+    let mut ast = parsed.ast;
+    ast.root_program().visit_mut_with(&mut PureCalls(&mut ast));
+    print(&ast, options.clone()).code.to_owned()
+}
+
+#[test]
+fn test_pure_calls() {
+    let pretty = PrintOptions::default();
+    let minify = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+    let output = pure_calls("pure().props.f();", &pretty);
+    assert_eq!(output, "(/* #__PURE__ */ pure()).props.f();\n");
+
+    let output = pure_calls("pure()();", &minify);
+    assert_eq!(output, "(/* #__PURE__ */ pure())();");
+
+    let output = pure_calls("pure()``;", &minify);
+    assert_eq!(output, "(/* #__PURE__ */ pure())``;");
+
+    let output = pure_calls("pure()?.[key]();", &minify);
+    assert_eq!(output, "(/* #__PURE__ */ pure())?.[key]();");
+
+    let output = pure_calls("new (pure())();", &minify);
+    assert_eq!(output, "new(/* #__PURE__ */ pure());");
+
+    let output = pure_calls("const value = pure();", &minify);
+    assert_eq!(output, "const value=/* #__PURE__ */ pure();");
+
+    let output = pure_calls("pure(pure());", &pretty);
+    assert_eq!(output, "/* #__PURE__ */ pure(/* #__PURE__ */ pure());\n");
+
+    let output = pure_calls("(function() {})();", &minify);
+    assert_eq!(output, "/* #__PURE__ */ (function(){})();");
+
+    let output = pure_calls("export default (class {})();", &minify);
+    assert_eq!(output, "export default /* #__PURE__ */ (class{})();");
+
+    let output = pure_calls("const f = () => ({})();", &pretty);
+    assert_eq!(output, "const f = () => /* #__PURE__ */ ({})();\n");
+}
 
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {

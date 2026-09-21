@@ -2600,9 +2600,30 @@ impl<'a> Printer<'a> {
     }
 
     fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
-        let wrap = level > Precedence::Call || in_new_callee;
+        let print_pure = e.pure(self.ast);
+        let wrap = level > Precedence::Call
+            || in_new_callee
+            || (print_pure && level >= Precedence::Postfix);
         if wrap {
             self.print("(");
+        }
+        if print_pure {
+            let start = self.js.len();
+            self.print("/* #__PURE__ */ ");
+            // An annotation does not change the callee's syntactic position.
+            // Keep expression-start checks aligned with its first token.
+            if self.stmt_start == start {
+                self.stmt_start = self.js.len();
+            }
+            if self.export_default_start == start {
+                self.export_default_start = self.js.len();
+            }
+            if self.arrow_expr_start == start {
+                self.arrow_expr_start = self.js.len();
+            }
+            if self.for_of_init_start == start {
+                self.for_of_init_start = self.js.len();
+            }
         }
         let callee = e.callee(self.ast);
         let optional = e.optional(self.ast);
