@@ -24,6 +24,7 @@ pub struct JsxOptions {
     pub pragma_frag: Option<String>,
     pub throw_if_namespace: bool,
     pub pure: Option<bool>,
+    pub refresh: Option<ReactRefreshOptions>,
 }
 
 impl Default for JsxOptions {
@@ -37,6 +38,21 @@ impl Default for JsxOptions {
             pragma_frag: None,
             throw_if_namespace: true,
             pure: None,
+            refresh: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct ReactRefreshOptions {
+    pub refresh_reg: String,
+}
+
+impl Default for ReactRefreshOptions {
+    fn default() -> Self {
+        Self {
+            refresh_reg: "$RefreshReg$".to_owned(),
         }
     }
 }
