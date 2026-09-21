@@ -233,7 +233,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return Ok(());
         }
 
-        *target = match current_char {
+        let token = match current_char {
             b'+' | b'*' | b'-' | b'!' | b'<' | b'>' | b'=' | b'|' | b'&' | b'^' | b'%' | b'/'
             | b'?' => self.scan_punctuation()?,
             b'.' => self.scan_dot()?,
@@ -246,6 +246,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             b'}' => self.handle_right_brace(),
             _ => self.scan_identifier_or_keyword()?,
         };
+        *target = token;
         Ok(())
     }
 
@@ -265,7 +266,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if self.processed_comments < self.comments.len() {
             self.attach_pending_comments(token);
         }
-        self.state.previous_token_tag = Some(token.tag);
+        self.state.previous_token_tag = Some(token.tag());
         self.state.had_line_break = false;
     }
 
@@ -274,7 +275,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     pub(crate) fn rewrite_last_collected_token(&mut self, token: Token) {
         if self.config.tokens() {
             if let Some(last) = self.tokens.last_mut() {
-                debug_assert_eq!(last.span.start, token.span.start);
+                debug_assert_eq!(last.start(), token.start());
                 *last = token;
             } else {
                 debug_assert!(!self.config.tokens());
@@ -1304,7 +1305,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     fn attach_pending_comments(&mut self, token: Token) {
-        let (position, attached_to) = if token.tag == TokenTag::Eof {
+        let (position, attached_to) = if token.tag() == TokenTag::Eof {
             cold_path();
             if self.state.prev_token_end == 0 {
                 (CommentPosition::Leading, 0)
@@ -1312,7 +1313,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 (CommentPosition::Trailing, self.state.prev_token_end)
             }
         } else {
-            (CommentPosition::Leading, token.span.start)
+            (CommentPosition::Leading, token.start())
         };
 
         for comment in &mut self.comments[self.processed_comments..] {
@@ -1445,11 +1446,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     pub fn create_token(&mut self, tag: TokenTag, start: u32, end: u32) -> Token {
-        Token {
-            span: Span { start, end },
-            tag,
-            flags: self.consume_token_flags(),
-        }
+        Token::new(start, end, tag, self.consume_token_flags())
     }
 }
 
@@ -1819,58 +1816,58 @@ mod tests {
     #[test]
     fn trivia() {
         let token = next_after_trivia(" \t\x0B\x0Cname", false);
-        assert_eq!(token.span, Span::new(4, 8));
+        assert_eq!(token.span(), Span::new(4, 8));
         assert!(!token.has_line_terminator_before());
 
         let token = next_after_trivia("\r\nname", false);
-        assert_eq!(token.span, Span::new(2, 6));
+        assert_eq!(token.span(), Span::new(2, 6));
         assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia("// line\nname", false);
-        assert_eq!(token.span, Span::new(8, 12));
+        assert_eq!(token.span(), Span::new(8, 12));
         assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia("/* block\ncomment */name", false);
-        assert_eq!(token.span, Span::new(19, 23));
+        assert_eq!(token.span(), Span::new(19, 23));
         assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia("\u{2028}name", false);
-        assert_eq!(token.span, Span::new(3, 7));
+        assert_eq!(token.span(), Span::new(3, 7));
         assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia("\u{00A0}name", false);
-        assert_eq!(token.span, Span::new(2, 6));
+        assert_eq!(token.span(), Span::new(2, 6));
         assert!(!token.has_line_terminator_before());
 
         let token = next_after_trivia("<!-- comment\nname", true);
-        assert_eq!(token.span, Span::new(13, 17));
+        assert_eq!(token.span(), Span::new(13, 17));
         assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia("--> comment\nname", true);
-        assert_eq!(token.span, Span::new(12, 16));
+        assert_eq!(token.span(), Span::new(12, 16));
         assert!(token.has_line_terminator_before());
 
         let token = next_after_trivia(" \t--> comment\nname", true);
-        assert_eq!(token.span, Span::new(14, 18));
+        assert_eq!(token.span(), Span::new(14, 18));
         assert!(token.has_line_terminator_before());
     }
 
     #[test]
     fn template() {
         let token = next_template("`plain $ value`").unwrap();
-        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
-        assert_eq!(token.span, Span::new(0, 15));
+        assert_eq!(token.tag(), TokenTag::NoSubstitutionTemplate);
+        assert_eq!(token.span(), Span::new(0, 15));
 
         let token = next_template("`head ${value}`").unwrap();
-        assert_eq!(token.tag, TokenTag::TemplateHead);
-        assert_eq!(token.span, Span::new(0, 8));
+        assert_eq!(token.tag(), TokenTag::TemplateHead);
+        assert_eq!(token.span(), Span::new(0, 8));
 
         let token = next_template("`escaped \\` value`").unwrap();
-        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert_eq!(token.tag(), TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
 
         let token = next_template("`first\r\nsecond`").unwrap();
-        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert_eq!(token.tag(), TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
 
         let allocator = Allocator::new();
@@ -1883,13 +1880,13 @@ mod tests {
             NoTokenParserConfig,
         );
         let token = lexer.re_scan_template_continuation(0).unwrap();
-        assert_eq!(token.tag, TokenTag::TemplateMiddle);
-        assert_eq!(token.span, Span::new(0, 10));
+        assert_eq!(token.tag(), TokenTag::TemplateMiddle);
+        assert_eq!(token.span(), Span::new(0, 10));
 
         let mut lexer = Lexer::init(&allocator, "}tail`", false, false, NoTokenParserConfig);
         let token = lexer.re_scan_template_continuation(0).unwrap();
-        assert_eq!(token.tag, TokenTag::TemplateTail);
-        assert_eq!(token.span, Span::new(0, 6));
+        assert_eq!(token.tag(), TokenTag::TemplateTail);
+        assert_eq!(token.span(), Span::new(0, 6));
 
         assert_eq!(
             next_template("`unterminated"),

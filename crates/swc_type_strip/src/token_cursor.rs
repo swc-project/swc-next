@@ -15,10 +15,10 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
     pub(crate) fn first_in_range(self, start: u32, end: u32) -> Option<Token> {
         let mut index = self.index_containing_or_after(start);
         while let Some(token) = self.tokens.get(index).copied() {
-            if token.span.start >= end {
+            if token.start() >= end {
                 return None;
             }
-            if token.span.start >= start && token.span.end <= end {
+            if token.start() >= start && token.end() <= end {
                 return Some(token);
             }
             index += 1;
@@ -31,10 +31,10 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
         while index > 0 {
             index -= 1;
             let token = self.tokens[index];
-            if token.span.end <= start {
+            if token.end() <= start {
                 return None;
             }
-            if token.span.start >= start && token.span.end <= end {
+            if token.start() >= start && token.end() <= end {
                 return Some(token);
             }
         }
@@ -58,10 +58,10 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
     pub(crate) fn find_forward(self, start: u32, end: u32, tag: TokenTag) -> Option<Token> {
         let mut index = self.index_containing_or_after(start);
         while let Some(token) = self.tokens.get(index).copied() {
-            if token.span.start >= end {
+            if token.start() >= end {
                 return None;
             }
-            if token.span.start >= start && token.span.end <= end && token.tag == tag {
+            if token.start() >= start && token.end() <= end && token.tag() == tag {
                 return Some(token);
             }
             index += 1;
@@ -74,10 +74,10 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
         while index > 0 {
             index -= 1;
             let token = self.tokens[index];
-            if token.span.end <= start {
+            if token.end() <= start {
                 return None;
             }
-            if token.span.start >= start && token.span.end <= end && token.tag == tag {
+            if token.start() >= start && token.end() <= end && token.tag() == tag {
                 return Some(token);
             }
         }
@@ -105,13 +105,12 @@ impl<'source, 'tokens> TokenCursor<'source, 'tokens> {
     }
 
     fn index_containing_or_after(self, position: u32) -> usize {
-        self.tokens
-            .partition_point(|token| token.span.end <= position)
+        self.tokens.partition_point(|token| token.end() <= position)
     }
 
     fn index_starting_at_or_after(self, position: u32) -> usize {
         self.tokens
-            .partition_point(|token| token.span.start < position)
+            .partition_point(|token| token.start() < position)
     }
 }
 
@@ -147,8 +146,8 @@ mod tests {
             .find_backward(0, source.len() as u32, TokenTag::Comma)
             .unwrap();
 
-        assert_eq!(forward.span.start, 10);
-        assert_eq!(backward.span.start, 29);
+        assert_eq!(forward.start(), 10);
+        assert_eq!(backward.start(), 29);
     }
 
     #[test]

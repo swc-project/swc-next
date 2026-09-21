@@ -134,8 +134,8 @@ impl TypeEraser<'_, '_, '_> {
 
     fn erase_token(&mut self, start: u32, end: u32, tag: TokenTag) -> Option<u32> {
         let token = self.tokens.find_forward(start, end, tag)?;
-        self.edits.blank(token.span);
-        Some(token.span.start)
+        self.edits.blank(token.span());
+        Some(token.start())
     }
 
     fn erase_optional_pattern(
@@ -154,7 +154,7 @@ impl TypeEraser<'_, '_, '_> {
             .tokens
             .find_backward(span.start, marker_end, TokenTag::Question)
         {
-            self.edits.blank(marker.span);
+            self.edits.blank(marker.span());
         }
     }
 
@@ -163,12 +163,12 @@ impl TypeEraser<'_, '_, '_> {
             || {
                 self.tokens
                     .find_forward(item.end, container.end, TokenTag::RightBrace)
-                    .map_or(container.end, |closing| closing.span.start)
+                    .map_or(container.end, |closing| closing.start())
             },
             |next| next.start,
         );
         if let Some(comma) = self.tokens.find_forward(item.end, gap_end, TokenTag::Comma) {
-            self.edits.blank(Span::new(item.start, comma.span.end));
+            self.edits.blank(Span::new(item.start, comma.end()));
         } else {
             self.edits.blank(item);
         }
@@ -186,7 +186,7 @@ impl TypeEraser<'_, '_, '_> {
         let Some(first) = self.tokens.first_in_range(span.start, span.end) else {
             return;
         };
-        let Some(replacement_span) = self.tokens.leading_character_span(first.span.start) else {
+        let Some(replacement_span) = self.tokens.leading_character_span(first.start()) else {
             return;
         };
         self.edits
@@ -202,7 +202,7 @@ impl TypeEraser<'_, '_, '_> {
             return false;
         };
         let last = self.tokens.last_in_range(previous.start, previous.end);
-        !last.is_some_and(|token| token.tag == TokenTag::Semicolon)
+        !last.is_some_and(|token| token.tag() == TokenTag::Semicolon)
     }
 
     fn erase_suffix_expression(&mut self, expression: Expr, wrapper_span: Span) {
@@ -220,7 +220,7 @@ impl TypeEraser<'_, '_, '_> {
         };
         if !next.has_line_terminator_before()
             || !matches!(
-                next.tag,
+                next.tag(),
                 TokenTag::LeftParen
                     | TokenTag::LeftBracket
                     | TokenTag::NoSubstitutionTemplate
@@ -268,7 +268,7 @@ impl TypeEraser<'_, '_, '_> {
 
         self.edits
             .substitute(replacement_span, FixedSubstitution::LeftParenthesis);
-        self.edits.blank(opening.span);
+        self.edits.blank(opening.span());
     }
 
     fn move_closing_parenthesis_across_multiline_return_type(
@@ -288,7 +288,7 @@ impl TypeEraser<'_, '_, '_> {
         let parameters = arrow.params(self.ast).span(self.ast);
         if !self
             .tokens
-            .has_line_terminator(parameters.end, arrow_token.span.start)
+            .has_line_terminator(parameters.end, arrow_token.start())
         {
             return;
         }
@@ -303,7 +303,7 @@ impl TypeEraser<'_, '_, '_> {
         };
 
         self.edits
-            .blank(Span::new(closing_parenthesis.span.start, return_span.end));
+            .blank(Span::new(closing_parenthesis.start(), return_span.end));
         self.edits
             .substitute(replacement_span, FixedSubstitution::RightParenthesis);
     }
@@ -327,10 +327,10 @@ impl TypeEraser<'_, '_, '_> {
             return false;
         }
         self.tokens
-            .previous_before(opening.span.start)
+            .previous_before(opening.start())
             .is_some_and(|token| {
                 matches!(
-                    token.tag,
+                    token.tag(),
                     TokenTag::Return | TokenTag::Throw | TokenTag::Yield
                 )
             })
@@ -366,7 +366,7 @@ impl TypeEraser<'_, '_, '_> {
         let erase_end = self
             .tokens
             .find_forward(first_span.end, search_end, TokenTag::Comma)
-            .map_or(first_span.end, |comma| comma.span.end);
+            .map_or(first_span.end, |comma| comma.end());
         self.edits.blank(Span::new(first_span.start, erase_end));
     }
 
@@ -408,7 +408,7 @@ impl TypeEraser<'_, '_, '_> {
         let Some(key) = self.tokens.first_in_range(key_span.start, key_span.end) else {
             return;
         };
-        if !matches!(key.tag, TokenTag::Get | TokenTag::Set | TokenTag::Static) {
+        if !matches!(key.tag(), TokenTag::Get | TokenTag::Set | TokenTag::Static) {
             return;
         }
         let Some(replacement_span) = self.tokens.leading_character_span(separator_start) else {
@@ -596,8 +596,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
                 self.tokens
                     .find_backward(span.start, first_span.start, TokenTag::Implements)
             {
-                self.edits
-                    .blank(Span::new(keyword.span.start, last_span.end));
+                self.edits.blank(Span::new(keyword.start(), last_span.end));
             }
         }
 
@@ -629,7 +628,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         }
         let hazardous_key = node.computed(self.ast)
             || key_token
-                .is_some_and(|token| matches!(token.tag, TokenTag::In | TokenTag::Instanceof));
+                .is_some_and(|token| matches!(token.tag(), TokenTag::In | TokenTag::Instanceof));
         let protected_by_javascript_syntax = node.r#static(self.ast)
             || node.accessor(self.ast)
             || !node.decorators(self.ast).is_empty();
@@ -688,7 +687,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         let hazardous_key = node.computed(self.ast)
             || node.value(self.ast).generator(self.ast)
             || key_token
-                .is_some_and(|token| matches!(token.tag, TokenTag::In | TokenTag::Instanceof));
+                .is_some_and(|token| matches!(token.tag(), TokenTag::In | TokenTag::Instanceof));
         let protected_by_javascript_syntax =
             node.r#static(self.ast) || !node.decorators(self.ast).is_empty();
         self.separate_hazardous_class_element(
@@ -743,7 +742,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         let diagnostic_span = self
             .tokens
             .first_in_range(modifiers_start, parameter_start)
-            .map_or(span, |modifier| modifier.span);
+            .map_or(span, |modifier| modifier.span());
 
         self.report_erasable_syntax_only(diagnostic_span);
         self.edits
@@ -908,7 +907,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
                 self.tokens
                     .find_backward(span.start, marker_end, TokenTag::LogicalNot)
             {
-                self.edits.blank(marker.span);
+                self.edits.blank(marker.span());
             }
         }
         node.visit_children_with(self);

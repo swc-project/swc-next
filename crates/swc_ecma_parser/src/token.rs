@@ -499,53 +499,103 @@ pub fn flag_mask(flag: TokenFlag) -> u8 {
     1 << (flag as u8)
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Token {
-    pub span: Span,
-    pub tag: TokenTag,
-    pub flags: u8,
+const END_SHIFT: u32 = 32;
+const TAG_SHIFT: u32 = 64;
+const FLAGS_SHIFT: u32 = 96;
+
+// Bits 0..32: start, 32..64: end, 64..96: tag, 96..104: flags.
+// The remaining bits are always zero.
+#[derive(Clone, Copy, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct Token(u128);
+
+impl std::fmt::Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Token")
+            .field("span", &self.span())
+            .field("tag", &self.tag())
+            .field("flags", &self.flags())
+            .finish()
+    }
 }
 
 impl Token {
-    pub fn eof(pos: u32) -> Self {
-        Self {
-            span: Span {
-                start: pos,
-                end: pos,
-            },
-            tag: TokenTag::Eof,
-            flags: 0,
+    #[inline]
+    pub const fn new(start: u32, end: u32, tag: TokenTag, flags: u8) -> Self {
+        Self(
+            start as u128
+                | ((end as u128) << END_SHIFT)
+                | ((tag as u128) << TAG_SHIFT)
+                | ((flags as u128) << FLAGS_SHIFT),
+        )
+    }
+
+    #[inline]
+    pub const fn start(self) -> u32 {
+        self.0 as u32
+    }
+
+    #[inline]
+    pub const fn end(self) -> u32 {
+        (self.0 >> END_SHIFT) as u32
+    }
+
+    #[inline]
+    pub const fn span(self) -> Span {
+        Span {
+            start: self.start(),
+            end: self.end(),
         }
     }
 
-    pub fn len(self) -> u32 {
-        self.span.end - self.span.start
+    #[inline]
+    pub const fn tag(self) -> TokenTag {
+        // SAFETY: TokenTag has repr(u32), and only `new` writes these bits,
+        // using the discriminant of a valid TokenTag.
+        unsafe { std::mem::transmute::<u32, TokenTag>((self.0 >> TAG_SHIFT) as u32) }
     }
 
-    pub fn is_empty(self) -> bool {
-        self.len() == 0
+    #[inline]
+    pub const fn flags(self) -> u8 {
+        (self.0 >> FLAGS_SHIFT) as u8
     }
 
+    #[inline]
+    pub fn set_flags(&mut self, flags: u8) {
+        self.0 = (self.0 & !(0xff_u128 << FLAGS_SHIFT)) | ((flags as u128) << FLAGS_SHIFT);
+    }
+
+    #[inline]
+    pub fn eof(pos: u32) -> Self {
+        Self::new(pos, pos, TokenTag::Eof, 0)
+    }
+
+    #[inline]
     pub fn text(self, source: &str) -> &str {
-        &source[self.span.start as usize..self.span.end as usize]
+        &source[self.start() as usize..self.end() as usize]
     }
 
+    #[inline]
     pub fn has(self, flag: TokenFlag) -> bool {
-        (self.flags & flag_mask(flag)) != 0
+        (self.flags() & flag_mask(flag)) != 0
     }
 
+    #[inline]
     pub fn has_line_terminator_before(self) -> bool {
         self.has(TokenFlag::LineTerminatorBefore)
     }
 
+    #[inline]
     pub fn is_escaped(self) -> bool {
         self.has(TokenFlag::Escaped)
     }
 
+    #[inline]
     pub fn has_invalid_escape(self) -> bool {
         self.has(TokenFlag::InvalidEscape)
     }
 
+    #[inline]
     pub fn has_lone_surrogates(self) -> bool {
         self.has(TokenFlag::LoneSurrogates)
     }

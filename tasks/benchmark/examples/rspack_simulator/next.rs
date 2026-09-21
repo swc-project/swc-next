@@ -80,7 +80,7 @@ impl InsertedSemicolons<'_, '_, '_> {
     #[inline]
     fn curr_token(&self, span: Span) -> Option<usize> {
         self.tokens
-            .binary_search_by(|token| token.span.start.cmp(&span.start))
+            .binary_search_by(|token| token.start().cmp(&span.start))
             .ok()
     }
 
@@ -88,7 +88,7 @@ impl InsertedSemicolons<'_, '_, '_> {
     #[inline]
     fn next_token(&self, span: Span) -> Option<usize> {
         self.tokens
-            .binary_search_by(|token| token.span.end.cmp(&span.end))
+            .binary_search_by(|token| token.end().cmp(&span.end))
             .ok()
             .map(|index| index + 1)
     }
@@ -99,7 +99,7 @@ impl InsertedSemicolons<'_, '_, '_> {
             return true;
         }
         let token = self.tokens[token_index];
-        token.tag == TokenTag::RightBrace || token.has_line_terminator_before()
+        token.tag() == TokenTag::RightBrace || token.has_line_terminator_before()
     }
 
     #[inline]
@@ -109,8 +109,8 @@ impl InsertedSemicolons<'_, '_, '_> {
         };
         if index > 0 {
             let previous = self.tokens[index - 1];
-            if previous.tag != TokenTag::Semicolon && self.can_insert_semi(index) {
-                self.semicolons.insert(previous.span.end);
+            if previous.tag() != TokenTag::Semicolon && self.can_insert_semi(index) {
+                self.semicolons.insert(previous.end());
             }
         }
     }
@@ -122,8 +122,8 @@ impl InsertedSemicolons<'_, '_, '_> {
         };
         if index > 0 {
             let previous = self.tokens[index - 1];
-            if previous.tag != TokenTag::Semicolon && self.can_insert_semi(index) {
-                self.semicolons.insert(previous.span.end);
+            if previous.tag() != TokenTag::Semicolon && self.can_insert_semi(index) {
+                self.semicolons.insert(previous.end());
             }
         }
     }
