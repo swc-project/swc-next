@@ -1,9 +1,9 @@
 transform * babel
 ========================
-Positive Passed: 595/4082 (14.58%)
+Positive Passed: 599/4082 (14.67%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/4082 (0.00%)
-Skipped: 3406/4082 (83.44%)
+Skipped: 3402/4082 (83.34%)
 Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-external/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map/input.js - transformed output differs from expected output

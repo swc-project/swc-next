@@ -139,6 +139,25 @@ fn classic_development(source: &str) -> String {
     output
 }
 
+fn display_name(source: &str) -> String {
+    display_name_at(source, "src/Component.jsx")
+}
+
+fn display_name_at(source: &str, path: &str) -> String {
+    let options = TransformerOptions {
+        source_path: Some(path.to_owned()),
+        react_display_name: true,
+        jsx: Some(Box::new(JsxOptions {
+            runtime: JsxRuntime::Classic,
+            ..JsxOptions::default()
+        })),
+        ..TransformerOptions::default()
+    };
+    let (output, diagnostics) = transform_options(source, SourceType::Module, Lang::Jsx, options);
+    assert!(diagnostics.is_empty());
+    output
+}
+
 fn transform_options(
     source: &str,
     source_type: SourceType,
@@ -594,6 +613,34 @@ fn spread_children() {
     let source = "const node: unknown = <Comp>{...items}</Comp>;";
     let (_, diagnostics) = diagnose(source, Lang::Tsx, automatic);
     assert_eq!(diagnostics.len(), 1);
+}
+
+#[test]
+fn display_names() {
+    let output = display_name("const C = createReactClass({ displayName: 'Manual' });");
+    assert_eq!(
+        output,
+        "const C = createReactClass({ displayName: \"Manual\" });\n"
+    );
+
+    let output = display_name("export default createReactClass({ render: () => <div /> });");
+    assert_eq!(
+        output,
+        "export default createReactClass({ displayName: \"Component\", render: () => /* #__PURE__ */ React.createElement(\"div\", null) });\n"
+    );
+
+    let source = "export default createReactClass({});";
+    let output = display_name_at(source, "src/Profile/index.jsx");
+    assert_eq!(
+        output,
+        "export default createReactClass({ displayName: \"Profile\" });\n"
+    );
+
+    let output = display_name_at(source, "index.jsx");
+    assert_eq!(
+        output,
+        "export default createReactClass({ displayName: \"index\" });\n"
+    );
 }
 
 #[test]

@@ -100,6 +100,7 @@ impl From<BabelOptions> for TransformerOptions {
         let plugins = options.plugins;
         Self {
             source_path: None,
+            react_display_name: plugins.react_display_name,
             assumptions: options.assumptions,
             typescript: plugins.typescript,
             es2022: ES2022Options {
