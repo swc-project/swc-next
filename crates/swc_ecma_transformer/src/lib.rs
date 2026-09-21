@@ -69,8 +69,13 @@ impl Transformer {
             }
             return Self::transform_with_scopes(ast, ScopeModel::new(semantic), options);
         };
+        // Resolve header pragmas before Refresh can prepend generated statements.
         let jsx = jsx::resolve_options(program, ast, *jsx_options);
         let bindings = jsx::RuntimeBindings::new(&jsx, ast.source_type());
+        if let Some(refresh) = jsx.refresh.as_ref() {
+            jsx::transform_refresh(program, ast, &semantic, refresh, &bindings);
+            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        }
         let syntax_result = match options.typescript.take() {
             Some(typescript) => {
                 if jsx.development && jsx.source_self {

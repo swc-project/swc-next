@@ -6,7 +6,7 @@ use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SymbolFlags, analyze};
 
-use super::{JsxOptions, JsxRuntime};
+use super::{JsxOptions, JsxRuntime, ReactRefreshOptions};
 use crate::{
     Transformer, TransformerOptions, normalize::Normalizer, typescript::TypeScriptOptions,
 };
@@ -49,6 +49,18 @@ fn diagnose(
     jsx: JsxOptions,
 ) -> (String, Vec<swc_next_ecma_ast::Diagnostic<'static>>) {
     transform_with_diagnostics(source, SourceType::Module, lang, jsx, lang == Lang::Tsx)
+}
+
+fn refresh(source: &str) -> String {
+    refresh_lang(source, Lang::Jsx)
+}
+
+fn refresh_lang(source: &str, lang: Lang) -> String {
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions::default()),
+        ..JsxOptions::default()
+    };
+    transform(source, SourceType::Module, lang, options, lang == Lang::Tsx)
 }
 
 fn pragma(pragma: &str) -> String {
@@ -644,6 +656,100 @@ fn display_names() {
 }
 
 #[test]
+fn refresh_registration() {
+    let output = refresh("function Hello() { return <h1>Hi</h1>; }");
+    assert!(output.contains("_c = Hello;"));
+    assert!(output.contains("$RefreshReg$(_c, \"Hello\");"));
+
+    let output = refresh("const Bar = memo(() => <Hello />);");
+    assert!(output.contains("const Bar = memo(_c = () =>"));
+    assert!(output.contains("_c2 = Bar;"));
+    assert!(output.contains("$RefreshReg$(_c, \"Bar$memo\");"));
+    assert!(output.contains("$RefreshReg$(_c2, \"Bar\");"));
+}
+
+#[test]
+fn refresh_boundaries() {
+    let output = refresh("const Header = styled.div``; <Header />;");
+    assert!(output.contains(", \"Header\");"));
+
+    let source = "namespace Foo { export namespace Bar { export const A = () => null; } }";
+    let output = refresh_lang(source, Lang::Tsx);
+    assert!(output.contains(", \"Foo$Bar$A\");"));
+
+    let source = "namespace Foo { export namespace Bar { function B() {} } }";
+    let output = refresh_lang(source, Lang::Tsx);
+    assert!(output.contains(", \"Foo$Bar$B\");"));
+
+    let source = "namespace Foo { namespace Hidden { export const C = () => null; } }";
+    let output = refresh_lang(source, Lang::Tsx);
+    assert!(!output.contains("Foo$Hidden$C"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions::default()),
+        ..JsxOptions::default()
+    };
+    let source = "namespace Foo /* comment */ . Bar { export function App() {} }";
+    let output = lower_tsx(source, &options);
+    assert!(output.contains(", \"Foo$Bar$App\");"));
+
+    let source = "namespace F\\u006fo.Bar { export function App() {} }";
+    let output = lower_tsx(source, &options);
+    assert!(output.contains(", \"Foo$Bar$App\");"));
+}
+
+#[test]
+fn refresh_component_imports() {
+    let output = refresh("const App = () => require('dep');");
+    assert!(output.contains("$RefreshReg$(_c, \"App\");"));
+
+    let output = refresh("const App = () => <A onClick={() => import('dep')} />;");
+    assert!(output.contains("$RefreshReg$(_c, \"App\");"));
+
+    let output = refresh("const App = memo(() => import('dep'));");
+    assert!(output.contains("$RefreshReg$(_c, \"App$memo\");"));
+    assert!(output.contains("$RefreshReg$(_c2, \"App\");"));
+
+    let output = refresh("const App = require('dep'); const node = <App />;");
+    assert!(!output.contains("$RefreshReg$"));
+}
+
+#[test]
+fn refresh_typescript() {
+    let output = refresh_lang("const App = (() => <div />) satisfies F;", Lang::Tsx);
+    assert!(output.contains("const App = () =>"));
+    assert!(output.contains("$RefreshReg$(_c, \"App\");"));
+
+    let output = refresh_lang("const App = require('dep') as F; <App />;", Lang::Tsx);
+    assert!(!output.contains("$RefreshReg$"));
+
+    let output = refresh_lang("export default memo((() => <div/>) as F) as F;", Lang::Tsx);
+    assert!(output.contains("$RefreshReg$(_c, \"%default%$memo\");"));
+    assert!(output.contains("$RefreshReg$(_c2, \"%default%\");"));
+}
+
+#[test]
+fn refresh_callbacks() {
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            refresh_reg: "_c".to_owned(),
+        }),
+        ..JsxOptions::default()
+    };
+    let output = lower_jsx("function App() { useState(0); }", &options);
+    assert!(output.contains("_c(_c2, \"App\");"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            refresh_reg: "_s.refreshReg".to_owned(),
+        }),
+        ..JsxOptions::default()
+    };
+    let output = lower_jsx("function App() { useState(0); }", &options);
+    assert!(output.contains("_s.refreshReg(_c, \"App\");"));
+}
+
+#[test]
 fn pragma_bindings() {
     let factory = JsxOptions {
         runtime: JsxRuntime::Classic,
@@ -657,6 +763,12 @@ fn pragma_bindings() {
         pragma_frag: Some("_jsxFileName".to_owned()),
         ..factory.clone()
     };
+    let registration = JsxOptions {
+        runtime: JsxRuntime::Classic,
+        pragma: Some("_c".to_owned()),
+        refresh: Some(ReactRefreshOptions::default()),
+        ..JsxOptions::default()
+    };
     for lower in [lower_jsx, lower_tsx] {
         let output = lower("<div />;", &factory);
         assert!(output.contains("var _jsxFileName2 = \"\";"));
@@ -665,6 +777,10 @@ fn pragma_bindings() {
         let output = lower("<><div /></>;", &fragment);
         assert!(output.contains("var _jsxFileName2 = \"\";"));
         assert!(output.contains("h(_jsxFileName, null,"));
+
+        let output = lower("function App() { return <div />; }", &registration);
+        assert!(output.contains("return _c(\"div\", null);"));
+        assert!(output.contains("$RefreshReg$(_c2, \"App\");"));
     }
 }
 

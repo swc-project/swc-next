@@ -10,14 +10,16 @@ mod comments;
 mod display_name;
 mod lower;
 mod options;
+mod refresh;
 mod self_context;
 mod source;
 mod text;
 
 pub(crate) use lower::{JsxLowerer, RuntimeBindings};
-pub use options::{JsxOptions, JsxRuntime};
+pub use options::{JsxOptions, JsxRuntime, ReactRefreshOptions};
 
 pub(crate) use display_name::DisplayName;
+pub(crate) use refresh::transform as transform_refresh;
 
 pub fn transform<'a>(
     program: Program,
