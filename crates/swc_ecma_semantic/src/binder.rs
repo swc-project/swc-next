@@ -1038,6 +1038,43 @@ impl TsMemberIndex<'_> {
         self.member(owner, name, TsMemberViewKind::Module)
     }
 
+    pub(crate) fn namespace_has_export_aliases(&self, owner: SymbolId) -> bool {
+        self.environments
+            .get(owner)
+            .is_some_and(|environment| !environment.export_aliases.is_empty())
+    }
+
+    pub(crate) fn namespace_value_targets<'s>(
+        &'s self,
+        symbols: &'s [Symbol],
+        declarations: &'s [Declaration],
+        scope_maps: &'s [ScopeMap<'_>],
+        owner: SymbolId,
+        name: &'s [u8],
+    ) -> impl Iterator<Item = NameResolution> + 's {
+        let target = self.environments.get(owner).and_then(|environment| {
+            let direct = environment.members.get(name).map(|entry| entry.symbol);
+            let alias = environment.export_aliases.get(name);
+            TsResolvedImportTarget::from_members(direct, alias)
+        });
+        target
+            .into_iter()
+            .flat_map(TsResolvedImportTarget::public_contributions)
+            .filter_map(move |contribution| {
+                if contribution.type_only_export.is_some() {
+                    return None;
+                }
+                self.value_target(
+                    symbols,
+                    declarations,
+                    scope_maps,
+                    NameResolution::Resolved(contribution.symbol),
+                    name,
+                    ReferenceSpace::Value,
+                )
+            })
+    }
+
     pub(crate) fn enum_members(&self, owner: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
         self.members(owner, TsMemberViewKind::Enum)
     }
@@ -4062,12 +4099,13 @@ impl<'a> SymbolTracker<'a> {
             .ts_scope_view_index
             .take()
             .or_else(|| self.finalize_ts_scope_views(&scopes.list));
+        let symbol_count = self.symbols.len();
         let node_count = tree.node_count();
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
         node_references.resize(node_count, None);
 
-        let mut use_ranges = ArenaVec::with_capacity_in(self.symbols.len(), self.allocator);
-        use_ranges.resize(self.symbols.len(), Range::default());
+        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
+        use_ranges.resize(symbol_count, Range::default());
 
         let mut reference_candidates = ReferenceCandidates::new_in(self.allocator);
         let mut reference_values = TsReferenceValues::new_in(self.allocator);
@@ -4134,10 +4172,6 @@ impl<'a> SymbolTracker<'a> {
             );
         }
 
-        let declarations = self.declarations;
-        let redeclarations = self.redeclarations;
-        let node_symbols = self.node_symbols;
-
         if has_with_statement {
             let with_ancestry = with_ancestry(&scopes);
             for reference_index in 0..self.references.len() {
@@ -4151,7 +4185,7 @@ impl<'a> SymbolTracker<'a> {
                 };
                 let target_with = if let Some(symbol) = reference.symbol {
                     let declaration = self.symbols[symbol.index()].declaration;
-                    let scope = declarations[declaration.index()].scope;
+                    let scope = self.declarations[declaration.index()].scope;
                     with_ancestry[scope.index()].lexical
                 } else if tree.get_utf8(reference.name).as_bytes() == b"arguments" {
                     reference_ancestors.arguments
@@ -4198,7 +4232,10 @@ impl<'a> SymbolTracker<'a> {
         }
 
         let module_record =
-            module_record.finalize(&node_symbols, &self.references, &node_references);
+            module_record.finalize(&self.node_symbols, &self.references, &node_references);
+        let declarations = self.declarations;
+        let redeclarations = self.redeclarations;
+        let node_symbols = self.node_symbols;
 
         let reference_values = if reference_values.ranges.is_empty() {
             None

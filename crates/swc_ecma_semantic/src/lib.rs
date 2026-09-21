@@ -285,6 +285,33 @@ impl<'a> Semantic<'a> {
         self.ts_members.namespace_member(owner, name)
     }
 
+    /// Whether a namespace has export specifiers in addition to declared members.
+    /// This includes type-only and unresolved exports; query their value targets
+    /// with [`Self::ts_namespace_value_targets`] before using them at runtime.
+    pub fn ts_namespace_has_export_aliases(&self, owner: SymbolId) -> bool {
+        self.ts_members.namespace_has_export_aliases(owner)
+    }
+
+    /// Value bindings exposed by a namespace or enum's public member name.
+    /// Includes resolved export-specifier contributions and ExportValue links,
+    /// excludes type-only exports, and preserves uncertainty for opaque aliases.
+    /// Import aliases retain their binding identities; use [`Self::ts_import_alias_target`]
+    /// when the terminal declaration is needed. Contributions may repeat a symbol.
+    /// This does not infer class properties or other expression types.
+    pub fn ts_namespace_value_targets<'s>(
+        &'s self,
+        owner: SymbolId,
+        name: &'s [u8],
+    ) -> impl Iterator<Item = NameResolution> + 's {
+        self.ts_members.namespace_value_targets(
+            &self.symbols,
+            &self.declarations,
+            &self.scope_maps,
+            owner,
+            name,
+        )
+    }
+
     /// Members declared by any declaration merged into a TypeScript enum.
     pub fn ts_enum_members(&self, owner: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
         self.ts_members.enum_members(owner)

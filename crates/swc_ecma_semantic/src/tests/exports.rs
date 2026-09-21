@@ -776,6 +776,88 @@ fn namespace_export_visibility() {
 }
 
 #[test]
+fn namespace_value_targets() {
+    let allocator = Allocator::new();
+    let options = ts_module_options();
+
+    let source = "declare namespace N { const original: number; export { original as value }; export type { original as erased }; export interface mixed {} export { original as mixed }; }";
+    let (ast, semantic) = analyze_source(&allocator, source, options);
+    let owner = symbol_named(&ast, &semantic, b"N");
+    let original = symbol_named(&ast, &semantic, b"original");
+    assert_eq!(
+        semantic
+            .ts_namespace_value_targets(owner, b"value")
+            .collect::<Vec<_>>(),
+        [NameResolution::Resolved(original)]
+    );
+    assert_eq!(
+        semantic
+            .ts_namespace_value_targets(owner, b"mixed")
+            .collect::<Vec<_>>(),
+        [NameResolution::Resolved(original)]
+    );
+    assert!(
+        semantic
+            .ts_namespace_value_targets(owner, b"erased")
+            .next()
+            .is_none()
+    );
+    assert!(
+        semantic
+            .ts_namespace_value_targets(owner, b"original")
+            .next()
+            .is_none()
+    );
+
+    let source = "enum E { A=42 }";
+    let (ast, semantic) = analyze_source(&allocator, source, options);
+    let owner = symbol_named(&ast, &semantic, b"E");
+    let member = semantic.ts_enum_member(owner, b"A").unwrap();
+    assert_eq!(
+        semantic
+            .ts_namespace_value_targets(owner, b"A")
+            .collect::<Vec<_>>(),
+        [NameResolution::Resolved(member)]
+    );
+
+    let source = "import * as remote from 'pkg'; namespace N { export import A=remote.Unknown; }";
+    let (ast, semantic) = analyze_source(&allocator, source, options);
+    let owner = symbol_named(&ast, &semantic, b"N");
+    let alias = semantic.ts_namespace_member(owner, b"A").unwrap();
+    assert_eq!(
+        semantic
+            .ts_namespace_value_targets(owner, b"A")
+            .collect::<Vec<_>>(),
+        [NameResolution::Uncertain { candidate: alias }]
+    );
+
+    let source = "import * as remote from 'pkg'; declare namespace N { import original=remote.value; export { original as value }; export type { original as erased }; } namespace N { export const result=value; }";
+    let (ast, semantic) = analyze_source(&allocator, source, options);
+    let owner = symbol_named(&ast, &semantic, b"N");
+    let alias = symbol_named(&ast, &semantic, b"original");
+    let reference = semantic
+        .iter_references()
+        .find(|entry| ast.get_utf8(entry.reference.name) == "value")
+        .unwrap();
+    assert_eq!(
+        reference.reference.resolution(),
+        NameResolution::Uncertain { candidate: alias }
+    );
+    assert_eq!(
+        semantic
+            .ts_namespace_value_targets(owner, b"value")
+            .collect::<Vec<_>>(),
+        [NameResolution::Uncertain { candidate: alias }]
+    );
+    assert!(
+        semantic
+            .ts_namespace_value_targets(owner, b"erased")
+            .next()
+            .is_none()
+    );
+}
+
+#[test]
 fn namespace_export_aliases() {
     let allocator = Allocator::new();
     let ts_module = ts_module_options();
