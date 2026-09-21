@@ -83,15 +83,12 @@ pub(super) fn check_reg_exp_literal(builder: &mut SemanticBuilder<'_, '_>, liter
 pub(super) fn check_identifier_reference(
     builder: &mut SemanticBuilder<'_, '_>,
     identifier: IdentifierReference,
+    name: &[u8],
 ) {
     if builder.state.in_type_position() {
         return;
     }
     let node_id = identifier.node_id();
-    let name = builder
-        .ast
-        .get_utf8(identifier.name(builder.ast))
-        .as_bytes();
     builder.check_strict_reserved(name, node_id, "an identifier");
     if name == b"arguments" && !is_arguments_available(builder) {
         builder.report(
@@ -102,15 +99,12 @@ pub(super) fn check_identifier_reference(
     }
 }
 
-pub(super) fn check_binding_identifier(
-    builder: &mut SemanticBuilder<'_, '_>,
+pub(super) fn check_binding_identifier<'traverse>(
+    builder: &mut SemanticBuilder<'traverse, '_>,
     identifier: BindingIdentifier,
+    name: &'traverse [u8],
 ) -> Option<PreparedDeclaration> {
     let node_id = identifier.node_id();
-    let name = builder
-        .ast
-        .get_utf8(identifier.name(builder.ast))
-        .as_bytes();
     let flags = builder.state.symbols.pending.flags;
     if flags.is_empty() {
         return None;

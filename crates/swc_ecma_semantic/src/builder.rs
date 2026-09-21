@@ -230,7 +230,18 @@ impl SemanticBuilder<'_, '_> {
             NodeKindData::StringLiteral(node) => js::check_string_literal(self, node),
             NodeKindData::NumericLiteral(node) => js::check_numeric_literal(self, node),
             NodeKindData::RegExpLiteral(node) => js::check_reg_exp_literal(self, node),
-            NodeKindData::IdentifierReference(node) => js::check_identifier_reference(self, node),
+            NodeKindData::IdentifierReference(node) => {
+                let tree = self.ast;
+                let name = tree.get_utf8(node.name(tree)).as_bytes();
+                js::check_identifier_reference(self, node, name);
+                if tree.is_ts() && name == b"await" {
+                    ts::check_contextual_await(
+                        self,
+                        node.node_id(),
+                        "'await' cannot be used as an identifier here",
+                    );
+                }
+            }
             NodeKindData::LabelIdentifier(node) => js::check_label_identifier(self, node),
             NodeKindData::BinaryExpression(node) => js::check_binary_expression(self, node),
             NodeKindData::UnaryExpression(node) => js::check_unary_expression(self, node),
@@ -424,7 +435,17 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let flags = self.enter_node(node.node_id());
         node.visit_children_with(self);
         let prepared = if self.check_syntax {
-            js::check_binding_identifier(self, node)
+            let tree = self.ast;
+            let name = tree.get_utf8(node.name(tree)).as_bytes();
+            let prepared = js::check_binding_identifier(self, node, name);
+            if tree.is_ts() && name == b"await" {
+                ts::check_contextual_await(
+                    self,
+                    node.node_id(),
+                    "'await' cannot be used as a binding identifier here",
+                );
+            }
+            prepared
         } else {
             None
         };

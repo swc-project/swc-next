@@ -448,3 +448,56 @@ fn is_export_assignment_container(builder: &SemanticBuilder<'_, '_>) -> bool {
         _ => false,
     }
 }
+
+/// Mirrors TypeScript's `isInTopLevelContext` test for contextual identifiers.
+/// The parser owns `[Await]` grammar errors; this checker only adds the external
+/// module rule, whose boundary depends on the surrounding runtime container.
+fn is_in_top_level_context(context: &SemanticBuilder<'_, '_>, node: NodeId) -> bool {
+    let tree = context.ast;
+    for ancestor in context.ancestors().skip(1) {
+        match tree.kind_data(ancestor) {
+            NodeKindData::Program(_) => return true,
+            NodeKindData::Function(function) => {
+                let is_declaration_name = function.function_type(tree)
+                    == FunctionType::FunctionDeclaration
+                    && function.id(tree).is_some_and(|id| id.node_id() == node);
+                if !is_declaration_name {
+                    return function.r#async(tree);
+                }
+            }
+            NodeKindData::TsFunction(function) => {
+                let is_declaration_name = function.id(tree).is_some_and(|id| id.node_id() == node);
+                if !is_declaration_name {
+                    return function.r#async(tree);
+                }
+            }
+            NodeKindData::ArrowFunctionExpression(_)
+            | NodeKindData::StaticBlock(_)
+            | NodeKindData::PropertyDefinition(_)
+            | NodeKindData::MethodDefinition(_)
+            | NodeKindData::TsMethodDefinition(_)
+            | NodeKindData::TsEnumDeclaration(_)
+            | NodeKindData::TsModuleDeclaration(_) => return false,
+            _ => {}
+        }
+    }
+    false
+}
+
+#[cold]
+#[inline(never)]
+pub(super) fn check_contextual_await(
+    checker: &mut SemanticBuilder<'_, '_>,
+    node: NodeId,
+    message: &'static str,
+) {
+    let context = &*checker;
+    if context.state.in_type_position()
+        || context.state.symbols.in_ambient_context()
+        || !context.ast.is_module()
+        || !is_in_top_level_context(context, node)
+    {
+        return;
+    }
+    checker.report(context.ast.span(node), message, ReportOptions::default());
+}
