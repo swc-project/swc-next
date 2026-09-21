@@ -8,15 +8,17 @@ mod development;
 mod display_name;
 mod lower;
 mod options;
+mod refresh;
 mod self_context;
 mod source;
 mod text;
 
 pub(crate) use lower::JsxLowerer;
-pub use options::{JsxOptions, JsxRuntime};
+pub use options::{JsxOptions, JsxRuntime, ReactRefreshOptions};
 
 pub(crate) use development::transform as transform_development_attributes;
 pub(crate) use display_name::DisplayName;
+pub(crate) use refresh::transform as transform_refresh;
 
 pub fn transform<'a>(
     program: Program,

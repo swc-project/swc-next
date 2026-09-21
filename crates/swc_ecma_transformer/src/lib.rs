@@ -69,6 +69,19 @@ impl Transformer {
         } else {
             Normalizer::normalize(program, ast);
         }
+        let refresh = jsx.as_ref().and_then(|options| options.refresh.as_ref());
+        let refresh_semantic = refresh.map(|refresh| {
+            jsx::transform_refresh(program, ast, semantic, refresh);
+            analyze(
+                ast,
+                AnalyzeOptions {
+                    check_syntax: false,
+                    build_module_record: false,
+                },
+            )
+            .semantic
+        });
+        let semantic = refresh_semantic.as_ref().unwrap_or(semantic);
         let jsx = jsx.map(|mut options| {
             options.jsx_self |= react_jsx_self;
             options.jsx_source |= react_jsx_source;

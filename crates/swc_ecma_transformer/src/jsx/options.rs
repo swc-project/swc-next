@@ -25,6 +25,7 @@ pub struct JsxOptions {
     pub pure: Option<bool>,
     pub use_built_ins: Option<bool>,
     pub use_spread: Option<bool>,
+    pub refresh: Option<ReactRefreshOptions>,
 }
 
 impl Default for JsxOptions {
@@ -42,6 +43,21 @@ impl Default for JsxOptions {
             pure: None,
             use_built_ins: None,
             use_spread: None,
+            refresh: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct ReactRefreshOptions {
+    pub refresh_reg: String,
+}
+
+impl Default for ReactRefreshOptions {
+    fn default() -> Self {
+        Self {
+            refresh_reg: "$RefreshReg$".to_owned(),
         }
     }
 }
