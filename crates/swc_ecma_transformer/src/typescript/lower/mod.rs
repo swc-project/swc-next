@@ -1,10 +1,13 @@
 use super::{TypeScriptOptions, analysis::TypeScriptAnalysis};
-use crate::comments::CommentRetargets;
+use crate::{comments::CommentRetargets, uid::UidGenerator};
 use swc_next_ecma_ast::{Ast, Program, SourceType, VisitMut};
 use swc_next_ecma_semantic::Semantic;
 
 mod erase;
+mod lexical_env;
 mod modules;
+mod names;
+mod parameters;
 mod statements;
 mod visit;
 
@@ -16,6 +19,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     analysis: TypeScriptAnalysis,
     semantic: &'visit Semantic<'ast>,
     comment_retargets: CommentRetargets,
+    uid_generator: Option<UidGenerator<'ast>>,
 }
 
 impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
@@ -31,6 +35,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             analysis,
             semantic,
             comment_retargets: CommentRetargets::default(),
+            uid_generator: None,
         }
     }
 

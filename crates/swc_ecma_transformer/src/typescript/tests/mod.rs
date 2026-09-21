@@ -7,6 +7,7 @@ use super::{TypeScriptOptions, transform};
 use crate::normalize::Normalizer;
 
 mod modules;
+mod parameters;
 mod syntax;
 
 pub(super) fn transformed_code(source: &str) -> String {
@@ -51,4 +52,29 @@ fn transformed_code_with_pipeline(
     swc_next_ecma_codegen::print(&allocator, &ast, Default::default())
         .code
         .to_owned()
+}
+
+/// Analyze printed JavaScript, so assertions cover the bindings consumers see.
+pub(super) fn with_output_semantic(
+    source: &str,
+    check: impl FnOnce(&swc_next_ecma_ast::Ast<'_>, &swc_next_ecma_semantic::Semantic<'_>),
+) {
+    let allocator = Allocator::new();
+    let parsed = Parser::init(
+        &allocator,
+        source,
+        ParserOptions::default(),
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty());
+    let analyzed = analyze(
+        &parsed.ast,
+        AnalyzeOptions {
+            check_syntax: true,
+            build_module_record: false,
+        },
+    );
+    assert!(analyzed.diagnostics.is_empty());
+    check(&parsed.ast, &analyzed.semantic);
 }

@@ -135,6 +135,7 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     }
 
     fn visit_mut_class(&mut self, class: Class) -> Option<Class> {
+        self.lower_parameter_properties(class);
         class.set_type_parameters(self.ast(), None);
         class.set_super_type_arguments(self.ast(), None);
         class.set_implements(self.ast(), SubRange::empty());
