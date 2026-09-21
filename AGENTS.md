@@ -57,13 +57,14 @@ the parser language.
 | Codegen   | Test262, TypeScript, Babel, local | AST round trip and print idempotence in both parenthesis modes | Same as above                                                    |
 | Resolver  | SWC resolver fixtures             | Name resolution text matches `swc-conformance`                 | Same as above                                                    |
 | Transform | Babel                             | Normalized output matches Babel fixtures                       | `cargo run -p testsuite --bin babel_transform`                   |
+| Transform | TypeScript                        | TS-only full-corpus output invariants                          | `cargo run -p testsuite --bin typescript_transform`              |
 | ESTree    | Test262, TypeScript               | N-API AST matches `estree-conformance`                         | `pnpm test:conformance`                                          |
 | Codec     | Test262, TypeScript               | JS decode/encode codegen output matches native parse/codegen   | `pnpm test:codec`                                                |
 
 Debug one fixture with:
 
 ```sh
-cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver> --case <test262|typescript|babel|local|swc_resolver> --filter '<unique substring>'
+cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver|typescript_transform> --case <test262|typescript|babel|local|swc_resolver> --filter '<unique substring>'
 ```
 
 ### Minifier Fixtures

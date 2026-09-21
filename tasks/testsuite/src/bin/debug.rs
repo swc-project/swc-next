@@ -1,12 +1,19 @@
 use clap::{Parser, ValueEnum};
 use testsuite::{
     cases::{
-        Case, babel::BabelTransformCase, babel_parser::BabelParserCase, local::LocalCase,
-        swc_resolver::SwcResolverCase, test262::Test262Case, typescript::TypeScriptCase,
+        Case,
+        babel::BabelTransformCase,
+        babel_parser::BabelParserCase,
+        local::LocalCase,
+        swc_resolver::SwcResolverCase,
+        test262::Test262Case,
+        typescript::TypeScriptCase,
+        typescript_transform::{TypeScriptTransformInput, TypeScriptTransformMode},
     },
     runner::{
         Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
         parser::ParserRunner, resolver::ResolverRunner,
+        typescript_transform::TypeScriptTransformRunner,
     },
 };
 
@@ -17,6 +24,8 @@ enum RunnerName {
     #[value(name = "babel_transform")]
     BabelTransform,
     Resolver,
+    #[value(name = "typescript_transform")]
+    TypeScriptTransform,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -45,6 +54,29 @@ struct AppArgs {
     /// Contains filter applied to the fixture path and case name.
     #[arg(long)]
     filter: String,
+
+    /// Override the fixture's TypeScript transform options.
+    #[arg(long, value_enum)]
+    typescript_mode: Option<TypeScriptMode>,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum TypeScriptMode {
+    Default,
+    Verbatim,
+    PreserveConstEnums,
+    VerbatimPreserveConstEnums,
+}
+
+impl From<TypeScriptMode> for TypeScriptTransformMode {
+    fn from(mode: TypeScriptMode) -> Self {
+        match mode {
+            TypeScriptMode::Default => Self::DEFAULT,
+            TypeScriptMode::Verbatim => Self::VERBATIM,
+            TypeScriptMode::PreserveConstEnums => Self::PRESERVE_CONST_ENUMS,
+            TypeScriptMode::VerbatimPreserveConstEnums => Self::VERBATIM_PRESERVE_CONST_ENUMS,
+        }
+    }
 }
 
 fn main() {
@@ -62,8 +94,73 @@ fn main() {
             run_filtered::<ResolverRunner, SwcResolverCase>(&args.filter)
         }
         RunnerName::Resolver => Err("`resolver` runner requires `--case swc_resolver`".into()),
+        RunnerName::TypeScriptTransform if matches!(args.case, CaseSet::TypeScript) => {
+            run_typescript_transform(
+                &args.filter,
+                args.typescript_mode.map(TypeScriptTransformMode::from),
+            )
+        }
+        RunnerName::TypeScriptTransform => {
+            Err("`typescript_transform` runner requires `--case typescript`".into())
+        }
     };
     println!("{:?}", res);
+}
+
+fn run_typescript_transform(
+    filter: &str,
+    mode_override: Option<TypeScriptTransformMode>,
+) -> Result<(), String> {
+    let inputs = TypeScriptTransformInput::read_all()?;
+    let mut units = inputs
+        .iter()
+        .flat_map(|input| {
+            input
+                .units
+                .iter()
+                .map(move |unit| (&input.relative_path, &input.modes, unit))
+        })
+        .filter(|(relative_path, _, unit)| {
+            format!("{} :: {}", relative_path.display(), unit.name).contains(filter)
+        })
+        .collect::<Vec<_>>();
+    if units.len() > 1 {
+        let candidates = units
+            .iter()
+            .map(|(relative_path, _, unit)| format!("{} :: {}", relative_path.display(), unit.name))
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Err(format!(
+            "Multiple cases found for filter `{filter}`; narrow it to one case:\n{candidates}"
+        ));
+    }
+    let (relative_path, modes, unit) = units
+        .pop()
+        .ok_or_else(|| format!("No case found for filter: {filter}"))?;
+    let mode = match (mode_override, modes.as_slice()) {
+        (Some(mode), _) => mode,
+        (None, [mode]) => *mode,
+        (None, modes) => {
+            let modes = modes
+                .iter()
+                .map(|mode| mode.name())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(format!(
+                "Fixture has multiple TypeScript transform option variants ({modes}); pass `--typescript-mode` to select one"
+            ));
+        }
+    };
+    println!("Runner: {}", TypeScriptTransformRunner::NAME);
+    println!(
+        "Case: {} :: {} [{}]",
+        relative_path.display(),
+        unit.name,
+        mode.name()
+    );
+    let output = TypeScriptTransformRunner::transform(mode, unit)?;
+    println!("{output}");
+    Ok(())
 }
 
 fn run_conformance<R>(case_set: CaseSet, filter: &str) -> Result<(), String>

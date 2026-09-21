@@ -10,6 +10,7 @@ pub mod local;
 pub mod swc_resolver;
 pub mod test262;
 pub mod typescript;
+pub mod typescript_transform;
 
 pub trait Case: Sized + Sync {
     const NAME: &'static str;

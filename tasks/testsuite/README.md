@@ -88,6 +88,47 @@ skipped. The full run writes
 `tasks/testsuite/snapshots/babel_transform.snap`, including totals and
 per-package diagnostics.
 
+## TypeScript-only transform tests
+
+Run the dedicated TypeScript-only transform suite:
+
+```sh
+cargo run -p testsuite --bin typescript_transform
+```
+
+The suite reads only source inputs from the pinned TypeScript repository. It
+does not consume TypeScript's emitted JavaScript, diagnostics, compiler
+options other than `verbatimModuleSyntax` and `preserveConstEnums`, baselines,
+or other oracle metadata.
+Every TypeScript input under the `compiler` and `conformance` suites runs
+through parse, read-only semantic analysis, normalization, the TypeScript
+transform, and codegen. The emitted text must also parse as JavaScript or JSX.
+Input parse and semantic errors are reported as rejected negative inputs.
+Output syntax that still requires the decorators or module transform is
+reported separately; every such input has already run through the TS-only
+pipeline, and no other transform is invoked.
+
+Physical TypeScript cases may contain multiple `// @filename:` virtual files.
+The harness transforms each TypeScript virtual file independently. JavaScript,
+JSON, config, and package virtual files are ignored. Every eligible input is
+checked with the cross product of its fixture-level `verbatimModuleSyntax` and
+`preserveConstEnums` option variants; unspecified options use TypeScript's
+`false` defaults. Declaration files must emit no JavaScript; all other output
+must parse as JavaScript or JSX. Exact output belongs in a focused unit test
+only when it expresses a transform boundary or invariant.
+
+The full run writes `tasks/testsuite/snapshots/typescript_transform.snap` with
+total result counts plus any failure or panic diagnostics. Full transform
+output is written to the Git-ignored directory
+`tasks/testsuite/outputs/typescript_transform/`, with one output file per
+physical fixture. Outputs contain one section per virtual file and show option
+variants only when a fixture requests multiple transform option combinations.
+Each output is accompanied by a relative symbolic link to its physical fixture
+so the input and output can be reviewed side by side.
+
+By default, at most 100 full-corpus failures are printed. Pass `--verbose` to
+print all of them.
+
 ## Debug one case
 
 Run one uniquely matched case without updating snapshots:
@@ -99,16 +140,19 @@ cargo run -p testsuite --bin debug -- \
   --filter "optional-chaining - strict"
 ```
 
-Supported runners are `parser`, `codegen`, and `babel_transform`. The case
-argument selects `test262`, `typescript`, `babel`, or `local`; the filter is a contains
-match against the combined fixture path and case name. If it matches multiple
-cases, the command lists candidates that can be used to narrow it.
+Supported runners are `parser`, `codegen`, `babel_transform`, and
+`typescript_transform`. The case argument selects `test262`, `typescript`, `babel`, or
+`local`; the filter is a contains match against the combined fixture path and
+case name. `typescript_transform` requires the `typescript` case set; pass
+`--typescript-mode` to override the fixture's `verbatimModuleSyntax` metadata.
+If a filter matches multiple virtual files, the command lists candidates that
+can be used to narrow it.
 
 ## Recommended workflow
 
 1. Make a parser, semantic, codegen, or transformer change.
-2. Run the complete relevant snapshot command.
-3. Review the snapshot diff. New failures and panics include their fixture
-   paths; pass-count changes should be explained by the implementation or by an
-   intentional fixture update.
+2. Run the complete relevant conformance command.
+3. Review any snapshot diff and invariant failures. New failures and panics
+   include their fixture paths; pass-count changes should be explained by the
+   implementation or by an intentional fixture update.
 4. Run `cargo check -p testsuite` before committing.

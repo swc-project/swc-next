@@ -43,15 +43,21 @@ struct ErrorCodeVariant {
 type TestErrorCodes = HashMap<PathBuf, Vec<ErrorCodeVariant>>;
 
 #[derive(Debug)]
-struct TestUnit {
-    name: String,
-    content: String,
+pub(crate) struct TestUnit {
+    pub(crate) name: String,
+    pub(crate) content: String,
 }
 
 #[derive(Debug)]
-struct ParsedTestContent {
-    test_units: Vec<TestUnit>,
+pub(crate) struct ParsedTestContent {
+    pub(crate) test_units: Vec<TestUnit>,
     global_options: HashMap<String, String>,
+}
+
+impl ParsedTestContent {
+    pub(crate) fn global_option(&self, name: &str) -> Option<&str> {
+        self.global_options.get(name).map(String::as_str)
+    }
 }
 
 pub struct TypeScriptCase {
@@ -119,7 +125,7 @@ impl TypeScriptCase {
             .to_path_buf();
         let path_str = path.to_string_lossy();
         let mut parsed = parse_test_files_and_symlinks(&code, &path_str);
-        merge_tsconfig_options(&path, &mut parsed.global_options);
+        merge_tsconfig_options(&path, &mut parsed);
         validate_baseline_units(&actual_path, &parsed.test_units, error_codes);
         validate_non_program_units(&actual_path, &parsed.test_units, error_codes);
         let check_js = boolean_option(&parsed.global_options, "checkjs");
@@ -198,23 +204,23 @@ fn compiler_case_paths(test_dir: &Path) -> Vec<PathBuf> {
     paths
 }
 
-fn read_typescript_file(path: &Path) -> std::io::Result<String> {
+pub(crate) fn read_typescript_file(path: &Path) -> std::io::Result<String> {
     let bytes = read(path)?;
     if let Some(bytes) = bytes.strip_prefix(&[0xfe, 0xff]) {
-        let code_units = bytes
-            .as_chunks::<2>()
-            .0
+        let (pairs, _) = bytes.as_chunks::<2>();
+        let code_units = pairs
             .iter()
-            .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+            .copied()
+            .map(u16::from_be_bytes)
             .collect::<Vec<_>>();
         return Ok(String::from_utf16_lossy(&code_units));
     }
     if let Some(bytes) = bytes.strip_prefix(&[0xff, 0xfe]) {
-        let code_units = bytes
-            .as_chunks::<2>()
-            .0
+        let (pairs, _) = bytes.as_chunks::<2>();
+        let code_units = pairs
             .iter()
-            .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+            .copied()
+            .map(u16::from_le_bytes)
             .collect::<Vec<_>>();
         return Ok(String::from_utf16_lossy(&code_units));
     }
@@ -563,7 +569,7 @@ fn should_fail(
     })
 }
 
-fn merge_tsconfig_options(path: &Path, global_options: &mut HashMap<String, String>) {
+pub(crate) fn merge_tsconfig_options(path: &Path, parsed: &mut ParsedTestContent) {
     let Some(parent_dir) = path.parent() else {
         return;
     };
@@ -584,7 +590,10 @@ fn merge_tsconfig_options(path: &Path, global_options: &mut HashMap<String, Stri
             Value::Number(value) => value.to_string(),
             _ => continue,
         };
-        global_options.entry(key.to_lowercase()).or_insert(value);
+        parsed
+            .global_options
+            .entry(key.to_lowercase())
+            .or_insert(value);
     }
 }
 
@@ -598,7 +607,7 @@ fn parse_symlink_from_test(line: &str, symlinks: &mut HashMap<String, String>) -
     true
 }
 
-fn parse_test_files_and_symlinks(code: &str, file_name: &str) -> ParsedTestContent {
+pub(crate) fn parse_test_files_and_symlinks(code: &str, file_name: &str) -> ParsedTestContent {
     let mut test_units = Vec::new();
     let mut symlinks = HashMap::new();
     let mut global_options = HashMap::new();
@@ -688,7 +697,7 @@ fn split_content_by_newlines(mut code: &str) -> Vec<&str> {
     lines
 }
 
-fn lang_from_path(path: &str) -> Option<Lang> {
+pub(crate) fn lang_from_path(path: &str) -> Option<Lang> {
     if is_declaration_file_name(path) {
         Some(Lang::Dts)
     } else if path.ends_with(".tsx") {

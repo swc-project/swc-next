@@ -28,3 +28,6 @@ name = "babel_transform"
 
 [[bin]]
 name = "debug"
+
+[[bin]]
+name = "typescript_transform"
