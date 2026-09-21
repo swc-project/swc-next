@@ -13,7 +13,10 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze, name_resolver::resolver as resolve_names};
+use swc_next_ecma_semantic::{
+    AnalyzeOptions, Semantic, analyze, name_resolver::resolver as resolve_names,
+};
+use swc_next_ecma_transformer::{Transformer, TransformerOptions, typescript::TypeScriptOptions};
 use swc_next_type_strip::strip_types;
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
@@ -127,6 +130,29 @@ fn type_strip_options(lang: Lang) -> Options {
 #[bench::hono_types(HONO_TYPES, type_strip_options(Lang::Ts))]
 fn bench_type_strip(source: &str, options: Options) {
     black_box(strip_types(black_box(source), black_box(options)));
+}
+
+fn setup_typescript_transform(source: &'static str) -> (Ast<'static>, Semantic<'static>) {
+    let ast = setup_program(source, Lang::Ts);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    (ast, semantic)
+}
+
+#[library_benchmark]
+#[bench::astro_config(setup_typescript_transform(ASTRO_CONFIG))]
+#[bench::effect_schema_ast(setup_typescript_transform(EFFECT_SCHEMA_AST))]
+#[bench::hono_types(setup_typescript_transform(HONO_TYPES))]
+fn bench_typescript_transform(input: (Ast<'static>, Semantic<'static>)) {
+    let (mut ast, semantic) = input;
+    Transformer::transform(
+        &mut ast,
+        &semantic,
+        TransformerOptions {
+            typescript: Some(TypeScriptOptions::default()),
+            ..TransformerOptions::default()
+        },
+    );
+    black_box(ast);
 }
 
 struct VisitCounter<'visit, 'ast> {
@@ -306,6 +332,11 @@ library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
 library_benchmark_group!(name = type_strip, benchmarks = bench_type_strip);
 
 library_benchmark_group!(
+    name = typescript_transform,
+    benchmarks = bench_typescript_transform
+);
+
+library_benchmark_group!(
     name = visit,
     benchmarks = [bench_visit, bench_visit_mut, bench_traverse]
 );
@@ -315,5 +346,13 @@ main!(
         LibraryBenchmarkConfig::default().tool(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
-    library_benchmark_groups = [parser, semantic, resolver, codegen, type_strip, visit]
+    library_benchmark_groups = [
+        parser,
+        semantic,
+        resolver,
+        codegen,
+        type_strip,
+        typescript_transform,
+        visit
+    ]
 );
