@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::{Ast, Diagnostic, Program, VisitMutWith};
+use swc_next_ecma_ast::{Ast, Diagnostic, Program, Stmt, VisitMutWith};
 use swc_next_ecma_semantic::Semantic;
 
 use crate::syntax::{FollowingTransform, SyntaxResult};
@@ -27,7 +27,7 @@ pub fn transform<'a>(
     options: JsxOptions,
 ) -> Vec<Diagnostic<'static>> {
     let options = comments::resolve_options(program, ast, options);
-    transform_resolved(program, ast, semantic, options, None).diagnostics
+    transform_resolved(program, ast, semantic, options, None, None).diagnostics
 }
 
 pub(crate) fn resolve_options(program: Program, ast: &Ast<'_>, options: JsxOptions) -> JsxOptions {
@@ -40,8 +40,10 @@ pub(crate) fn transform_resolved<'a>(
     semantic: &Semantic<'a>,
     options: JsxOptions,
     source_path: Option<&str>,
+    runtime_import_anchor: Option<Stmt>,
 ) -> SyntaxResult {
     let mut lowerer = lower::JsxLowerer::new(&options, ast, semantic, source_path);
+    lowerer.set_runtime_import_anchor(runtime_import_anchor);
     {
         let mut visitor = lower::JsxVisitor::new(ast, &mut lowerer);
         let _ = program.visit_mut_with(&mut visitor);

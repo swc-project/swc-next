@@ -42,7 +42,10 @@ fn refresh(source: &str) -> String {
 
 fn refresh_lang(source: &str, lang: Lang) -> String {
     let options = JsxOptions {
-        refresh: Some(ReactRefreshOptions::default()),
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
         ..JsxOptions::default()
     };
     transform(source, SourceType::Module, lang, options, lang == Lang::Tsx)
@@ -425,7 +428,10 @@ fn diagnostics() {
 #[test]
 fn refresh_registration() {
     let options = JsxOptions {
-        refresh: Some(ReactRefreshOptions::default()),
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
         ..JsxOptions::default()
     };
     let output = transform(
@@ -444,9 +450,68 @@ fn refresh_registration() {
 }
 
 #[test]
+fn refresh_signatures() {
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "export default function App() { const [foo, setFoo] = useState(0); React.useEffect(() => {}); return <h1>{foo}</h1>; }",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    assert!(output.contains("var _s = $RefreshSig$();"));
+    assert!(output.contains("function App() {\n  _s();"));
+    assert!(output.contains("_s(App, \"useState{[foo, setFoo](0)}\\\\nuseEffect{}\");"));
+    assert!(output.contains("$RefreshReg$(_c, \"App\");"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "const useExternal = () => {}; function App(useParameter) { const useLocal = () => {}; useLocal(); useParameter(); useExternal(); }",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    assert!(output.contains("return [useExternal];"));
+    assert!(!output.contains("return [useLocal"));
+    assert!(!output.contains("return [useParameter"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "function App() { const state = useState(() => { useCustom(); return 0; }); }",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    assert!(output.contains("_s2(App, \"useState{state(() => { useCustom(); return 0; })}\");"));
+}
+
+#[test]
 fn refresh_boundaries() {
     let options = JsxOptions {
-        refresh: Some(ReactRefreshOptions::default()),
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
         ..JsxOptions::default()
     };
     let output = transform(
@@ -460,7 +525,10 @@ fn refresh_boundaries() {
     assert!(output.contains(", \"Header\");"));
 
     let options = JsxOptions {
-        refresh: Some(ReactRefreshOptions::default()),
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
         ..JsxOptions::default()
     };
     let output = transform(
@@ -495,6 +563,41 @@ fn refresh_boundaries() {
         true,
     );
     assert!(output.contains(", \"Foo$Bar$App\");"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            refresh_reg: "import.meta.refreshReg".to_owned(),
+            refresh_sig: "import.meta.refreshSig".to_owned(),
+            emit_full_signatures: true,
+        }),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "export default function App() { useContext(X); return <Foo />; }",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    assert!(output.contains("var _s = import.meta.refreshSig();"));
+    assert!(output.contains("import.meta.refreshReg(_c, \"App\");"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "export function Shallow() { A.B.C.useHook(); } export function Supported() { const value = GlobalHook.property.useNestedThing(); }",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    assert!(output.contains("_s(Shallow, \"useHook{}\");"));
+    assert!(output.contains("_s2(Supported, \"useNestedThing{value}\", true);"));
 }
 
 #[test]
@@ -514,10 +617,55 @@ fn refresh_component_imports() {
 }
 
 #[test]
+fn refresh_hook_scope() {
+    let output = refresh("function App() { const useLocal = () => {}; useLocal(); }");
+    assert!(output.contains("_s(App, \"useLocal{}\", true);"));
+
+    let output = refresh("function App(useThing) { useThing(); }");
+    assert!(output.contains("_s(App, \"useThing{}\", true);"));
+
+    let output = refresh("const useThing = () => {}; function App() { useThing(); }");
+    assert!(output.contains("_s(App, \"useThing{}\", false, function()"));
+    assert!(output.contains("return [useThing];"));
+}
+
+#[test]
+fn refresh_signature_flow() {
+    let output = refresh("const App = memo(flag ? () => useState(0) : null);");
+    assert!(output.contains("memo(flag ? _s("));
+    assert!(!output.contains("_s(memo("));
+
+    let output = refresh("const App = memo({ render: () => useState(0) });");
+    assert!(output.contains("memo({ render: _s("));
+    assert!(!output.contains("_s(memo("));
+
+    let output = refresh("const App = memo(assigned = () => useState(0));");
+    assert!(output.contains("_s(memo(assigned = _s("));
+
+    let output = refresh("const App = memo(assigned ||= () => useState(0));");
+    assert!(!output.contains("_s(memo("));
+
+    let output = refresh("for (let useThing = () => useState(0); ready; ) useThing();");
+    assert!(output.contains("for (let useThing = _s("));
+    assert!(!output.contains("_s(useThing,"));
+}
+
+#[test]
 fn refresh_typescript() {
     let output = refresh_lang("const App = (() => <div />) satisfies F;", Lang::Tsx);
     assert!(output.contains("const App = () =>"));
     assert!(output.contains("$RefreshReg$(_c, \"App\");"));
+
+    let output = refresh_lang("const App = (() => useState(0)) as F;", Lang::Tsx);
+    assert!(output.contains("const App = () =>"));
+    assert!(output.contains("_s(App, \"useState{(0)}\");"));
+
+    let output = refresh_lang("const App = memo((() => useState(0)) as F);", Lang::Tsx);
+    assert!(output.contains("_s(memo(_c = _s("));
+    assert!(output.contains("$RefreshReg$(_c, \"App$memo\");"));
+
+    let output = refresh_lang("function App() { (useState as any)(0); }", Lang::Tsx);
+    assert!(output.contains("_s(App, \"useState{(0)}\");"));
 
     let output = refresh_lang("const App = require('dep') as F; <App />;", Lang::Tsx);
     assert!(!output.contains("$RefreshReg$"));
@@ -532,6 +680,8 @@ fn refresh_callbacks() {
     let options = JsxOptions {
         refresh: Some(ReactRefreshOptions {
             refresh_reg: "_c".to_owned(),
+            refresh_sig: "_s".to_owned(),
+            ..ReactRefreshOptions::default()
         }),
         ..JsxOptions::default()
     };
@@ -542,11 +692,14 @@ fn refresh_callbacks() {
         options,
         false,
     );
+    assert!(output.contains("var _s2 = _s();"));
     assert!(output.contains("_c(_c2, \"App\");"));
 
     let options = JsxOptions {
         refresh: Some(ReactRefreshOptions {
             refresh_reg: "_s.refreshReg".to_owned(),
+            refresh_sig: "_c.refreshSig".to_owned(),
+            ..ReactRefreshOptions::default()
         }),
         ..JsxOptions::default()
     };
@@ -557,7 +710,44 @@ fn refresh_callbacks() {
         options,
         false,
     );
-    assert!(output.contains("_s.refreshReg(_c, \"App\");"));
+    assert!(output.contains("var _s2 = _c.refreshSig();"));
+    assert!(output.contains("_s.refreshReg(_c2, \"App\");"));
+
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions {
+            refresh_sig: "useSig".to_owned(),
+            emit_full_signatures: true,
+            ..ReactRefreshOptions::default()
+        }),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "function Outer() { function Inner() { useState(0); } useEffect(() => {}); }",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    assert!(output.contains("_s(Inner, \"useState{(0)}\");"));
+    assert!(output.contains("_s2(Outer, \"useEffect{}\");"));
+}
+
+#[test]
+fn refresh_import_order() {
+    let options = JsxOptions {
+        refresh: Some(ReactRefreshOptions::default()),
+        ..JsxOptions::default()
+    };
+    let output = transform(
+        "const _source = initialize(); import { value } from 'source'; export const View = () => <div />;",
+        SourceType::Module,
+        Lang::Jsx,
+        options,
+        false,
+    );
+    let source_import = output.find("from \"source\"").unwrap();
+    let runtime_import = output.find("from \"react/jsx-runtime\"").unwrap();
+    assert!(source_import < runtime_import);
 }
 
 #[test]

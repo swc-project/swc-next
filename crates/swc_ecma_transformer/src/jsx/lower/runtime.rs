@@ -148,11 +148,19 @@ impl<'ast> JsxLowerer<'_, 'ast> {
         let existing = program.body(ast);
         let is_module = ast.source_type() == SourceType::Module;
         let insertion = if is_module && !bindings.is_empty() {
-            existing
-                .iter()
-                .rev()
-                .position(|id| ast.get_node_in_sub_range(id).is_import_declaration(ast))
-                .map_or(0, |index| existing.len() - index)
+            self.runtime_import_anchor
+                .and_then(|anchor| {
+                    existing
+                        .iter()
+                        .position(|id| ast.get_node_in_sub_range(id) == anchor)
+                })
+                .unwrap_or_else(|| {
+                    existing
+                        .iter()
+                        .rev()
+                        .position(|id| ast.get_node_in_sub_range(id).is_import_declaration(ast))
+                        .map_or(0, |index| existing.len() - index)
+                })
         } else {
             0
         };

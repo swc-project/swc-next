@@ -1,4 +1,13 @@
-use swc_next_ecma_ast::{Ast, DUMMY_SP, Expr, ExprData, PropertyKey};
+use swc_next_ecma_ast::{Argument, Ast, AstUtf8, DUMMY_SP, Expr, ExprData, PropertyKey};
+
+pub(super) fn call_expression<I>(ast: &mut Ast<'_>, callee: AstUtf8, arguments: I) -> Expr
+where
+    I: IntoIterator<Item = Argument>,
+{
+    let callee = ast.expr_identifier_reference(DUMMY_SP, callee);
+    let arguments = ast.add_sub_range(arguments);
+    ast.expr_call_expression(DUMMY_SP, callee, None, arguments, false, false)
+}
 
 pub(super) fn qualified_name_expression(ast: &mut Ast<'_>, name: &str) -> Expr {
     let mut parts = name.split('.');
