@@ -1,9 +1,9 @@
 transform * babel
 ========================
-Positive Passed: 525/4082 (12.86%)
+Positive Passed: 559/4082 (13.69%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/4082 (0.00%)
-Skipped: 3445/4082 (84.39%)
+Skipped: 3442/4082 (84.32%)
 Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-external/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map/input.js - transformed output differs from expected output
@@ -18,26 +18,10 @@ Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/pa
 Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/regression/15161/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpression/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-optional-chaining/test/fixtures/regression/10959-transform-ts/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/cast/as-expression/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/cast/multiple-assert-and-assign/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/cast/non-null-assertion/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/cast/type-assertion/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/catch-clause/param-type/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/abstract-allowDeclareFields-false/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/abstract-allowDeclareFields-true/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/accessor-allowDeclareFields-false/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/accessor-allowDeclareFields-true/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/field-not-initialized/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/head/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/index-signature/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/methods/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/override/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/parameter-properties-late-super/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/parameter-properties-with-super/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/parameter-properties/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/private-method-override/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/uninitialized-definite/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/declarations/erased/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/declarations/nested-namespace/input.mjs - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/enum/boolean-value/input.ts - transformed output differs from expected output
@@ -63,17 +47,10 @@ Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescrip
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/export-const-enums/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/imported-types-only-remove-type-imports/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/interface/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/function/overloads/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/function/parameters/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/function/this-parameter/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/function/tuple-parameter/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-type-referenced-in-imports-equal-no/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/enum-id/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/enum-value/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/type-only-export-specifier-2/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/lvalues/as-expression/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/lvalues/non-null/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/lvalues/type-assertion/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/namespace/canonical/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/namespace/clobber-class/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/namespace/clobber-enum/input.ts - transformed output differs from expected output
@@ -108,11 +85,3 @@ Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescrip
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/optimize-const-enums/merged/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/optimize-const-enums/namespace/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/regression/15768/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/type-arguments/call/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/type-arguments/expr/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/type-arguments/new/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/type-arguments/optional-call/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/type-arguments/tagged-template/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/type-arguments/tsx/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/variable-declaration/exclamation/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/variable-declaration/types-erased/input.ts - transformed output differs from expected output
