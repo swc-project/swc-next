@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_ast::{FormalParameterPatternData, Lang, SourceType, TsParameterProperty};
 
 use super::*;
 use crate::binder::{TsImportAliasIssue, TsNamespaceExportAliasIssue};
@@ -500,4 +500,39 @@ pub(super) fn check_contextual_await(
         return;
     }
     checker.report(context.ast.span(node), message, ReportOptions::default());
+}
+
+fn parameter_property_binding(
+    tree: &Ast<'_>,
+    property: TsParameterProperty,
+) -> Option<swc_next_ecma_ast::BindingIdentifier> {
+    let parameter = property.parameter(tree);
+    let pattern = parameter.pattern(tree);
+    let FormalParameterPatternData::BindingIdentifier(identifier) =
+        tree.formal_parameter_pattern_data(pattern)
+    else {
+        return None;
+    };
+    Some(identifier)
+}
+
+pub(super) fn check_parameter_property(
+    checker: &mut SemanticBuilder<'_, '_>,
+    property: TsParameterProperty,
+) {
+    let Some(binding) = parameter_property_binding(checker.ast, property) else {
+        checker.report(
+            checker.ast.span(property.node_id()),
+            "A parameter property must use an identifier binding",
+            ReportOptions::default(),
+        );
+        return;
+    };
+    if checker.ast.get_utf8(binding.name(checker.ast)).as_bytes() == b"constructor" {
+        checker.report(
+            checker.ast.span(property.node_id()),
+            "A parameter property cannot be named 'constructor'",
+            ReportOptions::default(),
+        );
+    }
 }

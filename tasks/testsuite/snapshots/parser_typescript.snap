@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1619/2992 (54.11%)
+Negative Passed: 1628/2992 (54.41%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -150,11 +150,8 @@ Failed: fixtures/typescript/tests/cases/compiler/declFileWithErrorsInInputDeclar
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitBundlerConditions.ts - /node_modules/pkg/index.d.cts: semantic: Cannot use 'export' declaration outside a module at 0..10
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitCommonJsModuleReferencedType.ts - r/entry.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitComputedPropertyNameEnum3.ts - type.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitDestructuringParameterProperties.ts - declarationEmitDestructuringParameterProperties.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitDestructuringParameterProperties2.ts - declarationEmitDestructuringParameterProperties2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitDestructuringWithOptionalBindingParameters.ts - declarationEmitDestructuringWithOptionalBindingParameters.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitIndexTypeNotFound.ts - declarationEmitIndexTypeNotFound.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNestedBindingPattern.ts - declarationEmitNestedBindingPattern.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitObjectAssignedDefaultExport.ts - index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitReexportedSymlinkReference3.ts - monorepo/pkg3/src/keys.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitRelativeModuleError.ts - declarationEmitRelativeModuleError.ts: expected a parse or early error, but pipeline succeeded
@@ -512,7 +509,6 @@ Failed: fixtures/typescript/tests/cases/compiler/parameterDecoratorsEmitCrash.ts
 Failed: fixtures/typescript/tests/cases/compiler/parameterInitializerBeforeDestructuringEmit.ts - parameterInitializerBeforeDestructuringEmit.ts: semantic: Illegal 'use strict' directive in function with non-simple parameter list at 104..117
 Failed: fixtures/typescript/tests/cases/compiler/parameterPropertyInConstructor1.ts - parameterPropertyInConstructor1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/parameterPropertyInConstructor2.ts - parameterPropertyInConstructor2.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/parameterPropertyInConstructor3.ts - parameterPropertyInConstructor3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/parseInvalidNonNullableTypes.ts - parseInvalidNonNullableTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/parseInvalidNullableTypes.ts - parseInvalidNullableTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/pathMappingBasedModuleResolution_rootImport_aliasWithRoot_realRootFile.ts - /root/a.ts: expected a parse or early error, but pipeline succeeded
@@ -840,11 +836,6 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructur
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration1ES5.ts - destructuringParameterDeclaration1ES5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration1ES5iterable.ts - destructuringParameterDeclaration1ES5iterable.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration8.ts - destructuringParameterDeclaration8.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterProperties1.ts - destructuringParameterProperties1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterProperties2.ts - destructuringParameterProperties2.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterProperties3.ts - destructuringParameterProperties3.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterProperties4.ts - destructuringParameterProperties4.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterProperties5.ts - destructuringParameterProperties5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringSpread.ts - destructuringSpread.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/missingAndExcessProperties.ts - missingAndExcessProperties.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/optionalBindingParameters1.ts - optionalBindingParameters1.ts: expected a parse or early error, but pipeline succeeded

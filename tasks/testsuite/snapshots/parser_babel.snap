@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2233/2235 (99.91%)
-Negative Passed: 1643/1743 (94.26%)
+Negative Passed: 1644/1743 (94.32%)
 Panicked: 0/3978 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
@@ -32,7 +32,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modi
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-index-signatures/input.ts - typescript/class/modifiers-index-signatures: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-invalid-order/input.ts - typescript/class/modifiers-invalid-order: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-override-errors/input.ts - typescript/class/modifiers-override-errors: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/parameter-properties-binding-patterns/input.ts - typescript/class/parameter-properties-binding-patterns: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-abstract/input.ts - typescript/class/private-fields-modifier-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-private/input.ts - typescript/class/private-fields-modifier-private: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-protected/input.ts - typescript/class/private-fields-modifier-protected: expected a parse or early error, but pipeline succeeded
