@@ -364,7 +364,28 @@ fn field_source(node: &str, field: &str) -> String {
     match (node, raw) {
         ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => "_directives".into(),
         ("Program" | "FunctionBody" | "TsModuleBlock", "body") => "_body".into(),
-        ("FormalParameter", "pattern") => "n".into(),
+        ("FormalParameter", "pattern") => "_pattern".into(),
+        ("FormalParameter", "initializer") => "_initializer".into(),
+        ("FormalParameter", "type_annotation" | "optional") => format!("_pattern.{js}"),
+        ("VariableDeclarator", "type_annotation") => "n.id?.typeAnnotation".into(),
+        ("CatchClause", "type_annotation") => "n.param?.typeAnnotation".into(),
+        ("TsIndexSignatureParameter", "name") => "n".into(),
+        (
+            "Function"
+            | "TsFunction"
+            | "TsFunctionType"
+            | "TsMethodSignature"
+            | "TsCallSignatureDeclaration",
+            "this_param",
+        ) => "_thisParam".into(),
+        (
+            "Function"
+            | "TsFunction"
+            | "TsFunctionType"
+            | "TsMethodSignature"
+            | "TsCallSignatureDeclaration",
+            "params",
+        ) => "_params".into(),
         ("FormalParameters", "items") => "_items".into(),
         ("FormalParameters", "rest") => "_rest".into(),
         ("FormalParameters", "kind") => "0".into(),
@@ -454,6 +475,22 @@ fn write_special_prelude(output: &mut String, name: &str) {
     }
 "#,
         ),
+        "FormalParameter" => output.push_str(
+            r#"    const _hasInitializer = n.type === "AssignmentPattern";
+    const _pattern = _hasInitializer ? n.left : n;
+    const _initializer = _hasInitializer ? n.right : null;
+"#,
+        ),
+        "Function"
+        | "TsFunction"
+        | "TsFunctionType"
+        | "TsMethodSignature"
+        | "TsCallSignatureDeclaration" => output.push_str(
+            r#"    const _first = n.params?.[0];
+    const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
+    const _params = _thisParam === null ? n.params : n.params.slice(1);
+"#,
+        ),
         "FormalParameters" => output.push_str(
             r#"    const _items = [];
     let _rest = null;
@@ -499,14 +536,14 @@ impl Dispatch {
     fn new(type_id: TypeId, schema: &Schema) -> Self {
         let mut concrete = Vec::new();
         collect_concrete(type_id, schema, &mut HashSet::new(), &mut concrete);
-        Self::from_concrete(concrete, schema)
+        Self::from_concrete(concrete)
     }
 
-    fn from_concrete(concrete: Vec<String>, schema: &Schema) -> Self {
+    fn from_concrete(concrete: Vec<String>) -> Self {
         let mut groups: HashMap<String, Vec<String>> = HashMap::new();
         let mut order = Vec::new();
         for concrete_name in concrete {
-            for estree in accepted_estree_types(&concrete_name, schema) {
+            for estree in accepted_estree_types(&concrete_name) {
                 if !groups.contains_key(&estree) {
                     order.push(estree.clone());
                 }
@@ -619,11 +656,6 @@ fn write_contextual_encoders(output: &mut String, dispatch: &EncoderDispatch) {
         }
 
         writeln!(output, "  function enc{name}(n) {{").unwrap();
-        if name == "FormalParameterPattern" {
-            output.push_str(
-                "    if (n.type === \"Identifier\" && n.name === \"this\") return encTsThisParameter(n);\n",
-            );
-        }
         if name == "JsxAttributeValue" {
             output.push_str(
                 "    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n",
@@ -731,35 +763,17 @@ fn collect_concrete(
     }
 }
 
-fn accepted_estree_types(name: &str, schema: &Schema) -> Vec<String> {
+fn accepted_estree_types(name: &str) -> Vec<String> {
     match name {
         "FunctionBody" => vec!["BlockStatement".into()],
         "TsModuleBlock" => vec!["TSModuleBlock".into()],
-        "FormalParameter" => {
-            let ast = schema.types.iter().find_map(|ty| match ty {
-                AstType::Struct(ast) if ast.name == name => Some(ast),
-                _ => None,
-            });
-            let Some(ast) = ast else {
-                return Vec::new();
-            };
-            let mut concrete = Vec::new();
-            collect_concrete(
-                ast.fields[0].type_id,
-                schema,
-                &mut HashSet::new(),
-                &mut concrete,
-            );
-            let mut result = Vec::new();
-            for concrete in concrete {
-                for ty in accepted_estree_types(&concrete, schema) {
-                    if !result.contains(&ty) {
-                        result.push(ty);
-                    }
-                }
-            }
-            result
-        }
+        "FormalParameter" => vec![
+            "Identifier".into(),
+            "ArrayPattern".into(),
+            "ObjectPattern".into(),
+            "AssignmentPattern".into(),
+        ],
+        "TsIndexSignatureParameter" => vec!["Identifier".into()],
         "Directive" => vec!["ExpressionStatement".into()],
         "StringLiteral" | "NumericLiteral" | "BigIntLiteral" | "BooleanLiteral" | "NullLiteral"
         | "RegExpLiteral" => vec!["Literal".into()],
@@ -788,7 +802,7 @@ fn accepted_estree_types(name: &str, schema: &Schema) -> Vec<String> {
 
 fn estree_type(name: &str) -> String {
     match name {
-        "BindingRestElement" => "RestElement".into(),
+        "BindingRestElement" | "FormalParameterRest" => "RestElement".into(),
         "ObjectProperty" => "Property".into(),
         "IdentifierReference" | "BindingIdentifier" | "IdentifierName" | "LabelIdentifier" => {
             "Identifier".into()

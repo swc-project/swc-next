@@ -86,6 +86,7 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
             FunctionType::FunctionExpression,
             None,
             None,
+            None,
             params,
             None,
             body,

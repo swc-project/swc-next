@@ -316,28 +316,20 @@ impl<'ast> Resolver<'ast> {
         for id in parameters.items(self.ast).iter() {
             let item = self.ast.get_node_in_sub_range(id);
             let pattern = match self.ast.formal_parameter_item_data(item) {
-                FormalParameterItemData::FormalParameter(parameter) => {
-                    let FormalParameterPatternData::BindingPattern(pattern) = self
-                        .ast
-                        .formal_parameter_pattern_data(parameter.pattern(self.ast))
-                    else {
-                        continue;
-                    };
-                    pattern
-                }
+                FormalParameterItemData::FormalParameter(parameter) => parameter.pattern(self.ast),
                 FormalParameterItemData::TsParameterProperty(property) => {
-                    property.parameter(self.ast)
+                    property.parameter(self.ast).pattern(self.ast)
                 }
             };
             let ast = self.ast;
-            for_each_binding_id(ast, pattern, |identifier| {
+            for_each_binding_id(ast, pattern.into(), |identifier| {
                 self.declare(identifier, DeclKind::Param);
             });
         }
 
         if let Some(rest) = parameters.rest(self.ast) {
             let ast = self.ast;
-            for_each_binding_id(ast, rest.argument(ast), |identifier| {
+            for_each_binding_id(ast, rest.argument(ast).into(), |identifier| {
                 self.declare(identifier, DeclKind::Param);
             });
         }

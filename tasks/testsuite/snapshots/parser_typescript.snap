@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1600/2992 (53.48%)
+Negative Passed: 1602/2992 (53.54%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -755,8 +755,6 @@ Failed: fixtures/typescript/tests/cases/conformance/decorators/class/constructor
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/constructor/parameter/decoratorOnClassConstructorParameter1.ts - decoratorOnClassConstructorParameter1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/decoratorOnClassMethod11.ts - decoratorOnClassMethod11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/decoratorOnClassMethodOverload1.ts - decoratorOnClassMethodOverload1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/parameter/decoratorOnClassMethodThisParameter.ts - decoratorOnClassMethodThisParameter.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/decorators/invalid/decoratorOnFunctionParameter.ts - decoratorOnFunctionParameter.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionInScriptContext1.ts - 1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumConstantMembers.ts - enumConstantMembers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumMergingErrors.ts - enumMergingErrors.ts: expected a parse or early error, but pipeline succeeded

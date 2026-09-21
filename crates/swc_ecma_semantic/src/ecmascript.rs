@@ -1,4 +1,6 @@
-use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKind, NodeKindData};
+use swc_next_ecma_ast::{
+    Ast, FormalParameterItemData, FormalParameters, NodeId, NodeKind, NodeKindData,
+};
 
 pub(crate) fn import_equals_reference_node(
     tree: &Ast<'_>,
@@ -34,19 +36,22 @@ pub(crate) fn find_parameter_expression(
     params: FormalParameters,
 ) -> Option<NodeId> {
     for parameter in params.items(tree).iter() {
-        let parameter = tree.get_node_in_sub_range(parameter).node_id();
-        let pattern = match tree.kind_data(parameter) {
-            NodeKindData::FormalParameter(parameter) => parameter.pattern(tree).node_id(),
-            NodeKindData::TsParameterProperty(parameter) => parameter.parameter(tree).node_id(),
-            _ => parameter,
+        let item = tree.get_node_in_sub_range(parameter);
+        let parameter = match tree.formal_parameter_item_data(item) {
+            FormalParameterItemData::FormalParameter(parameter) => parameter,
+            FormalParameterItemData::TsParameterProperty(property) => property.parameter(tree),
         };
+        if let Some(initializer) = parameter.initializer(tree) {
+            return Some(initializer.node_id());
+        }
+        let pattern = parameter.pattern(tree).node_id();
         if let Some(found) = find_pattern_expression(tree, Some(pattern)) {
             return Some(found);
         }
     }
     params
         .rest(tree)
-        .and_then(|rest| find_pattern_expression(tree, Some(rest.node_id())))
+        .and_then(|rest| find_pattern_expression(tree, Some(rest.argument(tree).node_id())))
 }
 
 /// <https://tc39.es/ecma262/#sec-static-semantics-containsexpression>
@@ -101,16 +106,16 @@ pub(crate) fn find_non_simple_parameter(
     }
 
     for parameter in params.items(tree).iter() {
-        let parameter = tree.get_node_in_sub_range(parameter).node_id();
-        let pattern = match tree.kind_data(parameter) {
-            NodeKindData::FormalParameter(parameter) => parameter.pattern(tree).node_id(),
-            NodeKindData::TsParameterProperty(parameter) => parameter.parameter(tree).node_id(),
-            _ => return Some(parameter),
+        let item = tree.get_node_in_sub_range(parameter);
+        let parameter = match tree.formal_parameter_item_data(item) {
+            FormalParameterItemData::FormalParameter(parameter) => parameter,
+            FormalParameterItemData::TsParameterProperty(property) => property.parameter(tree),
         };
-        if !matches!(
-            tree.node_kind(pattern),
-            NodeKind::BindingIdentifier | NodeKind::TsThisParameter
-        ) {
+        if parameter.initializer(tree).is_some() {
+            return Some(parameter.node_id());
+        }
+        let pattern = parameter.pattern(tree).node_id();
+        if !matches!(tree.node_kind(pattern), NodeKind::BindingIdentifier) {
             return Some(pattern);
         }
     }

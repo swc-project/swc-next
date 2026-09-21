@@ -1267,6 +1267,9 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 self.print_binding(param);
+                if let Some(annotation) = handler.type_annotation(self.ast) {
+                    self.print_ts_annotation(annotation);
+                }
                 self.print(")");
             }
             self.print_space();
@@ -1343,6 +1346,9 @@ impl<'a> Printer<'a> {
             if d.definite(self.ast) {
                 self.print("!");
             }
+            if let Some(annotation) = d.type_annotation(self.ast) {
+                self.print_ts_annotation(annotation);
+            }
             if let Some(value) = d.init(self.ast) {
                 self.print_space();
                 self.print("=");
@@ -1372,12 +1378,12 @@ impl<'a> Printer<'a> {
         }
         if let Some(id) = f.id(self.ast) {
             self.print_space_before_identifier();
-            self.print_binding_identifier(id, false);
+            self.print_binding_identifier(id);
         }
         if let Some(params) = f.type_parameters(self.ast) {
             self.print_ts_type_params(params);
         }
-        self.print_formal_parameters(f.params(self.ast));
+        self.print_formal_parameters(f.params(self.ast), f.this_param(self.ast));
         if let Some(ret) = f.return_type(self.ast) {
             self.print_ts_annotation(ret);
         }
@@ -1403,25 +1409,35 @@ impl<'a> Printer<'a> {
         }
         if let Some(id) = f.id(self.ast) {
             self.print_space();
-            self.print_binding_identifier(id, false);
+            self.print_binding_identifier(id);
         } else if declaration || f.generator(self.ast) {
             self.print_space();
         }
         if let Some(params) = f.type_parameters(self.ast) {
             self.print_ts_type_params(params);
         }
-        self.print_formal_parameters(f.params(self.ast));
+        self.print_formal_parameters(f.params(self.ast), f.this_param(self.ast));
         if let Some(ret) = f.return_type(self.ast) {
             self.print_ts_annotation(ret);
         }
     }
 
-    fn print_formal_parameters(&mut self, params: FormalParameters) {
+    fn print_formal_parameters(
+        &mut self,
+        params: FormalParameters,
+        this_param: Option<TsThisParameter>,
+    ) {
         self.add_source_mapping(params.span(self.ast).start);
         self.print("(");
+        if let Some(parameter) = this_param {
+            self.print("this");
+            if let Some(annotation) = parameter.type_annotation(self.ast) {
+                self.print_ts_annotation(annotation);
+            }
+        }
         let items = params.items(self.ast);
         for (i, id) in items.iter().enumerate() {
-            if i != 0 {
+            if i != 0 || this_param.is_some() {
                 self.print(",");
                 self.print_space();
             }
@@ -1429,24 +1445,20 @@ impl<'a> Printer<'a> {
                 .ast
                 .formal_parameter_item_data(self.ast.get_node_in_sub_range(id))
             {
-                FormalParameterItemData::FormalParameter(p) => {
-                    self.print_formal_pattern(p.pattern(self.ast))
-                }
+                FormalParameterItemData::FormalParameter(p) => self.print_formal_parameter(p),
                 FormalParameterItemData::TsParameterProperty(p) => {
                     self.print_ts_parameter_property(p)
                 }
             }
         }
         if let Some(rest) = params.rest(self.ast) {
-            if !items.is_empty() {
+            if !items.is_empty() || this_param.is_some() {
                 self.print(",");
                 self.print_space();
             }
+            self.print_decorators(rest.decorators(self.ast));
             self.print("...");
-            self.print_binding(rest.argument(self.ast));
-            if rest.optional(self.ast) {
-                self.print("?");
-            }
+            self.print_binding(rest.argument(self.ast).into());
             if let Some(annotation) = rest.type_annotation(self.ast) {
                 self.print_ts_annotation(annotation);
             }
@@ -1454,48 +1466,40 @@ impl<'a> Printer<'a> {
         self.print(")");
     }
 
-    fn print_formal_pattern(&mut self, pattern: FormalParameterPattern) {
-        match self.ast.formal_parameter_pattern_data(pattern) {
-            FormalParameterPatternData::BindingPattern(p) => self.print_binding(p),
-            FormalParameterPatternData::TsThisParameter(p) => {
-                self.print("this");
-                if let Some(a) = p.type_annotation(self.ast) {
-                    self.print_ts_annotation(a);
-                }
-            }
+    fn print_formal_parameter(&mut self, parameter: FormalParameter) {
+        self.print_decorators(parameter.decorators(self.ast));
+        self.print_binding(parameter.pattern(self.ast).into());
+        if parameter.optional(self.ast) {
+            self.print("?");
+        }
+        if let Some(annotation) = parameter.type_annotation(self.ast) {
+            self.print_ts_annotation(annotation);
+        }
+        if let Some(initializer) = parameter.initializer(self.ast) {
+            let old_forbid_in = self.forbid_in;
+            self.forbid_in = false;
+            self.print_space();
+            self.print("=");
+            self.print_space();
+            self.print_expr(initializer, Precedence::Assignment);
+            self.forbid_in = old_forbid_in;
         }
     }
 
-    fn print_binding_identifier(&mut self, id: BindingIdentifier, decorators: bool) {
-        if decorators {
-            self.print_decorators(id.decorators(self.ast));
-        }
+    fn print_binding_identifier(&mut self, id: BindingIdentifier) {
         let name = self.ast.get_utf8(id.name(self.ast));
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
         self.print_identifier(name);
-        if id.optional(self.ast) {
-            self.print("?");
-        }
-        if let Some(annotation) = id.type_annotation(self.ast) {
-            self.print_ts_annotation(annotation);
-        }
     }
 
     fn print_binding(&mut self, binding: BindingPattern) {
         match self.ast.binding_pattern_data(binding) {
-            BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id, true),
+            BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id),
             BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
             BindingPatternData::AssignmentPattern(p) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
-                self.print_decorators(p.decorators(self.ast));
                 self.print_binding(p.left(self.ast));
-                if p.optional(self.ast) {
-                    self.print("?");
-                }
-                if let Some(a) = p.type_annotation(self.ast) {
-                    self.print_ts_annotation(a);
-                }
                 self.print_space();
                 self.print("=");
                 self.print_space();
@@ -1503,16 +1507,9 @@ impl<'a> Printer<'a> {
                 self.forbid_in = old_forbid_in;
             }
             BindingPatternData::BindingRestElement(r) => {
-                self.print_decorators(r.decorators(self.ast));
                 self.add_source_mapping(r.span(self.ast).start);
                 self.print("...");
                 self.print_binding(r.argument(self.ast));
-                if r.optional(self.ast) {
-                    self.print("?");
-                }
-                if let Some(a) = r.type_annotation(self.ast) {
-                    self.print_ts_annotation(a);
-                }
             }
             BindingPatternData::ArrayPattern(a) => self.print_array_pattern(a),
             BindingPatternData::ObjectPattern(o) => self.print_object_pattern(o),
@@ -1520,7 +1517,6 @@ impl<'a> Printer<'a> {
     }
 
     fn print_array_pattern(&mut self, a: ArrayPattern) {
-        self.print_decorators(a.decorators(self.ast));
         self.add_source_mapping(a.span(self.ast).start);
         self.print("[");
         let elements = a.elements(self.ast);
@@ -1547,16 +1543,9 @@ impl<'a> Printer<'a> {
         }
         self.add_source_mapping(a.span(self.ast).end.saturating_sub(1));
         self.print("]");
-        if a.optional(self.ast) {
-            self.print("?");
-        }
-        if let Some(t) = a.type_annotation(self.ast) {
-            self.print_ts_annotation(t);
-        }
     }
 
     fn print_object_pattern(&mut self, o: ObjectPattern) {
-        self.print_decorators(o.decorators(self.ast));
         self.add_source_mapping(o.span(self.ast).start);
         self.print("{");
         let props = o.properties(self.ast);
@@ -1603,12 +1592,6 @@ impl<'a> Printer<'a> {
         }
         self.add_source_mapping(o.span(self.ast).end.saturating_sub(1));
         self.print("}");
-        if o.optional(self.ast) {
-            self.print("?");
-        }
-        if let Some(t) = o.type_annotation(self.ast) {
-            self.print_ts_annotation(t);
-        }
     }
 
     fn print_assignment_target(&mut self, target: AssignmentTarget) {
@@ -2610,7 +2593,7 @@ impl<'a> Printer<'a> {
             if let Some(t) = f.type_parameters(self.ast) {
                 self.print_ts_type_params(t);
             }
-            self.print_formal_parameters(f.params(self.ast));
+            self.print_formal_parameters(f.params(self.ast), f.this_param(self.ast));
             if let Some(t) = f.return_type(self.ast) {
                 self.print_ts_annotation(t);
             }
@@ -2769,27 +2752,24 @@ impl<'a> Printer<'a> {
             self.print("async");
             self.print_space();
         }
-        if let Some(t) = e.type_parameters(self.ast) {
+        let type_parameters = e.type_parameters(self.ast);
+        if let Some(t) = type_parameters {
             self.print_ts_type_params(t);
         }
         let params = e.params(self.ast);
-        let can_omit = self.options.minify
-            && self.can_omit_arrow_parens(params)
-            && e.type_parameters(self.ast).is_none()
-            && e.return_type(self.ast).is_none();
-        if can_omit {
-            let item = params.items(self.ast).get_node(self.ast, 0).unwrap();
-            if let FormalParameterItemData::FormalParameter(p) =
-                self.ast.formal_parameter_item_data(item)
-            {
-                self.print_formal_pattern(p.pattern(self.ast));
+        let return_type = e.return_type(self.ast);
+        let bare_parameter =
+            if self.options.minify && type_parameters.is_none() && return_type.is_none() {
+                self.bare_arrow_parameter(params)
             } else {
-                self.print_formal_parameters(params);
-            }
+                None
+            };
+        if let Some(identifier) = bare_parameter {
+            self.print_binding_identifier(identifier);
         } else {
-            self.print_formal_parameters(params);
+            self.print_formal_parameters(params, None);
         }
-        if let Some(t) = e.return_type(self.ast) {
+        if let Some(t) = return_type {
             self.print_ts_annotation(t);
         }
         self.print_space();
@@ -2854,7 +2834,7 @@ impl<'a> Printer<'a> {
         self.print("class");
         if let Some(id) = c.id(self.ast) {
             self.print(" ");
-            self.print_binding_identifier(id, false);
+            self.print_binding_identifier(id);
         }
         if let Some(t) = c.type_parameters(self.ast) {
             self.print_ts_type_params(t);
@@ -2951,7 +2931,7 @@ impl<'a> Printer<'a> {
                 if let Some(t) = f.type_parameters(self.ast) {
                     self.print_ts_type_params(t);
                 }
-                self.print_formal_parameters(f.params(self.ast));
+                self.print_formal_parameters(f.params(self.ast), f.this_param(self.ast));
                 if let Some(t) = f.return_type(self.ast) {
                     self.print_ts_annotation(t);
                 }
@@ -2992,7 +2972,7 @@ impl<'a> Printer<'a> {
                 if let Some(t) = f.type_parameters(self.ast) {
                     self.print_ts_type_params(t);
                 }
-                self.print_formal_parameters(f.params(self.ast));
+                self.print_formal_parameters(f.params(self.ast), f.this_param(self.ast));
                 if let Some(t) = f.return_type(self.ast) {
                     self.print_ts_annotation(t);
                 }
@@ -3518,7 +3498,7 @@ impl<'a> Printer<'a> {
                     .import_declaration_specifier_data(self.ast.get_node_in_sub_range(id))
                 {
                     ImportDeclarationSpecifierData::ImportDefaultSpecifier(s) => {
-                        self.print_binding_identifier(s.local(self.ast), false);
+                        self.print_binding_identifier(s.local(self.ast));
                         first = false;
                     }
                     ImportDeclarationSpecifierData::ImportNamespaceSpecifier(s) => {
@@ -3529,7 +3509,7 @@ impl<'a> Printer<'a> {
                         self.print("*");
                         self.print_space();
                         self.print("as ");
-                        self.print_binding_identifier(s.local(self.ast), false);
+                        self.print_binding_identifier(s.local(self.ast));
                         first = false;
                     }
                     ImportDeclarationSpecifierData::ImportSpecifier(s) => named.push(s),
@@ -3557,7 +3537,7 @@ impl<'a> Printer<'a> {
                         self.print_space();
                         self.print_space_before_identifier();
                         self.print("as ");
-                        self.print_binding_identifier(s.local(self.ast), false);
+                        self.print_binding_identifier(s.local(self.ast));
                     }
                 }
                 self.print_space();
@@ -3805,7 +3785,7 @@ impl<'a> Printer<'a> {
             if p.out(self.ast) {
                 self.print("out ");
             }
-            self.print_binding_identifier(p.name(self.ast), false);
+            self.print_binding_identifier(p.name(self.ast));
             if let Some(t) = p.constraint(self.ast) {
                 self.print(" extends ");
                 self.print_ts_type_parameter_constraint(
@@ -4022,7 +4002,7 @@ impl<'a> Printer<'a> {
                     self.print("(");
                 }
                 self.print("infer ");
-                self.print_binding_identifier(p.name(self.ast), false);
+                self.print_binding_identifier(p.name(self.ast));
                 if let Some(c) = p.constraint(self.ast) {
                     self.print(" extends ");
                     self.print_ts_type_parameter_constraint(
@@ -4059,7 +4039,7 @@ impl<'a> Printer<'a> {
                 if let Some(p) = t.type_parameters(self.ast) {
                     self.print_ts_type_params(p);
                 }
-                self.print_formal_parameters(t.params(self.ast));
+                self.print_formal_parameters(t.params(self.ast), t.this_param(self.ast));
                 self.print(" => ");
                 self.print_ts_type(
                     t.return_type(self.ast).type_annotation(self.ast),
@@ -4081,7 +4061,7 @@ impl<'a> Printer<'a> {
                 if let Some(p) = t.type_parameters(self.ast) {
                     self.print_ts_type_params(p);
                 }
-                self.print_formal_parameters(t.params(self.ast));
+                self.print_formal_parameters(t.params(self.ast), None);
                 self.print(" => ");
                 self.print_ts_type(
                     t.return_type(self.ast).type_annotation(self.ast),
@@ -4297,7 +4277,7 @@ impl<'a> Printer<'a> {
                 if let Some(p) = s.type_parameters(self.ast) {
                     self.print_ts_type_params(p);
                 }
-                self.print_formal_parameters(s.params(self.ast));
+                self.print_formal_parameters(s.params(self.ast), s.this_param(self.ast));
                 if let Some(a) = s.return_type(self.ast) {
                     self.print_ts_annotation(a);
                 }
@@ -4306,7 +4286,7 @@ impl<'a> Printer<'a> {
                 if let Some(p) = s.type_parameters(self.ast) {
                     self.print_ts_type_params(p);
                 }
-                self.print_formal_parameters(s.params(self.ast));
+                self.print_formal_parameters(s.params(self.ast), s.this_param(self.ast));
                 if let Some(a) = s.return_type(self.ast) {
                     self.print_ts_annotation(a);
                 }
@@ -4316,7 +4296,7 @@ impl<'a> Printer<'a> {
                 if let Some(p) = s.type_parameters(self.ast) {
                     self.print_ts_type_params(p);
                 }
-                self.print_formal_parameters(s.params(self.ast));
+                self.print_formal_parameters(s.params(self.ast), None);
                 if let Some(a) = s.return_type(self.ast) {
                     self.print_ts_annotation(a);
                 }
@@ -4337,7 +4317,9 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
-            self.print_binding_identifier(self.ast.get_node_in_sub_range(id), false);
+            let parameter = self.ast.get_node_in_sub_range(id);
+            self.print_binding_identifier(parameter.name(self.ast));
+            self.print_ts_annotation(parameter.type_annotation(self.ast));
         }
         self.print("]");
         self.print_ts_annotation(s.type_annotation(self.ast));
@@ -4354,7 +4336,7 @@ impl<'a> Printer<'a> {
             TsMappedTypeModifier::None => {}
         }
         self.print("[");
-        self.print_binding_identifier(t.key(self.ast), false);
+        self.print_binding_identifier(t.key(self.ast));
         self.print(" in ");
         self.print_ts_type(t.constraint(self.ast), TsTypePrecedence::Lowest);
         if let Some(n) = t.name_type(self.ast) {
@@ -4385,7 +4367,7 @@ impl<'a> Printer<'a> {
             self.print("declare ");
         }
         self.print("type ");
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast));
         if let Some(p) = d.type_parameters(self.ast) {
             self.print_ts_type_params(p);
         }
@@ -4400,7 +4382,7 @@ impl<'a> Printer<'a> {
             self.print("declare ");
         }
         self.print("interface ");
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast));
         if let Some(p) = d.type_parameters(self.ast) {
             self.print_ts_type_params(p);
         }
@@ -4431,7 +4413,7 @@ impl<'a> Printer<'a> {
             self.print("const ");
         }
         self.print("enum ");
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast));
         self.print_space();
         self.add_source_mapping(d.body(self.ast).span(self.ast).start);
         self.print("{");
@@ -4497,7 +4479,7 @@ impl<'a> Printer<'a> {
     }
     fn print_ts_module_name(&mut self, n: TsModuleName) {
         match self.ast.ts_module_name_data(n) {
-            TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i, false),
+            TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i),
             TsModuleNameData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
                 self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), false)
@@ -4581,7 +4563,7 @@ impl<'a> Printer<'a> {
         if p.readonly(self.ast) {
             self.print("readonly ");
         }
-        self.print_binding(p.parameter(self.ast));
+        self.print_formal_parameter(p.parameter(self.ast));
     }
     fn print_ts_import_equals(&mut self, d: TsImportEqualsDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
@@ -4589,7 +4571,7 @@ impl<'a> Printer<'a> {
         if d.import_kind(self.ast) == ImportOrExportKind::Type {
             self.print("type ");
         }
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast));
         self.print_space();
         self.print("=");
         self.print_space();
@@ -4794,28 +4776,23 @@ impl Printer<'_> {
         }
     }
 
-    fn can_omit_arrow_parens(&self, params: FormalParameters) -> bool {
+    fn bare_arrow_parameter(&self, params: FormalParameters) -> Option<BindingIdentifier> {
         let ast = self.ast;
-        if params.items(ast).len() != 1 || params.rest(ast).is_some() {
-            return false;
+        let items = params.items(ast);
+        if items.len() != 1 || params.rest(ast).is_some() {
+            return None;
         }
-        let item = params.items(ast).get_node(ast, 0).unwrap();
-        let FormalParameterItemData::FormalParameter(param) = ast.formal_parameter_item_data(item)
-        else {
-            return false;
-        };
-        let FormalParameterPatternData::BindingPattern(pattern) =
-            ast.formal_parameter_pattern_data(param.pattern(ast))
-        else {
-            return false;
-        };
-        let BindingPatternData::BindingIdentifier(identifier) = ast.binding_pattern_data(pattern)
-        else {
-            return false;
-        };
-        identifier.decorators(ast).is_empty()
-            && identifier.type_annotation(ast).is_none()
-            && !identifier.optional(ast)
+        let item = items.get_node(ast, 0)?;
+        let param = item.as_formal_parameter(ast)?;
+        let identifier = param.pattern(ast).as_binding_identifier(ast)?;
+        if !param.decorators(ast).is_empty()
+            || param.type_annotation(ast).is_some()
+            || param.initializer(ast).is_some()
+            || param.optional(ast)
+        {
+            return None;
+        }
+        Some(identifier)
     }
 
     #[inline]

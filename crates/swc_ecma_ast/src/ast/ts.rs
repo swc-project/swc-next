@@ -224,7 +224,9 @@ pub struct TsFunction {
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `formal_parameters`
+    /// The explicit receiver type; does not consume a runtime argument.
+    this_param: Option<TsThisParameter>,
+    /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
     return_type: Option<TsTypeAnnotation>,
@@ -993,7 +995,9 @@ pub struct TsParenthesizedType {
 pub struct TsFunctionType {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `formal_parameters`
+    /// The explicit receiver type; does not consume a runtime argument.
+    this_param: Option<TsThisParameter>,
+    /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
     /// `ts_type_annotation` wrapping the return type. The wrapper's span
     /// starts at the `=>` token.
@@ -1168,7 +1172,9 @@ pub struct TsMethodSignature {
     key: PropertyKey,
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `formal_parameters`
+    /// The explicit receiver type; does not consume a runtime argument.
+    this_param: Option<TsThisParameter>,
+    /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent. Setters always have
     /// `None`.
@@ -1194,7 +1200,9 @@ pub struct TsMethodSignature {
 pub struct TsCallSignatureDeclaration {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `formal_parameters`
+    /// The explicit receiver type; does not consume a runtime argument.
+    this_param: Option<TsThisParameter>,
+    /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
     return_type: Option<TsTypeAnnotation>,
@@ -1235,9 +1243,7 @@ pub struct TsConstructSignatureDeclaration {
 /// ```
 #[ast]
 pub struct TsIndexSignature {
-    /// `binding_identifier[]`. Each entry carries its own
-    /// `type_annotation`.
-    parameters: SubRange<BindingIdentifier>,
+    parameters: SubRange<TsIndexSignatureParameter>,
     /// `ts_type_annotation`
     type_annotation: TsTypeAnnotation,
     /// true when preceded by the `readonly` modifier.
@@ -1519,8 +1525,8 @@ pub struct TsGlobalDeclaration {
 pub struct TsParameterProperty {
     /// `decorator[]`. Decorators preceding the modifier, in source order.
     decorators: SubRange<Decorator>,
-    /// `binding_identifier` or `assignment_pattern`.
-    parameter: BindingPattern,
+    /// The parameter declaration wrapped by these property modifiers.
+    parameter: FormalParameter,
     r#override: bool,
     /// true for the `readonly` modifier.
     readonly: bool,
@@ -1705,4 +1711,11 @@ pub struct TsImportEqualsDeclaration {
 pub struct TsExternalModuleReference {
     /// `string_literal` naming the required module.
     expression: StringLiteral,
+}
+
+/// The named, typed binding of an index signature.
+#[ast]
+pub struct TsIndexSignatureParameter {
+    name: BindingIdentifier,
+    type_annotation: TsTypeAnnotation,
 }

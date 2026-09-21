@@ -7,9 +7,9 @@ use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith, Visit, VisitMut,
-    VisitMutWith, VisitWith,
+    Ast, BindingIdentifier, Decorator, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
+    PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith, TsTypeAnnotation, Visit,
+    VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
@@ -199,6 +199,19 @@ impl<'ast> VisitMut<'ast> for VisitMutCounter<'_, 'ast> {
     }
 
     fn visit_mut_label_identifier(&mut self, _node: LabelIdentifier) -> Option<LabelIdentifier> {
+        self.count += 1;
+        None
+    }
+
+    fn visit_mut_ts_type_annotation(
+        &mut self,
+        _node: TsTypeAnnotation,
+    ) -> Option<TsTypeAnnotation> {
+        self.count += 1;
+        None
+    }
+
+    fn visit_mut_decorator(&mut self, _node: Decorator) -> Option<Decorator> {
         self.count += 1;
         None
     }

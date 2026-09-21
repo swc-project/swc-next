@@ -1885,53 +1885,40 @@ impl FormalParameterItem {
 }
 impl FormalParameterPattern {
     #[inline]
-    pub fn is_binding_pattern(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::BindingIdentifier
-                | NodeKind::IdentifierReference
-                | NodeKind::MemberExpression
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::AssignmentPattern
-                | NodeKind::BindingRestElement
-                | NodeKind::ArrayPattern
-                | NodeKind::ObjectPattern
-        )
+    pub fn is_binding_identifier(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::BindingIdentifier
     }
     #[inline]
-    pub fn is_ts_this_parameter(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::TsThisParameter
+    pub fn is_array_pattern(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ArrayPattern
     }
     #[inline]
-    pub fn as_binding_pattern(self, ast: &Ast<'_>) -> Option<BindingPattern> {
+    pub fn is_object_pattern(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ObjectPattern
+    }
+    #[inline]
+    pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
         let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
-        if matches!(
-            kind,
-            NodeKind::BindingIdentifier
-                | NodeKind::IdentifierReference
-                | NodeKind::MemberExpression
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::AssignmentPattern
-                | NodeKind::BindingRestElement
-                | NodeKind::ArrayPattern
-                | NodeKind::ObjectPattern
-        ) {
-            Some(BindingPattern(self.0))
+        if matches!(kind, NodeKind::BindingIdentifier) {
+            Some(BindingIdentifier(self.0))
         } else {
             None
         }
     }
     #[inline]
-    pub fn as_ts_this_parameter(self, ast: &Ast<'_>) -> Option<TsThisParameter> {
+    pub fn as_array_pattern(self, ast: &Ast<'_>) -> Option<ArrayPattern> {
         let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
-        if matches!(kind, NodeKind::TsThisParameter) {
-            Some(TsThisParameter(self.0))
+        if matches!(kind, NodeKind::ArrayPattern) {
+            Some(ArrayPattern(self.0))
+        } else {
+            None
+        }
+    }
+    #[inline]
+    pub fn as_object_pattern(self, ast: &Ast<'_>) -> Option<ObjectPattern> {
+        let kind = unsafe { *ast.nodes.kind_unchecked(self.0) };
+        if matches!(kind, NodeKind::ObjectPattern) {
+            Some(ObjectPattern(self.0))
         } else {
             None
         }
@@ -2463,77 +2450,16 @@ impl PrivateIdentifier {
 }
 impl BindingIdentifier {
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        raw != 0
-    }
-    #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
-    }
-    #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
-    }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
-            | (((field_val as u128) & 4294967295u128) << 8usize);
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        let field_val: u32 = optional as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = name.into_extra_data();
-        };
-    }
-    #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = decorators.into_extra_data();
-        };
+        let field_val: u64 = name.into_extra_data().raw();
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
 }
 impl IdentifierName {
@@ -2568,230 +2494,56 @@ impl AssignmentPattern {
     #[inline]
     pub fn left<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
         BindingPattern(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        raw != 0
-    }
-    #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
-    }
-    #[inline]
     pub fn right<'a>(self, ast: &crate::Ast<'a>) -> Expr {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        Expr(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
     pub fn set_left<'a>(self, ast: &mut crate::Ast<'a>, left: BindingPattern) {
         let field_val: u32 = left.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
-            | (((field_val as u128) & 4294967295u128) << 8usize);
-    }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
-            | (((field_val as u128) & 4294967295u128) << 40usize);
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        let field_val: u32 = optional as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = decorators.into_extra_data();
-        };
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_right<'a>(self, ast: &mut crate::Ast<'a>, right: Expr) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = right.into_extra_data();
-        };
+        let field_val: u32 = right.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl BindingRestElement {
     #[inline]
     pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
         BindingPattern(NodeId::from_raw_unchecked(raw))
-    }
-    #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        raw != 0
-    }
-    #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
     }
     #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: BindingPattern) {
         let field_val: u32 = argument.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
-            | (((field_val as u128) & 4294967295u128) << 8usize);
-    }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
-            | (((field_val as u128) & 4294967295u128) << 40usize);
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        let field_val: u32 = optional as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = decorators.into_extra_data();
-        };
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
 }
 impl ArrayPattern {
     #[inline]
+    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
+    }
+    #[inline]
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        raw != 0
-    }
-    #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
-    }
-    #[inline]
-    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
-    }
-    #[inline]
-    pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<BindingRestElement>) {
-        let field_val: u32 = rest.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
-            | (((field_val as u128) & 4294967295u128) << 8usize);
-    }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
-            | (((field_val as u128) & 4294967295u128) << 40usize);
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        let field_val: u32 = optional as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = decorators.into_extra_data();
-        };
     }
     #[inline]
     pub fn set_elements<'a>(
@@ -2799,91 +2551,30 @@ impl ArrayPattern {
         ast: &mut crate::Ast<'a>,
         elements: SubRange<Option<BindingPattern>>,
     ) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = elements.into_extra_data();
-        };
-    }
-}
-impl ObjectPattern {
-    #[inline]
-    pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
-        raw != 0
-    }
-    #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
-    }
-    #[inline]
-    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
-        }
+        let field_val: u64 = elements.into_extra_data().raw();
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
     pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<BindingRestElement>) {
         let field_val: u32 = rest.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
-            | (((field_val as u128) & 4294967295u128) << 8usize);
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
+    }
+}
+impl ObjectPattern {
+    #[inline]
+    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
-            | (((field_val as u128) & 4294967295u128) << 40usize);
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        let field_val: u32 = optional as u32;
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
-            | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = decorators.into_extra_data();
-        };
+    pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn set_properties<'a>(
@@ -2891,15 +2582,17 @@ impl ObjectPattern {
         ast: &mut crate::Ast<'a>,
         properties: SubRange<BindingProperty>,
     ) {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
-        debug_assert!(offset < ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = properties.into_extra_data();
-        };
+        let field_val: u64 = properties.into_extra_data().raw();
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<BindingRestElement>) {
+        let field_val: u32 = rest.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
 }
 impl BindingProperty {
@@ -3231,14 +2924,20 @@ impl VariableDeclarator {
         BindingPattern(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
-    pub fn init<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn init<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn definite<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 255u32;
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 255u32;
         raw != 0
     }
     #[inline]
@@ -3249,18 +2948,29 @@ impl VariableDeclarator {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
-    pub fn set_init<'a>(self, ast: &mut crate::Ast<'a>, init: Option<Expr>) {
-        let field_val: u32 = init.map_or(u32::MAX, |node| node.node_id().index() as u32);
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
             | (((field_val as u128) & 4294967295u128) << 32usize);
     }
     #[inline]
+    pub fn set_init<'a>(self, ast: &mut crate::Ast<'a>, init: Option<Expr>) {
+        let field_val: u32 = init.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
+    }
+    #[inline]
     pub fn set_definite<'a>(self, ast: &mut crate::Ast<'a>, definite: bool) {
         let field_val: u32 = definite as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458759454868635832549375u128)
-            | (((field_val as u128) & 255u128) << 64usize);
+        payload.0 = (payload.0 & 340282346717757022325968521078060875775u128)
+            | (((field_val as u128) & 255u128) << 96usize);
     }
 }
 impl IfStatement {
@@ -3555,9 +3265,15 @@ impl CatchClause {
         (raw != u32::MAX).then(|| BindingPattern(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> BlockStatement {
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> BlockStatement {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
         BlockStatement(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
@@ -3568,11 +3284,22 @@ impl CatchClause {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: BlockStatement) {
-        let field_val: u32 = body.node_id().index() as u32;
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
             | (((field_val as u128) & 4294967295u128) << 32usize);
+    }
+    #[inline]
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: BlockStatement) {
+        let field_val: u32 = body.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
 }
 impl BreakStatement {
@@ -4325,7 +4052,7 @@ impl Function {
         raw != 0
     }
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+    pub fn this_param<'a>(self, ast: &crate::Ast<'a>) -> Option<TsThisParameter> {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
@@ -4335,7 +4062,7 @@ impl Function {
         }
     }
     #[inline]
-    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
@@ -4345,9 +4072,19 @@ impl Function {
         }
     }
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> FunctionBody {
+    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
+        }
+    }
+    #[inline]
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> FunctionBody {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -4394,9 +4131,21 @@ impl Function {
             | (((field_val as u128) & 255u128) << 16usize);
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+    pub fn set_this_param<'a>(self, ast: &mut crate::Ast<'a>, this_param: Option<TsThisParameter>) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = this_param.into_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -4412,7 +4161,7 @@ impl Function {
         return_type: Option<TsTypeAnnotation>,
     ) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -4424,7 +4173,7 @@ impl Function {
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: FunctionBody) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(2usize) };
+        let offset = unsafe { start.unchecked_add(3usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -4565,10 +4314,10 @@ impl FormalParameters {
         unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
-    pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
+    pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<FormalParameterRest> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| FormalParameterRest(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterKind {
@@ -4583,7 +4332,7 @@ impl FormalParameters {
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
-    pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<BindingRestElement>) {
+    pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<FormalParameterRest>) {
         let field_val: u32 = rest.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
@@ -4601,15 +4350,132 @@ impl FormalParameter {
     #[inline]
     pub fn pattern<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterPattern {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
         FormalParameterPattern(NodeId::from_raw_unchecked(raw))
+    }
+    #[inline]
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
+        raw != 0
+    }
+    #[inline]
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
+        }
+    }
+    #[inline]
+    pub fn initializer<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(1usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
+        }
     }
     #[inline]
     pub fn set_pattern<'a>(self, ast: &mut crate::Ast<'a>, pattern: FormalParameterPattern) {
         let field_val: u32 = pattern.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
-            | (((field_val as u128) & 4294967295u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
+            | (((field_val as u128) & 4294967295u128) << 8usize);
+    }
+    #[inline]
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
+            | (((field_val as u128) & 4294967295u128) << 40usize);
+    }
+    #[inline]
+    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
+        let field_val: u32 = optional as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
+            | (((field_val as u128) & 255u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.into_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_initializer<'a>(self, ast: &mut crate::Ast<'a>, initializer: Option<Expr>) {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(1usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = initializer.into_extra_data();
+        };
+    }
+}
+impl FormalParameterRest {
+    #[inline]
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
+        unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
+    }
+    #[inline]
+    pub fn argument<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterPattern {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+        FormalParameterPattern(NodeId::from_raw_unchecked(raw))
+    }
+    #[inline]
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
+        let field_val: u64 = decorators.into_extra_data().raw();
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: FormalParameterPattern) {
+        let field_val: u32 = argument.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
+    }
+    #[inline]
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 79228162514264337593543950335u128)
+            | (((field_val as u128) & 4294967295u128) << 96usize);
     }
 }
 impl ArrayExpression {
@@ -6783,7 +6649,7 @@ impl TsFunction {
         raw != 0
     }
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+    pub fn this_param<'a>(self, ast: &crate::Ast<'a>) -> Option<TsThisParameter> {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
@@ -6793,9 +6659,19 @@ impl TsFunction {
         }
     }
     #[inline]
-    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(1usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
+        }
+    }
+    #[inline]
+    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -6842,9 +6718,21 @@ impl TsFunction {
             | (((field_val as u128) & 255u128) << 16usize);
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+    pub fn set_this_param<'a>(self, ast: &mut crate::Ast<'a>, this_param: Option<TsThisParameter>) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = this_param.into_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -6860,7 +6748,7 @@ impl TsFunction {
         return_type: Option<TsTypeAnnotation>,
     ) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -7675,15 +7563,21 @@ impl TsFunctionType {
         (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+    pub fn this_param<'a>(self, ast: &crate::Ast<'a>) -> Option<TsThisParameter> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsThisParameter(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
         FormalParameters(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> TsTypeAnnotation {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
         TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
@@ -7698,18 +7592,25 @@ impl TsFunctionType {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
-        let field_val: u32 = params.node_id().index() as u32;
+    pub fn set_this_param<'a>(self, ast: &mut crate::Ast<'a>, this_param: Option<TsThisParameter>) {
+        let field_val: u32 = this_param.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
             | (((field_val as u128) & 4294967295u128) << 32usize);
     }
     #[inline]
-    pub fn set_return_type<'a>(self, ast: &mut crate::Ast<'a>, return_type: TsTypeAnnotation) {
-        let field_val: u32 = return_type.node_id().index() as u32;
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+        let field_val: u32 = params.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
             | (((field_val as u128) & 4294967295u128) << 64usize);
+    }
+    #[inline]
+    pub fn set_return_type<'a>(self, ast: &mut crate::Ast<'a>, return_type: TsTypeAnnotation) {
+        let field_val: u32 = return_type.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 79228162514264337593543950335u128)
+            | (((field_val as u128) & 4294967295u128) << 96usize);
     }
 }
 impl TsConstructorType {
@@ -8028,7 +7929,7 @@ impl TsMethodSignature {
         raw != 0
     }
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+    pub fn this_param<'a>(self, ast: &crate::Ast<'a>) -> Option<TsThisParameter> {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(0usize) };
         debug_assert!(offset < ast.extra_data.len());
@@ -8038,9 +7939,19 @@ impl TsMethodSignature {
         }
     }
     #[inline]
-    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(1usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ExtraDataValue::from_extra_data(ast.extra_data.as_slice().get_unchecked(offset.index()))
+        }
+    }
+    #[inline]
+    pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -8087,9 +7998,21 @@ impl TsMethodSignature {
             | (((field_val as u128) & 255u128) << 16usize);
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+    pub fn set_this_param<'a>(self, ast: &mut crate::Ast<'a>, this_param: Option<TsThisParameter>) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
         let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = this_param.into_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let offset = unsafe { start.unchecked_add(1usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -8105,7 +8028,7 @@ impl TsMethodSignature {
         return_type: Option<TsTypeAnnotation>,
     ) {
         let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
-        let offset = unsafe { start.unchecked_add(1usize) };
+        let offset = unsafe { start.unchecked_add(2usize) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
@@ -8123,15 +8046,21 @@ impl TsCallSignatureDeclaration {
         (raw != u32::MAX).then(|| TsTypeParameterDeclaration(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+    pub fn this_param<'a>(self, ast: &crate::Ast<'a>) -> Option<TsThisParameter> {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        (raw != u32::MAX).then(|| TsThisParameter(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn params<'a>(self, ast: &crate::Ast<'a>) -> FormalParameters {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
         FormalParameters(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
     pub fn return_type<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 96usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
@@ -8146,11 +8075,18 @@ impl TsCallSignatureDeclaration {
             | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
-    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
-        let field_val: u32 = params.node_id().index() as u32;
+    pub fn set_this_param<'a>(self, ast: &mut crate::Ast<'a>, this_param: Option<TsThisParameter>) {
+        let field_val: u32 = this_param.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
             | (((field_val as u128) & 4294967295u128) << 32usize);
+    }
+    #[inline]
+    pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: FormalParameters) {
+        let field_val: u32 = params.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
     #[inline]
     pub fn set_return_type<'a>(
@@ -8160,8 +8096,8 @@ impl TsCallSignatureDeclaration {
     ) {
         let field_val: u32 = return_type.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
-            | (((field_val as u128) & 4294967295u128) << 64usize);
+        payload.0 = (payload.0 & 79228162514264337593543950335u128)
+            | (((field_val as u128) & 4294967295u128) << 96usize);
     }
 }
 impl TsConstructSignatureDeclaration {
@@ -8215,7 +8151,7 @@ impl TsConstructSignatureDeclaration {
 }
 impl TsIndexSignature {
     #[inline]
-    pub fn parameters<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingIdentifier> {
+    pub fn parameters<'a>(self, ast: &crate::Ast<'a>) -> SubRange<TsIndexSignatureParameter> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
@@ -8239,7 +8175,7 @@ impl TsIndexSignature {
     pub fn set_parameters<'a>(
         self,
         ast: &mut crate::Ast<'a>,
-        parameters: SubRange<BindingIdentifier>,
+        parameters: SubRange<TsIndexSignatureParameter>,
     ) {
         let field_val: u64 = parameters.into_extra_data().raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
@@ -8726,10 +8662,10 @@ impl TsParameterProperty {
         unsafe { ExtraDataValue::from_extra_data(&ExtraData::from_raw(raw)) }
     }
     #[inline]
-    pub fn parameter<'a>(self, ast: &crate::Ast<'a>) -> BindingPattern {
+    pub fn parameter<'a>(self, ast: &crate::Ast<'a>) -> FormalParameter {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        BindingPattern(NodeId::from_raw_unchecked(raw))
+        FormalParameter(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
     pub fn r#override<'a>(self, ast: &crate::Ast<'a>) -> bool {
@@ -8754,7 +8690,7 @@ impl TsParameterProperty {
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
     }
     #[inline]
-    pub fn set_parameter<'a>(self, ast: &mut crate::Ast<'a>, parameter: BindingPattern) {
+    pub fn set_parameter<'a>(self, ast: &mut crate::Ast<'a>, parameter: FormalParameter) {
         let field_val: u32 = parameter.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
@@ -9019,6 +8955,38 @@ impl TsExternalModuleReference {
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
             | (((field_val as u128) & 4294967295u128) << 0usize);
+    }
+}
+impl TsIndexSignatureParameter {
+    #[inline]
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> BindingIdentifier {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        BindingIdentifier(NodeId::from_raw_unchecked(raw))
+    }
+    #[inline]
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsTypeAnnotation {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        TsTypeAnnotation(NodeId::from_raw_unchecked(raw))
+    }
+    #[inline]
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: BindingIdentifier) {
+        let field_val: u32 = name.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: TsTypeAnnotation,
+    ) {
+        let field_val: u32 = type_annotation.node_id().index() as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl JsxElementName {

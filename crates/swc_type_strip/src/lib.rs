@@ -8,12 +8,11 @@ use std::borrow::Cow;
 use edit::{EditPlan, FixedSubstitution};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Accessibility, ArrayPattern, ArrowFunctionExpression, AssignmentPattern, Ast,
-    BindingIdentifier, BindingPattern, BindingRestElement, Class, ClassElement, Decl, Decorator,
+    Accessibility, ArrowFunctionExpression, Ast, Class, ClassElement, Decl, Decorator,
     DoWhileStatement, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, Expr,
-    ForInStatement, ForOfStatement, ForStatement, FormalParameters, FunctionBody, GetSpan,
+    ForInStatement, ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan,
     IfStatement, ImportDeclaration, ImportOrExportKind, LabeledStatement, MethodDefinition,
-    ObjectPattern, Program, PropertyDefinition, Stmt, SubRange, TsAsExpression, TsClassImplements,
+    Program, PropertyDefinition, Stmt, SubRange, TsAsExpression, TsClassImplements,
     TsEnumDeclaration, TsExportAssignment, TsFunction, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsIndexSignature, TsInterfaceDeclaration, TsMethodDefinition,
     TsModuleBlock, TsModuleDeclaration, TsModuleDeclarationKind, TsNamespaceExportDeclaration,
@@ -138,7 +137,7 @@ impl TypeEraser<'_, '_, '_> {
         Some(token.start())
     }
 
-    fn erase_optional_pattern(
+    fn erase_optional_parameter(
         &mut self,
         optional: bool,
         type_annotation: Option<TsTypeAnnotation>,
@@ -336,40 +335,6 @@ impl TypeEraser<'_, '_, '_> {
             })
     }
 
-    fn erase_explicit_this_parameter(&mut self, parameters: FormalParameters) {
-        let items = parameters.items(self.ast);
-        let Some(first_item) = items.first() else {
-            return;
-        };
-        let first_item = self.ast.get_node_in_sub_range(first_item);
-        let Some(first_parameter) = first_item.as_formal_parameter(self.ast) else {
-            return;
-        };
-        if !first_parameter
-            .pattern(self.ast)
-            .is_ts_this_parameter(self.ast)
-        {
-            return;
-        }
-
-        let first_span = first_item.span(self.ast);
-        let search_end = items
-            .get(1)
-            .map(|item| self.ast.get_node_in_sub_range(item))
-            .map(|item| item.span(self.ast).start)
-            .or_else(|| {
-                parameters
-                    .rest(self.ast)
-                    .map(|rest| rest.span(self.ast).start)
-            })
-            .unwrap_or_else(|| parameters.span(self.ast).end);
-        let erase_end = self
-            .tokens
-            .find_forward(first_span.end, search_end, TokenTag::Comma)
-            .map_or(first_span.end, |comma| comma.end());
-        self.edits.blank(Span::new(first_span.start, erase_end));
-    }
-
     fn separate_hazardous_class_element(
         &mut self,
         member_span: Span,
@@ -557,9 +522,15 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         node.visit_children_with(self);
     }
 
-    fn visit_formal_parameters(&mut self, node: FormalParameters) {
-        self.erase_explicit_this_parameter(node);
-        node.visit_children_with(self);
+    fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
+        let span = node.span(self.ast);
+        let next = self
+            .tokens
+            .first_in_range(span.end, self.ast.source().len() as u32);
+        let end = next
+            .filter(|token| token.tag() == TokenTag::Comma)
+            .map_or(span.end, |token| token.end());
+        self.edits.blank(Span::new(span.start, end));
     }
 
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
@@ -854,8 +825,6 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
 
     fn visit_ts_class_implements(&mut self, _node: TsClassImplements) {}
 
-    fn visit_ts_this_parameter(&mut self, _node: TsThisParameter) {}
-
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
         self.edits.blank(node.span(self.ast));
     }
@@ -901,8 +870,11 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         if node.definite(self.ast) {
             let pattern = node.id(self.ast);
             let span = pattern.span(self.ast);
-            let marker_end = pattern_type_annotation(pattern, self.ast)
-                .map_or(span.end, |annotation| annotation.span(self.ast).start);
+            let marker_end = node
+                .type_annotation(self.ast)
+                .map_or(node.span(self.ast).end, |annotation| {
+                    annotation.span(self.ast).start
+                });
             if let Some(marker) =
                 self.tokens
                     .find_backward(span.start, marker_end, TokenTag::LogicalNot)
@@ -913,44 +885,8 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         node.visit_children_with(self);
     }
 
-    fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
-        self.erase_optional_pattern(
-            node.optional(self.ast),
-            node.type_annotation(self.ast),
-            node.span(self.ast),
-        );
-        node.visit_children_with(self);
-    }
-
-    fn visit_assignment_pattern(&mut self, node: AssignmentPattern) {
-        self.erase_optional_pattern(
-            node.optional(self.ast),
-            node.type_annotation(self.ast),
-            node.span(self.ast),
-        );
-        node.visit_children_with(self);
-    }
-
-    fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
-        self.erase_optional_pattern(
-            node.optional(self.ast),
-            node.type_annotation(self.ast),
-            node.span(self.ast),
-        );
-        node.visit_children_with(self);
-    }
-
-    fn visit_array_pattern(&mut self, node: ArrayPattern) {
-        self.erase_optional_pattern(
-            node.optional(self.ast),
-            node.type_annotation(self.ast),
-            node.span(self.ast),
-        );
-        node.visit_children_with(self);
-    }
-
-    fn visit_object_pattern(&mut self, node: ObjectPattern) {
-        self.erase_optional_pattern(
+    fn visit_formal_parameter(&mut self, node: FormalParameter) {
+        self.erase_optional_parameter(
             node.optional(self.ast),
             node.type_annotation(self.ast),
             node.span(self.ast),
@@ -972,27 +908,6 @@ fn modifiers_start(member_start: u32, decorators: SubRange<Decorator>, ast: &Ast
         return member_start;
     };
     ast.get_node_in_sub_range(decorator).span(ast).end
-}
-
-fn pattern_type_annotation(
-    pattern: BindingPattern,
-    ast: &swc_next_ecma_ast::Ast<'_>,
-) -> Option<TsTypeAnnotation> {
-    if let Some(pattern) = pattern.as_binding_identifier(ast) {
-        return pattern.type_annotation(ast);
-    }
-    if let Some(pattern) = pattern.as_assignment_pattern(ast) {
-        return pattern.type_annotation(ast);
-    }
-    if let Some(pattern) = pattern.as_binding_rest_element(ast) {
-        return pattern.type_annotation(ast);
-    }
-    if let Some(pattern) = pattern.as_array_pattern(ast) {
-        return pattern.type_annotation(ast);
-    }
-    pattern
-        .as_object_pattern(ast)
-        .and_then(|pattern| pattern.type_annotation(ast))
 }
 
 fn accessibility_token(accessibility: Accessibility) -> Option<TokenTag> {

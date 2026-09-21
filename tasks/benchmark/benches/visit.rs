@@ -4,9 +4,9 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, Traverse, TraverseCtx, TraverseWith, Visit, VisitMut, VisitMutWith,
-    VisitWith,
+    Ast, BindingIdentifier, Decorator, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
+    PrivateIdentifier, Traverse, TraverseCtx, TraverseWith, TsTypeAnnotation, Visit, VisitMut,
+    VisitMutWith, VisitWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
@@ -115,6 +115,19 @@ fn bench_visit_mut(b: &mut Bencher, src: &'static str, lang: Lang) {
             &mut self,
             _node: LabelIdentifier,
         ) -> Option<LabelIdentifier> {
+            self.count += 1;
+            None
+        }
+
+        fn visit_mut_ts_type_annotation(
+            &mut self,
+            _node: TsTypeAnnotation,
+        ) -> Option<TsTypeAnnotation> {
+            self.count += 1;
+            None
+        }
+
+        fn visit_mut_decorator(&mut self, _node: Decorator) -> Option<Decorator> {
             self.count += 1;
             None
         }

@@ -30,11 +30,11 @@ use swc_next_ecma_ast::{
     TsMethodDefinition, TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsModuleNameData,
     TsNamedTupleMember, TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType,
     TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression,
-    TsTemplateLiteralType, TsTupleType, TsType, TsTypeAliasDeclaration, TsTypeAnnotation,
-    TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration,
-    TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType,
-    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableDeclarator,
-    VariableKind, Visit, VisitWith, WithStatement,
+    TsTemplateLiteralType, TsThisParameter, TsTupleType, TsType, TsTypeAliasDeclaration,
+    TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
+    TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
+    TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
+    VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith, WithStatement,
 };
 
 use crate::{
@@ -201,6 +201,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         } else {
             id.visit_with(self);
         }
+        node.type_annotation(self.ast).visit_with(self);
         init.visit_with(self);
         self.leave_node(NodeKindData::VariableDeclarator(node));
     }
@@ -458,9 +459,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_assignment_pattern(&mut self, node: AssignmentPattern) {
         let node_flags = self.enter_node(node.node_id());
-        node.decorators(self.ast).visit_with(self);
         self.visit_with_reference_flags(node.left(self.ast), node_flags);
-        node.type_annotation(self.ast).visit_with(self);
         node.right(self.ast).visit_with(self);
         self.leave_node(NodeKindData::AssignmentPattern(node));
     }
@@ -468,16 +467,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
         let node_flags = self.enter_node(node.node_id());
-        node.decorators(self.ast).visit_with(self);
         self.visit_with_reference_flags(node.argument(self.ast), node_flags);
-        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::BindingRestElement(node));
     }
 
     #[inline]
     fn visit_array_pattern(&mut self, node: ArrayPattern) {
         let node_flags = self.enter_node(node.node_id());
-        node.decorators(self.ast).visit_with(self);
         for element in node.elements(self.ast).iter() {
             if let Some(element) = self.ast.get_node_in_sub_range(element) {
                 self.visit_with_reference_flags(element, node_flags);
@@ -486,14 +482,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         if let Some(rest) = node.rest(self.ast) {
             self.visit_with_reference_flags(rest, node_flags);
         }
-        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::ArrayPattern(node));
     }
 
     #[inline]
     fn visit_object_pattern(&mut self, node: ObjectPattern) {
         let node_flags = self.enter_node(node.node_id());
-        node.decorators(self.ast).visit_with(self);
         for property in node.properties(self.ast).iter() {
             let property = self.ast.get_node_in_sub_range(property);
             self.visit_with_reference_flags(property, node_flags);
@@ -501,7 +495,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         if let Some(rest) = node.rest(self.ast) {
             self.visit_with_reference_flags(rest, node_flags);
         }
-        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::ObjectPattern(node));
     }
 
@@ -660,6 +653,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             .exit_arrow_function_expression(export_state);
         self.state.exit_scope(node.node_id());
         self.leave_node(NodeKindData::ArrowFunctionExpression(node));
+    }
+
+    fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
+        self.enter_node(node.node_id());
+        // The receiver annotation has the same lookup rules as parameter annotations,
+        // although it is stored on the signature and creates no runtime binding.
+        self.state
+            .scope
+            .enter_ts_lookup_view(node.node_id(), ScopeKind::TsSignatureParameter);
+        node.visit_children_with(self);
+        self.state.scope.exit_ts_lookup_view(node.node_id());
+        self.leave_node(NodeKindData::TsThisParameter(node));
     }
 
     fn visit_formal_parameters(&mut self, node: FormalParameters) {
@@ -1441,6 +1446,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state.symbols.enter_ts_method_signature(&state.scope);
         node.type_parameters(self.ast).visit_with(self);
+        node.this_param(self.ast).visit_with(self);
         node.params(self.ast).visit_with(self);
         node.return_type(self.ast).visit_with(self);
         self.state.symbols.exit_saved_context();

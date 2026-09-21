@@ -461,3 +461,10 @@ impl std::fmt::Debug for Span {
         write!(f, "{}..{}", self.start, self.end)
     }
 }
+
+impl From<FormalParameterPattern> for BindingPattern {
+    fn from(pattern: FormalParameterPattern) -> Self {
+        // SAFETY: all formal parameter binding variants are also BindingPattern variants.
+        unsafe { Self::from_node_id_unchecked(pattern.node_id()) }
+    }
+}

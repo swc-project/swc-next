@@ -517,10 +517,11 @@ pub enum FormalParameterItem {
     TsParameterProperty(TsParameterProperty),
 }
 
-#[ast(repr, nested)]
+#[ast(repr)]
 pub enum FormalParameterPattern {
-    BindingPattern(BindingPattern),
-    TsThisParameter(TsThisParameter),
+    BindingIdentifier(BindingIdentifier),
+    ArrayPattern(ArrayPattern),
+    ObjectPattern(ObjectPattern),
 }
 
 #[ast(repr)]
@@ -735,20 +736,12 @@ pub struct PrivateIdentifier {
 ///
 /// ## Example
 /// ```ts
-/// function foo(x?: number) {}
-/// //       ^^^ id
-/// //           ^ optional, with type_annotation
+/// function foo(x: number) {}
+/// //           ^ BindingIdentifier; the annotation belongs to the parameter
 /// ```
 #[ast]
 pub struct BindingIdentifier {
     name: AstUtf8,
-    /// `decorator[]`. Decorators on a parameter binding (legacy
-    /// `experimentalDecorators`). Empty for non-parameter bindings.
-    decorators: SubRange<Decorator>,
-    /// `ts_type_annotation`. `None` when absent.
-    type_annotation: Option<TsTypeAnnotation>,
-    /// true when marked optional (`x?: T`).
-    optional: bool,
 }
 
 /// An identifier used as a property key or meta property name.
@@ -783,45 +776,31 @@ pub struct LabelIdentifier {
 ///
 /// ## Example
 /// ```js
-/// function f(x = 0) {}
-/// //         ^^^^^ AssignmentPattern
-/// //         ^ left
-/// //             ^ right
+/// const [x = 0] = values;
+/// //     ^^^^^ AssignmentPattern
+/// //     ^ left
+/// //         ^ right
 /// ```
 #[ast]
 pub struct AssignmentPattern {
-    /// `decorator[]`. Decorators on a parameter binding (legacy
-    /// `experimentalDecorators`).
-    decorators: SubRange<Decorator>,
     /// any binding pattern
     left: BindingPattern,
-    /// `ts_type_annotation`. `None` when absent.
-    type_annotation: Option<TsTypeAnnotation>,
     /// any expression
     right: Expr,
-    /// true when marked optional in a parameter position.
-    optional: bool,
 }
 
-/// A `...rest` element in a binding pattern or function parameter list.
+/// A `...rest` element in a destructuring pattern.
 ///
 /// ## Example
 /// ```js
-/// function f(...args) {}
-/// //         ^^^^^^^ BindingRestElement
-/// //            ^^^^ argument
+/// const [...args] = values;
+/// //     ^^^^^^^ BindingRestElement
+/// //        ^^^^ argument
 /// ```
 #[ast]
 pub struct BindingRestElement {
-    /// `decorator[]`. Decorators on a parameter rest element (legacy
-    /// `experimentalDecorators`).
-    decorators: SubRange<Decorator>,
     /// any binding pattern
     argument: BindingPattern,
-    /// `ts_type_annotation`. `None` when absent.
-    type_annotation: Option<TsTypeAnnotation>,
-    /// true when marked optional in a parameter position.
-    optional: bool,
 }
 
 /// An array destructuring pattern.
@@ -837,17 +816,10 @@ pub struct BindingRestElement {
 /// `elements[1]` is `None` (the hole between the two commas).
 #[ast]
 pub struct ArrayPattern {
-    /// `decorator[]`. Decorators on a parameter binding (legacy
-    /// `experimentalDecorators`).
-    decorators: SubRange<Decorator>,
     /// any binding pattern. Entries are `None` for holes.
     elements: SubRange<Option<BindingPattern>>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
-    /// `ts_type_annotation`. `None` when absent.
-    type_annotation: Option<TsTypeAnnotation>,
-    /// true when marked optional in a parameter position.
-    optional: bool,
 }
 
 /// An object destructuring pattern.
@@ -861,17 +833,10 @@ pub struct ArrayPattern {
 /// ```
 #[ast]
 pub struct ObjectPattern {
-    /// `decorator[]`. Decorators on a parameter binding (legacy
-    /// `experimentalDecorators`).
-    decorators: SubRange<Decorator>,
     /// `binding_property[]`
     properties: SubRange<BindingProperty>,
     /// `binding_rest_element`. `None` when no rest element is present.
     rest: Option<BindingRestElement>,
-    /// `ts_type_annotation`. `None` when absent.
-    type_annotation: Option<TsTypeAnnotation>,
-    /// true when marked optional in a parameter position.
-    optional: bool,
 }
 
 /// A single property inside an `object_pattern`.
@@ -1027,13 +992,15 @@ pub struct VariableDeclaration {
 /// let x!: number = 1;
 /// // ^ id
 /// //  ^ definite
-/// //   ^^^^^^^^ type_annotation lives on `id`
+/// //   ^^^^^^^^ type_annotation
 /// //              ^ init
 /// ```
 #[ast]
 pub struct VariableDeclarator {
     /// any binding pattern
     id: BindingPattern,
+    /// TypeScript annotation on this declaration, outside the binding pattern.
+    type_annotation: Option<TsTypeAnnotation>,
     /// any expression. `None` when there is no initializer.
     init: Option<Expr>,
     /// true for a definite assignment assertion (`let x!: T`).
@@ -1181,6 +1148,8 @@ pub struct TryStatement {
 pub struct CatchClause {
     /// any binding pattern. `None` for `catch { }` with no binding.
     param: Option<BindingPattern>,
+    /// TypeScript annotation on the catch binding, if one is present.
+    type_annotation: Option<TsTypeAnnotation>,
     /// `block_statement`
     body: BlockStatement,
 }
@@ -1488,7 +1457,9 @@ pub struct Function {
     id: Option<BindingIdentifier>,
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
-    /// `formal_parameters`
+    /// The explicit receiver type; does not consume a runtime argument.
+    this_param: Option<TsThisParameter>,
+    /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
     /// `ts_type_annotation`. `None` when absent.
     return_type: Option<TsTypeAnnotation>,
@@ -1577,21 +1548,34 @@ pub struct WithStatement {
 #[ast]
 pub struct FormalParameters {
     /// `formal_parameter[]`. May also include `ts_parameter_property` entries
-    /// (constructors only) and a leading `ts_this_parameter` (TypeScript).
+    /// (constructors only).
     items: SubRange<FormalParameterItem>,
-    /// `binding_rest_element`. `None` when no rest element is present.
-    rest: Option<BindingRestElement>,
+    /// `formal_parameter_rest`. `None` when no rest element is present.
+    rest: Option<FormalParameterRest>,
     kind: FormalParameterKind,
 }
 
-/// A thin wrapper marking a binding pattern as a function parameter.
-///
-/// TypeScript metadata (decorators, type annotation, optional) lives on
-/// the inner pattern.
 #[ast]
 pub struct FormalParameter {
-    /// any binding pattern or `ts_this_parameter`.
+    /// Legacy parameter decorators, in source order.
+    decorators: SubRange<Decorator>,
+    /// The binding identifier or array/object destructuring pattern.
     pattern: FormalParameterPattern,
+    /// The type annotation for the whole parameter. `None` when absent.
+    type_annotation: Option<TsTypeAnnotation>,
+    /// The default value expression, evaluated when the corresponding argument
+    /// is omitted or `undefined`. `None` when no default is written.
+    initializer: Option<Expr>,
+    /// Whether the parameter has a TypeScript `?` marker.
+    optional: bool,
+}
+
+/// A rest parameter collecting the remaining arguments of a call.
+#[ast]
+pub struct FormalParameterRest {
+    decorators: SubRange<Decorator>,
+    argument: FormalParameterPattern,
+    type_annotation: Option<TsTypeAnnotation>,
 }
 
 /// An array literal expression.

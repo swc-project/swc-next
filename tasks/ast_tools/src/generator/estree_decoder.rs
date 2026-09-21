@@ -243,6 +243,10 @@ fn is_special_node(name: &str) -> bool {
             | "FunctionBody"
             | "TsModuleBlock"
             | "FormalParameter"
+            | "FormalParameterRest"
+            | "VariableDeclarator"
+            | "CatchClause"
+            | "TsIndexSignatureParameter"
             | "FormalParameters"
             | "Function"
             | "TsFunction"
@@ -309,7 +313,54 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
             )
             .unwrap();
         }
-        "FormalParameter" => output.push_str("        result = f_pattern;\n"),
+        "FormalParameter" => output.push_str(
+            r#"        const left = { ...f_pattern };
+        if (isTs) {
+          left.optional = f_optional;
+          left.typeAnnotation = f_typeAnnotation;
+          left.end = f_typeAnnotation?.end ?? (f_optional ? left.end + 1 : left.end);
+        }
+        if (f_initializer === null) {
+          result = left;
+          result.end = end;
+          if (isTs) result.decorators = f_decorators;
+        } else {
+          result = { type: "AssignmentPattern", start: left.start, end, left, right: f_initializer };
+          if (isTs) {
+            result.decorators = f_decorators;
+            result.optional = false;
+            result.typeAnnotation = null;
+          }
+        }
+"#,
+        ),
+        "FormalParameterRest" => output.push_str(
+            r#"        result = { type: "RestElement", start, end, argument: f_argument };
+        if (isTs) {
+          result.decorators = f_decorators;
+          result.optional = false;
+          result.typeAnnotation = f_typeAnnotation;
+          result.value = null;
+        }
+"#,
+        ),
+        "VariableDeclarator" => output.push_str(
+            r#"        result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init };
+        if (isTs) {
+          result.definite = f_definite;
+          result.id = { ...f_id, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_id.end };
+        }
+"#,
+        ),
+        "CatchClause" => output.push_str(
+            r#"        result = { type: "CatchClause", start, end, param: f_param, body: f_body };
+        if (isTs && f_param !== null) result.param = { ...f_param, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_param.end };
+"#,
+        ),
+        "TsIndexSignatureParameter" => output.push_str(
+            r#"        result = { ...f_name, start, end, typeAnnotation: f_typeAnnotation };
+"#,
+        ),
         "FormalParameters" => output.push_str(
             "        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };\n",
         ),
@@ -319,7 +370,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
           id: f_id,
           generator: f_generator,
           async: f_async,
-          params: f_params.params,
+          params: f_thisParam === null ? f_params.params : [f_thisParam, ...f_params.params],
           body: f_body,
           expression: false,
         };
@@ -337,7 +388,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
           id: f_id,
           generator: f_generator,
           async: f_async,
-          params: f_params.params,
+          params: f_thisParam === null ? f_params.params : [f_thisParam, ...f_params.params],
           body: null,
           expression: false,
           typeParameters: f_typeParameters,
@@ -511,9 +562,9 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
             r#"        const elements = f_rest === null ? f_elements : [...f_elements, f_rest];
         result = { type: "ArrayPattern", start, end, elements };
         if (isTs) {
-          result.decorators = f_decorators;
-          result.optional = f_optional;
-          result.typeAnnotation = f_typeAnnotation;
+          result.decorators = [];
+          result.optional = false;
+          result.typeAnnotation = null;
         }
 "#,
         ),
@@ -521,9 +572,9 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
             r#"        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];
         result = { type: "ObjectPattern", start, end, properties };
         if (isTs) {
-          result.decorators = f_decorators;
-          result.optional = f_optional;
-          result.typeAnnotation = f_typeAnnotation;
+          result.decorators = [];
+          result.optional = false;
+          result.typeAnnotation = null;
         }
 "#,
         ),
@@ -560,6 +611,9 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
         };
 "#,
             );
+            if matches!(name, "TsFunctionType" | "TsMethodSignature" | "TsCallSignatureDeclaration") {
+                output.push_str("        if (f_thisParam !== null) result.params.unshift(f_thisParam);\n");
+            }
             if name == "TsMethodSignature" {
                 output.push_str(
                     r#"        result.accessibility = null;
@@ -609,7 +663,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) 
 
 fn estree_type(name: &str) -> String {
     match name {
-        "BindingRestElement" => "RestElement".into(),
+        "BindingRestElement" | "FormalParameterRest" => "RestElement".into(),
         "ObjectProperty" => "Property".into(),
         "IdentifierReference" | "BindingIdentifier" | "IdentifierName" | "LabelIdentifier" => {
             "Identifier".into()
@@ -666,7 +720,12 @@ const IDENTIFIER_TS_EXTRAS: &[(&str, &str)] = &[
 ];
 const OBJECT_PROPERTY_TS_EXTRAS: &[(&str, &str)] = &[("optional", "false")];
 const EXPRESSION_STATEMENT_TS_EXTRAS: &[(&str, &str)] = &[("directive", "null")];
-const BINDING_REST_TS_EXTRAS: &[(&str, &str)] = &[("value", "null")];
+const BINDING_REST_TS_EXTRAS: &[(&str, &str)] = &[
+    ("value", "null"),
+    ("decorators", "[]"),
+    ("optional", "false"),
+    ("typeAnnotation", "null"),
+];
 const EXPORT_DEFAULT_TS_EXTRAS: &[(&str, &str)] = &[("exportKind", "\"value\"")];
 const TS_PROPERTY_SIGNATURE_EXTRAS: &[(&str, &str)] =
     &[("accessibility", "null"), ("static", "false")];
@@ -675,7 +734,11 @@ const TS_PARAMETER_PROPERTY_EXTRAS: &[(&str, &str)] = &[("static", "false")];
 
 fn ts_extra_fields(name: &str) -> &'static [(&'static str, &'static str)] {
     match name {
-        "IdentifierReference" | "IdentifierName" | "LabelIdentifier" => IDENTIFIER_TS_EXTRAS,
+        "IdentifierReference"
+        | "IdentifierName"
+        | "LabelIdentifier"
+        | "BindingIdentifier"
+        | "AssignmentPattern" => IDENTIFIER_TS_EXTRAS,
         "ObjectProperty" => OBJECT_PROPERTY_TS_EXTRAS,
         "ExpressionStatement" => EXPRESSION_STATEMENT_TS_EXTRAS,
         "BindingRestElement" => BINDING_REST_TS_EXTRAS,

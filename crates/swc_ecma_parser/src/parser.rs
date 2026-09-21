@@ -2329,11 +2329,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             id_span.end
         };
-        if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-            let annotation = self.parse_type_annotation()?;
-            end = annotation.span(&self.ast).end;
-            self.apply_type_annotation_to_pattern(id, annotation);
-        }
+        let type_annotation =
+            if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
+                let annotation = self.parse_type_annotation()?;
+                end = annotation.span(&self.ast).end;
+                Some(annotation)
+            } else {
+                None
+            };
         let init = if self.eat(TokenTag::Assign)? {
             let expression =
                 self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
@@ -2378,19 +2381,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 );
             }
         }
-        Some(
-            self.ast
-                .variable_declarator(Span::new(start, end), id, init, definite),
-        )
+        Some(self.ast.variable_declarator(
+            Span::new(start, end),
+            id,
+            type_annotation,
+            init,
+            definite,
+        ))
     }
 
     fn parse_binding_pattern(&mut self) -> Option<BindingPattern> {
+        self.parse_formal_parameter_pattern().map(Into::into)
+    }
+
+    fn parse_formal_parameter_pattern(&mut self) -> Option<FormalParameterPattern> {
         match self.current_token.tag() {
-            tag if tag.is_identifier_like() => Some(BindingPattern::BindingIdentifier(
-                self.parse_binding_identifier()?,
-            )),
-            TokenTag::LeftBracket => self.parse_array_pattern(),
-            TokenTag::LeftBrace => self.parse_object_pattern(),
+            tag if tag.is_identifier_like() => self
+                .parse_binding_identifier()
+                .map(FormalParameterPattern::BindingIdentifier),
+            TokenTag::LeftBracket => self
+                .parse_array_pattern()
+                .map(FormalParameterPattern::ArrayPattern),
+            TokenTag::LeftBrace => self
+                .parse_object_pattern()
+                .map(FormalParameterPattern::ObjectPattern),
             _ => {
                 let found = self.describe_token(self.current_token);
                 self.report(
@@ -2411,81 +2425,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_array_pattern(&mut self) -> Option<BindingPattern> {
+    fn parse_array_pattern(&mut self) -> Option<ArrayPattern> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBracket);
         let cover = self.parse_array_cover()?;
         self.array_cover_to_pattern(cover, PatternContext::Binding)
     }
 
-    fn parse_object_pattern(&mut self) -> Option<BindingPattern> {
+    fn parse_object_pattern(&mut self) -> Option<ObjectPattern> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
         let cover = self.parse_object_cover()?;
         self.object_cover_to_pattern(cover, PatternContext::Binding)
-    }
-
-    // BindingElement[Yield, Await] :
-    //   SingleNameBinding[?Yield, ?Await]
-    //   BindingPattern[?Yield, ?Await] Initializer[+In, ?Yield, ?Await]?
-    //
-    // SingleNameBinding[Yield, Await] :
-    //   BindingIdentifier[?Yield, ?Await] Initializer[+In, ?Yield, ?Await]?
-    //
-    // Initializer[In, Yield, Await] :
-    //   `=` AssignmentExpression[?In, ?Yield, ?Await]
-    fn parse_assignment_pattern(&mut self, left: BindingPattern) -> Option<BindingPattern> {
-        if !self.eat(TokenTag::Assign)? {
-            return Some(left);
-        }
-        let grammar_context = enter_grammar_context![&mut self.context, +In];
-        let right = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-        self.context = grammar_context;
-        let right = right?;
-        let span = Span::new(left.span(&self.ast).start, right.span(&self.ast).end);
-        if self.ts_context.ambient() {
-            self.report(
-                span,
-                "A parameter initializer is only allowed in a function or constructor implementation",
-                ReportOptions::default(),
-            );
-        }
-        let decorators = SubRange::empty();
-        Some(
-            self.ast
-                .binding_pattern_assignment_pattern(span, decorators, left, None, right, false),
-        )
-    }
-
-    fn mark_pattern_optional(&mut self, pattern: BindingPattern, end: u32) {
-        match self.ast.binding_pattern_data(pattern) {
-            BindingPatternData::BindingIdentifier(node) => node.set_optional(&mut self.ast, true),
-            BindingPatternData::ArrayPattern(node) => node.set_optional(&mut self.ast, true),
-            BindingPatternData::ObjectPattern(node) => node.set_optional(&mut self.ast, true),
-            _ => unreachable!("only binding patterns can be marked optional"),
-        }
-        let span = pattern.span(&self.ast);
-        pattern.set_span(&mut self.ast, Span::new(span.start, end));
-    }
-
-    fn apply_type_annotation_to_pattern(
-        &mut self,
-        pattern: BindingPattern,
-        annotation: TsTypeAnnotation,
-    ) {
-        match self.ast.binding_pattern_data(pattern) {
-            BindingPatternData::BindingIdentifier(node) => {
-                node.set_type_annotation(&mut self.ast, Some(annotation));
-            }
-            BindingPatternData::ArrayPattern(node) => {
-                node.set_type_annotation(&mut self.ast, Some(annotation));
-            }
-            BindingPatternData::ObjectPattern(node) => {
-                node.set_type_annotation(&mut self.ast, Some(annotation));
-            }
-            _ => unreachable!("only binding patterns can have type annotations"),
-        }
-        let span = pattern.span(&self.ast);
-        let end = annotation.span(&self.ast).end;
-        pattern.set_span(&mut self.ast, Span::new(span.start, end));
     }
 
     fn parse_function(
@@ -2533,7 +2482,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 } else {
                     None
                 };
-            let params = self.parse_formal_parameters(
+            let (this_param, params) = self.parse_formal_parameters(
                 if generator || opts.is_async {
                     FormalParameterKind::UniqueFormalParameters
                 } else {
@@ -2575,11 +2524,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // Consume an invalid ambient body before dropping it, so its closing
             // brace cannot be mistaken for the surrounding namespace/module's.
             let body = if ambient_declaration { None } else { body };
-            Some((params, body, type_parameters, return_type, params_end, end))
+            Some((
+                this_param,
+                params,
+                body,
+                type_parameters,
+                return_type,
+                params_end,
+                end,
+            ))
         })();
         self.context = context;
         self.boundary_context = boundary_context;
-        let (params, body, type_parameters, return_type, params_end, end) = tail?;
+        let (this_param, params, body, type_parameters, return_type, params_end, end) = tail?;
         // Only declarations are restricted here. A function expression is a valid
         // operand in any expression position, for example:
         //   if (a) c(function* () {});
@@ -2612,6 +2569,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 function_type,
                 id,
                 type_parameters,
+                this_param,
                 params,
                 return_type,
                 body,
@@ -2624,6 +2582,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 span,
                 id,
                 type_parameters,
+                this_param,
                 params,
                 return_type,
                 generator,
@@ -3216,7 +3175,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 } else {
                     None
                 };
-            let params = self.parse_formal_parameters(
+            let (this_param, params) = self.parse_formal_parameters(
                 FormalParameterKind::UniqueFormalParameters,
                 modifiers.kind == MethodDefinitionKind::Constructor,
             )?;
@@ -3230,10 +3189,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if self.current_token.tag() == TokenTag::LeftBrace {
                 let body = self.parse_function_body()?;
                 let end = body.span(&self.ast).end;
-                Some((params, type_parameters, return_type, Some(body), end))
+                Some((
+                    this_param,
+                    params,
+                    type_parameters,
+                    return_type,
+                    Some(body),
+                    end,
+                ))
             } else if self.lang.is_typescript() {
                 let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
-                Some((params, type_parameters, return_type, None, end))
+                Some((this_param, params, type_parameters, return_type, None, end))
             } else {
                 self.report_expected(
                     self.current_token.span(),
@@ -3245,7 +3211,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.context = context;
         self.boundary_context = boundary_context;
-        let (params, type_parameters, return_type, body, end) = result?;
+        let (this_param, params, type_parameters, return_type, body, end) = result?;
         let function_span = Span::new(function_start, end);
         let method_span = Span::new(start, end);
         if let Some(body) = body {
@@ -3254,6 +3220,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 FunctionType::FunctionExpression,
                 None,
                 type_parameters,
+                this_param,
                 params,
                 return_type,
                 body,
@@ -3279,6 +3246,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 function_span,
                 None,
                 type_parameters,
+                this_param,
                 params,
                 return_type,
                 modifiers.is_generator,
@@ -3479,19 +3447,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return true;
         };
         let items = params.items(&self.ast);
-        let has_this = items.get_node(&self.ast, 0).is_some_and(|item| {
-            let FormalParameterItemData::FormalParameter(parameter) =
-                self.ast.formal_parameter_item_data(item)
-            else {
-                return false;
-            };
-            matches!(
-                self.ast
-                    .formal_parameter_pattern_data(parameter.pattern(&self.ast)),
-                FormalParameterPatternData::TsThisParameter(_)
-            )
-        });
-        let count = items.len() - usize::from(has_this);
+        let count = items.len();
         let has_rest = params.rest(&self.ast).is_some();
         if count == expected && !has_rest {
             return true;
@@ -3511,7 +3467,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         kind: FormalParameterKind,
         allow_parameter_properties: bool,
-    ) -> Option<FormalParameters> {
+    ) -> Option<(Option<TsThisParameter>, FormalParameters)> {
         let start = self.current_token.start();
         if !self.expect(
             TokenTag::LeftParen,
@@ -3520,6 +3476,26 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
+        let this_param = if self.lang.is_typescript() && self.current_token.tag() == TokenTag::This
+        {
+            if allow_parameter_properties || kind == FormalParameterKind::ArrowFormalParameters {
+                self.report(
+                    self.current_token.span(),
+                    "A 'this' parameter is not allowed here",
+                    ReportOptions::default(),
+                );
+                return None;
+            }
+            let parameter = self.parse_this_parameter()?;
+            if self.current_token.tag() != TokenTag::RightParen
+                && !self.expect(TokenTag::Comma, "Expected ',' after this parameter", None)
+            {
+                return None;
+            }
+            Some(parameter)
+        } else {
+            None
+        };
         let checkpoint = self.scratch_a.begin();
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
@@ -3537,7 +3513,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
 
                 if self.current_token.tag() == TokenTag::Spread {
-                    rest = Some(self.parse_binding_rest_element(decorators)?);
+                    rest = Some(self.parse_formal_parameter_rest(decorators)?);
                     if self.eat(TokenTag::Comma)?
                         && (!self.ts_context.ambient()
                             || self.current_token.tag() != TokenTag::RightParen)
@@ -3555,11 +3531,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     break;
                 }
 
-                let parameter = self.parse_formal_parameter(
-                    allow_parameter_properties,
-                    decorators,
-                    parameter_start,
-                )?;
+                let parameter = if self.lang.is_typescript() {
+                    self.parse_formal_parameter::<true>(
+                        allow_parameter_properties,
+                        decorators,
+                        parameter_start,
+                    )
+                } else {
+                    self.parse_formal_parameter::<false>(
+                        allow_parameter_properties,
+                        decorators,
+                        parameter_start,
+                    )
+                }?;
+
                 self.scratch_a.append(parameter);
                 if !self.eat(TokenTag::Comma)? {
                     break;
@@ -3574,63 +3559,109 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return None;
             }
             let items = self.add_extra_from_scratch_a(checkpoint);
-            Some(
-                self.ast
-                    .formal_parameters(Span::new(start, end), items, rest, kind),
-            )
+            let parameters = self
+                .ast
+                .formal_parameters(Span::new(start, end), items, rest, kind);
+            Some((this_param, parameters))
         })();
         self.ts_context = ts_context;
         self.scratch_a.reset(checkpoint);
         result
     }
 
-    fn parse_formal_parameter(
+    fn parse_formal_parameter<const IS_TYPESCRIPT: bool>(
         &mut self,
         allow_parameter_properties: bool,
         decorators: SubRange<Decorator>,
         start: u32,
     ) -> Option<FormalParameterItem> {
-        if self.lang.is_typescript() && self.current_token.tag() == TokenTag::This {
-            let this_parameter = self.parse_this_parameter()?;
-            let span = this_parameter.span(&self.ast);
-            let parameter = self.ast.formal_parameter(
-                span,
-                FormalParameterPattern::TsThisParameter(this_parameter),
-            );
-            return Some(FormalParameterItem::FormalParameter(parameter));
-        }
-
-        let parameter_property = if self.lang.is_typescript() && allow_parameter_properties {
+        let modifiers = if IS_TYPESCRIPT && allow_parameter_properties {
             self.parse_parameter_property_modifiers()?
         } else {
             ParameterPropertyModifiers::default()
         };
-        let mut pattern = self.parse_binding_pattern()?;
-        if self.lang.is_typescript() && self.eat(TokenTag::Question)? {
-            self.mark_pattern_optional(pattern, self.lexer.state.prev_token_end);
-        }
-        if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-            let annotation = self.parse_type_annotation()?;
-            self.apply_type_annotation_to_pattern(pattern, annotation);
-        }
-        pattern = self.parse_assignment_pattern(pattern)?;
-        let span = pattern.span(&self.ast);
-        if parameter_property.present {
-            let parameter_property = self.ast.ts_parameter_property(
-                Span::new(start, span.end),
+        let parameter_start = self.current_token.start();
+        let pattern = self.parse_formal_parameter_pattern()?;
+        let optional = IS_TYPESCRIPT && self.eat(TokenTag::Question)?;
+        let type_annotation = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::Colon {
+            Some(self.parse_type_annotation()?)
+        } else {
+            None
+        };
+        let initializer = if self.eat(TokenTag::Assign)? {
+            let context = enter_grammar_context![&mut self.context, +In];
+            let initializer =
+                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
+            self.context = context;
+            let initializer = initializer?;
+            if self.ts_context.ambient() {
+                self.report(
+                    initializer.span(&self.ast),
+                    "A parameter initializer is only allowed in a function or constructor implementation",
+                    ReportOptions::default(),
+                );
+            }
+            Some(initializer)
+        } else {
+            None
+        };
+        let end = self.lexer.state.prev_token_end;
+        let parameter_decorators = if modifiers.present {
+            SubRange::empty()
+        } else {
+            decorators
+        };
+        let parameter_start = if modifiers.present {
+            parameter_start
+        } else {
+            start
+        };
+        let parameter = self.ast.formal_parameter(
+            Span::new(parameter_start, end),
+            parameter_decorators,
+            pattern,
+            type_annotation,
+            initializer,
+            optional,
+        );
+        if modifiers.present {
+            let property = self.ast.ts_parameter_property(
+                Span::new(start, end),
                 decorators,
-                pattern,
-                parameter_property.r#override,
-                parameter_property.readonly,
-                parameter_property.accessibility,
+                parameter,
+                modifiers.r#override,
+                modifiers.readonly,
+                modifiers.accessibility,
             );
-            return Some(FormalParameterItem::TsParameterProperty(parameter_property));
+            Some(FormalParameterItem::TsParameterProperty(property))
+        } else {
+            Some(FormalParameterItem::FormalParameter(parameter))
         }
+    }
 
-        self.apply_decorators_to_pattern(pattern, decorators);
-        let parameter_pattern = FormalParameterPattern::BindingPattern(pattern);
-        let parameter = self.ast.formal_parameter(span, parameter_pattern);
-        Some(FormalParameterItem::FormalParameter(parameter))
+    fn formal_parameter_pattern(
+        &mut self,
+        pattern: BindingPattern,
+    ) -> Option<FormalParameterPattern> {
+        match self.ast.binding_pattern_data(pattern) {
+            BindingPatternData::BindingIdentifier(node) => {
+                Some(FormalParameterPattern::BindingIdentifier(node))
+            }
+            BindingPatternData::ArrayPattern(node) => {
+                Some(FormalParameterPattern::ArrayPattern(node))
+            }
+            BindingPatternData::ObjectPattern(node) => {
+                Some(FormalParameterPattern::ObjectPattern(node))
+            }
+            _ => {
+                self.report(
+                    pattern.span(&self.ast),
+                    "Invalid parameter binding",
+                    ReportOptions::default(),
+                );
+                None
+            }
+        }
     }
 
     fn parse_this_parameter(&mut self) -> Option<TsThisParameter> {
@@ -3651,14 +3682,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_binding_rest_element(
+    fn parse_formal_parameter_rest(
         &mut self,
         decorators: SubRange<Decorator>,
-    ) -> Option<BindingRestElement> {
+    ) -> Option<FormalParameterRest> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Spread);
         let start = self.current_token.start();
         self.advance()?;
-        let argument = self.parse_binding_pattern()?;
+        let argument = self.parse_formal_parameter_pattern()?;
         let type_annotation =
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                 Some(self.parse_type_annotation()?)
@@ -3668,12 +3699,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let end = type_annotation.map_or(argument.span(&self.ast).end, |annotation| {
             annotation.span(&self.ast).end
         });
-        Some(self.ast.binding_rest_element(
+        Some(self.ast.formal_parameter_rest(
             Span::new(start, end),
             decorators,
             argument,
             type_annotation,
-            false,
         ))
     }
 
@@ -3705,34 +3735,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(false);
         }
         Some(can_follow_parameter_property_modifier(next.tag()))
-    }
-
-    fn apply_decorators_to_pattern(
-        &mut self,
-        pattern: BindingPattern,
-        decorators: SubRange<Decorator>,
-    ) {
-        if decorators.is_empty() {
-            return;
-        }
-        match self.ast.binding_pattern_data(pattern) {
-            BindingPatternData::BindingIdentifier(node) => {
-                node.set_decorators(&mut self.ast, decorators)
-            }
-            BindingPatternData::AssignmentPattern(node) => {
-                node.set_decorators(&mut self.ast, decorators)
-            }
-            BindingPatternData::BindingRestElement(node) => {
-                node.set_decorators(&mut self.ast, decorators)
-            }
-            BindingPatternData::ArrayPattern(node) => {
-                node.set_decorators(&mut self.ast, decorators)
-            }
-            BindingPatternData::ObjectPattern(node) => {
-                node.set_decorators(&mut self.ast, decorators)
-            }
-            BindingPatternData::SimpleAssignmentTarget(_) => {}
-        }
     }
 
     // FunctionBody[Yield, Await] :
@@ -4045,10 +4047,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let name = identifier.name(&self.ast);
         self.validate_identifier(parts.name_token, "an imported binding");
-        let decorators = SubRange::empty();
-        let local = self
-            .ast
-            .binding_identifier(local_span, name, decorators, None, false);
+        let local = self.ast.binding_identifier(local_span, name);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
             imported,
@@ -6150,7 +6149,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        let params = self.parse_formal_parameters(FormalParameterKind::Signature, false)?;
+        let (this_param, params) =
+            self.parse_formal_parameters(FormalParameterKind::Signature, false)?;
+        if is_constructor && this_param.is_some() {
+            self.report(
+                params.span(&self.ast),
+                "A 'this' parameter is not allowed here",
+                ReportOptions::default(),
+            );
+            return None;
+        }
         if self.current_token.tag() != TokenTag::Arrow {
             self.report_expected(
                 self.current_token.span(),
@@ -6183,6 +6191,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TsType::TsFunctionType(self.ast.ts_function_type(
                 Span::new(start, end),
                 type_parameters,
+                this_param,
                 params,
                 return_type,
             ))
@@ -6737,7 +6746,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        let params = self.parse_formal_parameters(FormalParameterKind::Signature, false)?;
+        let (this_param, params) =
+            self.parse_formal_parameters(FormalParameterKind::Signature, false)?;
+        if is_construct && this_param.is_some() {
+            self.report(
+                params.span(&self.ast),
+                "A 'this' parameter is not allowed here",
+                ReportOptions::default(),
+            );
+            return None;
+        }
         let return_type = if self.current_token.tag() == TokenTag::Colon {
             Some(self.parse_return_type_annotation()?)
         } else {
@@ -6755,6 +6773,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.ast.ts_type_element_ts_call_signature_declaration(
                 Span::new(start, end),
                 type_parameters,
+                this_param,
                 params,
                 return_type,
             )
@@ -6828,7 +6847,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_index_signature_parameter(&mut self) -> Option<BindingIdentifier> {
+    fn parse_index_signature_parameter(&mut self) -> Option<TsIndexSignatureParameter> {
         let name = self.parse_binding_identifier()?;
         if self.current_token.tag() != TokenTag::Colon {
             self.report_expected(
@@ -6844,10 +6863,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let annotation = self.parse_type_annotation()?;
-        name.set_type_annotation(&mut self.ast, Some(annotation));
         let span = Span::new(name.span(&self.ast).start, annotation.span(&self.ast).end);
-        name.set_span(&mut self.ast, span);
-        Some(name)
+        Some(
+            self.ast
+                .ts_index_signature_parameter(span, name, annotation),
+        )
     }
 
     fn parse_property_or_method_signature(
@@ -6915,7 +6935,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        let params = self.parse_formal_parameters(FormalParameterKind::Signature, false)?;
+        let (this_param, params) =
+            self.parse_formal_parameters(FormalParameterKind::Signature, false)?;
         let return_type = if self.current_token.tag() == TokenTag::Colon {
             let annotation = self.parse_return_type_annotation()?;
             if kind == TsMethodSignatureKind::Set {
@@ -6935,6 +6956,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Span::new(start, end),
             key,
             type_parameters,
+            this_param,
             params,
             return_type,
             kind,
@@ -7753,12 +7775,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let block = self.parse_block_statement()?;
         let handler = if self.current_token.tag() == TokenTag::Catch {
-            Some(self.parse_catch_clause()?)
+            self.parse_catch_clause()?.into()
         } else {
             None
         };
         let finalizer = if self.eat(TokenTag::Finally)? {
-            Some(self.parse_block_statement()?)
+            self.parse_block_statement()?.into()
         } else {
             None
         };
@@ -7787,11 +7809,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Catch);
         let start = self.current_token.start();
         self.advance()?;
+        let mut type_annotation = None;
         let param = if self.eat(TokenTag::LeftParen)? {
             let param = self.parse_binding_pattern()?;
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                let annotation = self.parse_type_annotation()?;
-                self.apply_type_annotation_to_pattern(param, annotation);
+                type_annotation = self.parse_type_annotation()?.into();
             }
             if !self.expect(
                 TokenTag::RightParen,
@@ -7805,10 +7827,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         let body = self.parse_block_statement()?;
-        Some(
-            self.ast
-                .catch_clause(Span::new(start, body.span(&self.ast).end), param, body),
-        )
+        Some(self.ast.catch_clause(
+            Span::new(start, body.span(&self.ast).end),
+            param,
+            type_annotation,
+            body,
+        ))
     }
 
     // Expression[In, Yield, Await] :
@@ -8705,12 +8729,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let temporary = self.ast.binding_rest_element(
+                        let argument = self.formal_parameter_pattern(argument)?;
+                        let temporary = self.ast.formal_parameter_rest(
                             spread.span(&self.ast),
                             SubRange::empty(),
                             argument,
                             None,
-                            false,
                         );
                         // SAFETY: `temporary` is the unattached last node, and
                         // `spread` is retired in favor of the returned handle.
@@ -9014,8 +9038,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.current_token.tag() != TokenTag::LeftParen {
             return None;
         }
-        let params =
+        let (_, params) =
             self.parse_formal_parameters(FormalParameterKind::ArrowFormalParameters, false)?;
+
         let return_type =
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                 Some(self.parse_return_type_annotation()?)
@@ -9108,10 +9133,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn expression_to_parameter(&mut self, expression: Expr) -> Option<FormalParameterItem> {
-        let pattern = self.expression_to_binding_pattern(expression)?;
-        let span = pattern.span(&self.ast);
-        let pattern = FormalParameterPattern::BindingPattern(pattern);
-        let parameter = self.ast.formal_parameter(span, pattern);
+        let span = expression.span(&self.ast);
+        if let ExprData::AssignmentExpression(assignment) = self.ast.expr_data(expression)
+            && assignment.operator(&self.ast) == AssignmentOperator::Assign
+        {
+            let binding = self.assignment_target_to_pattern(
+                assignment.left(&self.ast),
+                PatternContext::Binding,
+            )?;
+            let pattern = self.formal_parameter_pattern(binding)?;
+            let initializer = assignment.right(&self.ast);
+            let parameter = self.ast.formal_parameter(
+                span,
+                SubRange::empty(),
+                pattern,
+                None,
+                Some(initializer),
+                false,
+            );
+            // SAFETY: `parameter` is the unattached last node; the cover assignment is retired.
+            let parameter = unsafe { self.ast.replace_data(assignment, parameter) };
+            return Some(FormalParameterItem::FormalParameter(parameter));
+        }
+        let binding = self.expression_to_binding_pattern(expression)?;
+        let pattern = self.formal_parameter_pattern(binding)?;
+        let parameter =
+            self.ast
+                .formal_parameter(span, SubRange::empty(), pattern, None, None, false);
         Some(FormalParameterItem::FormalParameter(parameter))
     }
 
@@ -9135,14 +9183,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ))
             }
             ExprData::IdentifierReference(identifier) => {
-                let decorators = SubRange::empty();
-                let binding = self.ast.binding_identifier(
-                    identifier.span(&self.ast),
-                    identifier.name(&self.ast),
-                    decorators,
-                    None,
-                    false,
-                );
+                let binding = self
+                    .ast
+                    .binding_identifier(identifier.span(&self.ast), identifier.name(&self.ast));
                 // SAFETY: `binding` is the unattached last node, and
                 // `identifier` is retired in favor of the returned handle.
                 let binding = unsafe { self.ast.replace_data(identifier, binding) };
@@ -9240,15 +9283,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let left =
                     self.assignment_target_to_pattern(assignment.left(&self.ast), context)?;
                 let right = assignment.right(&self.ast);
-                let decorators = SubRange::empty();
-                let pattern = self.ast.assignment_pattern(
-                    assignment.span(&self.ast),
-                    decorators,
-                    left,
-                    None,
-                    right,
-                    false,
-                );
+                let pattern = self
+                    .ast
+                    .assignment_pattern(assignment.span(&self.ast), left, right);
                 // SAFETY: `pattern` is the unattached last node, and
                 // `assignment` is retired in favor of the returned handle.
                 let pattern = unsafe { self.ast.replace_data(assignment, pattern) };
@@ -9348,13 +9385,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             array.span(&self.ast),
             context,
         )
+        .map(BindingPattern::ArrayPattern)
     }
 
     fn array_cover_to_pattern(
         &mut self,
         cover: ArrayCover,
         context: PatternContext,
-    ) -> Option<BindingPattern> {
+    ) -> Option<ArrayPattern> {
         self.convert_array_pattern_impl(
             None,
             cover.elements,
@@ -9369,7 +9407,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         elements_range: SubRange<Option<Argument>>,
         span: Span,
         context: PatternContext,
-    ) -> Option<BindingPattern> {
+    ) -> Option<ArrayPattern> {
         let checkpoint = self.scratch_cover.begin();
         let result = (|| {
             let source_elements_len = elements_range.len();
@@ -9426,13 +9464,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let temporary = self.ast.binding_rest_element(
-                            spread.span(&self.ast),
-                            SubRange::empty(),
-                            argument,
-                            None,
-                            false,
-                        );
+                        let temporary = self
+                            .ast
+                            .binding_rest_element(spread.span(&self.ast), argument);
                         // SAFETY: `temporary` is the unattached last node, and
                         // `spread` is retired in favor of the returned handle.
                         rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
@@ -9446,9 +9480,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         (*node != none)
                             .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
                     }));
-            let temporary =
-                self.ast
-                    .array_pattern(span, SubRange::empty(), elements, rest, None, false);
+            let temporary = self.ast.array_pattern(span, elements, rest);
             let pattern = if let Some(array) = mutate_node {
                 // SAFETY: `temporary` is the unattached last node, and `array`
                 // is retired in favor of the returned handle.
@@ -9456,7 +9488,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else {
                 temporary
             };
-            Some(BindingPattern::ArrayPattern(pattern))
+            Some(pattern)
         })();
         self.scratch_cover.reset(checkpoint);
         result
@@ -9473,13 +9505,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             object.span(&self.ast),
             context,
         )
+        .map(BindingPattern::ObjectPattern)
     }
 
     fn object_cover_to_pattern(
         &mut self,
         cover: ObjectCover,
         context: PatternContext,
-    ) -> Option<BindingPattern> {
+    ) -> Option<ObjectPattern> {
         self.convert_object_pattern_impl(
             None,
             cover.properties,
@@ -9494,7 +9527,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         properties_range: SubRange<ObjectPropertyKind>,
         span: Span,
         context: PatternContext,
-    ) -> Option<BindingPattern> {
+    ) -> Option<ObjectPattern> {
         let checkpoint = self.scratch_cover.begin();
         let result = (|| {
             let source_properties_len = properties_range.len();
@@ -9598,13 +9631,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let temporary = self.ast.binding_rest_element(
-                            spread.span(&self.ast),
-                            SubRange::empty(),
-                            argument,
-                            None,
-                            false,
-                        );
+                        let temporary = self
+                            .ast
+                            .binding_rest_element(spread.span(&self.ast), argument);
                         // SAFETY: `temporary` is the unattached last node, and
                         // `spread` is retired in favor of the returned handle.
                         rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
@@ -9613,9 +9642,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
             }
             let properties = self.add_extra_from_scratch_cover(checkpoint);
-            let temporary =
-                self.ast
-                    .object_pattern(span, SubRange::empty(), properties, rest, None, false);
+            let temporary = self.ast.object_pattern(span, properties, rest);
             let pattern = if let Some(object) = mutate_node {
                 // SAFETY: `temporary` is the unattached last node, and `object`
                 // is retired in favor of the returned handle.
@@ -9623,7 +9650,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else {
                 temporary
             };
-            Some(BindingPattern::ObjectPattern(pattern))
+            Some(pattern)
         })();
         self.scratch_cover.reset(checkpoint);
         result
@@ -9644,13 +9671,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 match self.ast.simple_assignment_target_data(target) {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                        let decorators = SubRange::empty();
                         let binding = self.ast.binding_identifier(
                             identifier.span(&self.ast),
                             identifier.name(&self.ast),
-                            decorators,
-                            None,
-                            false,
                         );
                         // SAFETY: `binding` is the unattached last node, and
                         // `identifier` is retired in favor of the returned handle.
@@ -10362,7 +10385,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 } else {
                     None
                 };
-            let params =
+            let (this_param, params) =
                 self.parse_formal_parameters(FormalParameterKind::UniqueFormalParameters, false)?;
             if !self.check_accessor_arity(kind, params) {
                 return None;
@@ -10374,17 +10397,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     None
                 };
             let body = self.parse_function_body()?;
-            Some((params, type_parameters, return_type, body))
+            Some((this_param, params, type_parameters, return_type, body))
         })();
         self.context = context;
         self.boundary_context = boundary_context;
-        let (params, type_parameters, return_type, body) = result?;
+        let (this_param, params, type_parameters, return_type, body) = result?;
         let span = Span::new(start, body.span(&self.ast).end);
         let function = self.ast.function(
             Span::new(function_start, body.span(&self.ast).end),
             FunctionType::FunctionExpression,
             None,
             type_parameters,
+            this_param,
             params,
             return_type,
             body,
@@ -12319,11 +12343,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.validate_identifier(token, "a binding identifier");
         self.advance_without_escape_check()?;
         let name = self.identifier_name(token);
-        let decorators = SubRange::empty();
-        Some(
-            self.ast
-                .binding_identifier(token.span(), name, decorators, None, false),
-        )
+        Some(self.ast.binding_identifier(token.span(), name))
     }
 
     fn parse_label_identifier(&mut self) -> Option<LabelIdentifier> {
@@ -14269,7 +14289,7 @@ mod tests {
                 .unwrap()
                 .as_formal_parameter(ast)
                 .unwrap();
-            let binding = parameter.pattern(ast).as_binding_pattern(ast).unwrap();
+            let binding = parameter.pattern(ast);
             let identifier = binding.as_binding_identifier(ast).unwrap();
             assert_eq!(ast.get_utf8(identifier.name(ast)), "b");
             assert!(arrow.return_type(ast).is_none());

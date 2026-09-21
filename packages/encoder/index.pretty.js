@@ -443,18 +443,9 @@ function encode(program) {
 
   function encBindingIdentifier(n) {
     const v_0 = encUtf8(n.name);
-    const v_1 = encArray(n.decorators, encDecorator, false);
-    const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_3 = n.optional ? 1 : 0;
-    const extraId = allocExtra(2);
     const index = allocNode(13, asStart(n), asEnd(n));
-    setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
-    setExtraU32(extraId + 1, 0, v_1.start);
-    setExtraU32(extraId + 1, 4, v_1.end);
-    setPayloadU32(index, 1, v_2);
-    setPayloadU8(index, 0, v_3);
+    setPayloadU32(index, 0, v_0.start);
+    setPayloadU32(index, 4, v_0.end);
     return index;
   }
 
@@ -475,36 +466,18 @@ function encode(program) {
   }
 
   function encAssignmentPattern(n) {
-    const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = encBindingPattern(n.left);
-    const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_3 = encNode(n.right);
-    const v_4 = n.optional ? 1 : 0;
-    const extraId = allocExtra(2);
+    const v_0 = encBindingPattern(n.left);
+    const v_1 = encNode(n.right);
     const index = allocNode(16, asStart(n), asEnd(n));
-    setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
-    setPayloadU32(index, 1, v_1);
-    setPayloadU32(index, 5, v_2);
-    setExtraU32(extraId + 1, 0, v_3);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     return index;
   }
 
   function encBindingRestElement(n) {
-    const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = encBindingPattern(n.argument);
-    const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_3 = n.optional ? 1 : 0;
-    const extraId = allocExtra(1);
+    const v_0 = encBindingPattern(n.argument);
     const index = allocNode(17, asStart(n), asEnd(n));
-    setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
-    setPayloadU32(index, 1, v_1);
-    setPayloadU32(index, 5, v_2);
-    setPayloadU8(index, 0, v_3);
+    setPayloadU32(index, 0, v_0);
     return index;
   }
 
@@ -515,21 +488,12 @@ function encode(program) {
       if (element?.type === "RestElement") _rest = element;
       else _elements.push(element);
     }
-    const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = encArray(_elements, encBindingPattern, true);
-    const v_2 = _rest == null ? NULL : encBindingRestElement(_rest);
-    const v_3 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_4 = n.optional ? 1 : 0;
-    const extraId = allocExtra(2);
+    const v_0 = encArray(_elements, encBindingPattern, true);
+    const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
     const index = allocNode(18, asStart(n), asEnd(n));
-    setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
-    setExtraU32(extraId + 1, 0, v_1.start);
-    setExtraU32(extraId + 1, 4, v_1.end);
-    setPayloadU32(index, 1, v_2);
-    setPayloadU32(index, 5, v_3);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU32(index, 0, v_0.start);
+    setPayloadU32(index, 4, v_0.end);
+    setPayloadU32(index, 8, v_1);
     return index;
   }
 
@@ -540,21 +504,12 @@ function encode(program) {
       if (property?.type === "RestElement") _rest = property;
       else _properties.push(property);
     }
-    const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = encArray(_properties, encBindingProperty, false);
-    const v_2 = _rest == null ? NULL : encBindingRestElement(_rest);
-    const v_3 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const v_4 = n.optional ? 1 : 0;
-    const extraId = allocExtra(2);
+    const v_0 = encArray(_properties, encBindingProperty, false);
+    const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
     const index = allocNode(19, asStart(n), asEnd(n));
-    setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
-    setExtraU32(extraId + 1, 0, v_1.start);
-    setExtraU32(extraId + 1, 4, v_1.end);
-    setPayloadU32(index, 1, v_2);
-    setPayloadU32(index, 5, v_3);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU32(index, 0, v_0.start);
+    setPayloadU32(index, 4, v_0.end);
+    setPayloadU32(index, 8, v_1);
     return index;
   }
 
@@ -649,12 +604,14 @@ function encode(program) {
 
   function encVariableDeclarator(n) {
     const v_0 = encBindingPattern(n.id);
-    const v_1 = n.init == null ? NULL : encNode(n.init);
-    const v_2 = n.definite ? 1 : 0;
+    const v_1 = n.id?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.id?.typeAnnotation);
+    const v_2 = n.init == null ? NULL : encNode(n.init);
+    const v_3 = n.definite ? 1 : 0;
     const index = allocNode(28, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
-    setPayloadU8(index, 8, v_2);
+    setPayloadU32(index, 8, v_2);
+    setPayloadU8(index, 12, v_3);
     return index;
   }
 
@@ -739,10 +696,12 @@ function encode(program) {
 
   function encCatchClause(n) {
     const v_0 = n.param == null ? NULL : encBindingPattern(n.param);
-    const v_1 = encBlockStatement(n.body);
+    const v_1 = n.param?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.param?.typeAnnotation);
+    const v_2 = encBlockStatement(n.body);
     const index = allocNode(36, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
+    setPayloadU32(index, 8, v_2);
     return index;
   }
 
@@ -937,15 +896,19 @@ function encode(program) {
   }
 
   function encFunction(n) {
+    const _first = n.params?.[0];
+    const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
+    const _params = _thisParam === null ? n.params : n.params.slice(1);
     const v_0 = enumValue("FunctionType", n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
     const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
     const v_2 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_3 = encFormalParameters(n.params);
-    const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
-    const v_5 = encFunctionBody(n.body);
-    const v_6 = n.generator ? 1 : 0;
-    const v_7 = n.async ? 1 : 0;
-    const extraId = allocExtra(3);
+    const v_3 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
+    const v_4 = encFormalParameters(_params);
+    const v_5 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
+    const v_6 = encFunctionBody(n.body);
+    const v_7 = n.generator ? 1 : 0;
+    const v_8 = n.async ? 1 : 0;
+    const extraId = allocExtra(4);
     const index = allocNode(52, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU8(index, 0, v_0);
@@ -954,8 +917,9 @@ function encode(program) {
     setExtraU32(extraId + 0, 0, v_3);
     setExtraU32(extraId + 1, 0, v_4);
     setExtraU32(extraId + 2, 0, v_5);
-    setPayloadU8(index, 1, v_6);
-    setPayloadU8(index, 2, v_7);
+    setExtraU32(extraId + 3, 0, v_6);
+    setPayloadU8(index, 1, v_7);
+    setPayloadU8(index, 2, v_8);
     return index;
   }
 
@@ -1027,7 +991,7 @@ function encode(program) {
     const _start = n?.length ? asStart(n[0]) : 0;
     const _end = n?.length ? asEnd(n[n.length - 1]) : 0;
     const v_0 = encArray(_items, encFormalParameterItem, false);
-    const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
+    const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
     const v_2 = enumValue("FormalParameterKind", 0);
     const index = allocNode(58, _start, _end);
     setPayloadU32(index, 0, v_0.start);
@@ -1038,15 +1002,41 @@ function encode(program) {
   }
 
   function encFormalParameter(n) {
-    const v_0 = encFormalParameterPattern(n);
+    const _hasInitializer = n.type === "AssignmentPattern";
+    const _pattern = _hasInitializer ? n.left : n;
+    const _initializer = _hasInitializer ? n.right : null;
+    const v_0 = encArray(n.decorators, encDecorator, false);
+    const v_1 = encFormalParameterPattern(_pattern);
+    const v_2 = _pattern.typeAnnotation == null ? NULL : encTsTypeAnnotation(_pattern.typeAnnotation);
+    const v_3 = _initializer == null ? NULL : encNode(_initializer);
+    const v_4 = _pattern.optional ? 1 : 0;
+    const extraId = allocExtra(2);
     const index = allocNode(59, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 12, extraId);
+    setExtraU32(extraId + 0, 0, v_0.start);
+    setExtraU32(extraId + 0, 4, v_0.end);
+    setPayloadU32(index, 1, v_1);
+    setPayloadU32(index, 5, v_2);
+    setExtraU32(extraId + 1, 0, v_3);
+    setPayloadU8(index, 0, v_4);
+    return index;
+  }
+
+  function encFormalParameterRest(n) {
+    const v_0 = encArray(n.decorators, encDecorator, false);
+    const v_1 = encFormalParameterPattern(n.argument);
+    const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
+    const index = allocNode(60, asStart(n), asEnd(n));
+    setPayloadU32(index, 0, v_0.start);
+    setPayloadU32(index, 4, v_0.end);
+    setPayloadU32(index, 8, v_1);
+    setPayloadU32(index, 12, v_2);
     return index;
   }
 
   function encArrayExpression(n) {
     const v_0 = encArray(n.elements, encNode, true);
-    const index = allocNode(60, asStart(n), asEnd(n));
+    const index = allocNode(61, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1054,7 +1044,7 @@ function encode(program) {
 
   function encObjectExpression(n) {
     const v_0 = encArray(n.properties, encNode, false);
-    const index = allocNode(61, asStart(n), asEnd(n));
+    const index = allocNode(62, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1062,7 +1052,7 @@ function encode(program) {
 
   function encSpreadElement(n) {
     const v_0 = encNode(n.argument);
-    const index = allocNode(62, asStart(n), asEnd(n));
+    const index = allocNode(63, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1074,7 +1064,7 @@ function encode(program) {
     const v_3 = n.method ? 1 : 0;
     const v_4 = n.shorthand ? 1 : 0;
     const v_5 = n.computed ? 1 : 0;
-    const index = allocNode(63, asStart(n), asEnd(n));
+    const index = allocNode(64, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1086,7 +1076,7 @@ function encode(program) {
 
   function encParenthesizedExpression(n) {
     const v_0 = encNode(n.expression);
-    const index = allocNode(64, asStart(n), asEnd(n));
+    const index = allocNode(65, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1099,7 +1089,7 @@ function encode(program) {
     const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
     const v_5 = encArrowFunctionBody(n.body);
     const extraId = allocExtra(2);
-    const index = allocNode(65, asStart(n), asEnd(n));
+    const index = allocNode(66, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU8(index, 0, v_0);
     setPayloadU8(index, 1, v_1);
@@ -1112,7 +1102,7 @@ function encode(program) {
 
   function encSequenceExpression(n) {
     const v_0 = encArray(n.expressions, encNode, false);
-    const index = allocNode(66, asStart(n), asEnd(n));
+    const index = allocNode(67, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1123,7 +1113,7 @@ function encode(program) {
     const v_1 = n.computed ? encNode(n.property) : encPropertyKey(n.property);
     const v_2 = n.computed ? 1 : 0;
     const v_3 = n.optional ? 1 : 0;
-    const index = allocNode(67, asStart(n), asEnd(n));
+    const index = allocNode(68, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1137,7 +1127,7 @@ function encode(program) {
     const v_2 = encArray(n.arguments, encNode, false);
     const v_3 = n.optional ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(68, asStart(n), asEnd(n));
+    const index = allocNode(69, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 1, v_0);
     setPayloadU32(index, 5, v_1);
@@ -1149,7 +1139,7 @@ function encode(program) {
 
   function encChainExpression(n) {
     const v_0 = encNode(n.expression);
-    const index = allocNode(69, asStart(n), asEnd(n));
+    const index = allocNode(70, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1158,7 +1148,7 @@ function encode(program) {
     const v_0 = encNode(n.tag);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const v_2 = encTemplateLiteral(n.quasi);
-    const index = allocNode(70, asStart(n), asEnd(n));
+    const index = allocNode(71, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1169,7 +1159,7 @@ function encode(program) {
     const v_0 = encNode(n.callee);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const v_2 = encArray(n.arguments, encNode, false);
-    const index = allocNode(71, asStart(n), asEnd(n));
+    const index = allocNode(72, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 12, v_1);
     setPayloadU32(index, 0, v_2.start);
@@ -1179,7 +1169,7 @@ function encode(program) {
 
   function encAwaitExpression(n) {
     const v_0 = encNode(n.argument);
-    const index = allocNode(72, asStart(n), asEnd(n));
+    const index = allocNode(73, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1187,7 +1177,7 @@ function encode(program) {
   function encYieldExpression(n) {
     const v_0 = n.argument == null ? NULL : encNode(n.argument);
     const v_1 = n.delegate ? 1 : 0;
-    const index = allocNode(73, asStart(n), asEnd(n));
+    const index = allocNode(74, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU8(index, 4, v_1);
     return index;
@@ -1196,7 +1186,7 @@ function encode(program) {
   function encMetaProperty(n) {
     const v_0 = encIdentifierName(n.meta);
     const v_1 = encIdentifierName(n.property);
-    const index = allocNode(74, asStart(n), asEnd(n));
+    const index = allocNode(75, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1208,7 +1198,7 @@ function encode(program) {
     const v_2 = n.phase == null ? 0xff : enumValue("ImportPhase", n.phase);
     const v_3 = 0 ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(75, asStart(n), asEnd(n));
+    const index = allocNode(76, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 1, v_0);
     setPayloadU32(index, 5, v_1);
@@ -1224,7 +1214,7 @@ function encode(program) {
     const v_3 = n.phase == null ? 0xff : enumValue("ImportPhase", n.phase);
     const v_4 = enumValue("ImportOrExportKind", n.importKind);
     const extraId = allocExtra(3);
-    const index = allocNode(76, asStart(n), asEnd(n));
+    const index = allocNode(77, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setExtraU32(extraId + 0, 0, v_0.start);
     setExtraU32(extraId + 0, 4, v_0.end);
@@ -1240,7 +1230,7 @@ function encode(program) {
     const v_0 = encModuleExportName(n.imported);
     const v_1 = encBindingIdentifier(n.local);
     const v_2 = enumValue("ImportOrExportKind", n.importKind);
-    const index = allocNode(77, asStart(n), asEnd(n));
+    const index = allocNode(78, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1249,14 +1239,14 @@ function encode(program) {
 
   function encImportDefaultSpecifier(n) {
     const v_0 = encBindingIdentifier(n.local);
-    const index = allocNode(78, asStart(n), asEnd(n));
+    const index = allocNode(79, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encImportNamespaceSpecifier(n) {
     const v_0 = encBindingIdentifier(n.local);
-    const index = allocNode(79, asStart(n), asEnd(n));
+    const index = allocNode(80, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1264,7 +1254,7 @@ function encode(program) {
   function encImportAttribute(n) {
     const v_0 = encModuleExportName(n.key);
     const v_1 = encStringLiteral(n.value);
-    const index = allocNode(80, asStart(n), asEnd(n));
+    const index = allocNode(81, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1277,7 +1267,7 @@ function encode(program) {
     const v_3 = encArray(n.attributes, encImportAttribute, false);
     const v_4 = enumValue("ImportOrExportKind", n.exportKind);
     const extraId = allocExtra(2);
-    const index = allocNode(81, asStart(n), asEnd(n));
+    const index = allocNode(82, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 1, v_0);
     setExtraU32(extraId + 0, 0, v_1.start);
@@ -1291,7 +1281,7 @@ function encode(program) {
 
   function encExportDefaultDeclaration(n) {
     const v_0 = encNode(n.declaration);
-    const index = allocNode(82, asStart(n), asEnd(n));
+    const index = allocNode(83, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1302,7 +1292,7 @@ function encode(program) {
     const v_2 = encArray(n.attributes, encImportAttribute, false);
     const v_3 = enumValue("ImportOrExportKind", n.exportKind);
     const extraId = allocExtra(1);
-    const index = allocNode(83, asStart(n), asEnd(n));
+    const index = allocNode(84, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 1, v_0);
     setPayloadU32(index, 5, v_1);
@@ -1316,7 +1306,7 @@ function encode(program) {
     const v_0 = encModuleExportName(n.local);
     const v_1 = encModuleExportName(n.exported);
     const v_2 = enumValue("ImportOrExportKind", n.exportKind);
-    const index = allocNode(84, asStart(n), asEnd(n));
+    const index = allocNode(85, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1325,7 +1315,7 @@ function encode(program) {
 
   function encHashbang(n) {
     const v_0 = encUtf8(n.value);
-    const index = allocNode(85, asStart(n), asEnd(n));
+    const index = allocNode(86, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1333,23 +1323,28 @@ function encode(program) {
 
   function encTsFunction(n) {
     isTs = true;
+    const _first = n.params?.[0];
+    const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
+    const _params = _thisParam === null ? n.params : n.params.slice(1);
     const v_0 = n.id == null ? NULL : encBindingIdentifier(n.id);
     const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_2 = encFormalParameters(n.params);
-    const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
-    const v_4 = n.generator ? 1 : 0;
-    const v_5 = n.async ? 1 : 0;
-    const v_6 = n.declare ? 1 : 0;
-    const extraId = allocExtra(2);
-    const index = allocNode(86, asStart(n), asEnd(n));
+    const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
+    const v_3 = encFormalParameters(_params);
+    const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
+    const v_5 = n.generator ? 1 : 0;
+    const v_6 = n.async ? 1 : 0;
+    const v_7 = n.declare ? 1 : 0;
+    const extraId = allocExtra(3);
+    const index = allocNode(87, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 3, v_0);
     setPayloadU32(index, 7, v_1);
     setExtraU32(extraId + 0, 0, v_2);
     setExtraU32(extraId + 1, 0, v_3);
-    setPayloadU8(index, 0, v_4);
-    setPayloadU8(index, 1, v_5);
-    setPayloadU8(index, 2, v_6);
+    setExtraU32(extraId + 2, 0, v_4);
+    setPayloadU8(index, 0, v_5);
+    setPayloadU8(index, 1, v_6);
+    setPayloadU8(index, 2, v_7);
     return index;
   }
 
@@ -1366,7 +1361,7 @@ function encode(program) {
     const v_8 = n.type.startsWith("TSAbstract") ? 1 : 0;
     const v_9 = enumValue("Accessibility", n.accessibility);
     const extraId = allocExtra(2);
-    const index = allocNode(87, asStart(n), asEnd(n));
+    const index = allocNode(88, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setExtraU32(extraId + 0, 0, v_0.start);
     setExtraU32(extraId + 0, 4, v_0.end);
@@ -1385,92 +1380,92 @@ function encode(program) {
   function encTsTypeAnnotation(n) {
     isTs = true;
     const v_0 = encNode(n.typeAnnotation);
-    const index = allocNode(88, asStart(n), asEnd(n));
+    const index = allocNode(89, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encTsAnyKeyword(n) {
     isTs = true;
-    const index = allocNode(89, asStart(n), asEnd(n));
+    const index = allocNode(90, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsUnknownKeyword(n) {
     isTs = true;
-    const index = allocNode(90, asStart(n), asEnd(n));
+    const index = allocNode(91, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsNeverKeyword(n) {
     isTs = true;
-    const index = allocNode(91, asStart(n), asEnd(n));
+    const index = allocNode(92, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsVoidKeyword(n) {
     isTs = true;
-    const index = allocNode(92, asStart(n), asEnd(n));
+    const index = allocNode(93, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsNullKeyword(n) {
     isTs = true;
-    const index = allocNode(93, asStart(n), asEnd(n));
+    const index = allocNode(94, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsUndefinedKeyword(n) {
     isTs = true;
-    const index = allocNode(94, asStart(n), asEnd(n));
+    const index = allocNode(95, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsStringKeyword(n) {
     isTs = true;
-    const index = allocNode(95, asStart(n), asEnd(n));
+    const index = allocNode(96, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsNumberKeyword(n) {
     isTs = true;
-    const index = allocNode(96, asStart(n), asEnd(n));
+    const index = allocNode(97, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsBigIntKeyword(n) {
     isTs = true;
-    const index = allocNode(97, asStart(n), asEnd(n));
+    const index = allocNode(98, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsBooleanKeyword(n) {
     isTs = true;
-    const index = allocNode(98, asStart(n), asEnd(n));
+    const index = allocNode(99, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsSymbolKeyword(n) {
     isTs = true;
-    const index = allocNode(99, asStart(n), asEnd(n));
+    const index = allocNode(100, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsObjectKeyword(n) {
     isTs = true;
-    const index = allocNode(100, asStart(n), asEnd(n));
+    const index = allocNode(101, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsIntrinsicKeyword(n) {
     isTs = true;
-    const index = allocNode(101, asStart(n), asEnd(n));
+    const index = allocNode(102, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsThisType(n) {
     isTs = true;
-    const index = allocNode(102, asStart(n), asEnd(n));
+    const index = allocNode(103, asStart(n), asEnd(n));
     return index;
   }
 
@@ -1478,7 +1473,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.typeName);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const index = allocNode(103, asStart(n), asEnd(n));
+    const index = allocNode(104, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1488,7 +1483,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.left);
     const v_1 = encIdentifierName(n.right);
-    const index = allocNode(104, asStart(n), asEnd(n));
+    const index = allocNode(105, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1498,7 +1493,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.exprName);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const index = allocNode(105, asStart(n), asEnd(n));
+    const index = allocNode(106, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1510,7 +1505,7 @@ function encode(program) {
     const v_1 = n.options == null ? NULL : encNode(n.options);
     const v_2 = n.qualifier == null ? NULL : encTsImportTypeQualifier(n.qualifier);
     const v_3 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const index = allocNode(106, asStart(n), asEnd(n));
+    const index = allocNode(107, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1526,7 +1521,7 @@ function encode(program) {
     const v_3 = n.in ? 1 : 0;
     const v_4 = n.out ? 1 : 0;
     const v_5 = n.const ? 1 : 0;
-    const index = allocNode(107, asStart(n), asEnd(n));
+    const index = allocNode(108, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1539,7 +1534,7 @@ function encode(program) {
   function encTsTypeParameterDeclaration(n) {
     isTs = true;
     const v_0 = encArray(n.params, encTsTypeParameter, false);
-    const index = allocNode(108, asStart(n), asEnd(n));
+    const index = allocNode(109, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1548,7 +1543,7 @@ function encode(program) {
   function encTsTypeParameterInstantiation(n) {
     isTs = true;
     const v_0 = encArray(n.params, encNode, false);
-    const index = allocNode(109, asStart(n), asEnd(n));
+    const index = allocNode(110, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1557,7 +1552,7 @@ function encode(program) {
   function encTsLiteralType(n) {
     isTs = true;
     const v_0 = encTsLiteral(n.literal);
-    const index = allocNode(110, asStart(n), asEnd(n));
+    const index = allocNode(111, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1566,7 +1561,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encArray(n.quasis, encTemplateElement, false);
     const v_1 = encArray(n.types, encNode, false);
-    const index = allocNode(111, asStart(n), asEnd(n));
+    const index = allocNode(112, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     setPayloadU32(index, 8, v_1.start);
@@ -1577,7 +1572,7 @@ function encode(program) {
   function encTsArrayType(n) {
     isTs = true;
     const v_0 = encNode(n.elementType);
-    const index = allocNode(112, asStart(n), asEnd(n));
+    const index = allocNode(113, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1586,7 +1581,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.objectType);
     const v_1 = encNode(n.indexType);
-    const index = allocNode(113, asStart(n), asEnd(n));
+    const index = allocNode(114, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1595,7 +1590,7 @@ function encode(program) {
   function encTsTupleType(n) {
     isTs = true;
     const v_0 = encArray(n.elementTypes, encNode, false);
-    const index = allocNode(114, asStart(n), asEnd(n));
+    const index = allocNode(115, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1606,7 +1601,7 @@ function encode(program) {
     const v_0 = encIdentifierName(n.label);
     const v_1 = encNode(n.elementType);
     const v_2 = n.optional ? 1 : 0;
-    const index = allocNode(115, asStart(n), asEnd(n));
+    const index = allocNode(116, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1616,7 +1611,7 @@ function encode(program) {
   function encTsOptionalType(n) {
     isTs = true;
     const v_0 = encNode(n.typeAnnotation);
-    const index = allocNode(116, asStart(n), asEnd(n));
+    const index = allocNode(117, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1624,22 +1619,12 @@ function encode(program) {
   function encTsRestType(n) {
     isTs = true;
     const v_0 = encNode(n.typeAnnotation);
-    const index = allocNode(117, asStart(n), asEnd(n));
+    const index = allocNode(118, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encTsJsDocNullableType(n) {
-    isTs = true;
-    const v_0 = encNode(n.typeAnnotation);
-    const v_1 = n.postfix ? 1 : 0;
-    const index = allocNode(118, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0);
-    setPayloadU8(index, 4, v_1);
-    return index;
-  }
-
-  function encTsJsDocNonNullableType(n) {
     isTs = true;
     const v_0 = encNode(n.typeAnnotation);
     const v_1 = n.postfix ? 1 : 0;
@@ -1649,16 +1634,26 @@ function encode(program) {
     return index;
   }
 
+  function encTsJsDocNonNullableType(n) {
+    isTs = true;
+    const v_0 = encNode(n.typeAnnotation);
+    const v_1 = n.postfix ? 1 : 0;
+    const index = allocNode(120, asStart(n), asEnd(n));
+    setPayloadU32(index, 0, v_0);
+    setPayloadU8(index, 4, v_1);
+    return index;
+  }
+
   function encTsJsDocUnknownType(n) {
     isTs = true;
-    const index = allocNode(120, asStart(n), asEnd(n));
+    const index = allocNode(121, asStart(n), asEnd(n));
     return index;
   }
 
   function encTsUnionType(n) {
     isTs = true;
     const v_0 = encArray(n.types, encNode, false);
-    const index = allocNode(121, asStart(n), asEnd(n));
+    const index = allocNode(122, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1667,7 +1662,7 @@ function encode(program) {
   function encTsIntersectionType(n) {
     isTs = true;
     const v_0 = encArray(n.types, encNode, false);
-    const index = allocNode(122, asStart(n), asEnd(n));
+    const index = allocNode(123, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1679,7 +1674,7 @@ function encode(program) {
     const v_1 = encNode(n.extendsType);
     const v_2 = encNode(n.trueType);
     const v_3 = encNode(n.falseType);
-    const index = allocNode(123, asStart(n), asEnd(n));
+    const index = allocNode(124, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1690,7 +1685,7 @@ function encode(program) {
   function encTsInferType(n) {
     isTs = true;
     const v_0 = encTsTypeParameter(n.typeParameter);
-    const index = allocNode(124, asStart(n), asEnd(n));
+    const index = allocNode(125, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1699,7 +1694,7 @@ function encode(program) {
     isTs = true;
     const v_0 = enumValue("TsTypeOperatorKind", n.operator);
     const v_1 = encNode(n.typeAnnotation);
-    const index = allocNode(125, asStart(n), asEnd(n));
+    const index = allocNode(126, asStart(n), asEnd(n));
     setPayloadU8(index, 4, v_0);
     setPayloadU32(index, 0, v_1);
     return index;
@@ -1708,20 +1703,25 @@ function encode(program) {
   function encTsParenthesizedType(n) {
     isTs = true;
     const v_0 = encNode(n.typeAnnotation);
-    const index = allocNode(126, asStart(n), asEnd(n));
+    const index = allocNode(127, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encTsFunctionType(n) {
     isTs = true;
+    const _first = n.params?.[0];
+    const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
+    const _params = _thisParam === null ? n.params : n.params.slice(1);
     const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_1 = encFormalParameters(n.params);
-    const v_2 = encTsTypeAnnotation(n.returnType);
-    const index = allocNode(127, asStart(n), asEnd(n));
+    const v_1 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
+    const v_2 = encFormalParameters(_params);
+    const v_3 = encTsTypeAnnotation(n.returnType);
+    const index = allocNode(128, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
+    setPayloadU32(index, 12, v_3);
     return index;
   }
 
@@ -1731,7 +1731,7 @@ function encode(program) {
     const v_1 = encFormalParameters(n.params);
     const v_2 = encTsTypeAnnotation(n.returnType);
     const v_3 = n.abstract ? 1 : 0;
-    const index = allocNode(128, asStart(n), asEnd(n));
+    const index = allocNode(129, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1744,7 +1744,7 @@ function encode(program) {
     const v_0 = encTsTypePredicateName(n.parameterName);
     const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
     const v_2 = n.asserts ? 1 : 0;
-    const index = allocNode(129, asStart(n), asEnd(n));
+    const index = allocNode(130, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1754,7 +1754,7 @@ function encode(program) {
   function encTsTypeLiteral(n) {
     isTs = true;
     const v_0 = encArray(n.members, encNode, false);
-    const index = allocNode(130, asStart(n), asEnd(n));
+    const index = allocNode(131, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1769,7 +1769,7 @@ function encode(program) {
     const v_4 = enumValue("TsMappedTypeModifier", n.optional === false ? null : n.optional);
     const v_5 = enumValue("TsMappedTypeModifier", n.readonly);
     const extraId = allocExtra(2);
-    const index = allocNode(131, asStart(n), asEnd(n));
+    const index = allocNode(132, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 2, v_0);
     setPayloadU32(index, 6, v_1);
@@ -1787,7 +1787,7 @@ function encode(program) {
     const v_2 = n.computed ? 1 : 0;
     const v_3 = n.optional ? 1 : 0;
     const v_4 = n.readonly ? 1 : 0;
-    const index = allocNode(132, asStart(n), asEnd(n));
+    const index = allocNode(133, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1798,35 +1798,45 @@ function encode(program) {
 
   function encTsMethodSignature(n) {
     isTs = true;
+    const _first = n.params?.[0];
+    const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
+    const _params = _thisParam === null ? n.params : n.params.slice(1);
     const v_0 = n.computed ? encNode(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_2 = encFormalParameters(n.params);
-    const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
-    const v_4 = enumValue("TsMethodSignatureKind", n.kind);
-    const v_5 = n.computed ? 1 : 0;
-    const v_6 = n.optional ? 1 : 0;
-    const extraId = allocExtra(2);
-    const index = allocNode(133, asStart(n), asEnd(n));
+    const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
+    const v_3 = encFormalParameters(_params);
+    const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
+    const v_5 = enumValue("TsMethodSignatureKind", n.kind);
+    const v_6 = n.computed ? 1 : 0;
+    const v_7 = n.optional ? 1 : 0;
+    const extraId = allocExtra(3);
+    const index = allocNode(134, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 3, v_0);
     setPayloadU32(index, 7, v_1);
     setExtraU32(extraId + 0, 0, v_2);
     setExtraU32(extraId + 1, 0, v_3);
-    setPayloadU8(index, 0, v_4);
-    setPayloadU8(index, 1, v_5);
-    setPayloadU8(index, 2, v_6);
+    setExtraU32(extraId + 2, 0, v_4);
+    setPayloadU8(index, 0, v_5);
+    setPayloadU8(index, 1, v_6);
+    setPayloadU8(index, 2, v_7);
     return index;
   }
 
   function encTsCallSignatureDeclaration(n) {
     isTs = true;
+    const _first = n.params?.[0];
+    const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
+    const _params = _thisParam === null ? n.params : n.params.slice(1);
     const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
-    const v_1 = encFormalParameters(n.params);
-    const v_2 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
-    const index = allocNode(134, asStart(n), asEnd(n));
+    const v_1 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
+    const v_2 = encFormalParameters(_params);
+    const v_3 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
+    const index = allocNode(135, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
+    setPayloadU32(index, 12, v_3);
     return index;
   }
 
@@ -1835,7 +1845,7 @@ function encode(program) {
     const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
     const v_1 = encFormalParameters(n.params);
     const v_2 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
-    const index = allocNode(135, asStart(n), asEnd(n));
+    const index = allocNode(136, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1844,11 +1854,11 @@ function encode(program) {
 
   function encTsIndexSignature(n) {
     isTs = true;
-    const v_0 = encArray(n.parameters, encBindingIdentifier, false);
+    const v_0 = encArray(n.parameters, encTsIndexSignatureParameter, false);
     const v_1 = encTsTypeAnnotation(n.typeAnnotation);
     const v_2 = n.readonly ? 1 : 0;
     const v_3 = n.static ? 1 : 0;
-    const index = allocNode(136, asStart(n), asEnd(n));
+    const index = allocNode(137, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     setPayloadU32(index, 8, v_1);
@@ -1863,7 +1873,7 @@ function encode(program) {
     const v_1 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
     const v_2 = encNode(n.typeAnnotation);
     const v_3 = n.declare ? 1 : 0;
-    const index = allocNode(137, asStart(n), asEnd(n));
+    const index = allocNode(138, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1879,7 +1889,7 @@ function encode(program) {
     const v_3 = encTsInterfaceBody(n.body);
     const v_4 = n.declare ? 1 : 0;
     const extraId = allocExtra(2);
-    const index = allocNode(138, asStart(n), asEnd(n));
+    const index = allocNode(139, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 1, v_0);
     setPayloadU32(index, 5, v_1);
@@ -1893,7 +1903,7 @@ function encode(program) {
   function encTsInterfaceBody(n) {
     isTs = true;
     const v_0 = encArray(n.body, encNode, false);
-    const index = allocNode(139, asStart(n), asEnd(n));
+    const index = allocNode(140, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1903,7 +1913,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.expression);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const index = allocNode(140, asStart(n), asEnd(n));
+    const index = allocNode(141, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1913,7 +1923,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.expression);
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
-    const index = allocNode(141, asStart(n), asEnd(n));
+    const index = allocNode(142, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1925,7 +1935,7 @@ function encode(program) {
     const v_1 = encTsEnumBody(n.body);
     const v_2 = n.const ? 1 : 0;
     const v_3 = n.declare ? 1 : 0;
-    const index = allocNode(142, asStart(n), asEnd(n));
+    const index = allocNode(143, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1936,7 +1946,7 @@ function encode(program) {
   function encTsEnumBody(n) {
     isTs = true;
     const v_0 = encArray(n.members, encTsEnumMember, false);
-    const index = allocNode(143, asStart(n), asEnd(n));
+    const index = allocNode(144, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -1947,7 +1957,7 @@ function encode(program) {
     const v_0 = encTsEnumMemberName(n.id);
     const v_1 = n.initializer == null ? NULL : encNode(n.initializer);
     const v_2 = n.computed ? 1 : 0;
-    const index = allocNode(144, asStart(n), asEnd(n));
+    const index = allocNode(145, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1960,7 +1970,7 @@ function encode(program) {
     const v_1 = n.body == null ? NULL : encTsModuleBody(n.body);
     const v_2 = enumValue("TsModuleDeclarationKind", n.kind);
     const v_3 = n.declare ? 1 : 0;
-    const index = allocNode(145, asStart(n), asEnd(n));
+    const index = allocNode(146, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1984,7 +1994,7 @@ function encode(program) {
     }
     const v_0 = encArray(_directives, encDirective, false);
     const v_1 = encArray(_body, encNode, false);
-    const index = allocNode(146, asStart(n), asEnd(n));
+    const index = allocNode(147, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     setPayloadU32(index, 8, v_1.start);
@@ -1997,7 +2007,7 @@ function encode(program) {
     const v_0 = encIdentifierName(n.id);
     const v_1 = encTsModuleBlock(n.body);
     const v_2 = n.declare ? 1 : 0;
-    const index = allocNode(147, asStart(n), asEnd(n));
+    const index = allocNode(148, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -2007,11 +2017,11 @@ function encode(program) {
   function encTsParameterProperty(n) {
     isTs = true;
     const v_0 = encArray(n.decorators, encDecorator, false);
-    const v_1 = encBindingPattern(n.parameter);
+    const v_1 = encFormalParameter(n.parameter);
     const v_2 = n.override ? 1 : 0;
     const v_3 = n.readonly ? 1 : 0;
     const v_4 = enumValue("Accessibility", n.accessibility);
-    const index = allocNode(148, asStart(n), asEnd(n));
+    const index = allocNode(149, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     setPayloadU32(index, 8, v_1);
@@ -2024,22 +2034,12 @@ function encode(program) {
   function encTsThisParameter(n) {
     isTs = true;
     const v_0 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-    const index = allocNode(149, asStart(n), asEnd(n));
+    const index = allocNode(150, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encTsAsExpression(n) {
-    isTs = true;
-    const v_0 = encNode(n.expression);
-    const v_1 = encNode(n.typeAnnotation);
-    const index = allocNode(150, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0);
-    setPayloadU32(index, 4, v_1);
-    return index;
-  }
-
-  function encTsSatisfiesExpression(n) {
     isTs = true;
     const v_0 = encNode(n.expression);
     const v_1 = encNode(n.typeAnnotation);
@@ -2049,11 +2049,21 @@ function encode(program) {
     return index;
   }
 
+  function encTsSatisfiesExpression(n) {
+    isTs = true;
+    const v_0 = encNode(n.expression);
+    const v_1 = encNode(n.typeAnnotation);
+    const index = allocNode(152, asStart(n), asEnd(n));
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
+    return index;
+  }
+
   function encTsTypeAssertion(n) {
     isTs = true;
     const v_0 = encNode(n.typeAnnotation);
     const v_1 = encNode(n.expression);
-    const index = allocNode(152, asStart(n), asEnd(n));
+    const index = allocNode(153, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -2062,7 +2072,7 @@ function encode(program) {
   function encTsNonNullExpression(n) {
     isTs = true;
     const v_0 = encNode(n.expression);
-    const index = allocNode(153, asStart(n), asEnd(n));
+    const index = allocNode(154, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -2071,7 +2081,7 @@ function encode(program) {
     isTs = true;
     const v_0 = encNode(n.expression);
     const v_1 = encTsTypeParameterInstantiation(n.typeArguments);
-    const index = allocNode(154, asStart(n), asEnd(n));
+    const index = allocNode(155, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -2080,7 +2090,7 @@ function encode(program) {
   function encTsExportAssignment(n) {
     isTs = true;
     const v_0 = encNode(n.expression);
-    const index = allocNode(155, asStart(n), asEnd(n));
+    const index = allocNode(156, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -2088,7 +2098,7 @@ function encode(program) {
   function encTsNamespaceExportDeclaration(n) {
     isTs = true;
     const v_0 = encIdentifierName(n.id);
-    const index = allocNode(156, asStart(n), asEnd(n));
+    const index = allocNode(157, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -2098,7 +2108,7 @@ function encode(program) {
     const v_0 = encBindingIdentifier(n.id);
     const v_1 = encNode(n.moduleReference);
     const v_2 = enumValue("ImportOrExportKind", n.importKind);
-    const index = allocNode(157, asStart(n), asEnd(n));
+    const index = allocNode(158, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -2108,8 +2118,18 @@ function encode(program) {
   function encTsExternalModuleReference(n) {
     isTs = true;
     const v_0 = encStringLiteral(n.expression);
-    const index = allocNode(158, asStart(n), asEnd(n));
+    const index = allocNode(159, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
+    return index;
+  }
+
+  function encTsIndexSignatureParameter(n) {
+    isTs = true;
+    const v_0 = encBindingIdentifier(n);
+    const v_1 = encTsTypeAnnotation(n.typeAnnotation);
+    const index = allocNode(160, asStart(n), asEnd(n));
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     return index;
   }
 
@@ -2117,7 +2137,7 @@ function encode(program) {
     const v_0 = encJsxOpeningElement(n.openingElement);
     const v_1 = encArray(n.children, encNode, false);
     const v_2 = n.closingElement == null ? NULL : encJsxClosingElement(n.closingElement);
-    const index = allocNode(159, asStart(n), asEnd(n));
+    const index = allocNode(161, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 0, v_1.start);
     setPayloadU32(index, 4, v_1.end);
@@ -2131,7 +2151,7 @@ function encode(program) {
     const v_2 = encArray(n.attributes, encNode, false);
     const v_3 = n.selfClosing ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(160, asStart(n), asEnd(n));
+    const index = allocNode(162, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 1, v_0);
     setPayloadU32(index, 5, v_1);
@@ -2143,7 +2163,7 @@ function encode(program) {
 
   function encJsxClosingElement(n) {
     const v_0 = encNode(n.name);
-    const index = allocNode(161, asStart(n), asEnd(n));
+    const index = allocNode(163, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -2152,7 +2172,7 @@ function encode(program) {
     const v_0 = encJsxOpeningFragment(n.openingFragment);
     const v_1 = encArray(n.children, encNode, false);
     const v_2 = encJsxClosingFragment(n.closingFragment);
-    const index = allocNode(162, asStart(n), asEnd(n));
+    const index = allocNode(164, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 0, v_1.start);
     setPayloadU32(index, 4, v_1.end);
@@ -2161,18 +2181,18 @@ function encode(program) {
   }
 
   function encJsxOpeningFragment(n) {
-    const index = allocNode(163, asStart(n), asEnd(n));
+    const index = allocNode(165, asStart(n), asEnd(n));
     return index;
   }
 
   function encJsxClosingFragment(n) {
-    const index = allocNode(164, asStart(n), asEnd(n));
+    const index = allocNode(166, asStart(n), asEnd(n));
     return index;
   }
 
   function encJsxIdentifier(n) {
     const v_0 = encUtf8(n.name);
-    const index = allocNode(165, asStart(n), asEnd(n));
+    const index = allocNode(167, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -2181,7 +2201,7 @@ function encode(program) {
   function encJsxNamespacedName(n) {
     const v_0 = encJsxIdentifier(n.namespace);
     const v_1 = encJsxIdentifier(n.name);
-    const index = allocNode(166, asStart(n), asEnd(n));
+    const index = allocNode(168, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -2190,7 +2210,7 @@ function encode(program) {
   function encJsxMemberExpression(n) {
     const v_0 = encNode(n.object);
     const v_1 = encJsxIdentifier(n.property);
-    const index = allocNode(167, asStart(n), asEnd(n));
+    const index = allocNode(169, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -2199,7 +2219,7 @@ function encode(program) {
   function encJsxAttribute(n) {
     const v_0 = encNode(n.name);
     const v_1 = n.value == null ? NULL : encJsxAttributeValue(n.value);
-    const index = allocNode(168, asStart(n), asEnd(n));
+    const index = allocNode(170, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -2207,26 +2227,26 @@ function encode(program) {
 
   function encJsxSpreadAttribute(n) {
     const v_0 = encNode(n.argument);
-    const index = allocNode(169, asStart(n), asEnd(n));
+    const index = allocNode(171, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encJsxExpressionContainer(n) {
     const v_0 = encNode(n.expression);
-    const index = allocNode(170, asStart(n), asEnd(n));
+    const index = allocNode(172, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encJsxEmptyExpression(n) {
-    const index = allocNode(171, asStart(n), asEnd(n));
+    const index = allocNode(173, asStart(n), asEnd(n));
     return index;
   }
 
   function encJsxText(n) {
     const v_0 = encUtf8(n.value ?? n.raw ?? "");
-    const index = allocNode(172, asStart(n), asEnd(n));
+    const index = allocNode(174, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0.start);
     setPayloadU32(index, 4, v_0.end);
     return index;
@@ -2234,7 +2254,7 @@ function encode(program) {
 
   function encJsxSpreadChild(n) {
     const v_0 = encNode(n.expression);
-    const index = allocNode(173, asStart(n), asEnd(n));
+    const index = allocNode(175, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -2576,30 +2596,17 @@ function encode(program) {
     switch (n.type) {
       case "Identifier":
         return encFormalParameter(n);
-      case "MemberExpression":
-        return encFormalParameter(n);
-      case "TSAsExpression":
-        return encFormalParameter(n);
-      case "TSSatisfiesExpression":
-        return encFormalParameter(n);
-      case "TSTypeAssertion":
-        return encFormalParameter(n);
-      case "TSNonNullExpression":
-        return encFormalParameter(n);
-      case "AssignmentPattern":
-        return encFormalParameter(n);
-      case "RestElement":
-        return encFormalParameter(n);
       case "ArrayPattern":
         return encFormalParameter(n);
       case "ObjectPattern":
+        return encFormalParameter(n);
+      case "AssignmentPattern":
         return encFormalParameter(n);
       default: return encNode(n);
     }
   }
 
   function encFormalParameterPattern(n) {
-    if (n.type === "Identifier" && n.name === "this") return encTsThisParameter(n);
     switch (n.type) {
       case "Identifier":
         return encBindingIdentifier(n);

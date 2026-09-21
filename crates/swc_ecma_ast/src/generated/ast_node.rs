@@ -66,6 +66,7 @@ pub enum NodeKind {
     WithStatement,
     FormalParameters,
     FormalParameter,
+    FormalParameterRest,
     ArrayExpression,
     ObjectExpression,
     SpreadElement,
@@ -165,6 +166,7 @@ pub enum NodeKind {
     TsNamespaceExportDeclaration,
     TsImportEqualsDeclaration,
     TsExternalModuleReference,
+    TsIndexSignatureParameter,
     JsxElement,
     JsxOpeningElement,
     JsxClosingElement,
@@ -182,7 +184,7 @@ pub enum NodeKind {
     JsxSpreadChild,
 }
 impl NodeKind {
-    pub const COUNT: u8 = 174u8;
+    pub const COUNT: u8 = 176u8;
     #[inline]
     pub const fn is_stmt(self) -> bool {
         matches!(
@@ -547,18 +549,7 @@ impl NodeKind {
     pub const fn is_formal_parameter_pattern(self) -> bool {
         matches!(
             self,
-            Self::BindingIdentifier
-                | Self::IdentifierReference
-                | Self::MemberExpression
-                | Self::TsAsExpression
-                | Self::TsSatisfiesExpression
-                | Self::TsTypeAssertion
-                | Self::TsNonNullExpression
-                | Self::AssignmentPattern
-                | Self::BindingRestElement
-                | Self::ArrayPattern
-                | Self::ObjectPattern
-                | Self::TsThisParameter
+            Self::BindingIdentifier | Self::ArrayPattern | Self::ObjectPattern
         )
     }
     #[inline]
@@ -1049,11 +1040,12 @@ pub enum FormalParameterItemData {
     FormalParameter(FormalParameter) = NodeKind::FormalParameter as u8,
     TsParameterProperty(TsParameterProperty) = NodeKind::TsParameterProperty as u8,
 }
-#[repr(C, u32)]
+#[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FormalParameterPatternData {
-    BindingPattern(BindingPattern) = 1u32,
-    TsThisParameter(TsThisParameter) = 2u32,
+    BindingIdentifier(BindingIdentifier) = NodeKind::BindingIdentifier as u8,
+    ArrayPattern(ArrayPattern) = NodeKind::ArrayPattern as u8,
+    ObjectPattern(ObjectPattern) = NodeKind::ObjectPattern as u8,
 }
 #[repr(C, u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1326,6 +1318,7 @@ pub enum NodeKindData {
     WithStatement(WithStatement) = NodeKind::WithStatement as u8,
     FormalParameters(FormalParameters) = NodeKind::FormalParameters as u8,
     FormalParameter(FormalParameter) = NodeKind::FormalParameter as u8,
+    FormalParameterRest(FormalParameterRest) = NodeKind::FormalParameterRest as u8,
     ArrayExpression(ArrayExpression) = NodeKind::ArrayExpression as u8,
     ObjectExpression(ObjectExpression) = NodeKind::ObjectExpression as u8,
     SpreadElement(SpreadElement) = NodeKind::SpreadElement as u8,
@@ -1433,6 +1426,8 @@ pub enum NodeKindData {
         NodeKind::TsImportEqualsDeclaration as u8,
     TsExternalModuleReference(TsExternalModuleReference) =
         NodeKind::TsExternalModuleReference as u8,
+    TsIndexSignatureParameter(TsIndexSignatureParameter) =
+        NodeKind::TsIndexSignatureParameter as u8,
     JsxElement(JsxElement) = NodeKind::JsxElement as u8,
     JsxOpeningElement(JsxOpeningElement) = NodeKind::JsxOpeningElement as u8,
     JsxClosingElement(JsxClosingElement) = NodeKind::JsxClosingElement as u8,
@@ -2512,12 +2507,17 @@ impl SetSpan for FormalParameterPattern {
 impl FormalParameterPattern {
     #[allow(non_snake_case)]
     #[inline]
-    pub fn BindingPattern(node: BindingPattern) -> Self {
+    pub fn BindingIdentifier(node: BindingIdentifier) -> Self {
         Self(node.node_id())
     }
     #[allow(non_snake_case)]
     #[inline]
-    pub fn TsThisParameter(node: TsThisParameter) -> Self {
+    pub fn ArrayPattern(node: ArrayPattern) -> Self {
+        Self(node.node_id())
+    }
+    #[allow(non_snake_case)]
+    #[inline]
+    pub fn ObjectPattern(node: ObjectPattern) -> Self {
         Self(node.node_id())
     }
 }
@@ -4507,6 +4507,37 @@ impl GetSpan for FormalParameter {
     }
 }
 impl SetSpan for FormalParameter {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
+impl FormalParameterRest {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl SealedAstNode for FormalParameterRest {}
+impl AstNode for FormalParameterRest {
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
+        Self(node_id)
+    }
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for FormalParameterRest {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for FormalParameterRest {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
@@ -8387,6 +8418,37 @@ impl SetSpan for TsExternalModuleReference {
         }
     }
 }
+impl TsIndexSignatureParameter {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl SealedAstNode for TsIndexSignatureParameter {}
+impl AstNode for TsIndexSignatureParameter {
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId) -> Self {
+        Self(node_id)
+    }
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for TsIndexSignatureParameter {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for TsIndexSignatureParameter {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
 impl JsxElementName {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -9604,44 +9666,13 @@ impl<'a> Ast<'a> {
         &self,
         node: FormalParameterPattern,
     ) -> FormalParameterPatternData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::BindingIdentifier => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::IdentifierReference => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::MemberExpression => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::TsAsExpression => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::TsSatisfiesExpression => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::TsTypeAssertion => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::TsNonNullExpression => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::AssignmentPattern => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::BindingRestElement => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::ArrayPattern => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::ObjectPattern => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::TsThisParameter => {
-                FormalParameterPatternData::TsThisParameter(TsThisParameter(node.0))
-            }
-            _ => unsafe { std::hint::unreachable_unchecked() },
+        let kind = unsafe { *self.nodes.kind_unchecked(node.0) };
+        debug_assert!(kind.is_formal_parameter_pattern());
+        unsafe {
+            std::mem::transmute(AstEnumDataRepr {
+                kind,
+                node_id: node.0,
+            })
         }
     }
     #[inline]

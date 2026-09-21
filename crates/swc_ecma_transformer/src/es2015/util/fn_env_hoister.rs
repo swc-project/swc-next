@@ -171,42 +171,24 @@ impl<'semantic> FnEnvHoister<'semantic> {
 
         let mut declarators = Vec::with_capacity(3);
         if let Some(name) = frame.this {
-            let id = ast.binding_pattern_binding_identifier(
-                DUMMY_SP,
-                name,
-                SubRange::empty(),
-                None,
-                false,
-            );
+            let id = ast.binding_pattern_binding_identifier(DUMMY_SP, name);
             let init = (!derived_constructor).then(|| ast.expr_this_expression(DUMMY_SP));
-            declarators.push(ast.variable_declarator(DUMMY_SP, id, init, false));
+            declarators.push(ast.variable_declarator(DUMMY_SP, id, None, init, false));
         }
         if let Some(name) = frame.arguments {
-            let id = ast.binding_pattern_binding_identifier(
-                DUMMY_SP,
-                name,
-                SubRange::empty(),
-                None,
-                false,
-            );
+            let id = ast.binding_pattern_binding_identifier(DUMMY_SP, name);
             let arguments_name = ast.add_utf8("arguments");
             let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name);
-            declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
+            declarators.push(ast.variable_declarator(DUMMY_SP, id, None, Some(init), false));
         }
         if let Some(name) = frame.new_target {
-            let id = ast.binding_pattern_binding_identifier(
-                DUMMY_SP,
-                name,
-                SubRange::empty(),
-                None,
-                false,
-            );
+            let id = ast.binding_pattern_binding_identifier(DUMMY_SP, name);
             let new_name = ast.add_utf8("new");
             let target_name = ast.add_utf8("target");
             let meta = ast.identifier_name(DUMMY_SP, new_name);
             let property = ast.identifier_name(DUMMY_SP, target_name);
             let init = ast.expr_meta_property(DUMMY_SP, meta, property);
-            declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
+            declarators.push(ast.variable_declarator(DUMMY_SP, id, None, Some(init), false));
         }
 
         let declarators = ast.add_sub_range(declarators);
