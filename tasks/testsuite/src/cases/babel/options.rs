@@ -113,6 +113,7 @@ impl From<BabelOptions> for TransformerOptions {
                 shorthand_properties: plugins.shorthand_properties,
                 sticky_regex: plugins.sticky_regex,
             },
+            jsx: plugins.react_jsx_dev.or(plugins.react_jsx),
             typescript: None,
         }
     }
@@ -258,8 +259,8 @@ impl BabelOptions {
     pub fn is_jsx(&self) -> bool {
         self.plugins.syntax_jsx
             || self.presets.jsx
-            || self.plugins.react_jsx
-            || self.plugins.react_jsx_dev
+            || self.plugins.react_jsx.is_some()
+            || self.plugins.react_jsx_dev.is_some()
     }
 
     /// Returns `true` when TypeScript parsing is enabled.

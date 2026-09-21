@@ -10,6 +10,7 @@ version               = "0.2.4"
 
 [dependencies]
 memchr     = { workspace = true }
+phf        = { workspace = true, features = ["macros"] }
 rustc-hash = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
 zmij_ecma  = { workspace = true }

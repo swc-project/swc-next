@@ -34,6 +34,7 @@ pub struct TransformerOptions {
     pub react_jsx_source: bool,
     pub assumptions: Assumptions,
     pub es2015: es2015::ES2015Options,
+    pub jsx: Option<jsx::JsxOptions>,
     pub typescript: Option<typescript::TypeScriptOptions>,
 }
 
@@ -54,6 +55,7 @@ impl Transformer {
             react_jsx_source,
             assumptions,
             es2015,
+            jsx,
             typescript,
         } = options;
 
@@ -63,8 +65,14 @@ impl Transformer {
         } else {
             Normalizer::normalize(program, ast);
         }
+        let jsx = jsx.map(|mut options| {
+            options.jsx_self |= react_jsx_self;
+            options.jsx_source |= react_jsx_source;
+            jsx::resolve_options(program, ast, options)
+        });
+        let jsx_enabled = jsx.is_some();
         let mut syntax_result = SyntaxResult::default();
-        if react_jsx_self || react_jsx_source {
+        if !jsx_enabled && (react_jsx_self || react_jsx_source) {
             syntax_result.generated_prelude = jsx::transform_development_attributes(
                 program,
                 ast,
@@ -74,13 +82,26 @@ impl Transformer {
                 source_path.as_deref(),
             );
         }
-        if let Some(options) = typescript {
-            typescript::transform(program, ast, semantic, options);
-        }
+        syntax_result = match (typescript, jsx) {
+            (Some(typescript), Some(jsx)) => {
+                let mut jsx = jsx::JsxLowerer::new(&jsx, ast, semantic, source_path.as_deref());
+                typescript::transform_with_following(program, ast, semantic, typescript, &mut jsx);
+                jsx.take_result()
+            }
+            (Some(typescript), None) => {
+                typescript::transform(program, ast, semantic, typescript);
+                syntax_result
+            }
+            (None, Some(jsx)) => {
+                jsx::transform_resolved(program, ast, semantic, jsx, source_path.as_deref())
+            }
+            (None, None) => syntax_result,
+        };
 
         let (semantic_program_transforms, traverse) = es2015::ES2015::new(es2015).into_phases();
         if let Some(mut transforms) = semantic_program_transforms {
-            let refreshed_semantic = typescript_enabled.then(|| {
+            let syntax_transformed = typescript_enabled || jsx_enabled;
+            let refreshed_semantic = syntax_transformed.then(|| {
                 let options = AnalyzeOptions {
                     check_syntax: false,
                     build_module_record: false,
@@ -96,6 +117,7 @@ impl Transformer {
             let state = TransformerState { assumptions };
             program.traverse_mut_with(&mut transformer, &mut TraverseMutCtx::new(ast, state));
         }
+
         TransformerReturn {
             diagnostics: syntax_result.diagnostics,
         }

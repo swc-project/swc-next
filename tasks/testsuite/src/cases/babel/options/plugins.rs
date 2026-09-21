@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use swc_next_ecma_transformer::es2015::arrow::ArrowFunctionsOptions;
+use swc_next_ecma_transformer::jsx::JsxOptions;
 
 use super::PluginPresetEntries;
 
@@ -22,8 +23,8 @@ pub struct BabelPlugins {
 
     // TypeScript / JSX
     pub typescript: bool,
-    pub react_jsx: bool,
-    pub react_jsx_dev: bool,
+    pub react_jsx: Option<JsxOptions>,
+    pub react_jsx_dev: Option<JsxOptions>,
     pub react_jsx_self: bool,
     pub react_jsx_source: bool,
 
@@ -49,12 +50,20 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                     plugins.unsupported.push(entry.name().to_owned());
                 }
                 "transform-react-jsx" => {
-                    plugins.react_jsx = true;
-                    plugins.unsupported.push(entry.name().to_owned());
+                    plugins.react_jsx = entry
+                        .value::<JsxOptions>()
+                        .map_err(|error| plugins.errors.push(error))
+                        .ok();
                 }
                 "transform-react-jsx-development" => {
-                    plugins.react_jsx_dev = true;
-                    plugins.unsupported.push(entry.name().to_owned());
+                    plugins.react_jsx_dev = entry
+                        .value::<JsxOptions>()
+                        .map(|mut options| {
+                            options.development = true;
+                            options
+                        })
+                        .map_err(|error| plugins.errors.push(error))
+                        .ok();
                 }
                 "transform-react-jsx-self" => plugins.react_jsx_self = true,
                 "transform-react-jsx-source" => plugins.react_jsx_source = true,

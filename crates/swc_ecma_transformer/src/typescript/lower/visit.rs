@@ -77,26 +77,13 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     }
 
     fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
-        if let Some(value) = self.analysis.inline_const_enum_use(expression.node_id()) {
-            return Some(self.inline_enum_constant(expression, value));
-        }
-        let inner = match self.ast_ref().expr_data(expression) {
-            ExprData::IdentifierReference(identifier) => {
-                return self.namespace_identifier_reference(identifier);
-            }
-            ExprData::TsAsExpression(wrapper) => Some(wrapper.expression(self.ast())),
-            ExprData::TsSatisfiesExpression(wrapper) => Some(wrapper.expression(self.ast())),
-            ExprData::TsTypeAssertion(wrapper) => Some(wrapper.expression(self.ast())),
-            ExprData::TsNonNullExpression(wrapper) => Some(wrapper.expression(self.ast())),
-            ExprData::TsInstantiationExpression(wrapper) => Some(wrapper.expression(self.ast())),
-            _ => None,
-        };
-        if let Some(inner) = inner {
-            let removed_span = expression.span(self.ast_ref());
-            Some(self.unwrap_expression(inner, removed_span))
-        } else {
-            expression.visit_mut_children_with(self)
-        }
+        let replacement = self.lower_typescript_expression(expression);
+        let current = replacement.unwrap_or(expression);
+        let following_replacement = self
+            .following
+            .as_deref_mut()
+            .and_then(|following| following.exit_expression(current, self.ast));
+        following_replacement.or(replacement)
     }
 
     fn visit_mut_object_property(&mut self, property: ObjectProperty) -> Option<ObjectProperty> {
