@@ -1,10 +1,15 @@
 use super::{ReactRefreshOptions, RuntimeBindings};
 use crate::uid::UidGenerator;
-use swc_next_ecma_ast::{Ast, Program};
+use signatures::SignatureTransformer;
+use swc_next_ecma_ast::VisitMutWith;
+use swc_next_ecma_ast::{Ast, Program, Stmt};
 use swc_next_ecma_semantic::Semantic;
 
 mod build;
+mod digest;
+mod hooks;
 mod registration;
+mod signatures;
 
 pub(crate) fn transform<'a>(
     program: Program,
@@ -12,15 +17,21 @@ pub(crate) fn transform<'a>(
     semantic: &Semantic<'a>,
     options: &ReactRefreshOptions,
     bindings: &RuntimeBindings<'_>,
-) {
+) -> Option<Stmt> {
     let mut uid = UidGenerator::new(ast, semantic);
     for name in bindings.implicit_roots().into_iter().flatten() {
         uid.reserve(name);
     }
-    let root = options
-        .refresh_reg
-        .split_once('.')
-        .map_or(options.refresh_reg.as_str(), |(root, _)| root);
-    uid.reserve(root);
+    for callback in [&options.refresh_reg, &options.refresh_sig] {
+        let root = callback
+            .split_once('.')
+            .map_or(callback.as_str(), |(root, _)| root);
+        uid.reserve(root);
+    }
     registration::transform(program, ast, semantic, options, &mut uid);
+
+    // Registration keeps source functions, references, and scopes intact.
+    let mut signatures = SignatureTransformer::new(ast, semantic, options, uid);
+    program.visit_mut_children_with(&mut signatures);
+    signatures.program_signature_declaration()
 }

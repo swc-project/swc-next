@@ -72,8 +72,10 @@ impl Transformer {
         // Resolve header pragmas before Refresh can prepend generated statements.
         let jsx = jsx::resolve_options(program, ast, *jsx_options);
         let bindings = jsx::RuntimeBindings::new(&jsx, ast.source_type());
+        let mut runtime_import_anchor = None;
         if let Some(refresh) = jsx.refresh.as_ref() {
-            jsx::transform_refresh(program, ast, &semantic, refresh, &bindings);
+            runtime_import_anchor =
+                jsx::transform_refresh(program, ast, &semantic, refresh, &bindings);
             semantic = analyze(ast, AnalyzeOptions::default()).semantic;
         }
         let syntax_result = match options.typescript.take() {
@@ -86,6 +88,7 @@ impl Transformer {
                         &jsx,
                         bindings,
                         options.source_path.as_deref(),
+                        runtime_import_anchor,
                     )
                 } else {
                     Self::transform_tsx::<false>(
@@ -95,6 +98,7 @@ impl Transformer {
                         &jsx,
                         bindings,
                         options.source_path.as_deref(),
+                        runtime_import_anchor,
                     )
                 }
             }
@@ -105,6 +109,7 @@ impl Transformer {
                 &jsx,
                 bindings,
                 options.source_path.as_deref(),
+                runtime_import_anchor,
             ),
         };
         semantic = analyze(ast, AnalyzeOptions::default()).semantic;
@@ -121,11 +126,13 @@ impl Transformer {
         options: &'options jsx::JsxOptions,
         bindings: jsx::RuntimeBindings<'options>,
         source_path: Option<&str>,
+        runtime_import_anchor: Option<swc_next_ecma_ast::Stmt>,
     ) -> syntax::SyntaxResult {
         let program = ast.root_program();
         let implicit_roots = bindings.implicit_roots();
         let uid = uid::LazyUidGenerator::new(semantic, &implicit_roots);
         let mut jsx = jsx::JsxLowerer::<TRACK_SELF>::new(options, bindings, uid, source_path);
+        jsx.set_runtime_import_anchor(runtime_import_anchor);
         typescript::transform_with_following(program, ast, semantic, typescript, &mut jsx);
         jsx.take_result()
     }

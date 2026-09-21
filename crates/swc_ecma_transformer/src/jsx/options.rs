@@ -47,12 +47,16 @@ impl Default for JsxOptions {
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct ReactRefreshOptions {
     pub refresh_reg: String,
+    pub refresh_sig: String,
+    pub emit_full_signatures: bool,
 }
 
 impl Default for ReactRefreshOptions {
     fn default() -> Self {
         Self {
             refresh_reg: "$RefreshReg$".to_owned(),
+            refresh_sig: "$RefreshSig$".to_owned(),
+            emit_full_signatures: false,
         }
     }
 }
