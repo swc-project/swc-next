@@ -12423,7 +12423,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
         self.lexer.state.prev_token_end = self.current_token.end();
-        self.next_token()
+        if self.lexer.try_next_token(&mut self.current_token) {
+            Some(())
+        } else {
+            self.next_token()
+        }
     }
 
     #[inline]
@@ -12439,7 +12443,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// keyword.
     fn advance_without_escape_check(&mut self) -> Option<()> {
         self.lexer.state.prev_token_end = self.current_token.end();
-        self.next_token()
+        if self.lexer.try_next_token(&mut self.current_token) {
+            Some(())
+        } else {
+            self.next_token()
+        }
     }
 
     fn check_escaped_keyword(&mut self) {

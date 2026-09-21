@@ -204,6 +204,74 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    /// Reads common tokens without entering the full trivia and token scanner.
+    /// On failure, the cursor is unchanged so trivia keeps its original context.
+    #[inline(always)]
+    pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
+        if self.mode != LexerMode::Normal {
+            return false;
+        }
+
+        let mut start = self.cursor;
+        let Some(mut byte) = self.source.get(start as usize).copied() else {
+            return false;
+        };
+        if byte == b' ' {
+            start += 1;
+            let Some(next) = self.source.get(start as usize).copied() else {
+                return false;
+            };
+            byte = next;
+        }
+
+        let token = if is_ident_start_ascii(byte) {
+            self.clear_token_flags();
+            let Some(token) = self.scan_ascii_identifier(start) else {
+                return false;
+            };
+            token
+        } else {
+            let punctuation = SIMPLE_PUNCT_TAG[byte as usize];
+            if punctuation != TokenTag::Eof {
+                self.clear_token_flags();
+                self.cursor = start;
+                self.punc_token(1, punctuation, start)
+            } else {
+                match byte {
+                    b'.' if !self
+                        .source
+                        .get(start as usize + 1)
+                        .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit()) =>
+                    {
+                        self.clear_token_flags();
+                        self.cursor = start;
+                        self.punc_token(1, TokenTag::Dot, self.cursor)
+                    }
+                    _ => return false,
+                }
+            }
+        };
+        *target = token;
+        self.handle_token(token, HandleTokenMode::Append);
+        true
+    }
+
+    #[inline(always)]
+    fn scan_ascii_identifier(&mut self, start: u32) -> Option<Token> {
+        let pos = scan_ascii_identifier_continue(self.source, start + 1);
+        if (pos as usize) < self.source.len()
+            && (self.source[pos as usize] == b'\\' || self.source[pos as usize] >= 0x80)
+        {
+            return None;
+        }
+        self.cursor = pos;
+        Some(self.create_token(
+            get_keyword_type(&self.source[start as usize..pos as usize]),
+            start,
+            pos,
+        ))
+    }
+
     fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         self.clear_token_flags();
@@ -216,20 +284,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let current_char = self.source[self.cursor as usize];
         if is_ident_start_ascii(current_char) && self.mode == LexerMode::Normal {
-            let start = self.cursor;
-            let pos = scan_ascii_identifier_continue(self.source, start + 1);
-            if (pos as usize) >= self.source.len()
-                || (self.source[pos as usize] != b'\\' && self.source[pos as usize] < 0x80)
-            {
-                self.cursor = pos;
-                *target = self.create_token(
-                    get_keyword_type(&self.source[start as usize..pos as usize]),
-                    start,
-                    pos,
-                );
-                return Ok(());
-            }
-            *target = self.scan_identifier_or_keyword()?;
+            *target = match self.scan_ascii_identifier(self.cursor) {
+                Some(token) => token,
+                None => self.scan_identifier_or_keyword()?,
+            };
             return Ok(());
         }
 
@@ -297,22 +355,12 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    #[inline(always)]
     fn scan_simple_punctuation(&mut self) -> Token {
         debug_assert!((self.cursor as usize) < self.source.len());
         let start = self.cursor;
-        let tag = match self.source[self.cursor as usize] {
-            b'~' => TokenTag::BitwiseNot,
-            b'(' => TokenTag::LeftParen,
-            b')' => TokenTag::RightParen,
-            b'{' => TokenTag::LeftBrace,
-            b'[' => TokenTag::LeftBracket,
-            b']' => TokenTag::RightBracket,
-            b';' => TokenTag::Semicolon,
-            b',' => TokenTag::Comma,
-            b':' => TokenTag::Colon,
-            b'@' => TokenTag::At,
-            _ => unreachable!(),
-        };
+        let tag = SIMPLE_PUNCT_TAG[self.source[self.cursor as usize] as usize];
+        debug_assert_ne!(tag, TokenTag::Eof);
         self.cursor += 1;
         self.create_token(tag, start, self.cursor)
     }
@@ -980,6 +1028,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(token)
     }
 
+    #[inline(always)]
     fn punc_token(&mut self, len: u32, tag: TokenTag, start: u32) -> Token {
         debug_assert!(len > 0);
         debug_assert_eq!(start, self.cursor);
@@ -1449,6 +1498,22 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Token::new(start, end, tag, self.consume_token_flags())
     }
 }
+
+const SIMPLE_PUNCT_TAG: [TokenTag; 256] = {
+    let mut table = [TokenTag::Eof; 256];
+    table[b'~' as usize] = TokenTag::BitwiseNot;
+    table[b'(' as usize] = TokenTag::LeftParen;
+    table[b')' as usize] = TokenTag::RightParen;
+    table[b'{' as usize] = TokenTag::LeftBrace;
+    table[b'}' as usize] = TokenTag::RightBrace;
+    table[b'[' as usize] = TokenTag::LeftBracket;
+    table[b']' as usize] = TokenTag::RightBracket;
+    table[b';' as usize] = TokenTag::Semicolon;
+    table[b',' as usize] = TokenTag::Comma;
+    table[b':' as usize] = TokenTag::Colon;
+    table[b'@' as usize] = TokenTag::At;
+    table
+};
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 
