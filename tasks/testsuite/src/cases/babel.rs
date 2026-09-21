@@ -195,8 +195,12 @@ pub(super) fn source_type(path: &Path, options: &BabelOptions) -> SourceType {
     match options.source_type.as_deref() {
         Some("script") => SourceType::Script,
         Some("commonjs") => SourceType::CommonJs,
-        Some("module") | None => SourceType::Module,
+        Some("module") => SourceType::Module,
         Some("unambiguous") => SourceType::Unambiguous,
+        // Babel's transform fixture harness treats plain files as scripts while
+        // still accepting module syntax. `Unambiguous` is the closest match in
+        // swc-next's mutually exclusive source-type model.
+        None => SourceType::Unambiguous,
         Some(_) => SourceType::Module,
     }
 }
