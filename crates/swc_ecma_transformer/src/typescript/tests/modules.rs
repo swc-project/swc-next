@@ -56,6 +56,7 @@ fn uncertain_alias_dependencies() {
         &ast,
         &semantic,
         &TypeScriptOptions::default(),
+        Default::default(),
     );
     let outer = semantic
         .binding(swc_next_ecma_ast::ScopeId::MODULE, b"Alias")

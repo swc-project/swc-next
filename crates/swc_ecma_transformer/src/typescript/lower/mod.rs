@@ -1,5 +1,5 @@
 use super::{TypeScriptOptions, analysis::TypeScriptAnalysis};
-use crate::{context::CommentState, used_names::UsedNameState};
+use crate::{context::CommentState, syntax::FollowingTransform, uid::UidGenerator};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{Ast, Program, SourceType, SymbolId, VisitMut};
 use swc_next_ecma_semantic::Semantic;
@@ -19,7 +19,7 @@ mod visit;
 use namespaces::NamespaceState;
 use statements::StatementExpansion;
 
-pub(super) struct TypeScriptLowerer<'visit, 'ast> {
+pub(super) struct TypeScriptLowerer<'visit, 'ast, F> {
     ast: &'visit mut Ast<'ast>,
     options: &'visit TypeScriptOptions,
     analysis: TypeScriptAnalysis<'ast>,
@@ -31,15 +31,17 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     namespaces: NamespaceState,
     // Lazy index; None as a map value means unresolved or conflicting owners.
     source_name_owners: Option<FxHashMap<&'ast [u8], Option<SymbolId>>>,
-    used_names: Option<UsedNameState<'ast>>,
+    uid_generator: Option<UidGenerator<'ast>>,
+    following: &'visit mut F,
 }
 
-impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
+impl<'visit, 'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'visit, 'ast, F> {
     pub(super) fn new(
         options: &'visit TypeScriptOptions,
         analysis: TypeScriptAnalysis<'ast>,
         ast: &'visit mut Ast<'ast>,
         semantic: &'visit Semantic<'ast>,
+        following: &'visit mut F,
     ) -> Self {
         let semantic_node_count = ast.node_count();
         Self {
@@ -53,7 +55,8 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             enum_member_symbols: FxHashMap::default(),
             namespaces: NamespaceState::default(),
             source_name_owners: None,
-            used_names: None,
+            uid_generator: None,
+            following,
         }
     }
 
@@ -62,6 +65,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
         if let Some(body) = self.lower_statement_list(body) {
             program.set_body(self.ast(), body);
         }
+        self.following.finish_program(program, self.ast);
         if self.ast_ref().source_type() == SourceType::Module
             && !self.has_module_indicator(program.body(self.ast_ref()))
         {
