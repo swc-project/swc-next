@@ -204,6 +204,72 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    /// Reads common tokens without entering the full trivia and token scanner.
+    /// On failure, the cursor is unchanged so trivia keeps its original context.
+    #[inline(always)]
+    pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
+        if self.mode != LexerMode::Normal {
+            return false;
+        }
+
+        let mut start = self.cursor;
+        let Some(mut byte) = self.source.get(start as usize).copied() else {
+            return false;
+        };
+        if byte == b' ' {
+            start += 1;
+            let Some(next) = self.source.get(start as usize).copied() else {
+                return false;
+            };
+            byte = next;
+        }
+
+        let token = if is_ident_start_ascii(byte) {
+            self.clear_token_flags();
+            let Some(token) = self.scan_ascii_identifier(start) else {
+                return false;
+            };
+            token
+        } else {
+            match byte {
+                b'~' | b'(' | b')' | b'{' | b'[' | b']' | b';' | b',' | b':' | b'@' => {
+                    self.clear_token_flags();
+                    self.cursor = start;
+                    self.scan_simple_punctuation()
+                }
+                b'.' if !self
+                    .source
+                    .get(start as usize + 1)
+                    .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit()) =>
+                {
+                    self.clear_token_flags();
+                    self.cursor = start;
+                    self.punc_token(1, TokenTag::Dot, self.cursor)
+                }
+                _ => return false,
+            }
+        };
+        *target = token;
+        self.handle_token(token, HandleTokenMode::Append);
+        true
+    }
+
+    #[inline(always)]
+    fn scan_ascii_identifier(&mut self, start: u32) -> Option<Token> {
+        let pos = scan_ascii_identifier_continue(self.source, start + 1);
+        if (pos as usize) < self.source.len()
+            && (self.source[pos as usize] == b'\\' || self.source[pos as usize] >= 0x80)
+        {
+            return None;
+        }
+        self.cursor = pos;
+        Some(self.create_token(
+            get_keyword_type(&self.source[start as usize..pos as usize]),
+            start,
+            pos,
+        ))
+    }
+
     fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         self.clear_token_flags();
@@ -216,20 +282,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let current_char = self.source[self.cursor as usize];
         if is_ident_start_ascii(current_char) && self.mode == LexerMode::Normal {
-            let start = self.cursor;
-            let pos = scan_ascii_identifier_continue(self.source, start + 1);
-            if (pos as usize) >= self.source.len()
-                || (self.source[pos as usize] != b'\\' && self.source[pos as usize] < 0x80)
-            {
-                self.cursor = pos;
-                *target = self.create_token(
-                    get_keyword_type(&self.source[start as usize..pos as usize]),
-                    start,
-                    pos,
-                );
-                return Ok(());
-            }
-            *target = self.scan_identifier_or_keyword()?;
+            *target = match self.scan_ascii_identifier(self.cursor) {
+                Some(token) => token,
+                None => self.scan_identifier_or_keyword()?,
+            };
             return Ok(());
         }
 
@@ -1774,6 +1830,52 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::TokenParserConfig;
+
+    fn assert_fast_token_stream(source: &str, mode: LexerMode) {
+        let allocator = Allocator::new();
+        let mut full = Lexer::init(&allocator, source, true, true, TokenParserConfig);
+        let mut fast = Lexer::init(&allocator, source, true, true, TokenParserConfig);
+        full.mode = mode;
+        fast.mode = mode;
+        loop {
+            let mut expected = Token::eof(0);
+            let mut actual = Token::eof(0);
+            let expected_result = full.next_token(&mut expected);
+            let actual_result = if fast.try_next_token(&mut actual) {
+                Ok(())
+            } else {
+                fast.next_token(&mut actual)
+            };
+            assert_eq!(actual_result, expected_result);
+            assert_eq!(actual, expected);
+            assert_eq!(fast.cursor, full.cursor);
+            assert_eq!(fast.state, full.state);
+            assert_eq!(fast.tokens.as_slice(), full.tokens.as_slice());
+            assert_eq!(fast.comments.as_slice(), full.comments.as_slice());
+            if expected_result.is_err() || expected.tag() == TokenTag::Eof {
+                break;
+            }
+            full.state.prev_token_end = expected.end();
+            fast.state.prev_token_end = actual.end();
+        }
+    }
+
+    #[test]
+    fn token_fast_path() {
+        assert_fast_token_stream("const value = object.member; ", LexerMode::Normal);
+        assert_fast_token_stream("function f(a) { return [~a, a]; }", LexerMode::Normal);
+        assert_fast_token_stream("value /* note */ .member", LexerMode::Normal);
+        assert_fast_token_stream("value\n // note\n next", LexerMode::Normal);
+        assert_fast_token_stream(" \t--> note\nname", LexerMode::Normal);
+        assert_fast_token_stream("name\u{2028}next", LexerMode::Normal);
+        assert_fast_token_stream("abcé", LexerMode::Normal);
+        assert_fast_token_stream("abc\\u0064", LexerMode::Normal);
+        assert_fast_token_stream("abc\\u00ZZ", LexerMode::Normal);
+        assert_fast_token_stream("...value", LexerMode::Normal);
+        assert_fast_token_stream(".25", LexerMode::Normal);
+        assert_fast_token_stream("attribute-name='value'", LexerMode::JsxTag);
+    }
 
     fn next_template(source: &str) -> Result<Token, LexicalError> {
         let allocator = Allocator::new();
