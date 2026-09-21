@@ -1,5 +1,6 @@
 use swc_next_ecma_ast::{
-    Ast, Diagnostic, ObjectProperty, RegExpLiteral, TraverseMut, TraverseMutCtx, TraverseMutWith,
+    Ast, CallExpression, Diagnostic, NodeId, ObjectProperty, RegExpLiteral, TraverseMut,
+    TraverseMutCtx, TraverseMutWith,
 };
 use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
 
@@ -30,6 +31,7 @@ pub struct TransformerReturn {
 #[derive(Default)]
 pub struct TransformerOptions {
     pub source_path: Option<String>,
+    pub react_display_name: bool,
     pub react_jsx_self: bool,
     pub react_jsx_source: bool,
     pub assumptions: Assumptions,
@@ -40,6 +42,7 @@ pub struct TransformerOptions {
 
 pub struct TransformerImpl {
     es2015: es2015::TraverseTransforms,
+    display_name: Option<jsx::DisplayName>,
 }
 
 impl Transformer {
@@ -51,6 +54,7 @@ impl Transformer {
         let program = ast.root_program();
         let TransformerOptions {
             source_path,
+            react_display_name,
             react_jsx_self,
             react_jsx_source,
             assumptions,
@@ -112,8 +116,11 @@ impl Transformer {
             transforms.transform(ast, semantic, syntax_result.generated_prelude);
         }
 
-        if traverse.is_enabled() {
-            let mut transformer = TransformerImpl { es2015: traverse };
+        if react_display_name || traverse.is_enabled() {
+            let mut transformer = TransformerImpl {
+                es2015: traverse,
+                display_name: react_display_name.then(|| jsx::DisplayName::new(source_path)),
+            };
             let state = TransformerState { assumptions };
             program.traverse_mut_with(&mut transformer, &mut TraverseMutCtx::new(ast, state));
         }
@@ -125,6 +132,28 @@ impl Transformer {
 }
 
 impl<'a> TraverseMut<'a, TransformerState> for TransformerImpl {
+    fn enter_node(&mut self, node: NodeId, _ctx: &mut TransformerCtx<'_, 'a>) {
+        if let Some(display_name) = &mut self.display_name {
+            display_name.enter_node(node);
+        }
+    }
+
+    fn exit_node(&mut self, node: NodeId, _ctx: &mut TransformerCtx<'_, 'a>) {
+        if let Some(display_name) = &mut self.display_name {
+            display_name.exit_node(node);
+        }
+    }
+
+    fn exit_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState>,
+    ) {
+        if let Some(display_name) = &self.display_name {
+            display_name.exit_call_expression(node, ctx);
+        }
+    }
+
     fn exit_object_property(&mut self, node: ObjectProperty, ctx: &mut TransformerCtx<'_, 'a>) {
         self.es2015.exit_object_property(node, ctx);
     }

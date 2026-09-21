@@ -25,6 +25,7 @@ pub struct BabelPlugins {
     pub typescript: bool,
     pub react_jsx: Option<JsxOptions>,
     pub react_jsx_dev: Option<JsxOptions>,
+    pub react_display_name: bool,
     pub react_jsx_self: bool,
     pub react_jsx_source: bool,
 
@@ -65,6 +66,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                         .map_err(|error| plugins.errors.push(error))
                         .ok();
                 }
+                "transform-react-display-name" => plugins.react_display_name = true,
                 "transform-react-jsx-self" => plugins.react_jsx_self = true,
                 "transform-react-jsx-source" => plugins.react_jsx_source = true,
                 "transform-arrow-functions" => {

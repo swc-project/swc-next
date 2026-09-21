@@ -4,10 +4,10 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 533/4069 (13.10%)
+Passed: 603/4069 (14.82%)
 Failed: 51/4069 (1.25%)
 Panicked: 0/4069 (0.00%)
-Skipped: 3485/4069 (85.65%)
+Skipped: 3415/4069 (83.93%)
 
 Packages
 ========
@@ -645,10 +645,10 @@ Skipped: 76/76 (100.00%)
 babel-plugin-transform-react-display-name
 -----------------------------------------
 Cases: 16
-Passed: 0/16 (0.00%)
+Passed: 16/16 (100.00%)
 Failed: 0/16 (0.00%)
 Panicked: 0/16 (0.00%)
-Skipped: 16/16 (100.00%)
+Skipped: 0/16 (0.00%)
 
 babel-plugin-transform-react-inline-elements
 --------------------------------------------
@@ -661,18 +661,18 @@ Skipped: 23/23 (100.00%)
 babel-plugin-transform-react-jsx
 --------------------------------
 Cases: 135
-Passed: 78/135 (57.78%)
+Passed: 125/135 (92.59%)
 Failed: 0/135 (0.00%)
 Panicked: 0/135 (0.00%)
-Skipped: 57/135 (42.22%)
+Skipped: 10/135 (7.41%)
 
 babel-plugin-transform-react-jsx-development
 --------------------------------------------
 Cases: 11
-Passed: 3/11 (27.27%)
+Passed: 10/11 (90.91%)
 Failed: 0/11 (0.00%)
 Panicked: 0/11 (0.00%)
-Skipped: 8/11 (72.73%)
+Skipped: 1/11 (9.09%)
 
 babel-plugin-transform-react-pure-annotations
 ---------------------------------------------

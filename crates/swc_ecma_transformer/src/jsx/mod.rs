@@ -5,6 +5,7 @@ use crate::syntax::{FollowingTransform, SyntaxResult};
 
 mod comments;
 mod development;
+mod display_name;
 mod lower;
 mod options;
 mod self_context;
@@ -15,6 +16,7 @@ pub(crate) use lower::JsxLowerer;
 pub use options::{JsxOptions, JsxRuntime};
 
 pub(crate) use development::transform as transform_development_attributes;
+pub(crate) use display_name::DisplayName;
 
 pub fn transform<'a>(
     program: Program,

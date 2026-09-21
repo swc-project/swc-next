@@ -105,6 +105,7 @@ impl From<BabelOptions> for TransformerOptions {
         let plugins = options.plugins;
         Self {
             source_path: None,
+            react_display_name: plugins.react_display_name,
             react_jsx_self: plugins.react_jsx_self,
             react_jsx_source: plugins.react_jsx_source,
             assumptions: options.assumptions,
