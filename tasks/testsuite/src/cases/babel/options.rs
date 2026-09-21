@@ -104,6 +104,9 @@ impl From<BabelOptions> for TransformerOptions {
     fn from(options: BabelOptions) -> Self {
         let plugins = options.plugins;
         Self {
+            source_path: None,
+            react_jsx_self: plugins.react_jsx_self,
+            react_jsx_source: plugins.react_jsx_source,
             assumptions: options.assumptions,
             es2015: ES2015Options {
                 arrow_functions: plugins.arrow_function,

@@ -125,8 +125,24 @@ fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
         ));
     }
 
-    let options: TransformerOptions = case.options.clone().into();
-    Transformer::transform(&mut ast, &semantic_ret.semantic, options);
+    let mut options: TransformerOptions = case.options.clone().into();
+    let babel_root = crate::cases::fixtures().join("babel");
+    let relative_path = case
+        .path
+        .strip_prefix(babel_root)
+        .map_err(|error| format!("source path: {error}"))?;
+    options.source_path = Some(format!("<CWD>/{}", relative_path.to_string_lossy()));
+    let transformed = Transformer::transform(&mut ast, &semantic_ret.semantic, options);
+    if let Some(diagnostic) = transformed
+        .diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.severity == Severity::Error)
+    {
+        return Err(format!(
+            "transform: {} at {}..{}",
+            diagnostic.message, diagnostic.span.start, diagnostic.span.end
+        ));
+    }
     Ok(print(&allocator, &ast, case.options.codegen_options())
         .code
         .to_owned())

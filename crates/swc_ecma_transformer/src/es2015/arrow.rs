@@ -2,7 +2,7 @@ use serde::Deserialize;
 use swc_next_ecma_ast::{
     Ast, Class, DUMMY_SP, Expr, FormalParameterKind, Function, FunctionType, GetSpan,
     IdentifierReference, MethodDefinition, MethodDefinitionKind, StaticBlock, Stmt, SubRange,
-    VisitMut, VisitMutWith,
+    VariableDeclaration, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -24,14 +24,19 @@ impl ArrowFunctions {
         Self { _options: options }
     }
 
-    pub fn transform<'a>(&mut self, ast: &mut Ast<'a>, semantic: &Semantic) {
+    pub fn transform<'a>(
+        &mut self,
+        ast: &mut Ast<'a>,
+        semantic: &Semantic,
+        generated_prelude: Option<VariableDeclaration>,
+    ) {
         let program = ast.root_program();
         let mut visitor = ArrowVisitor::new(ast, semantic);
         program.visit_mut_children_with(&mut visitor);
         let frame = visitor.hoister.take_frame();
         visitor
             .hoister
-            .inject_into_program(program, frame, visitor.ast);
+            .inject_into_program(program, frame, generated_prelude, visitor.ast);
     }
 }
 

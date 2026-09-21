@@ -24,6 +24,8 @@ pub struct BabelPlugins {
     pub typescript: bool,
     pub react_jsx: bool,
     pub react_jsx_dev: bool,
+    pub react_jsx_self: bool,
+    pub react_jsx_source: bool,
 
     // ES2015
     pub arrow_function: Option<ArrowFunctionsOptions>,
@@ -54,6 +56,8 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                     plugins.react_jsx_dev = true;
                     plugins.unsupported.push(entry.name().to_owned());
                 }
+                "transform-react-jsx-self" => plugins.react_jsx_self = true,
+                "transform-react-jsx-source" => plugins.react_jsx_source = true,
                 "transform-arrow-functions" => {
                     plugins.arrow_function = entry
                         .value::<ArrowFunctionsOptions>()
