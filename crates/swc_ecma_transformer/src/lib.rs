@@ -1,11 +1,11 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BlockStatement, CatchClause, Class, ClassBody, ClassType, Decl,
-    Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, Function, FunctionBody, NodeId, Program, StaticBlock, SwitchCase,
-    TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsCallSignatureDeclaration,
-    TsConstructSignatureDeclaration, TsEnumBody, TsFunction, TsIndexSignature,
-    TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
-    TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
+    ArrowFunctionExpression, Ast, BlockStatement, CallExpression, CatchClause, Class, ClassBody,
+    ClassType, Decl, Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement,
+    ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody, NodeId, Program,
+    StaticBlock, SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
+    TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsEnumBody, TsFunction,
+    TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter,
+    TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
 
@@ -31,6 +31,7 @@ pub mod typescript;
 #[derive(Default)]
 pub struct TransformerOptions {
     pub source_path: Option<String>,
+    pub react_display_name: bool,
     pub assumptions: Assumptions,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
@@ -45,8 +46,11 @@ pub struct TransformerReturn<'a> {
     pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
-pub struct Transformer {
+pub struct Transformer;
+
+struct ScopedTransformer<F> {
     x0_es2022: es2022::ES2022,
+    transform_call: F,
 }
 
 impl Transformer {
@@ -126,13 +130,34 @@ impl Transformer {
     fn transform_with_scopes<'ast>(
         ast: &mut Ast<'ast>,
         semantic: ScopeModel<'ast>,
-        options: TransformerOptions,
+        mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         debug_assert!(options.typescript.is_none());
+        let es2022 = es2022::ES2022::new(options.es2022, options.proposal);
+        if options.react_display_name {
+            let display_name = jsx::DisplayName::new(options.source_path.take());
+            Self::transform_runtime(ast, semantic, es2022, move |node, ctx| {
+                display_name.exit_call_expression(node, ctx);
+            })
+        } else {
+            Self::transform_runtime(ast, semantic, es2022, |_, _| {})
+        }
+    }
+
+    fn transform_runtime<'ast, F>(
+        ast: &mut Ast<'ast>,
+        semantic: ScopeModel<'ast>,
+        es2022: es2022::ES2022,
+        transform_call: F,
+    ) -> TransformerReturn<'ast>
+    where
+        F: FnMut(CallExpression, &mut TransformCtx<'_, 'ast>),
+    {
         let program = ast.root_program();
 
-        let mut transformer = Self {
-            x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
+        let mut transformer = ScopedTransformer {
+            x0_es2022: es2022,
+            transform_call,
         };
 
         let state = TransformerState::new(semantic);
@@ -146,7 +171,19 @@ impl Transformer {
     }
 }
 
-impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
+impl<'a, F> TraverseMut<'a, TransformerState<'a>> for ScopedTransformer<F>
+where
+    F: FnMut(CallExpression, &mut TransformCtx<'_, 'a>),
+{
+    fn exit_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
+    ) -> TraverseAction<CallExpression> {
+        (self.transform_call)(node, &mut TransformCtx::new(ctx));
+        TraverseAction::Continue
+    }
+
     fn enter_program(
         &mut self,
         node: Program,

@@ -7,6 +7,7 @@ use crate::{
 };
 
 mod comments;
+mod display_name;
 mod lower;
 mod options;
 mod self_context;
@@ -15,6 +16,8 @@ mod text;
 
 pub(crate) use lower::{JsxLowerer, RuntimeBindings};
 pub use options::{JsxOptions, JsxRuntime};
+
+pub(crate) use display_name::DisplayName;
 
 pub fn transform<'a>(
     program: Program,
