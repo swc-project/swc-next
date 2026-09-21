@@ -269,6 +269,7 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
                 call.type_arguments(self.ast),
                 call.arguments(self.ast),
                 call.optional(self.ast),
+                call.pure(self.ast),
             );
             let left = self
                 .ast

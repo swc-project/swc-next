@@ -1480,7 +1480,8 @@ impl<'a> CloneIn<'a> for CallExpression {
         let type_arguments = self.type_arguments(ast).clone_in(ast);
         let arguments = self.arguments(ast).clone_in(ast);
         let optional = self.optional(ast).clone_in(ast);
-        ast.call_expression(span, callee, type_arguments, arguments, optional)
+        let pure = self.pure(ast).clone_in(ast);
+        ast.call_expression(span, callee, type_arguments, arguments, optional, pure)
     }
 }
 impl<'a> CloneIn<'a> for ChainExpression {
