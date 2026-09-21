@@ -1170,6 +1170,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
+        if self
+            .source
+            .get(self.cursor as usize)
+            .is_some_and(|byte| !IS_TRIVIA_START[*byte as usize])
+        {
+            return Ok(());
+        }
         let at_start_of_source = self.cursor == 0;
 
         loop {
@@ -1449,6 +1456,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Token::new(start, end, tag, self.consume_token_flags())
     }
 }
+
+const IS_TRIVIA_START: [bool; 256] = {
+    let mut table = [false; 256];
+    let mut byte = 0;
+    while byte < table.len() {
+        table[byte] = matches!(
+            byte as u8,
+            b' ' | b'\t' | 0x0B | 0x0C | b'\n' | b'\r' | b'/' | b'<' | b'-' | 0x80..=0xFF
+        );
+        byte += 1;
+    }
+    table
+};
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 
