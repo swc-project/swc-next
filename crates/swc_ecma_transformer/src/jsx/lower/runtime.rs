@@ -346,6 +346,8 @@ impl<'ast, const TRACK_SELF: bool> JsxLowerer<'_, 'ast, TRACK_SELF> {
                     let statement = ast.get_node_in_sub_range(id);
                     if statement.is_import_declaration(ast) {
                         Some(index + 1)
+                    } else if Some(statement) == self.runtime_import_anchor {
+                        Some(index)
                     } else {
                         None
                     }

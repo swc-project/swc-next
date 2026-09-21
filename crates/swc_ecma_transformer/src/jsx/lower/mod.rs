@@ -1,7 +1,7 @@
 use super::{JsxOptions, self_context::JsxSelfContext, source::SourceLocations};
 use crate::{syntax::SyntaxResult, uid::LazyUidGenerator};
 pub(crate) use runtime::RuntimeBindings;
-use swc_next_ecma_ast::{Ast, AstUtf8, Diagnostic, Expr, ExprData, JsxElement, JsxFragment};
+use swc_next_ecma_ast::{Ast, AstUtf8, Diagnostic, Expr, ExprData, JsxElement, JsxFragment, Stmt};
 
 mod build;
 mod elements;
@@ -54,6 +54,7 @@ pub(crate) struct JsxLowerer<'options, 'ast, const TRACK_SELF: bool> {
     source_path: &'options str,
     filename: Option<AstUtf8>,
     diagnostics: Vec<Diagnostic<'static>>,
+    runtime_import_anchor: Option<Stmt>,
 }
 
 impl<'options, 'ast, const TRACK_SELF: bool> JsxLowerer<'options, 'ast, TRACK_SELF> {
@@ -78,7 +79,12 @@ impl<'options, 'ast, const TRACK_SELF: bool> JsxLowerer<'options, 'ast, TRACK_SE
             source_path: source_path.unwrap_or_default(),
             filename: None,
             diagnostics: Vec::new(),
+            runtime_import_anchor: None,
         }
+    }
+
+    pub(crate) fn set_runtime_import_anchor(&mut self, anchor: Option<Stmt>) {
+        self.runtime_import_anchor = anchor;
     }
 
     pub(crate) fn take_result(&mut self) -> SyntaxResult {
