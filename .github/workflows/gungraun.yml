@@ -462,6 +462,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          set -o pipefail
           comment="$RUNNER_TEMP/performance-comment.md"
           if [[ ! -s "$comment" ]]
           then
@@ -475,8 +476,8 @@ jobs:
           fi
           comment_id="$(
             gh api --paginate --slurp \
-              "repos/$GH_REPO/issues/$PR_NUMBER/comments?per_page=100" \
-              --jq \
+              "repos/$GH_REPO/issues/$PR_NUMBER/comments?per_page=100" | \
+              jq -r \
               'flatten | map(select(.user.login == "github-actions[bot]" and ((.body | contains("<!-- gungraun-benchmark-diff -->")) or (.body | contains("<!-- gungraun-parser-benchmark-diff -->"))))) | first | .id // empty'
           )"
           if [[ -n "$comment_id" ]]
