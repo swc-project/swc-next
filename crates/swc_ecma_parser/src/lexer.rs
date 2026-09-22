@@ -494,6 +494,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    // Inline `context` to eliminate the branch
+    #[inline(always)]
     fn consume_escape(&mut self, context: EscapeContext) -> Result<(), LexicalError> {
         if context == EscapeContext::Template {
             match self.consume_escape_impl(context) {
