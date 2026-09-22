@@ -88,6 +88,7 @@ impl DifferenceReport {
                     writeln!(other_failures, "- `{}`: panicked", path.display()).unwrap();
                 }
                 TestResult::Passed { .. } => {}
+                TestResult::Skipped { .. } => {}
             }
         }
 
@@ -136,6 +137,7 @@ impl Summary {
             TestResult::Passed { .. } => self.passed += 1,
             TestResult::Failed { .. } => self.failed += 1,
             TestResult::Panic { .. } => self.panicked += 1,
+            TestResult::Skipped { .. } => self.skipped += 1,
         }
     }
 
@@ -206,6 +208,9 @@ impl PackageReport {
             TestResult::Panic { path, .. } => self
                 .messages
                 .push(format!("Panic: {}", path.to_string_lossy())),
+            TestResult::Skipped { path, reason, .. } => self
+                .messages
+                .push(format!("Skipped: {} - {reason}", path.to_string_lossy())),
         }
     }
 }

@@ -5,8 +5,8 @@ use testsuite::{
         swc_resolver::SwcResolverCase, test262::Test262Case, typescript::TypeScriptCase,
     },
     runner::{
-        Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
-        parser::ParserRunner, resolver::ResolverRunner,
+        Runner, ast_round_trip::AstRoundTripRunner, babel_transform::BabelTransformRunner,
+        codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
     },
 };
 
@@ -14,6 +14,8 @@ use testsuite::{
 enum RunnerName {
     Parser,
     Codegen,
+    #[value(name = "ast_round_trip")]
+    AstRoundTrip,
     #[value(name = "babel_transform")]
     BabelTransform,
     Resolver,
@@ -44,6 +46,10 @@ struct AppArgs {
     /// Contains filter applied to the fixture path and case name.
     #[arg(long)]
     filter: String,
+
+    /// Preserve parentheses in both parses of the AST round-trip runner.
+    #[arg(long)]
+    preserve_parens: bool,
 }
 
 fn main() {
@@ -51,6 +57,12 @@ fn main() {
     let res = match args.runner {
         RunnerName::Parser => run_conformance::<ParserRunner>(args.case, &args.filter),
         RunnerName::Codegen => run_conformance::<CodegenRunner>(args.case, &args.filter),
+        RunnerName::AstRoundTrip if args.preserve_parens => {
+            run_conformance::<AstRoundTripRunner<true>>(args.case, &args.filter)
+        }
+        RunnerName::AstRoundTrip => {
+            run_conformance::<AstRoundTripRunner<false>>(args.case, &args.filter)
+        }
         RunnerName::BabelTransform if matches!(args.case, CaseSet::Babel) => {
             run_filtered::<BabelTransformRunner, BabelTransformCase>(&args.filter)
         }
@@ -73,7 +85,9 @@ where
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::TypeScript => run_filtered::<R, TypeScriptCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
-        CaseSet::SwcResolver => Err("parser/codegen do not run SWC resolver cases".into()),
+        CaseSet::SwcResolver => {
+            Err("parser/codegen/ast_round_trip do not run SWC resolver cases".into())
+        }
     }
 }
 
