@@ -612,6 +612,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    // Inline `consume_unicode_escape` to eliminate the branches
+    #[inline(always)]
     fn consume_unicode_escape(
         &mut self,
         context: ConsumeUnicodeContext,
