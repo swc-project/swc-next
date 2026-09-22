@@ -310,7 +310,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
-    #[inline]
+    // Make sure `mode` is always inlined to eliminate the branch.
+    #[inline(always)]
     pub(crate) fn handle_token(&mut self, token: Token, mode: HandleTokenMode) {
         if self.config.tokens() {
             match mode {
