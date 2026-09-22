@@ -1,0 +1,102 @@
+name: Binary size diff
+description: Build and compare Linux x64 release bindings for base and merge revisions. Requires a full checkout at compare-sha.
+
+inputs:
+  base-sha:
+    description: Full commit SHA of the base revision
+    required: true
+  compare-sha:
+    description: Full commit SHA of the checked-out merge revision
+    required: true
+  rust-toolchain:
+    description: Rust toolchain used for both builds
+    default: "1.97.1"
+
+outputs:
+  artifact-url:
+    description: Download URL for the measurements and Markdown summary
+    value: ${{ steps.upload-size.outputs.artifact-url }}
+  artifact-id:
+    description: Artifact ID for downloading the report in another job
+    value: ${{ steps.upload-size.outputs.artifact-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare build environment
+      env:
+        RUST_TOOLCHAIN: ${{ inputs.rust-toolchain }}
+        COMPARE_SHA: ${{ inputs.compare-sha }}
+      shell: bash
+      run: |
+        if [[ "$(git rev-parse HEAD)" != "$COMPARE_SHA" ]]
+        then
+          echo 'The checkout must match compare-sha.' >&2
+          exit 1
+        fi
+        echo "CARGO_TARGET_DIR=$RUNNER_TEMP/binary-size-target" >> "$GITHUB_ENV"
+        echo "RUSTUP_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_ENV"
+
+    - name: Setup Rust toolchain and cache
+      uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+      with:
+        toolchain: ${{ inputs.rust-toolchain }}
+        target: x86_64-unknown-linux-gnu
+        cache-save-if: false
+        cache-key: binary-size
+        cache-workspaces: ". -> ${{ runner.temp }}/binary-size-target"
+
+    - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      with:
+        version: 11.17.0
+
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      with:
+        node-version: 24.16.0
+        cache: pnpm
+
+    - name: Measure base bindings
+      env:
+        BASE_SHA: ${{ inputs.base-sha }}
+        ACTION_PATH: ${{ github.action_path }}
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/binary-size-report"
+        git worktree add --detach "$RUNNER_TEMP/binary-size-base" "$BASE_SHA"
+        cd "$RUNNER_TEMP/binary-size-base"
+        pnpm install --frozen-lockfile
+        pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
+        node "$ACTION_PATH/binary-size.mjs" measure \
+          "$RUNNER_TEMP/binary-size-report/base.json" "$BASE_SHA"
+
+    - name: Measure merge bindings
+      env:
+        COMPARE_SHA: ${{ inputs.compare-sha }}
+        ACTION_PATH: ${{ github.action_path }}
+      shell: bash
+      run: |
+        pnpm install --frozen-lockfile
+        pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
+        node "$ACTION_PATH/binary-size.mjs" measure \
+          "$RUNNER_TEMP/binary-size-report/merge.json" "$COMPARE_SHA"
+
+    - name: Compare binary sizes
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      shell: bash
+      run: |
+        node "$ACTION_PATH/binary-size.mjs" compare \
+          "$RUNNER_TEMP/binary-size-report/base.json" \
+          "$RUNNER_TEMP/binary-size-report/merge.json" \
+          > "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
+        cat "$RUNNER_TEMP/binary-size-report/binary-size-summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload binary size measurements
+      id: upload-size
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: binary-size-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/binary-size-report
+        if-no-files-found: warn
+        retention-days: 90
