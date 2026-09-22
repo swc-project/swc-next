@@ -198,6 +198,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    #[inline]
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
         self.handle_token(*target, HandleTokenMode::Append);
@@ -206,6 +207,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens without entering the full trivia and token scanner.
     /// On failure, the cursor is unchanged so trivia keeps its original context.
+    #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         if self.mode != LexerMode::Normal {
             return false;
@@ -255,7 +257,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32) -> Option<Token> {
         let pos = scan_ascii_identifier_continue(self.source, start + 1);
         if (pos as usize) < self.source.len()
@@ -354,7 +355,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
-    #[inline(always)]
     fn scan_simple_punctuation(&mut self) -> Token {
         debug_assert!((self.cursor as usize) < self.source.len());
         let start = self.cursor;
@@ -1027,7 +1027,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(token)
     }
 
-    #[inline(always)]
+    #[inline]
     fn punc_token(&mut self, len: u32, tag: TokenTag, start: u32) -> Token {
         debug_assert!(len > 0);
         debug_assert_eq!(start, self.cursor);
@@ -1538,7 +1538,6 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     table
 };
 
-#[inline(always)]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
@@ -1743,7 +1742,6 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
     }
 }
 
-#[inline(always)]
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
     match lexeme {
         b"if" => TokenTag::If,

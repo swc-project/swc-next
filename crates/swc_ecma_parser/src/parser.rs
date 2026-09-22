@@ -7814,7 +7814,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // Expression[In, Yield, Await] :
     //   AssignmentExpression[?In, ?Yield, ?Await]
     //   Expression[?In, ?Yield, ?Await] `,` AssignmentExpression[?In, ?Yield, ?Await]
-    #[inline(always)]
     fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
         let left = if self.current_token.tag() == TokenTag::Identifier {
             self.parse_plain_identifier()?
@@ -7824,7 +7823,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_expr_from_left(left, minimum)
     }
 
-    #[inline(always)]
     fn parse_expr_preserving_stripped_paren(
         &mut self,
         minimum: Precedence,
@@ -7838,7 +7836,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     // RelationalExpression[In, Yield, Await] :
     //   [+In] RelationalExpression[+In, ?Yield, ?Await] `in` ShiftExpression[?Yield, ?Await]
-    #[inline(always)]
     fn parse_expr_from_left(&mut self, mut left: Expr, minimum: Precedence) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
 
@@ -8141,14 +8138,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_await_expression(token.start())
     }
 
-    #[inline(always)]
     fn parse_plain_identifier(&mut self) -> Option<Expr> {
         let token = self.current_token;
         debug_assert_eq!(token.tag(), TokenTag::Identifier);
         self.parse_identifier_from_token(token)
     }
 
-    #[inline(always)]
     fn parse_identifier_from_token(&mut self, token: Token) -> Option<Expr> {
         self.advance_without_escape_check()?;
         let name = self.identifier_name(token);
@@ -8163,7 +8158,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.private_identifier(token.span(), name))
     }
 
-    #[inline(always)]
     fn parse_identifier_name(&mut self) -> Option<IdentifierName> {
         debug_assert!(self.current_token.tag().is_identifier_like());
         let token = self.current_token;
@@ -10590,7 +10584,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_member_property(object, optional)
     }
 
-    #[inline(always)]
     fn parse_member_property(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         let start = object.span(&self.ast).start;
         let token = self.current_token;
@@ -12313,7 +12306,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    #[inline(always)]
     fn parse_binding_identifier(&mut self) -> Option<BindingIdentifier> {
         let token = self.current_token;
         self.validate_identifier(token, "a binding identifier");
@@ -12390,6 +12382,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    #[inline]
     fn next_token(&mut self) -> Option<()> {
         match self.lexer.next_token(&mut self.current_token) {
             Ok(()) => Some(()),
@@ -12419,7 +12412,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ///
     /// Reports an error when an escaped keyword is consumed in a keyword
     /// position.
-    #[inline(always)]
+    #[inline]
     fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
         self.lexer.state.prev_token_end = self.current_token.end();
@@ -12460,6 +12453,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     fn report_escaped_keyword(&mut self, span: Span) {
         self.diagnostics.push(Diagnostic {
             severity: Severity::Error,
@@ -12474,6 +12469,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ///
     /// Use this for deferred checks where the token was consumed before its
     /// syntactic role was known.
+    #[cold]
+    #[inline(never)]
     fn report_if_escaped_keyword(&mut self, token: Token) {
         if token.is_escaped() {
             self.report_escaped_keyword(token.span());
@@ -12558,6 +12555,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(end)
     }
 
+    #[cold]
+    #[inline(never)]
     fn report(
         &mut self,
         span: Span,
@@ -12573,6 +12572,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         });
     }
 
+    #[cold]
+    #[inline(never)]
     fn report_expected(&mut self, span: Span, message: &str, options: ReportOptions) {
         let found = self.describe_token(self.current_token);
         self.report(
