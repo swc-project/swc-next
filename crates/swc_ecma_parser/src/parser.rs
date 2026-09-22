@@ -12652,6 +12652,7 @@ fn is_import_expression_or_member_access_on_import_expression(
     }
 }
 
+#[inline]
 fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
     match ast.node_kind(expression.node_id()) {
         NodeKind::ArrowFunctionExpression | NodeKind::YieldExpression => Precedence::Comma,
