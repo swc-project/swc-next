@@ -4709,6 +4709,9 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
         self.print_jsx_name(o.name(self.ast));
+        if let Some(type_arguments) = o.type_arguments(self.ast) {
+            self.print_ts_type_args(type_arguments);
+        }
         for id in o.attributes(self.ast).iter() {
             let item = self.ast.get_node_in_sub_range(id);
             let data = self.ast.jsx_attribute_item_data(item);
