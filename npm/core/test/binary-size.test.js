@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   measureBinarySizes,
   renderBinarySizeDiff,
-} from "../../../.github/actions/binary-size/binary-size.mjs";
+} from "../../../.github/scripts/binary-size.mjs";
 
 const baseSha = "a".repeat(40);
 const mergeSha = "b".repeat(40);

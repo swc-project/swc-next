@@ -1,0 +1,157 @@
+name: Binary Size
+
+on:
+  pull_request:
+    types: ["opened", "reopened", "synchronize"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: binary-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  binary-size:
+    name: Compare binary sizes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: 1.97.1
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Prepare shared build directory
+        run: echo "CARGO_TARGET_DIR=$RUNNER_TEMP/binary-size-target" >> "$GITHUB_ENV"
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          toolchain: 1.97.1
+          target: x86_64-unknown-linux-gnu
+          cache-save-if: false
+          cache-key: binary-size
+          cache-workspaces: ". -> ${{ runner.temp }}/binary-size-target"
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Measure base bindings
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/binary-size-report"
+          git worktree add --detach "$RUNNER_TEMP/binary-size-base" "$BASE_SHA"
+          cd "$RUNNER_TEMP/binary-size-base"
+          pnpm install --frozen-lockfile
+          pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
+          node "$GITHUB_WORKSPACE/.github/scripts/binary-size.mjs" measure \
+            "$RUNNER_TEMP/binary-size-report/base.json" "$BASE_SHA"
+
+      - name: Measure merge bindings
+        env:
+          COMPARE_SHA: ${{ github.sha }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
+          node .github/scripts/binary-size.mjs measure \
+            "$RUNNER_TEMP/binary-size-report/merge.json" "$COMPARE_SHA"
+
+      - name: Compare binary sizes
+        run: |
+          node .github/scripts/binary-size.mjs compare \
+            "$RUNNER_TEMP/binary-size-report/base.json" \
+            "$RUNNER_TEMP/binary-size-report/merge.json" \
+            > "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
+
+      - name: Upload binary size measurements
+        id: upload-size
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: binary-size-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/binary-size-report
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Render binary size report
+        if: always()
+        env:
+          BUILD_STATUS: ${{ job.status }}
+          ARTIFACT_URL: ${{ steps.upload-size.outputs.artifact-url }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          COMPARE_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo '<!-- binary-size-diff -->'
+            if [[ -s "$RUNNER_TEMP/binary-size-report/binary-size-summary.md" ]]
+            then
+              cat "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
+            else
+              echo '## Binary size diff'
+              echo
+              echo '⚠️ Binary size comparison unavailable. See the workflow log.'
+              echo
+              echo "Merge: \`$COMPARE_SHA\`; base: \`$BASE_SHA\`."
+            fi
+            echo
+            echo "[Workflow run]($RUN_URL): **$BUILD_STATUS**."
+            if [[ -n "$ARTIFACT_URL" ]]
+            then
+              echo
+              echo "[Download binary size measurements]($ARTIFACT_URL) (retained for 90 days)."
+            fi
+          } > "$RUNNER_TEMP/binary-size-comment.md"
+          cat "$RUNNER_TEMP/binary-size-comment.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish binary size diff to pull request
+        if: >-
+          always() &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -o pipefail
+          comment="$RUNNER_TEMP/binary-size-comment.md"
+          if [[ ! -s "$comment" ]]
+          then
+            exit 1
+          fi
+          current_head="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '.head.sha')"
+          if [[ "$current_head" != "$PR_HEAD_SHA" ]]
+          then
+            echo 'Skipping report for an outdated PR revision.'
+            exit 0
+          fi
+          comment_id="$(
+            gh api --paginate --slurp \
+              "repos/$GH_REPO/issues/$PR_NUMBER/comments?per_page=100" | \
+              jq -r \
+              'flatten | map(select(.user.login == "github-actions[bot]" and (.body | contains("<!-- binary-size-diff -->")))) | first | .id // empty'
+          )"
+          if [[ -n "$comment_id" ]]
+          then
+            gh api --method PATCH \
+              "repos/$GH_REPO/issues/comments/$comment_id" \
+              -F body=@"$comment"
+          else
+            gh api --method POST \
+              "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+              -F body=@"$comment"
+          fi

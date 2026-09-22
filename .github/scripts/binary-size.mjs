@@ -66,7 +66,7 @@ export function renderBinarySizeDiff(base, merge) {
     );
   }
   const lines = [
-    "### Binary size diff",
+    "## Binary size diff",
     "",
     `Release Node.js bindings for \`${target}\`, stripped by the release build.`,
     "Sizes are uncompressed file sizes; differences use exact bytes. Reporting only, with no failure threshold.",
