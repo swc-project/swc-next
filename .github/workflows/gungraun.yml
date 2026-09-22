@@ -1,4 +1,4 @@
-name: Gungraun Benchmarks
+name: Performance and Binary Size
 
 on:
   pull_request:
@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: gungraun-${{ github.event.pull_request.number }}
@@ -17,6 +16,9 @@ jobs:
     name: Compare Gungraun benchmarks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      artifact-url: ${{ steps.upload-valgrind.outputs.artifact-url }}
+      report-artifact-id: ${{ steps.upload-report.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -274,63 +276,216 @@ jobs:
             echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish benchmark diff to pull request
+      - name: Upload benchmark report
+        id: upload-report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gungraun-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/gungraun-diff.txt
+            ${{ runner.temp }}/gungraun-summary.md
+          if-no-files-found: warn
+          retention-days: 90
+
+  binary-size:
+    name: Compare binary sizes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: 1.97.1
+    outputs:
+      artifact-url: ${{ steps.upload-size.outputs.artifact-url }}
+      report-artifact-id: ${{ steps.upload-size.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Prepare shared build directory
+        run: echo "CARGO_TARGET_DIR=$RUNNER_TEMP/binary-size-target" >> "$GITHUB_ENV"
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          toolchain: 1.97.1
+          target: x86_64-unknown-linux-gnu
+          cache-save-if: false
+          cache-key: binary-size
+          cache-workspaces: ". -> ${{ runner.temp }}/binary-size-target"
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Measure base bindings
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/binary-size-report"
+          git worktree add --detach "$RUNNER_TEMP/binary-size-base" "$BASE_SHA"
+          cd "$RUNNER_TEMP/binary-size-base"
+          pnpm install --frozen-lockfile
+          pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
+          node "$GITHUB_WORKSPACE/.github/scripts/binary-size.mjs" measure \
+            "$RUNNER_TEMP/binary-size-report/base.json" "$BASE_SHA"
+
+      - name: Measure merge bindings
+        env:
+          COMPARE_SHA: ${{ github.sha }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
+          node .github/scripts/binary-size.mjs measure \
+            "$RUNNER_TEMP/binary-size-report/merge.json" "$COMPARE_SHA"
+
+      - name: Compare binary sizes
+        run: |
+          node .github/scripts/binary-size.mjs compare \
+            "$RUNNER_TEMP/binary-size-report/base.json" \
+            "$RUNNER_TEMP/binary-size-report/merge.json" \
+            > "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
+          cat "$RUNNER_TEMP/binary-size-report/binary-size-summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload binary size measurements
+        id: upload-size
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: binary-size-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/binary-size-report
+          if-no-files-found: warn
+          retention-days: 90
+
+  report:
+    name: Report performance and binary size
+    needs: [benchmarks, binary-size]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Download benchmark report
+        if: needs.benchmarks.outputs.report-artifact-id != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.benchmarks.outputs.report-artifact-id }}
+          path: ${{ runner.temp }}/benchmark-report
+
+      - name: Download binary size report
+        if: ${{ always() && needs.binary-size.outputs.report-artifact-id != '' }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.binary-size.outputs.report-artifact-id }}
+          path: ${{ runner.temp }}/binary-size-report
+
+      - name: Render combined report
+        if: always()
+        env:
+          BENCHMARK_STATUS: ${{ needs.benchmarks.result }}
+          SIZE_STATUS: ${{ needs.binary-size.result }}
+          VALGRIND_URL: ${{ needs.benchmarks.outputs.artifact-url }}
+          SIZE_URL: ${{ needs.binary-size.outputs.artifact-url }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          COMPARE_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo '<!-- gungraun-benchmark-diff -->'
+            echo '## Performance and binary size diff'
+            echo
+            echo "Merge: \`$COMPARE_SHA\`; base: \`$BASE_SHA\`."
+            echo
+            echo "[Workflow run]($RUN_URL). Gungraun: **$BENCHMARK_STATUS**; binary size: **$SIZE_STATUS**."
+            echo
+            if [[ -s "$RUNNER_TEMP/binary-size-report/binary-size-summary.md" ]]
+            then
+              cat "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
+            else
+              echo '### Binary size diff'
+              echo
+              echo '⚠️ Binary size comparison unavailable. See the workflow log.'
+            fi
+            echo
+            if [[ -n "$SIZE_URL" ]]
+            then
+              echo "[Download binary size measurements]($SIZE_URL) (retained for 90 days)."
+              echo
+            fi
+            echo '### Gungraun benchmark diff'
+            echo
+            echo 'Values are shown as `merge / base`.'
+            echo
+            if [[ -n "$VALGRIND_URL" ]]
+            then
+              echo "[Download the raw Gungraun and Valgrind data]($VALGRIND_URL) (retained for 90 days)."
+              echo
+            fi
+            if [[ -s "$RUNNER_TEMP/benchmark-report/gungraun-summary.md" ]]
+            then
+              cat "$RUNNER_TEMP/benchmark-report/gungraun-summary.md"
+            else
+              echo '⚠️ Gungraun comparison unavailable. See the workflow log.'
+            fi
+            echo
+            if [[ -s "$RUNNER_TEMP/benchmark-report/gungraun-diff.txt" ]]
+            then
+              echo '<details>'
+              echo '<summary>Benchmark output (first 16,000 bytes; full output in artifact)</summary>'
+              echo
+              echo '```text'
+              head -c 16000 "$RUNNER_TEMP/benchmark-report/gungraun-diff.txt"
+              echo
+              echo '```'
+              echo '</details>'
+            fi
+          } > "$RUNNER_TEMP/performance-comment.md"
+          cat "$RUNNER_TEMP/performance-comment.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish combined diff to pull request
         if: >-
           always() &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.user.login != 'dependabot[bot]'
         env:
-          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          report="$RUNNER_TEMP/gungraun-diff.txt"
-          if [[ ! -f "$report" ]]
+          comment="$RUNNER_TEMP/performance-comment.md"
+          if [[ ! -s "$comment" ]]
           then
+            exit 1
+          fi
+          current_head="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '.head.sha')"
+          if [[ "$current_head" != "$PR_HEAD_SHA" ]]
+          then
+            echo 'Skipping report for an outdated PR revision.'
             exit 0
           fi
-
-          summary="$RUNNER_TEMP/gungraun-summary.md"
-          comment="$RUNNER_TEMP/gungraun-comment.md"
-          {
-            echo '<!-- gungraun-benchmark-diff -->'
-            echo '## Gungraun benchmark diff'
-            echo
-            echo 'Values are shown as `merge | base`.'
-            echo
-            if [[ -n "$ARTIFACT_URL" ]]
-            then
-              echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
-              echo
-            fi
-            if [[ -s "$summary" ]]
-            then
-              cat "$summary"
-              echo
-            fi
-            echo '<details>'
-            echo '<summary>Benchmark results</summary>'
-            echo
-            echo '```text'
-            cat "$report"
-            echo '```'
-            echo '</details>'
-          } > "$comment"
-
           comment_id="$(
-            gh api \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+            gh api --paginate --slurp \
+              "repos/$GH_REPO/issues/$PR_NUMBER/comments?per_page=100" \
               --jq \
-              'map(select((.body | contains("<!-- gungraun-benchmark-diff -->")) or (.body | contains("<!-- gungraun-parser-benchmark-diff -->"))))[0].id // empty'
+              'flatten | map(select(.user.login == "github-actions[bot]" and ((.body | contains("<!-- gungraun-benchmark-diff -->")) or (.body | contains("<!-- gungraun-parser-benchmark-diff -->"))))) | first | .id // empty'
           )"
-
           if [[ -n "$comment_id" ]]
           then
             gh api --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              "repos/$GH_REPO/issues/comments/$comment_id" \
               -F body=@"$comment"
           else
             gh api --method POST \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
               -F body=@"$comment"
           fi
