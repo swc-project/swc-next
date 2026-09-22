@@ -1282,7 +1282,7 @@ impl<'a> Printer<'a> {
             if let Some(param) = handler.param(self.ast) {
                 self.print_space();
                 self.print("(");
-                self.print_binding(param);
+                self.print_binding(param, false);
                 self.print(")");
             }
             self.print_space();
@@ -1355,10 +1355,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
             }
             let d = self.ast.get_node_in_sub_range(id);
-            self.print_binding(d.id(self.ast));
-            if d.definite(self.ast) {
-                self.print("!");
-            }
+            self.print_binding(d.id(self.ast), d.definite(self.ast));
             if let Some(value) = d.init(self.ast) {
                 self.print_space();
                 self.print("=");
@@ -1388,7 +1385,7 @@ impl<'a> Printer<'a> {
         }
         if let Some(id) = f.id(self.ast) {
             self.print_space_before_identifier();
-            self.print_binding_identifier(id, false);
+            self.print_binding_identifier(id, false, false);
         }
         if let Some(params) = f.type_parameters(self.ast) {
             self.print_ts_type_params(params);
@@ -1419,7 +1416,7 @@ impl<'a> Printer<'a> {
         }
         if let Some(id) = f.id(self.ast) {
             self.print_space();
-            self.print_binding_identifier(id, false);
+            self.print_binding_identifier(id, false, false);
         } else if declaration || f.generator(self.ast) {
             self.print_space();
         }
@@ -1459,7 +1456,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
             }
             self.print("...");
-            self.print_binding(rest.argument(self.ast));
+            self.print_binding(rest.argument(self.ast), false);
             if rest.optional(self.ast) {
                 self.print("?");
             }
@@ -1472,7 +1469,7 @@ impl<'a> Printer<'a> {
 
     fn print_formal_pattern(&mut self, pattern: FormalParameterPattern) {
         match self.ast.formal_parameter_pattern_data(pattern) {
-            FormalParameterPatternData::BindingPattern(p) => self.print_binding(p),
+            FormalParameterPatternData::BindingPattern(p) => self.print_binding(p, false),
             FormalParameterPatternData::TsThisParameter(p) => {
                 self.print("this");
                 if let Some(a) = p.type_annotation(self.ast) {
@@ -1482,7 +1479,12 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_binding_identifier(&mut self, id: BindingIdentifier, decorators: bool) {
+    fn print_binding_identifier(
+        &mut self,
+        id: BindingIdentifier,
+        decorators: bool,
+        definite: bool,
+    ) {
         if decorators {
             self.print_decorators(id.decorators(self.ast));
         }
@@ -1492,22 +1494,36 @@ impl<'a> Printer<'a> {
         if id.optional(self.ast) {
             self.print("?");
         }
+        if definite {
+            self.print("!");
+        }
         if let Some(annotation) = id.type_annotation(self.ast) {
             self.print_ts_annotation(annotation);
         }
     }
 
-    fn print_binding(&mut self, binding: BindingPattern) {
+    // The assertion belongs to the outer declarator and precedes its type annotation.
+    fn print_binding(&mut self, binding: BindingPattern, definite: bool) {
         match self.ast.binding_pattern_data(binding) {
-            BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id, true),
-            BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
+            BindingPatternData::BindingIdentifier(id) => {
+                self.print_binding_identifier(id, true, definite)
+            }
+            BindingPatternData::SimpleAssignmentTarget(t) => {
+                self.print_simple_assignment_target(t);
+                if definite {
+                    self.print("!");
+                }
+            }
             BindingPatternData::AssignmentPattern(p) => {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
                 self.print_decorators(p.decorators(self.ast));
-                self.print_binding(p.left(self.ast));
+                self.print_binding(p.left(self.ast), false);
                 if p.optional(self.ast) {
                     self.print("?");
+                }
+                if definite {
+                    self.print("!");
                 }
                 if let Some(a) = p.type_annotation(self.ast) {
                     self.print_ts_annotation(a);
@@ -1522,20 +1538,23 @@ impl<'a> Printer<'a> {
                 self.print_decorators(r.decorators(self.ast));
                 self.add_source_mapping(r.span(self.ast).start);
                 self.print("...");
-                self.print_binding(r.argument(self.ast));
+                self.print_binding(r.argument(self.ast), false);
                 if r.optional(self.ast) {
                     self.print("?");
+                }
+                if definite {
+                    self.print("!");
                 }
                 if let Some(a) = r.type_annotation(self.ast) {
                     self.print_ts_annotation(a);
                 }
             }
-            BindingPatternData::ArrayPattern(a) => self.print_array_pattern(a),
-            BindingPatternData::ObjectPattern(o) => self.print_object_pattern(o),
+            BindingPatternData::ArrayPattern(a) => self.print_array_pattern(a, definite),
+            BindingPatternData::ObjectPattern(o) => self.print_object_pattern(o, definite),
         }
     }
 
-    fn print_array_pattern(&mut self, a: ArrayPattern) {
+    fn print_array_pattern(&mut self, a: ArrayPattern, definite: bool) {
         self.print_decorators(a.decorators(self.ast));
         self.add_source_mapping(a.span(self.ast).start);
         self.print("[");
@@ -1547,7 +1566,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
             }
             if let Some(item) = self.ast.get_node_in_sub_range(id) {
-                self.print_binding(item);
+                self.print_binding(item, false);
             } else if i + 1 == elements.len() && rest.is_none() {
                 self.print(",");
             }
@@ -1559,19 +1578,22 @@ impl<'a> Printer<'a> {
             }
             self.add_source_mapping(rest.span(self.ast).start);
             self.print("...");
-            self.print_binding(rest.argument(self.ast));
+            self.print_binding(rest.argument(self.ast), false);
         }
         self.add_source_mapping(a.span(self.ast).end.saturating_sub(1));
         self.print("]");
         if a.optional(self.ast) {
             self.print("?");
         }
+        if definite {
+            self.print("!");
+        }
         if let Some(t) = a.type_annotation(self.ast) {
             self.print_ts_annotation(t);
         }
     }
 
-    fn print_object_pattern(&mut self, o: ObjectPattern) {
+    fn print_object_pattern(&mut self, o: ObjectPattern, definite: bool) {
         self.print_decorators(o.decorators(self.ast));
         self.add_source_mapping(o.span(self.ast).start);
         self.print("{");
@@ -1596,14 +1618,14 @@ impl<'a> Printer<'a> {
                     _ => false,
                 };
             if prop.shorthand(self.ast) {
-                self.print_binding(value);
+                self.print_binding(value, false);
             } else if can_shorthand {
                 self.print_property_key(prop.key(self.ast), false);
             } else {
                 self.print_property_key(prop.key(self.ast), prop.computed(self.ast));
                 self.print(":");
                 self.print_space();
-                self.print_binding(value);
+                self.print_binding(value, false);
             }
         }
         if let Some(rest) = o.rest(self.ast) {
@@ -1613,7 +1635,7 @@ impl<'a> Printer<'a> {
             }
             self.add_source_mapping(rest.span(self.ast).start);
             self.print("...");
-            self.print_binding(rest.argument(self.ast));
+            self.print_binding(rest.argument(self.ast), false);
         }
         if !props.is_empty() || o.rest(self.ast).is_some() {
             self.print_space();
@@ -1622,6 +1644,9 @@ impl<'a> Printer<'a> {
         self.print("}");
         if o.optional(self.ast) {
             self.print("?");
+        }
+        if definite {
+            self.print("!");
         }
         if let Some(t) = o.type_annotation(self.ast) {
             self.print_ts_annotation(t);
@@ -1633,8 +1658,8 @@ impl<'a> Printer<'a> {
             AssignmentTargetData::SimpleAssignmentTarget(t) => {
                 self.print_simple_assignment_target(t)
             }
-            AssignmentTargetData::ArrayAssignmentTarget(a) => self.print_array_pattern(a),
-            AssignmentTargetData::ObjectAssignmentTarget(o) => self.print_object_pattern(o),
+            AssignmentTargetData::ArrayAssignmentTarget(a) => self.print_array_pattern(a, false),
+            AssignmentTargetData::ObjectAssignmentTarget(o) => self.print_object_pattern(o, false),
         }
     }
 
@@ -2876,7 +2901,7 @@ impl<'a> Printer<'a> {
         self.print("class");
         if let Some(id) = c.id(self.ast) {
             self.print(" ");
-            self.print_binding_identifier(id, false);
+            self.print_binding_identifier(id, false, false);
         }
         if let Some(t) = c.type_parameters(self.ast) {
             self.print_ts_type_params(t);
@@ -3543,7 +3568,7 @@ impl<'a> Printer<'a> {
                     .import_declaration_specifier_data(self.ast.get_node_in_sub_range(id))
                 {
                     ImportDeclarationSpecifierData::ImportDefaultSpecifier(s) => {
-                        self.print_binding_identifier(s.local(self.ast), false);
+                        self.print_binding_identifier(s.local(self.ast), false, false);
                         first = false;
                     }
                     ImportDeclarationSpecifierData::ImportNamespaceSpecifier(s) => {
@@ -3554,7 +3579,7 @@ impl<'a> Printer<'a> {
                         self.print("*");
                         self.print_space();
                         self.print("as ");
-                        self.print_binding_identifier(s.local(self.ast), false);
+                        self.print_binding_identifier(s.local(self.ast), false, false);
                         first = false;
                     }
                     ImportDeclarationSpecifierData::ImportSpecifier(s) => named.push(s),
@@ -3582,7 +3607,7 @@ impl<'a> Printer<'a> {
                         self.print_space();
                         self.print_space_before_identifier();
                         self.print("as ");
-                        self.print_binding_identifier(s.local(self.ast), false);
+                        self.print_binding_identifier(s.local(self.ast), false, false);
                     }
                 }
                 self.print_space();
@@ -3834,7 +3859,7 @@ impl<'a> Printer<'a> {
             if p.out(self.ast) {
                 self.print("out ");
             }
-            self.print_binding_identifier(p.name(self.ast), false);
+            self.print_binding_identifier(p.name(self.ast), false, false);
             if let Some(t) = p.constraint(self.ast) {
                 self.print(" extends ");
                 self.print_ts_type_parameter_constraint(
@@ -4072,7 +4097,7 @@ impl<'a> Printer<'a> {
                     self.print("(");
                 }
                 self.print("infer ");
-                self.print_binding_identifier(p.name(self.ast), false);
+                self.print_binding_identifier(p.name(self.ast), false, false);
                 if let Some(c) = p.constraint(self.ast) {
                     self.print(" extends ");
                     self.print_ts_type_parameter_constraint(
@@ -4422,7 +4447,7 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
-            self.print_binding_identifier(self.ast.get_node_in_sub_range(id), false);
+            self.print_binding_identifier(self.ast.get_node_in_sub_range(id), false, false);
         }
         self.print("]");
         self.print_ts_annotation(s.type_annotation(self.ast));
@@ -4439,7 +4464,7 @@ impl<'a> Printer<'a> {
             TsMappedTypeModifier::None => {}
         }
         self.print("[");
-        self.print_binding_identifier(t.key(self.ast), false);
+        self.print_binding_identifier(t.key(self.ast), false, false);
         self.print(" in ");
         self.print_ts_type(t.constraint(self.ast), TsTypePrecedence::Lowest);
         if let Some(n) = t.name_type(self.ast) {
@@ -4470,7 +4495,7 @@ impl<'a> Printer<'a> {
             self.print("declare ");
         }
         self.print("type ");
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast), false, false);
         if let Some(p) = d.type_parameters(self.ast) {
             self.print_ts_type_params(p);
         }
@@ -4485,7 +4510,7 @@ impl<'a> Printer<'a> {
             self.print("declare ");
         }
         self.print("interface ");
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast), false, false);
         if let Some(p) = d.type_parameters(self.ast) {
             self.print_ts_type_params(p);
         }
@@ -4516,7 +4541,7 @@ impl<'a> Printer<'a> {
             self.print("const ");
         }
         self.print("enum ");
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast), false, false);
         self.print_space();
         self.add_source_mapping(d.body(self.ast).span(self.ast).start);
         self.print("{");
@@ -4582,7 +4607,9 @@ impl<'a> Printer<'a> {
     }
     fn print_ts_module_name(&mut self, n: TsModuleName) {
         match self.ast.ts_module_name_data(n) {
-            TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i, false),
+            TsModuleNameData::BindingIdentifier(i) => {
+                self.print_binding_identifier(i, false, false)
+            }
             TsModuleNameData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
                 self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), false)
@@ -4666,7 +4693,7 @@ impl<'a> Printer<'a> {
         if p.readonly(self.ast) {
             self.print("readonly ");
         }
-        self.print_binding(p.parameter(self.ast));
+        self.print_binding(p.parameter(self.ast), false);
     }
     fn print_ts_import_equals(&mut self, d: TsImportEqualsDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
@@ -4674,7 +4701,7 @@ impl<'a> Printer<'a> {
         if d.import_kind(self.ast) == ImportOrExportKind::Type {
             self.print("type ");
         }
-        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_binding_identifier(d.id(self.ast), false, false);
         self.print_space();
         self.print("=");
         self.print_space();
