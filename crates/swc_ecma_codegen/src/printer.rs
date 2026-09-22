@@ -1859,13 +1859,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::BigIntLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                let raw = self.ast.get_utf8(e.raw(self.ast));
-                for byte in raw.bytes() {
-                    if byte != b'_' {
-                        self.js.push(byte);
-                    }
-                }
-                self.print("n");
+                self.print_bigint_literal(e);
             }
             ExprData::BooleanLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
@@ -2731,12 +2725,7 @@ impl<'a> Printer<'a> {
                     self.print_number_expr(e, Precedence::Lowest);
                 }
                 ExprData::BigIntLiteral(e) => {
-                    for byte in self.ast.get_utf8(e.raw(self.ast)).bytes() {
-                        if byte != b'_' {
-                            self.js.push(byte);
-                        }
-                    }
-                    self.print("n");
+                    self.print_bigint_literal(e);
                 }
                 _ => self.print_expr(expression, level),
             },
@@ -3195,6 +3184,16 @@ impl<'a> Printer<'a> {
             Accessibility::Private => self.print("private "),
             Accessibility::Protected => self.print("protected "),
         }
+    }
+
+    fn print_bigint_literal(&mut self, literal: BigIntLiteral) {
+        let raw = self.ast.get_utf8(literal.raw(self.ast));
+        for byte in raw.bytes() {
+            if byte != b'_' {
+                self.js.push(byte);
+            }
+        }
+        self.print("n");
     }
 
     fn print_number_literal(&mut self, literal: NumericLiteral, level: Precedence) {
@@ -4296,7 +4295,7 @@ impl<'a> Printer<'a> {
             TsLiteralData::NumericLiteral(n) => {
                 self.print_number_literal(n, Precedence::Lowest);
             }
-            TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.get_utf8(n.raw(self.ast))),
+            TsLiteralData::BigIntLiteral(n) => self.print_bigint_literal(n),
             TsLiteralData::BooleanLiteral(b) => {
                 self.print(if b.value(self.ast) { "true" } else { "false" })
             }
