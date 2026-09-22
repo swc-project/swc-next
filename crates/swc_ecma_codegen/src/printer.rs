@@ -2031,10 +2031,12 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(expr.span(self.ast).start);
                 if e.sync(self.ast) {
                     self.print("import.sync(");
-                } else if e.phase(self.ast) == Some(ImportPhase::Source) {
-                    self.print("import.source(");
                 } else {
-                    self.print("import(");
+                    match e.phase(self.ast) {
+                        Some(ImportPhase::Source) => self.print("import.source("),
+                        Some(ImportPhase::Defer) => self.print("import.defer("),
+                        None => self.print("import("),
+                    }
                 }
                 let close_offset = e.span(self.ast).end.saturating_sub(1);
                 let source_span = e.source(self.ast).span(self.ast);
