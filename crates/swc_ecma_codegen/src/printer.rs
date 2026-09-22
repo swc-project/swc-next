@@ -3938,24 +3938,7 @@ impl<'a> Printer<'a> {
                     self.print_ts_type_args(a);
                 }
             }
-            TsTypeData::TsImportType(t) => {
-                self.print("import(");
-                self.add_source_mapping(t.source(self.ast).span(self.ast).start);
-                self.print_quoted(self.ast.get_wtf8(t.source(self.ast).value(self.ast)), false);
-                if let Some(o) = t.options(self.ast) {
-                    self.print(",");
-                    self.print_space();
-                    self.print_expr(o, Precedence::Assignment);
-                }
-                self.print(")");
-                if let Some(q) = t.qualifier(self.ast) {
-                    self.print(".");
-                    self.print_ts_import_qualifier(q);
-                }
-                if let Some(a) = t.type_arguments(self.ast) {
-                    self.print_ts_type_args(a);
-                }
-            }
+            TsTypeData::TsImportType(t) => self.print_ts_import_type(t),
             TsTypeData::TsLiteralType(t) => self.print_ts_literal(t.literal(self.ast)),
             TsTypeData::TsTemplateLiteralType(t) => {
                 self.print("`");
@@ -4268,6 +4251,26 @@ impl<'a> Printer<'a> {
         self.add_source_mapping_for_name(right.span(self.ast).start, name);
         self.print_identifier(name);
     }
+    fn print_ts_import_type(&mut self, t: TsImportType) {
+        self.print("import(");
+        let source = t.source(self.ast);
+        self.add_source_mapping(source.span(self.ast).start);
+        self.print_quoted(self.ast.get_wtf8(source.value(self.ast)), false);
+        if let Some(options) = t.options(self.ast) {
+            self.print(",");
+            self.print_space();
+            self.print_expr(options, Precedence::Assignment);
+        }
+        self.print(")");
+        if let Some(qualifier) = t.qualifier(self.ast) {
+            self.print(".");
+            self.print_ts_import_qualifier(qualifier);
+        }
+        if let Some(type_arguments) = t.type_arguments(self.ast) {
+            self.print_ts_type_args(type_arguments);
+        }
+    }
+
     fn print_ts_import_qualifier(&mut self, q: TsImportTypeQualifier) {
         match self.ast.ts_import_type_qualifier_data(q) {
             TsImportTypeQualifierData::IdentifierName(i) => {
@@ -4282,12 +4285,7 @@ impl<'a> Printer<'a> {
         match self.ast.ts_type_query_expr_name_data(n) {
             TsTypeQueryExprNameData::TsTypeName(n) => self.print_ts_type_name(n),
             TsTypeQueryExprNameData::ThisExpression(_) => self.print("this"),
-            TsTypeQueryExprNameData::TsImportType(t) => {
-                self.print("import(");
-                self.add_source_mapping(t.source(self.ast).span(self.ast).start);
-                self.print_quoted(self.ast.get_wtf8(t.source(self.ast).value(self.ast)), false);
-                self.print(")");
-            }
+            TsTypeQueryExprNameData::TsImportType(t) => self.print_ts_import_type(t),
         }
     }
     fn print_ts_literal(&mut self, l: TsLiteral) {
