@@ -457,12 +457,6 @@ struct ParenthesizedCover {
     has_trailing_comma: bool,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-struct ParseVariableDeclarationOpts {
-    await_using: bool,
-    is_declare: bool,
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DeclaratorCtx {
     Normal,
@@ -1627,9 +1621,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         match self.current_token.tag() {
             TokenTag::Await => self.parse_await_using_or_expression(),
-            TokenTag::Var => self
-                .parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
-                .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration))),
+            TokenTag::Var => {
+                let start = self.current_token.start();
+                self.advance()?;
+                self.parse_variable_declaration(VariableKind::Var, false, start)
+                    .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
+            }
             TokenTag::Const => self.parse_const_or_const_enum(),
             TokenTag::Let if !self.current_token.is_escaped() => self.parse_let(),
             TokenTag::Using => self.parse_using_or_expression(),
@@ -1711,8 +1708,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_let(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Let);
         if !self.is_let_identifier()? {
+            let start = self.current_token.start();
+            self.advance()?;
             return self
-                .parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
+                .parse_variable_declaration(VariableKind::Let, false, start)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
         }
         self.parse_expression_statement()
@@ -1721,8 +1720,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_using_or_expression(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Using);
         if !self.is_using_identifier()? {
+            let start = self.current_token.start();
+            self.advance()?;
             return self
-                .parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
+                .parse_variable_declaration(VariableKind::Using, false, start)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
         }
         self.parse_expression_statement()
@@ -1737,14 +1738,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
             if !self.is_using_identifier()? {
                 self.report_await_using_if_disallowed(await_span);
+                self.advance()?;
                 return self
-                    .parse_variable_declaration(
-                        ParseVariableDeclarationOpts {
-                            await_using: true,
-                            ..ParseVariableDeclarationOpts::default()
-                        },
-                        Some(start),
-                    )
+                    .parse_variable_declaration(VariableKind::AwaitUsing, false, start)
                     .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
             }
             self.report_await_using_if_disallowed(await_span);
@@ -1785,7 +1781,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return self.parse_ts_declaration();
             }
         }
-        self.parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
+        let start = self.current_token.start();
+        self.advance()?;
+        self.parse_variable_declaration(VariableKind::Const, false, start)
             .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
     }
 
@@ -2220,19 +2218,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   LexicalDeclaration[+In, ?Yield, ?Await]
     fn parse_variable_declaration(
         &mut self,
-        opts: ParseVariableDeclarationOpts,
-        start_from_param: Option<u32>,
+        kind: VariableKind,
+        is_declare: bool,
+        declaration_start: u32,
     ) -> Option<VariableDeclaration> {
-        debug_assert!(
-            start_from_param.is_some()
-                || matches!(
-                    self.current_token.tag(),
-                    TokenTag::Var | TokenTag::Let | TokenTag::Const | TokenTag::Using
-                )
-        );
-        let declaration_start = start_from_param.unwrap_or(self.current_token.start());
-        let kind = self.parse_variable_kind(opts.await_using)?;
-        let context = if opts.is_declare || self.ts_context.ambient() {
+        let context = if is_declare || self.ts_context.ambient() {
             DeclaratorCtx::Declare
         } else {
             DeclaratorCtx::Normal
@@ -2272,27 +2262,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Span::new(declaration_start, end),
                 kind,
                 declarators,
-                opts.is_declare,
+                is_declare,
             ))
         })();
         self.scratch_a.reset(checkpoint);
         result
     }
 
-    fn parse_variable_kind(&mut self, await_using: bool) -> Option<VariableKind> {
+    #[inline]
+    fn parse_variable_kind(&mut self) -> Option<VariableKind> {
         let tag = self.current_token.tag();
         self.advance()?;
         match tag {
             TokenTag::Var => Some(VariableKind::Var),
             TokenTag::Let => Some(VariableKind::Let),
             TokenTag::Const => Some(VariableKind::Const),
-            TokenTag::Using => {
-                if await_using {
-                    Some(VariableKind::AwaitUsing)
-                } else {
-                    Some(VariableKind::Using)
-                }
-            }
             _ => None,
         }
     }
@@ -4570,8 +4554,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.current_token.tag(),
             TokenTag::Var | TokenTag::Let | TokenTag::Const
         ) {
-            let declaration =
-                self.parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)?;
+            let declaration_start = self.current_token.start();
+            let kind = self.parse_variable_kind()?;
+            let declaration = self.parse_variable_declaration(kind, false, declaration_start)?;
             let end = declaration.span(&self.ast).end;
             let specifiers = SubRange::empty();
             let attributes = SubRange::empty();
@@ -5018,13 +5003,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.parse_enum_declaration(start, modifiers.is_const, modifiers.declare)
             }
             TokenTag::Var | TokenTag::Let | TokenTag::Const => {
-                let declaration = self.parse_variable_declaration(
-                    ParseVariableDeclarationOpts {
-                        is_declare: modifiers.declare,
-                        ..ParseVariableDeclarationOpts::default()
-                    },
-                    Some(start),
-                )?;
+                let kind = self.parse_variable_kind()?;
+                let declaration =
+                    self.parse_variable_declaration(kind, modifiers.declare, start)?;
                 Some(Stmt::Declaration(Decl::VariableDeclaration(declaration)))
             }
             TokenTag::Function => Some(Stmt::Declaration(
@@ -7253,7 +7234,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let declaration_start = self.current_token.start();
         match self.current_token.tag() {
             TokenTag::Var | TokenTag::Const => {
-                let kind = self.parse_variable_kind(false)?;
+                let kind = self.parse_variable_kind()?;
                 self.parse_for_with_declaration(start, is_for_await, kind, declaration_start)
             }
             TokenTag::Let if !self.current_token.is_escaped() => {
