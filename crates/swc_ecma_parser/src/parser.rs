@@ -12434,6 +12434,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     /// Advances without checking whether the current token is an escaped
     /// keyword.
+    #[inline]
     fn advance_without_escape_check(&mut self) -> Option<()> {
         self.lexer.state.prev_token_end = self.current_token.end();
         if self.lexer.try_next_token(&mut self.current_token) {
@@ -12670,6 +12671,7 @@ fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
     }
 }
 
+#[inline]
 fn assertion_erasure_changes_binary_grouping(
     mut expression: Expr,
     next_operator: TokenTag,
@@ -12697,10 +12699,12 @@ fn assertion_erasure_changes_binary_grouping(
         || (next_precedence == current_precedence && next_operator == TokenTag::Exponent)
 }
 
+#[inline]
 fn is_angle_open(tag: TokenTag) -> bool {
     matches!(tag, TokenTag::LessThan | TokenTag::LeftShift)
 }
 
+#[inline]
 fn is_angle_close(tag: TokenTag) -> bool {
     matches!(
         tag,
@@ -12713,6 +12717,7 @@ fn is_angle_close(tag: TokenTag) -> bool {
     )
 }
 
+#[inline]
 fn continues_type(tag: TokenTag) -> bool {
     matches!(
         tag,
@@ -12728,6 +12733,7 @@ fn continues_type(tag: TokenTag) -> bool {
     )
 }
 
+#[inline]
 fn is_start_of_type(tag: TokenTag) -> bool {
     matches!(
         tag,
@@ -12787,6 +12793,7 @@ fn tuple_element_as_type(element: TsTupleElement, ast: &Ast<'_>) -> TsType {
     }
 }
 
+#[inline]
 fn can_follow_accessor_keyword(tag: TokenTag) -> bool {
     tag == TokenTag::LeftBracket
         || tag.is_identifier_like()
@@ -12794,23 +12801,28 @@ fn can_follow_accessor_keyword(tag: TokenTag) -> bool {
         || tag.is_numeric_literal()
 }
 
+#[inline]
 fn can_follow_readonly_modifier(tag: TokenTag) -> bool {
     can_follow_accessor_keyword(tag)
         || matches!(tag, TokenTag::LeftBrace | TokenTag::Star | TokenTag::Spread)
 }
 
+#[inline]
 fn can_start_binding(tag: TokenTag) -> bool {
     tag.is_identifier_like() || matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace)
 }
 
+#[inline]
 fn can_start_binding_identifier(tag: TokenTag) -> bool {
     tag.is_identifier_like() && !tag.is_unconditionally_reserved()
 }
 
+#[inline]
 fn can_start_let_binding(tag: TokenTag) -> bool {
     matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace) || can_start_binding_identifier(tag)
 }
 
+#[inline]
 fn is_parameter_property_modifier_tag(tag: TokenTag) -> bool {
     matches!(
         tag,
@@ -12822,6 +12834,7 @@ fn is_parameter_property_modifier_tag(tag: TokenTag) -> bool {
     )
 }
 
+#[inline]
 fn is_modifier(tag: TokenTag, is_ts: bool) -> bool {
     match tag {
         TokenTag::Static | TokenTag::Async | TokenTag::Get | TokenTag::Set | TokenTag::Accessor => {
@@ -12838,6 +12851,7 @@ fn is_modifier(tag: TokenTag, is_ts: bool) -> bool {
     }
 }
 
+#[inline]
 fn can_start_element_key(tag: TokenTag) -> bool {
     tag.is_identifier_like()
         || tag.is_numeric_literal()
@@ -12850,14 +12864,17 @@ fn can_start_element_key(tag: TokenTag) -> bool {
         )
 }
 
+#[inline]
 fn requires_same_line(tag: TokenTag) -> bool {
     !matches!(tag, TokenTag::Static | TokenTag::Get | TokenTag::Set)
 }
 
+#[inline]
 fn is_const_enum_head(after_const: Token) -> bool {
     after_const.tag() == TokenTag::Enum && !after_const.has_line_terminator_before()
 }
 
+#[inline]
 fn is_type_keyword(tag: TokenTag) -> bool {
     matches!(
         tag,
@@ -12876,6 +12893,7 @@ fn is_type_keyword(tag: TokenTag) -> bool {
     )
 }
 
+#[inline]
 fn can_follow_parameter_property_modifier(tag: TokenTag) -> bool {
     tag.is_identifier_like()
         || matches!(
@@ -12884,12 +12902,14 @@ fn can_follow_parameter_property_modifier(tag: TokenTag) -> bool {
         )
 }
 
+#[inline]
 fn is_declaration_name(token: Token) -> bool {
     token.tag().is_identifier_like()
         && !token.tag().is_unconditionally_reserved()
         && !token.has_line_terminator_before()
 }
 
+#[inline]
 fn import_or_export_kind_for_declare(declare: bool) -> ImportOrExportKind {
     if declare {
         ImportOrExportKind::Type
@@ -12898,6 +12918,7 @@ fn import_or_export_kind_for_declare(declare: bool) -> ImportOrExportKind {
     }
 }
 
+#[inline]
 fn can_follow_type_arguments_in_expression(token: Token) -> bool {
     match token.tag() {
         TokenTag::LeftParen | TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => true,
@@ -12910,6 +12931,7 @@ fn can_follow_type_arguments_in_expression(token: Token) -> bool {
     }
 }
 
+#[inline]
 fn is_binary_operator_like(tag: TokenTag) -> bool {
     tag.is_binary_operator()
         || tag.is_logical_operator()
@@ -12920,6 +12942,7 @@ fn is_binary_operator_like(tag: TokenTag) -> bool {
         )
 }
 
+#[inline]
 fn is_start_of_expression(tag: TokenTag) -> bool {
     matches!(
         tag,
@@ -12946,6 +12969,7 @@ fn is_start_of_expression(tag: TokenTag) -> bool {
         || tag.is_numeric_literal()
 }
 
+#[inline]
 fn binary_operator(tag: TokenTag) -> BinaryOperator {
     match tag {
         TokenTag::Equal => BinaryOperator::Equal,
@@ -12974,6 +12998,7 @@ fn binary_operator(tag: TokenTag) -> BinaryOperator {
     }
 }
 
+#[inline]
 fn assignment_operator(tag: TokenTag) -> AssignmentOperator {
     match tag {
         TokenTag::Assign => AssignmentOperator::Assign,

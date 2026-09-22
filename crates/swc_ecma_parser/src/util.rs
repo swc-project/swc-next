@@ -49,6 +49,7 @@ pub fn unicode_separator_len(source: &[u8], pos: usize) -> u8 {
     }
 }
 
+#[inline]
 pub fn is_multi_byte_space(cp: u32) -> bool {
     matches!(
         cp,
@@ -56,6 +57,7 @@ pub fn is_multi_byte_space(cp: u32) -> bool {
     )
 }
 
+#[inline]
 pub fn is_octal_digit(digit: u8) -> bool {
     matches!(digit, b'0'..=b'7')
 }

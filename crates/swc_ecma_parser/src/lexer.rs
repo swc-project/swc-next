@@ -257,6 +257,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
+    #[inline]
     fn scan_ascii_identifier(&mut self, start: u32) -> Option<Token> {
         let pos = scan_ascii_identifier_continue(self.source, start + 1);
         if (pos as usize) < self.source.len()
@@ -272,6 +273,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         ))
     }
 
+    #[inline]
     fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         self.clear_token_flags();
@@ -1036,23 +1038,28 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.create_token(tag, start, self.cursor)
     }
 
+    #[inline]
     fn peek(&self, offset: u32) -> u8 {
         let idx = (self.cursor + offset) as usize;
         self.source.get(idx).copied().unwrap_or(0)
     }
 
+    #[inline]
     fn set_token_flag(&mut self, flag: TokenFlag) {
         self.state.token_flags |= flag_mask(flag);
     }
 
+    #[inline]
     fn has_token_flag(&self, flag: TokenFlag) -> bool {
         (self.state.token_flags & flag_mask(flag)) != 0
     }
 
+    #[inline]
     fn clear_token_flags(&mut self) {
         self.state.token_flags = 0;
     }
 
+    #[inline]
     fn consume_token_flags(&mut self) -> u8 {
         let flags = self.state.token_flags;
         self.state.token_flags = 0;
@@ -1209,6 +1216,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Err(LexicalError::UnterminatedRegexLiteral)
     }
 
+    #[inline]
     fn is_line_terminator(&self, c: u8) -> bool {
         c == b'\n'
             || c == b'\r'
@@ -1444,6 +1452,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Err(LexicalError::UnterminatedMultiLineComment)
     }
 
+    #[cold]
+    #[inline(never)]
     fn scan_html_comment(&mut self) -> Result<(), LexicalError> {
         debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 3) as usize) < self.source.len());
@@ -1472,6 +1482,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    #[cold]
+    #[inline(never)]
     fn scan_html_close_comment(&mut self) -> Result<(), LexicalError> {
         debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 2) as usize) < self.source.len());
@@ -1493,6 +1505,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(())
     }
 
+    #[inline]
     pub fn create_token(&mut self, tag: TokenTag, start: u32, end: u32) -> Token {
         Token::new(start, end, tag, self.consume_token_flags())
     }
@@ -1538,6 +1551,7 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     table
 };
 
+#[inline]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
@@ -1561,10 +1575,12 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     position as u32
 }
 
+#[inline]
 fn is_surrogate_codepoint(cp: u32) -> bool {
     (0xD800..=0xDFFF).contains(&cp)
 }
 
+#[inline]
 fn is_utf16_high_surrogate(cp: u32) -> bool {
     (0xD800..=0xDBFF).contains(&cp)
 }
