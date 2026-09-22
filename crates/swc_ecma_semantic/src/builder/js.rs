@@ -1233,6 +1233,7 @@ enum SuperCallValidity {
 /// `super()` is permitted only inside a constructor of a derived class.
 /// Arrow functions are transparent (Section 8.5.1); regular functions are opaque.
 fn super_call_validity(builder: &SemanticBuilder<'_, '_>) -> SuperCallValidity {
+    let mut child = None;
     let mut ancestors = builder.ancestors();
     while let Some(ancestor) = ancestors.next() {
         match builder.ast.node_kind(ancestor) {
@@ -1255,11 +1256,21 @@ fn super_call_validity(builder: &SemanticBuilder<'_, '_>) -> SuperCallValidity {
                 }
                 return SuperCallValidity::NotInConstructor;
             }
-            NodeKind::PropertyDefinition | NodeKind::StaticBlock | NodeKind::Program => {
+            NodeKind::PropertyDefinition => {
+                if let NodeKindData::PropertyDefinition(property) = builder.ast.kind_data(ancestor)
+                    && property
+                        .value(builder.ast)
+                        .is_some_and(|value| Some(value.node_id()) == child)
+                {
+                    return SuperCallValidity::NotInConstructor;
+                }
+            }
+            NodeKind::StaticBlock | NodeKind::Program => {
                 return SuperCallValidity::NotInConstructor;
             }
             _ => {}
         }
+        child = Some(ancestor);
     }
     SuperCallValidity::NotInConstructor
 }

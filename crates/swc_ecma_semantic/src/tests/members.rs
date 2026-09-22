@@ -553,3 +553,23 @@ fn contextual_await() {
     let (ast, semantic) = analyze_with_options(&allocator, source, ts_module, syntax);
     assert!(reference_symbol(&ast, &semantic, b"await").is_some());
 }
+
+#[test]
+fn class_definition_super_calls() {
+    let allocator = Allocator::new();
+    let options = Options::default();
+
+    let diagnostics = has_syntax_diagnostics(
+        &allocator,
+        "class B {} class C extends B { constructor() { class Inner { [(super(), 'x')] = 0; } } }",
+        options,
+    );
+    assert!(!diagnostics);
+
+    let diagnostics = has_syntax_diagnostics(
+        &allocator,
+        "class B {} class C extends B { constructor() { class Inner { x = super(); } } }",
+        options,
+    );
+    assert!(diagnostics);
+}
