@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: binary-size-${{ github.event.pull_request.number }}
@@ -17,6 +16,13 @@ jobs:
     name: Compare binary sizes
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      base-core: ${{ steps.base.outputs.core }}
+      base-parser: ${{ steps.base.outputs.parser }}
+      base-codegen: ${{ steps.base.outputs.codegen }}
+      merge-core: ${{ steps.merge.outputs.core }}
+      merge-parser: ${{ steps.merge.outputs.parser }}
+      merge-codegen: ${{ steps.merge.outputs.codegen }}
     env:
       RUSTUP_TOOLCHAIN: 1.97.1
     steps:
@@ -48,63 +54,95 @@ jobs:
           cache: pnpm
 
       - name: Measure base bindings
+        id: base
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          mkdir -p "$RUNNER_TEMP/binary-size-report"
           git worktree add --detach "$RUNNER_TEMP/binary-size-base" "$BASE_SHA"
           cd "$RUNNER_TEMP/binary-size-base"
           pnpm install --frozen-lockfile
           pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
-          node "$GITHUB_WORKSPACE/.github/scripts/binary-size.mjs" measure \
-            "$RUNNER_TEMP/binary-size-report/base.json" "$BASE_SHA"
+          for component in core parser codegen; do
+            bytes=$(stat --format=%s "npm/$component/src-js/swc-next-$component.linux-x64-gnu.node")
+            echo "$component=$bytes" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Measure merge bindings
-        env:
-          COMPARE_SHA: ${{ github.sha }}
+        id: merge
         run: |
           pnpm install --frozen-lockfile
           pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
-          node .github/scripts/binary-size.mjs measure \
-            "$RUNNER_TEMP/binary-size-report/merge.json" "$COMPARE_SHA"
+          for component in core parser codegen; do
+            bytes=$(stat --format=%s "npm/$component/src-js/swc-next-$component.linux-x64-gnu.node")
+            echo "$component=$bytes" >> "$GITHUB_OUTPUT"
+          done
 
-      - name: Compare binary sizes
-        run: |
-          node .github/scripts/binary-size.mjs compare \
-            "$RUNNER_TEMP/binary-size-report/base.json" \
-            "$RUNNER_TEMP/binary-size-report/merge.json" \
-            > "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
-
+  report:
+    name: Report binary sizes
+    needs: binary-size
+    if: >-
+      always() && !cancelled() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
       - name: Render binary size report
-        if: always()
         env:
-          BUILD_STATUS: ${{ job.status }}
+          BUILD_RESULT: ${{ needs.binary-size.result }}
+          MEASUREMENTS: ${{ toJSON(needs.binary-size.outputs) }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          {
-            echo '<!-- binary-size-diff -->'
-            if [[ -s "$RUNNER_TEMP/binary-size-report/binary-size-summary.md" ]]
-            then
-              cat "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
-            else
-              echo '## Binary size diff'
-              echo
-              echo '⚠️ Binary size comparison unavailable. See the workflow log.'
-              echo
-              echo "Merge: \`$COMPARE_SHA\`; base: \`$BASE_SHA\`."
-            fi
-            echo
-            echo "[Workflow run]($RUN_URL): **$BUILD_STATUS**."
-          } > "$RUNNER_TEMP/binary-size-comment.md"
-          cat "$RUNNER_TEMP/binary-size-comment.md" >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          lines = [
+              "<!-- binary-size-diff -->",
+              "## Binary size diff",
+              "",
+              "Linux x64 GNU · release · uncompressed, stripped bindings.",
+              "",
+              f"Merge: `{os.environ['COMPARE_SHA']}`; base: `{os.environ['BASE_SHA']}`.",
+              "",
+          ]
+          if os.environ["BUILD_RESULT"] == "success":
+              sizes = json.loads(os.environ["MEASUREMENTS"])
+              components = ("core", "parser", "codegen")
+              expected = {f"{revision}-{component}" for revision in ("base", "merge") for component in components}
+              if set(sizes) != expected or any(
+                  not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]{0,15}", value)
+                  or int(value) > 9007199254740991 for value in sizes.values()
+              ):
+                  raise ValueError("Invalid binary size measurements")
+              lines += [
+                  "| Artifact | Merge | Base | Change (bytes) | Change (%) |",
+                  "| --- | ---: | ---: | ---: | ---: |",
+              ]
+              for component in components:
+                  before = int(sizes[f"base-{component}"])
+                  after = int(sizes[f"merge-{component}"])
+                  delta = after - before
+                  sign = "+" if delta > 0 else ""
+                  status = "🔴" if delta > 0 else "🟢" if delta < 0 else "⚪"
+                  lines.append(
+                      f"| `@swc-next/{component}` | {after / 1024:,.2f} KiB | {before / 1024:,.2f} KiB "
+                      f"| {sign}{delta:,} | {sign}{delta / before * 100:.3f}% {status} |"
+                  )
+          else:
+              lines.append("⚠️ Binary size comparison unavailable. See the workflow log.")
+          body = "\n".join(lines) + "\n"
+          Path(os.environ["RUNNER_TEMP"], "binary-size-comment.md").write_text(body)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(body)
+          PYTHON
 
       - name: Publish binary size diff to pull request
-        if: >-
-          always() &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
