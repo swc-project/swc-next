@@ -249,8 +249,8 @@ fn test_member() {
 #[test]
 fn test_comma() {
     expect_printed("1, 2, 3", "1, 2, 3;\n");
-    expect_printed("(1, 2), 3", "1, 2, 3;\n");
-    expect_printed("1, (2, 3)", "1, 2, 3;\n");
+    expect_printed("(1, 2), 3", "(1, 2), 3;\n");
+    expect_printed("1, (2, 3)", "1, (2, 3);\n");
     expect_printed("a ? (b, c) : (d, e)", "a ? (b, c) : (d, e);\n");
     expect_printed("let x = (a, b)", "let x = (a, b);\n");
     expect_printed("(x = a), b", "x = a, b;\n");
@@ -286,7 +286,7 @@ fn test_string() {
     expect_printed("let x = '\\n'", "let x = \"\\n\";\n");
     expect_printed("let x = '\\''", "let x = \"'\";\n");
     expect_printed("let x = '\\\"'", "let x = '\"';\n");
-    expect_printed("let x = '\\'\"'", "let x = `'\"`;\n");
+    expect_printed("let x = '\\'\"'", "let x = \"'\\\"\";\n");
     expect_printed("let x = '\\\\'", "let x = \"\\\\\";\n");
     expect_printed("let x = '\x00'", "let x = \"\\0\";\n");
     expect_printed("let x = '\x00!'", "let x = \"\\0!\";\n");
@@ -327,13 +327,13 @@ fn test_string() {
 #[test]
 fn test_template() {
     expect_printed("let x = `\\0`", "let x = `\\0`;\n");
-    expect_printed("let x = `\\x01`", "let x = `\x01`;\n");
+    expect_printed("let x = `\\x01`", "let x = `\\x01`;\n");
     expect_printed("let x = `\\0${0}`", "let x = `\\0${0}`;\n");
-    expect_printed("let x = `\\x01${0}`", "let x = `\x01${0}`;\n");
+    expect_printed("let x = `\\x01${0}`", "let x = `\\x01${0}`;\n");
     expect_printed("let x = `${0}\\0`", "let x = `${0}\\0`;\n");
-    expect_printed("let x = `${0}\\x01`", "let x = `${0}\x01`;\n");
+    expect_printed("let x = `${0}\\x01`", "let x = `${0}\\x01`;\n");
     expect_printed("let x = `${0}\\0${1}`", "let x = `${0}\\0${1}`;\n");
-    expect_printed("let x = `${0}\\x01${1}`", "let x = `${0}\x01${1}`;\n");
+    expect_printed("let x = `${0}\\x01${1}`", "let x = `${0}\\x01${1}`;\n");
     expect_printed("let x = String.raw`\\1`", "let x = String.raw`\\1`;\n");
     expect_printed("let x = String.raw`\\x01`", "let x = String.raw`\\x01`;\n");
     expect_printed(
@@ -365,7 +365,7 @@ fn test_template() {
     expect_printed("let x = `{y}$`", "let x = `{y}$`;\n");
     expect_printed("let x = `$}y{`", "let x = `$}y{`;\n");
     expect_printed("let x = `\\${y}`", "let x = `\\${y}`;\n");
-    expect_printed("let x = `$\\{y}`", "let x = `\\${y}`;\n");
+    expect_printed("let x = `$\\{y}`", "let x = `$\\{y}`;\n");
     expect_printed("await tag`x`", "await tag`x`;\n");
     expect_printed("await (tag`x`)", "await tag`x`;\n");
     expect_printed("(await tag)`x`", "(await tag)`x`;\n");
@@ -557,11 +557,11 @@ fn test_pure_comment() {
         "/*@__PURE__*/(function() { foo() })()",
         "/* @__PURE__ */ (function() {\n  foo();\n})();\n",
     );
-    expect_printed("new (function() {})", "new (function() {\n})();\n");
-    expect_printed("new (function() {})()", "new (function() {\n})();\n");
+    expect_printed("new (function() {})", "new function() {\n}();\n");
+    expect_printed("new (function() {})()", "new function() {\n}();\n");
     expect_printed(
         "/*@__PURE__*/new (function() {})()",
-        "/* @__PURE__ */ new (function() {\n})();\n",
+        "/* @__PURE__ */ new function() {\n}();\n",
     );
     expect_printed(
         "export default (function() { foo() })",
@@ -1052,17 +1052,17 @@ fn test_jsx() {
     expect_printed_jsx("<A.B/>", "<A.B />;\n");
     expect_printed_jsx("<a-b/>", "<a-b />;\n");
     expect_printed_jsx("<a:b/>", "<a:b />;\n");
-    expect_printed_jsx("<a></a>", "<a />;\n");
-    expect_printed_jsx("<a b></a>", "<a b />;\n");
-    expect_printed_jsx("<a b={true}></a>", "<a b={true} />;\n");
-    expect_printed_jsx("<a b='x'></a>", "<a b='x' />;\n");
-    expect_printed_jsx("<a b=\"x\"></a>", "<a b=\"x\" />;\n");
-    expect_printed_jsx("<a b={'x'}></a>", "<a b={\"x\"} />;\n");
-    expect_printed_jsx("<a b={`'`}></a>", "<a b={`'`} />;\n");
-    expect_printed_jsx("<a b={`\"`}></a>", "<a b={`\"`} />;\n");
-    expect_printed_jsx("<a b={`'\"`}></a>", "<a b={`'\"`} />;\n");
-    expect_printed_jsx("<a b=\"&quot;\"></a>", "<a b=\"&quot;\" />;\n");
-    expect_printed_jsx("<a b=\"&amp;\"></a>", "<a b=\"&amp;\" />;\n");
+    expect_printed_jsx("<a></a>", "<a></a>;\n");
+    expect_printed_jsx("<a b></a>", "<a b></a>;\n");
+    expect_printed_jsx("<a b={true}></a>", "<a b={true}></a>;\n");
+    expect_printed_jsx("<a b='x'></a>", "<a b='x'></a>;\n");
+    expect_printed_jsx("<a b=\"x\"></a>", "<a b=\"x\"></a>;\n");
+    expect_printed_jsx("<a b={'x'}></a>", "<a b={\"x\"}></a>;\n");
+    expect_printed_jsx("<a b={`'`}></a>", "<a b={`'`}></a>;\n");
+    expect_printed_jsx("<a b={`\"`}></a>", "<a b={`\"`}></a>;\n");
+    expect_printed_jsx("<a b={`'\"`}></a>", "<a b={`'\"`}></a>;\n");
+    expect_printed_jsx("<a b=\"&quot;\"></a>", "<a b=\"&quot;\"></a>;\n");
+    expect_printed_jsx("<a b=\"&amp;\"></a>", "<a b=\"&amp;\"></a>;\n");
     expect_printed_jsx("<a>x</a>", "<a>x</a>;\n");
     expect_printed_jsx("<a>x\ny</a>", "<a>x\ny</a>;\n");
     expect_printed_jsx("<a>{'x'}{'y'}</a>", "<a>{\"x\"}{\"y\"}</a>;\n");

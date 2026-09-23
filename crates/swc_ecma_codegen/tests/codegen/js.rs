@@ -364,7 +364,7 @@ fn test_function_source_comments_are_stable() {
     );
     expect_stable(
         "let f = () => (/* array */ [] = []);",
-        "let f = () => /* array */ ([] = []);\n",
+        "let f = () => /* array */ [] = [];\n",
     );
     expect_stable(
         "let f = () => (/* object assignment */ {} = {});",

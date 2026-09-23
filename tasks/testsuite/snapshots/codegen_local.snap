@@ -1,14 +1,5 @@
 codegen * local
 ========================
-Positive Passed: 13/22 (59.09%)
+Positive Passed: 22/22 (100.00%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/22 (0.00%)
-Failed: fixtures-manual/parser/async-primary/new-function-member.module.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.MemberExpression.object.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-function.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-function.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-function.module.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-generator-member.module.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.MemberExpression.object.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-generator.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-generator.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-generator.module.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression
-Failed: fixtures-manual/parser/async-primary/new-ordinary-function.module.js - preserve_parens=true: Program.body.[0].ExpressionStatement.expression.NewExpression.callee.node kind: Function != ParenthesizedExpression

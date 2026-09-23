@@ -263,11 +263,11 @@ fn test_reg_exp() {
 
 #[test]
 fn test_unicode_identifier_names() {
-    expect_printed("x = {x\u{30fb}: 0}", "x = { \"x\u{30fb}\": 0 };\n");
-    expect_printed("x = {x\u{ff65}: 0}", "x = { \"x\u{ff65}\": 0 };\n");
+    expect_printed("x = {x\u{30fb}: 0}", "x = { x\u{30fb}: 0 };\n");
+    expect_printed("x = {x\u{ff65}: 0}", "x = { x\u{ff65}: 0 };\n");
     expect_printed("x = {x\u{3c0}: 0}", "x = { x\u{3c0}: 0 };\n");
-    expect_printed("x = y.x\u{30fb}", "x = y[\"x\u{30fb}\"];\n");
-    expect_printed("x = y.x\u{ff65}", "x = y[\"x\u{ff65}\"];\n");
+    expect_printed("x = y.x\u{30fb}", "x = y.x\u{30fb};\n");
+    expect_printed("x = y.x\u{ff65}", "x = y.x\u{ff65};\n");
     expect_printed("x = y.x\u{3c0}", "x = y.x\u{3c0};\n");
 }
 
@@ -544,8 +544,8 @@ fn test_computed_property() {
 #[test]
 fn test_quoted_property() {
     expect_printed("x.x; y['y']", "x.x;\ny[\"y\"];\n");
-    expect_printed("({y: y, 'z': z} = x)", "({ y, \"z\": z } = x);\n");
-    expect_printed("var {y: y, 'z': z} = x", "var { y, \"z\": z } = x;\n");
+    expect_printed("({y: y, 'z': z} = x)", "({ y: y, \"z\": z } = x);\n");
+    expect_printed("var {y: y, 'z': z} = x", "var { y: y, \"z\": z } = x;\n");
     expect_printed("x = {y: 1, 'z': 2}", "x = { y: 1, \"z\": 2 };\n");
     expect_printed(
         "x = {y() {}, 'z'() {}}",
@@ -2208,7 +2208,7 @@ fn test_export() {
     );
     expect_printed(
         "let x; export {x as '\\uD800\\uDC00'}",
-        "let x;\nexport { x as \u{10000} };\n",
+        "let x;\nexport { x as \"\u{10000}\" };\n",
     );
     expect_printed(
         "export {'' as x} from 'foo'",
@@ -2224,7 +2224,7 @@ fn test_export() {
     );
     expect_printed(
         "export {'\\uD800\\uDC00' as x} from 'foo'",
-        "export { \u{10000} as x } from \"foo\";\n",
+        "export { \"\u{10000}\" as x } from \"foo\";\n",
     );
     expect_printed(
         "export {x as ''} from 'foo'",
@@ -2240,16 +2240,19 @@ fn test_export() {
     );
     expect_printed(
         "export {x as '\\uD800\\uDC00'} from 'foo'",
-        "export { x as \u{10000} } from \"foo\";\n",
+        "export { x as \"\u{10000}\" } from \"foo\";\n",
     );
-    expect_printed("export {'x'} from 'foo'", "export { x } from \"foo\";\n");
+    expect_printed(
+        "export {'x'} from 'foo'",
+        "export { \"x\" } from \"foo\";\n",
+    );
     expect_printed(
         "export {'a b'} from 'foo'",
         "export { \"a b\" } from \"foo\";\n",
     );
     expect_printed(
         "export {'x' as 'y'} from 'foo'",
-        "export { x as y } from \"foo\";\n",
+        "export { \"x\" as \"y\" } from \"foo\";\n",
     );
     expect_printed(
         "export {'a b' as 'c d'} from 'foo'",
@@ -2269,7 +2272,7 @@ fn test_export() {
     );
     expect_printed(
         "export * as '\\uD800\\uDC00' from 'foo'",
-        "export * as \u{10000} from \"foo\";\n",
+        "export * as \"\u{10000}\" from \"foo\";\n",
     );
 }
 
@@ -2580,7 +2583,7 @@ fn test_jsx() {
     expect_printed_jsx("<div>></div>", "<div>></div>;\n");
     expect_printed_jsx("<div>{1}}</div>", "<div>{1}}</div>;\n");
     expect_printed_jsx("<a/>", "<a />;\n");
-    expect_printed_jsx("<a></a>", "<a />;\n");
+    expect_printed_jsx("<a></a>", "<a></a>;\n");
     expect_printed_jsx("<A/>", "<A />;\n");
     expect_printed_jsx("<a.b/>", "<a.b />;\n");
     expect_printed_jsx("<_a/>", "<_a />;\n");
@@ -3140,19 +3143,19 @@ fn test_ascii_only() {
     expect_printed("'\u{3c0}'", "'\u{3c0}';\n");
     expect_printed("'\u{10000}'", "'\u{10000}';\n");
     expect_printed("x.\u{3c0}", "x.\u{3c0};\n");
-    expect_printed("x.\u{10000}", "x[\"\u{10000}\"];\n");
+    expect_printed("x.\u{10000}", "x.\u{10000};\n");
     expect_printed("x?.\u{3c0}", "x?.\u{3c0};\n");
-    expect_printed("x?.\u{10000}", "x?.[\"\u{10000}\"];\n");
+    expect_printed("x?.\u{10000}", "x?.\u{10000};\n");
     expect_printed("0 .\u{3c0}", "0 .\u{3c0};\n");
-    expect_printed("0 .\u{10000}", "0[\"\u{10000}\"];\n");
+    expect_printed("0 .\u{10000}", "0 .\u{10000};\n");
     expect_printed("0?.\u{3c0}", "0?.\u{3c0};\n");
-    expect_printed("0?.\u{10000}", "0?.[\"\u{10000}\"];\n");
+    expect_printed("0?.\u{10000}", "0?.\u{10000};\n");
     expect_printed("import '\u{3c0}'", "import \"\u{3c0}\";\n");
     expect_printed("import '\u{10000}'", "import \"\u{10000}\";\n");
     expect_printed("({\u{3c0}: 0})", "({ \u{3c0}: 0 });\n");
-    expect_printed("({\u{10000}: 0})", "({ \"\u{10000}\": 0 });\n");
+    expect_printed("({\u{10000}: 0})", "({ \u{10000}: 0 });\n");
     expect_printed("({\u{3c0}})", "({ \u{3c0} });\n");
-    expect_printed("({\u{10000}})", "({ \"\u{10000}\": \u{10000} });\n");
+    expect_printed("({\u{10000}})", "({ \u{10000} });\n");
     expect_printed(
         "import * as \u{3c0} from 'path'; \u{3c0}",
         "import * as \u{3c0} from \"path\";\n\u{3c0};\n",

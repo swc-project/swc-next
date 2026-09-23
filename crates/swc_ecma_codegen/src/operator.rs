@@ -53,6 +53,17 @@ impl BinaryishOperator {
         }
     }
 
+    // These tokens can extend the type at the end of an `as` or `satisfies`
+    // expression instead of starting a binary operation.
+    pub(crate) fn can_continue_type(self) -> bool {
+        matches!(
+            self,
+            Self::Binary(
+                BinaryOperator::LessThan | BinaryOperator::BitwiseOr | BinaryOperator::BitwiseAnd
+            )
+        )
+    }
+
     pub(crate) fn is_keyword(self) -> bool {
         matches!(
             self,
@@ -81,14 +92,24 @@ pub(crate) struct BinaryExprVisitor {
     pub(crate) e: Binaryish,
     pub(crate) level: Precedence,
     pub(crate) flags: bool,
+    // Propagate the following token to the rightmost ungrouped operand.
+    pub(crate) context: ExprContext,
 
     // Input for visiting the left child
     pub(crate) left_level: Precedence,
     pub(crate) left_flags: bool,
+    pub(crate) left_context: ExprContext,
 
-    // Local variables passed from `check_and_prepare` to
+    // Local variables passed from `prepare` to
     // `visit_right_and_finish`
     pub(crate) operator: BinaryishOperator,
     pub(crate) wrap: bool,
     pub(crate) right_level: Precedence,
+    pub(crate) right_context: ExprContext,
+}
+
+#[derive(Clone, Copy, Default)]
+pub(crate) struct ExprContext {
+    pub(crate) in_new_callee: bool,
+    pub(crate) followed_by_type_operator: bool,
 }
