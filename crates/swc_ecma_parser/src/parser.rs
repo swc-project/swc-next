@@ -7798,6 +7798,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // Expression[In, Yield, Await] :
     //   AssignmentExpression[?In, ?Yield, ?Await]
     //   Expression[?In, ?Yield, ?Await] `,` AssignmentExpression[?In, ?Yield, ?Await]
+    //
+    // INLINE: This is a small and hot function.
+    // Propagate the caller's minimum/in_cover constants into expression parsing.
+    // Keep this wrapper inline when the larger Pratt loop below is forced inline.
+    #[inline(always)]
     fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
         let left = if self.current_token.tag() == TokenTag::Identifier {
             self.parse_plain_identifier()?
@@ -7807,6 +7812,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_expr_from_left(left, minimum)
     }
 
+    // Keep the stripped_paren save/restore around the inlined expression parser
+    // without a separate wrapper call; restoration is still required on None.
+    #[inline(always)]
     fn parse_expr_preserving_stripped_paren(
         &mut self,
         minimum: Precedence,
@@ -7820,9 +7828,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     // RelationalExpression[In, Yield, Await] :
     //   [+In] RelationalExpression[+In, ?Yield, ?Await] `in` ShiftExpression[?Yield, ?Await]
+    //
+    // Specialize the Pratt loop for the caller's minimum precedence instead of
+    // passing and preserving a runtime minimum across expression-parser calls.
+    //
+    // TODO: this bloats binary size a lot
+    #[inline(always)]
     fn parse_expr_from_left(&mut self, mut left: Expr, minimum: Precedence) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
-
         loop {
             let token = self.current_token;
             if is_ts
@@ -8122,12 +8135,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_await_expression(token.start())
     }
 
+    // INLINE: This is a small and hot function.
+    // Carry the current token into identifier construction without leaving a
+    // wrapper call when parse_identifier_from_token is forced inline.
+    #[inline(always)]
     fn parse_plain_identifier(&mut self) -> Option<Expr> {
         let token = self.current_token;
         debug_assert_eq!(token.tag(), TokenTag::Identifier);
         self.parse_identifier_from_token(token)
     }
 
+    // INLINE: This is a small and hot function.
+    // Combine token advancement and identifier construction in the caller,
+    // removing this helper's call/return and register save/restore overhead.
+    #[inline(always)]
     fn parse_identifier_from_token(&mut self, token: Token) -> Option<Expr> {
         self.advance_without_escape_check()?;
         let name = self.identifier_name(token);
@@ -8142,6 +8163,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.private_identifier(token.span(), name))
     }
 
+    // INLINE: This is a small and hot function.
+    // Let member parsing reuse token fields across property-name and member-node
+    // construction instead of crossing a separate identifier-name helper call.
+    #[inline(always)]
     fn parse_identifier_name(&mut self) -> Option<IdentifierName> {
         debug_assert!(self.current_token.tag().is_identifier_like());
         let token = self.current_token;
@@ -10568,6 +10593,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_member_property(object, optional)
     }
 
+    // Keep property and member-node construction together and expose the caller's
+    // optional flag to node construction without a separate helper call.
+    #[inline(always)]
     fn parse_member_property(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         let start = object.span(&self.ast).start;
         let token = self.current_token;
@@ -12290,6 +12318,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    // INLINE: This is a small and hot function.
+    // Combine validation, token advancement and binding construction in the
+    // caller, avoiding a helper call and another load of current_token.
+    #[inline(always)]
     fn parse_binding_identifier(&mut self) -> Option<BindingIdentifier> {
         let token = self.current_token;
         self.validate_identifier(token, "a binding identifier");

@@ -257,7 +257,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    #[inline]
+    // INLINE: Keep scanning and token construction in the caller to eliminate the
+    // Option<Token> stack return and fold the already-cleared token flags.
+    #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32) -> Option<Token> {
         let pos = scan_ascii_identifier_continue(self.source, start + 1);
         if (pos as usize) < self.source.len()
@@ -358,6 +360,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    #[inline]
     fn scan_simple_punctuation(&mut self) -> Token {
         debug_assert!((self.cursor as usize) < self.source.len());
         let start = self.cursor;
@@ -1556,7 +1559,10 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     table
 };
 
-#[inline]
+// This is a very hot path. Inline this loop too
+// to avoid losing the single-call-site bonus and
+// introducing a new helper call.
+#[inline(always)]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
@@ -1763,6 +1769,10 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
     }
 }
 
+// INLINE: This is a very hot path. Reuse identifier bytes
+// already loaded by the caller and avoid preserving
+// token state across a separate keyword-lookup call.
+#[inline(always)]
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
     match lexeme {
         b"if" => TokenTag::If,
