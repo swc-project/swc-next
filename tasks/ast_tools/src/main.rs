@@ -40,9 +40,9 @@ fn main() {
     let ast_visitor = ast_visitor(&schema);
     ast_visitor.write_to_file().unwrap();
 
-    let (estree_decoder_pretty, estree_decoder_minified) = estree_decoder(&schema);
-    estree_decoder_pretty.write_to_file().unwrap();
-    estree_decoder_minified.write_to_file().unwrap();
+    for output in estree_decoder(&schema) {
+        output.write_to_file().unwrap();
+    }
 
     let (estree_encoder_pretty, estree_encoder_minified) = estree_encoder(&schema);
     estree_encoder_pretty.write_to_file().unwrap();
