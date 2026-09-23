@@ -8,6 +8,8 @@
 #![deny(unused)]
 
 mod options;
+#[cfg(test)]
+mod text_width;
 
 use std::{error::Error, fmt};
 
