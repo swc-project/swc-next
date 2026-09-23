@@ -75,21 +75,10 @@ jobs:
             "$RUNNER_TEMP/binary-size-report/merge.json" \
             > "$RUNNER_TEMP/binary-size-report/binary-size-summary.md"
 
-      - name: Upload binary size measurements
-        id: upload-size
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: binary-size-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/binary-size-report
-          if-no-files-found: warn
-          retention-days: 90
-
       - name: Render binary size report
         if: always()
         env:
           BUILD_STATUS: ${{ job.status }}
-          ARTIFACT_URL: ${{ steps.upload-size.outputs.artifact-url }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -108,11 +97,6 @@ jobs:
             fi
             echo
             echo "[Workflow run]($RUN_URL): **$BUILD_STATUS**."
-            if [[ -n "$ARTIFACT_URL" ]]
-            then
-              echo
-              echo "[Download binary size measurements]($ARTIFACT_URL) (retained for 90 days)."
-            fi
           } > "$RUNNER_TEMP/binary-size-comment.md"
           cat "$RUNNER_TEMP/binary-size-comment.md" >> "$GITHUB_STEP_SUMMARY"
 
