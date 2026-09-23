@@ -977,6 +977,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::LessThanEqual, start),
                 _ => self.punc_token(1, TokenTag::LessThan, start),
             },
+            // Inside a JSX tag `>` only closes the tag, so `<div>=</div>` and the
+            // trailing `>>` of `<div attr=<e></e>></div>` must not merge.
+            b'>' if self.mode == LexerMode::JsxTag => {
+                self.punc_token(1, TokenTag::GreaterThan, start)
+            }
             b'>' if c1 == b'>' && c2 == b'=' => {
                 self.punc_token(3, TokenTag::RightShiftAssign, start)
             }
@@ -987,9 +992,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.punc_token(3, TokenTag::UnsignedRightShift, start)
             }
             b'>' => match c1 {
-                b'>' if self.mode == LexerMode::JsxTag => {
-                    self.punc_token(1, TokenTag::GreaterThan, start)
-                }
                 b'>' => self.punc_token(2, TokenTag::RightShift, start),
                 b'=' => self.punc_token(2, TokenTag::GreaterThanEqual, start),
                 _ => self.punc_token(1, TokenTag::GreaterThan, start),

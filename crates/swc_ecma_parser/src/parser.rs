@@ -11083,7 +11083,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_jsx_element(&mut self, context: JsxElementContext) -> Option<Expr> {
         let start = self.current_token.start();
-        if self.peek_ahead()?.tag() == TokenTag::GreaterThan {
+        self.enter_jsx_tag();
+        if self
+            .peek_ahead()
+            .is_some_and(|token| token.tag() == TokenTag::GreaterThan)
+        {
             return self.parse_jsx_fragment(start, context);
         }
 
@@ -11113,7 +11117,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<JsxOpeningElement> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
         let start = self.current_token.start();
-        self.enter_jsx_tag();
         self.advance()?;
         let name = self.parse_jsx_element_name()?;
 
@@ -13116,6 +13119,111 @@ mod tests {
         let mut buffer = vec![0; buffer_size(ast, &[])];
         serialize_into(ast, &[], &mut buffer);
         buffer
+    }
+
+    #[test]
+    fn jsx_text() {
+        fn parse_text(source: &str, lang: Lang) -> Vec<(String, String)> {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(result.diagnostics.is_empty());
+            let ast = &result.ast;
+            assert_eq!(ast.root_program().body(ast).len(), 1);
+            let declaration = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_variable_declaration(ast)
+                .unwrap();
+            let expression = declaration
+                .declarators(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .init(ast)
+                .unwrap();
+            let children = if let Some(element) = expression.as_jsx_element(ast) {
+                element.children(ast)
+            } else {
+                expression.as_jsx_fragment(ast).unwrap().children(ast)
+            };
+            children
+                .iter()
+                .filter_map(|id| {
+                    let text = ast.get_node_in_sub_range(id).as_jsx_text(ast)?;
+                    let span = text.span(ast);
+                    Some((
+                        ast.get_utf8(text.value(ast)).to_owned(),
+                        source[span.start as usize..span.end as usize].to_owned(),
+                    ))
+                })
+                .collect()
+        }
+
+        let text = parse_text("const node = <span>=</span>;", Lang::Tsx);
+        assert_eq!(text, [("=".into(), "=".into())]);
+
+        let text = parse_text("const node = <span>=</span>;", Lang::Jsx);
+        assert_eq!(text, [("=".into(), "=".into())]);
+
+        let text = parse_text("const node = <>=</>;", Lang::Tsx);
+        assert_eq!(text, [("=".into(), "=".into())]);
+
+        let text = parse_text("const node = <span><br/>=</span>;", Lang::Tsx);
+        assert_eq!(text, [("=".into(), "=".into())]);
+
+        let text = parse_text("const node = <Component<T>>=</Component>;", Lang::Tsx);
+        assert_eq!(text, [("=".into(), "=".into())]);
+    }
+
+    #[test]
+    fn jsx_attributes() {
+        fn parse_tag_ends(source: &str, lang: Lang) -> (u32, u32) {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+            let ast = Parser::init(&allocator, source, options, NoTokenParserConfig)
+                .parse_expression_fragment(FragmentContext::TopLevel)
+                .unwrap();
+            let element = ast.root_expression().as_jsx_element(&ast).unwrap();
+            let opening = element.opening_element(&ast);
+            let attributes = opening.attributes(&ast);
+            assert_eq!(attributes.len(), 1);
+            let attribute = attributes
+                .get_node(&ast, 0)
+                .unwrap()
+                .as_jsx_attribute(&ast)
+                .unwrap();
+            let value = attribute.value(&ast).unwrap().as_jsx_element(&ast).unwrap();
+            let name = value
+                .opening_element(&ast)
+                .name(&ast)
+                .as_jsx_identifier(&ast)
+                .unwrap();
+            assert_eq!(ast.get_utf8(name.name(&ast)), "e");
+            assert!(value.children(&ast).is_empty());
+            assert!(element.children(&ast).is_empty());
+            (
+                value.closing_element(&ast).unwrap().span(&ast).end,
+                opening.span(&ast).end,
+            )
+        }
+
+        let ends = parse_tag_ends("<div attr=<e></e>></div>", Lang::Jsx);
+        assert_eq!(ends, (17, 18));
+
+        let ends = parse_tag_ends("<div attr=<e></e>></div>", Lang::Tsx);
+        assert_eq!(ends, (17, 18));
     }
 
     #[test]
