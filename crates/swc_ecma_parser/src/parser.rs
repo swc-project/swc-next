@@ -12487,8 +12487,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ///
     /// Use this for deferred checks where the token was consumed before its
     /// syntactic role was known.
-    #[cold]
-    #[inline(never)]
     fn report_if_escaped_keyword(&mut self, token: Token) {
         if token.is_escaped() {
             self.report_escaped_keyword(token.span());
