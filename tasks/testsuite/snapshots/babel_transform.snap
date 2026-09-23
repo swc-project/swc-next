@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 454/4069 (11.16%)
-Failed: 49/4069 (1.20%)
+Passed: 451/4069 (11.08%)
+Failed: 52/4069 (1.28%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 426/560 (76.07%)
-Failed: 42/560 (7.50%)
+Passed: 423/560 (75.54%)
+Failed: 45/560 (8.04%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -50,7 +50,10 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/new-ca
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/nullish-coalescing/input.js - babel-generator/test/fixtures/parentheses/nullish-coalescing: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/terminator-break/input.js - babel-generator/test/fixtures/parentheses/terminator-break: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-constructor-type/input.ts - babel-generator/test/fixtures/parentheses/ts-constructor-type: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-function-type/input.ts - babel-generator/test/fixtures/parentheses/ts-function-type: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-new-callee/input.js - semantic: 'super()' is only valid in a constructor of a derived class at 287..294
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-union-type/input.ts - babel-generator/test/fixtures/parentheses/ts-union-type: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/11304/input.js - babel-generator/test/fixtures/regression/11304: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/15161/input.js - babel-generator/test/fixtures/regression/15161: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/comment-before-parentheses-return-arg-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/regression/comment-before-parentheses-return-arg-createParenthesizedExpressions: transformed output differs from output.js
