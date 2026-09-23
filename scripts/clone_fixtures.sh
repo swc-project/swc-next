@@ -57,3 +57,4 @@ prepare_fixture "babel/babel" "tasks/testsuite/fixtures/babel" "93e39e4d0b657efe
 prepare_fixture "oxc-project/estree-conformance" "tasks/testsuite/fixtures/estree-conformance" "eb050aeacb0d0588f84829da0a5cbf0c63676637" "estree-conformance"
 prepare_fixture "swc-project/swc" "tasks/testsuite/fixtures/swc" "4768dbe091a6706a009d2e9c08950cacba107d55" "swc"
 prepare_fixture "CPunisher/swc-conformance" "tasks/testsuite/fixtures/swc-conformance" "33fa9c69d4ec84ff5a728835a616add6e3b2e82f" "swc-conformance"
+prepare_fixture "prettier/prettier" "tasks/testsuite/fixtures/prettier" "cdd17f2288b28b170a76416c72dac56e3ea5daff" "prettier"

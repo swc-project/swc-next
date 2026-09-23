@@ -8,6 +8,13 @@
 
 ## Testing
 
+### Formatter Fixtures
+
+Keep local formatter regressions under
+`crates/swc_ecma_formatter/tests/fixtures/<language>/<syntax>/`, with small inputs
+and representative option sets. Review generated snapshots; see
+`crates/swc_ecma_formatter/tests/README.md` for commands and test guarantees.
+
 ### Adding Rust Unit Tests
 
 - Add tests to the existing module; group related cases by broad feature and use a coarse

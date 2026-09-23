@@ -1,6 +1,6 @@
 # Test suite
 
-Conformance testing for SWC Next against Test262, TypeScript, Babel, and SWC
+Conformance testing for SWC Next against Test262, TypeScript, Babel, SWC, and Prettier
 fixtures.
 
 - Parser suites check parsing and semantic diagnostics against fixture expectations.
@@ -26,6 +26,36 @@ Review the generated [snapshots](snapshots): ordinary mismatches may not fail
 the process. External fixtures are generated inputs; update their pinned
 revisions rather than editing them. Fixture setup must run serially across
 worktrees sharing a Git common directory.
+
+## Formatter conformance
+
+Run the Prettier compatibility matrix:
+
+```sh
+cargo run -p testsuite --bin formatter_conformance --profile conformance
+```
+
+The fixture is pinned to Prettier 3.9.9 at commit
+`cdd17f2288b28b170a76416c72dac56e3ea5daff`. The runner verifies the version,
+reads physical JS/JSX/TS/TSX inputs, discovers options from `runFormatTest`, and
+compares output against committed Jest snapshots. Unsupported options are
+reported explicitly. Shared JSX inputs exercise both parser partitions.
+
+Successful formatting checks output parsing, comment retention, source/AST
+entry-point parity, and second-pass idempotency. These checks do not establish
+full semantic equivalence. Formatting and parser failures remain visible as
+syntax support grows.
+
+Summaries are written to `snapshots/formatter_prettier_{js,typescript}.snap`.
+A normal run can succeed with known mismatches or unsupported syntax; CI checks
+the generated reports against the committed snapshots.
+
+Inspect matching inputs and detailed diffs without changing reports:
+
+```sh
+PRETTIER_FILTER='js/comments/jsx.js' \
+  cargo run -p testsuite --bin formatter_conformance --profile conformance
+```
 
 ## Debug one case
 
