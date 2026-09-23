@@ -58,8 +58,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          git worktree add --detach "$RUNNER_TEMP/binary-size-base" "$BASE_SHA"
-          cd "$RUNNER_TEMP/binary-size-base"
+          git checkout --detach "$BASE_SHA"
           pnpm install --frozen-lockfile
           pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
           for component in core parser codegen; do
@@ -69,7 +68,10 @@ jobs:
 
       - name: Measure merge bindings
         id: merge
+        env:
+          COMPARE_SHA: ${{ github.sha }}
         run: |
+          git checkout --detach "$COMPARE_SHA"
           pnpm install --frozen-lockfile
           pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
           for component in core parser codegen; do
