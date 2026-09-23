@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{
-    Ast, CommentPosition, Expr, ExprData, GetSpan, Program, SequenceExpression, Span, TsType,
-    TsTypeData, VisitMut, VisitMutWith,
+    Ast, CommentPosition, Expr, ExprData, GetSpan, Program, SequenceExpression, Span, SubRange,
+    TsIntersectionType, TsType, TsTypeData, TsUnionType, VisitMut, VisitMutWith,
 };
 
 /// Normalizes parser AST shapes for downstream transforms.
@@ -25,6 +25,49 @@ struct NormalizePass<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
     leading_comment_retargets: Vec<(u32, u32)>,
     trailing_comment_retargets: Vec<(u32, u32)>,
+}
+
+#[derive(Clone, Copy)]
+enum AssociativeType {
+    Union(TsUnionType),
+    Intersection(TsIntersectionType),
+}
+
+impl AssociativeType {
+    fn types(self, ast: &Ast<'_>) -> SubRange<TsType> {
+        match self {
+            Self::Union(node) => node.types(ast),
+            Self::Intersection(node) => node.types(ast),
+        }
+    }
+
+    fn span(self, ast: &Ast<'_>) -> Span {
+        match self {
+            Self::Union(node) => node.span(ast),
+            Self::Intersection(node) => node.span(ast),
+        }
+    }
+
+    fn nested_types(self, node: TsType, ast: &Ast<'_>) -> Option<SubRange<TsType>> {
+        match (self, ast.ts_type_data(node)) {
+            (Self::Union(_), TsTypeData::TsUnionType(node)) => Some(node.types(ast)),
+            (Self::Intersection(_), TsTypeData::TsIntersectionType(node)) => Some(node.types(ast)),
+            (_, TsTypeData::TsUnionType(node)) if node.types(ast).len() == 1 => {
+                Some(node.types(ast))
+            }
+            (_, TsTypeData::TsIntersectionType(node)) if node.types(ast).len() == 1 => {
+                Some(node.types(ast))
+            }
+            _ => None,
+        }
+    }
+
+    fn set_types(self, ast: &mut Ast<'_>, types: SubRange<TsType>) {
+        match self {
+            Self::Union(node) => node.set_types(ast, types),
+            Self::Intersection(node) => node.set_types(ast, types),
+        }
+    }
 }
 
 impl NormalizePass<'_, '_> {
@@ -108,6 +151,82 @@ impl NormalizePass<'_, '_> {
         None
     }
 
+    fn append_type_members(
+        &mut self,
+        outer: AssociativeType,
+        node: TsType,
+        flattened: &mut Vec<TsType>,
+    ) -> Span {
+        let removed = node.span(self.ast);
+        if let TsTypeData::TsParenthesizedType(parenthesized) = self.ast.ts_type_data(node) {
+            let inner = parenthesized.type_annotation(self.ast);
+            let replacement = self.append_type_members(outer, inner, flattened);
+            self.record_replacement(removed, replacement);
+            return replacement;
+        }
+        let Some(members) = outer.nested_types(node, self.ast) else {
+            let member = node.visit_mut_with(self).unwrap_or(node);
+            flattened.push(member);
+            return member.span(self.ast);
+        };
+        if members.len() == 1
+            && let Some(member) = members.get_node(self.ast, 0)
+        {
+            let replacement = self.append_type_members(outer, member, flattened);
+            self.record_replacement(removed, replacement);
+            return replacement;
+        }
+        let start = flattened.len();
+        for id in members.iter() {
+            let member = self.ast.get_node_in_sub_range(id);
+            self.append_type_members(outer, member, flattened);
+        }
+        if let (Some(first), Some(last)) = (flattened.get(start), flattened.last()) {
+            let replacement = Span::new(first.span(self.ast).start, last.span(self.ast).end);
+            self.record_replacement(removed, replacement);
+            return replacement;
+        }
+        removed
+    }
+
+    fn normalize_type_list(&mut self, node: AssociativeType) -> Option<TsType> {
+        let types = node.types(self.ast);
+        if types.len() == 1 {
+            let member = types.get_node(self.ast, 0)?;
+            let replacement = member.visit_mut_with(self).unwrap_or(member);
+            self.record_replacement(node.span(self.ast), replacement.span(self.ast));
+            return Some(replacement);
+        }
+
+        // Keep flat lists in place. Collect nested members directly into the
+        // outer list instead of allocating and copying a list at every level.
+        let needs_flattening = types.iter().any(|id| {
+            let member = self.ast.get_node_in_sub_range(id);
+            matches!(
+                self.ast.ts_type_data(member),
+                TsTypeData::TsParenthesizedType(_)
+            ) || node.nested_types(member, self.ast).is_some()
+        });
+        if !needs_flattening {
+            types.visit_mut_with(self);
+            return None;
+        }
+
+        let mut flattened = Vec::with_capacity(types.len());
+        for id in types.iter() {
+            let member = self.ast.get_node_in_sub_range(id);
+            self.append_type_members(node, member, &mut flattened);
+        }
+        if flattened.len() == 1 {
+            let replacement = flattened[0];
+            self.record_replacement(node.span(self.ast), replacement.span(self.ast));
+            return Some(replacement);
+        }
+        let types = self.ast.add_sub_range(flattened);
+        node.set_types(self.ast, types);
+        None
+    }
+
     fn compact_retargets(retargets: &mut Vec<(u32, u32)>, select: fn(u32, u32) -> u32) {
         retargets.sort_unstable_by_key(|retarget| retarget.0);
 
@@ -181,6 +300,12 @@ impl<'ast> VisitMut<'ast> for NormalizePass<'_, 'ast> {
                     .unwrap_or(type_annotation);
                 self.record_replacement(node.span(self.ast), replacement.span(self.ast));
                 Some(replacement)
+            }
+            TsTypeData::TsUnionType(union) => {
+                self.normalize_type_list(AssociativeType::Union(union))
+            }
+            TsTypeData::TsIntersectionType(intersection) => {
+                self.normalize_type_list(AssociativeType::Intersection(intersection))
             }
             _ => node.visit_mut_children_with(self),
         }
