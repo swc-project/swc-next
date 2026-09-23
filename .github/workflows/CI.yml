@@ -132,6 +132,8 @@ jobs:
         run: ./scripts/clone_fixtures.sh
       - name: Run conformance
         run: cargo run --locked -p testsuite --bin conformance --profile conformance
+      - name: Run formatter conformance
+        run: cargo run --locked -p testsuite --bin formatter_conformance --profile conformance
       - name: Build Node.js bindings
         run: pnpm build --release
       - name: Run ESTree conformance

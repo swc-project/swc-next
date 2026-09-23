@@ -1,0 +1,8 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+
+---------- Options ----------
+{}
+---------- Output ----------
