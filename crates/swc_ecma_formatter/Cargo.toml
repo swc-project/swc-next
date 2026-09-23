@@ -1,0 +1,18 @@
+[package]
+description           = "Source-aware JavaScript and TypeScript formatting for the SWC Next AST"
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_ecma_formatter"
+repository.workspace  = true
+version               = "0.1.0"
+
+[dependencies]
+swc_next_allocator   = { workspace = true }
+swc_next_ecma_ast    = { workspace = true }
+swc_next_ecma_parser = { workspace = true }
+
+[dev-dependencies]
+insta      = "1.48.0"
+serde_json = { workspace = true }
