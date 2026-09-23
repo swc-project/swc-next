@@ -106,6 +106,17 @@ pub enum LineEnding {
     Cr,
 }
 
+#[cfg(test)]
+impl LineEnding {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Lf => "\n",
+            Self::CrLf => "\r\n",
+            Self::Cr => "\r",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Semicolons {
     Always,
