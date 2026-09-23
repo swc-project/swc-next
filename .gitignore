@@ -3,6 +3,7 @@
 callgrind*
 input.*
 !crates/swc_ecma_minifier/tests/fixtures/**/input.js
+!/crates/swc_ecma_formatter/tests/**/input.*
 profile.json
 local
 tasks/testsuite/fixtures
