@@ -7,6 +7,9 @@
 #![deny(clippy::all)]
 #![deny(unused)]
 
+// The document engine is exercised independently until syntax consumers land.
+#[cfg(test)]
+mod document;
 mod options;
 #[cfg(test)]
 mod text_width;
