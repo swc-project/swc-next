@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: binary-size-${{ github.event.pull_request.number }}
@@ -16,13 +17,6 @@ jobs:
     name: Compare binary sizes
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    outputs:
-      base-core: ${{ steps.base.outputs.core }}
-      base-parser: ${{ steps.base.outputs.parser }}
-      base-codegen: ${{ steps.base.outputs.codegen }}
-      merge-core: ${{ steps.merge.outputs.core }}
-      merge-parser: ${{ steps.merge.outputs.parser }}
-      merge-codegen: ${{ steps.merge.outputs.codegen }}
     env:
       RUSTUP_TOOLCHAIN: 1.97.1
     steps:
@@ -79,22 +73,13 @@ jobs:
             echo "$component=$bytes" >> "$GITHUB_OUTPUT"
           done
 
-  report:
-    name: Report binary sizes
-    needs: binary-size
-    if: >-
-      always() && !cancelled() &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      pull-requests: write
-    steps:
       - name: Render binary size report
+        id: report
+        if: always() && !cancelled()
         env:
-          BUILD_RESULT: ${{ needs.binary-size.result }}
-          MEASUREMENTS: ${{ toJSON(needs.binary-size.outputs) }}
+          BUILD_RESULT: ${{ job.status }}
+          BASE_SIZES: ${{ toJSON(steps.base.outputs) }}
+          MERGE_SIZES: ${{ toJSON(steps.merge.outputs) }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
         run: |
@@ -111,15 +96,14 @@ jobs:
             "",
           ];
           if (process.env.BUILD_RESULT === "success") {
-            const sizes = JSON.parse(process.env.MEASUREMENTS);
+            const base = JSON.parse(process.env.BASE_SIZES);
+            const merge = JSON.parse(process.env.MERGE_SIZES);
             const components = ["core", "parser", "codegen"];
-            const expected = ["base", "merge"].flatMap(revision =>
-              components.map(component => `${revision}-${component}`));
-            if (!sizes || Object.keys(sizes).length !== expected.length || !expected.every(key => {
-              const value = sizes[key];
+            if (![base, merge].every(sizes => sizes && Object.keys(sizes).length === components.length && components.every(component => {
+              const value = sizes[component];
               const bytes = Number(value);
               return typeof value === "string" && Number.isSafeInteger(bytes) && bytes > 0 && String(bytes) === value;
-            })) {
+            }))) {
               throw new Error("Invalid binary size measurements");
             }
             const formatSize = bytes => `${(bytes / 1024).toLocaleString("en-US", {
@@ -130,8 +114,8 @@ jobs:
               "| --- | ---: | ---: | ---: | ---: |",
             );
             for (const component of components) {
-              const before = Number(sizes[`base-${component}`]);
-              const after = Number(sizes[`merge-${component}`]);
+              const before = Number(base[component]);
+              const after = Number(merge[component]);
               const delta = after - before;
               const sign = delta > 0 ? "+" : "";
               const status = delta > 0 ? "🔴" : delta < 0 ? "🟢" : "⚪";
@@ -149,6 +133,10 @@ jobs:
           NODE
 
       - name: Publish binary size diff to pull request
+        if: >-
+          always() && !cancelled() && steps.report.outcome == 'success' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
