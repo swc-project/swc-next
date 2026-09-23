@@ -96,51 +96,55 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
         run: |
-          python3 - <<'PYTHON'
-          import json
-          import os
-          import re
-          from pathlib import Path
-
-          lines = [
-              "<!-- binary-size-diff -->",
-              "## Binary size diff",
-              "",
-              "Linux x64 GNU · release · uncompressed, stripped bindings.",
-              "",
-              f"Merge: `{os.environ['COMPARE_SHA']}`; base: `{os.environ['BASE_SHA']}`.",
-              "",
-          ]
-          if os.environ["BUILD_RESULT"] == "success":
-              sizes = json.loads(os.environ["MEASUREMENTS"])
-              components = ("core", "parser", "codegen")
-              expected = {f"{revision}-{component}" for revision in ("base", "merge") for component in components}
-              if set(sizes) != expected or any(
-                  not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]{0,15}", value)
-                  or int(value) > 9007199254740991 for value in sizes.values()
-              ):
-                  raise ValueError("Invalid binary size measurements")
-              lines += [
-                  "| Artifact | Merge | Base | Change (bytes) | Change (%) |",
-                  "| --- | ---: | ---: | ---: | ---: |",
-              ]
-              for component in components:
-                  before = int(sizes[f"base-{component}"])
-                  after = int(sizes[f"merge-{component}"])
-                  delta = after - before
-                  sign = "+" if delta > 0 else ""
-                  status = "🔴" if delta > 0 else "🟢" if delta < 0 else "⚪"
-                  lines.append(
-                      f"| `@swc-next/{component}` | {after / 1024:,.2f} KiB | {before / 1024:,.2f} KiB "
-                      f"| {sign}{delta:,} | {sign}{delta / before * 100:.3f}% {status} |"
-                  )
-          else:
-              lines.append("⚠️ Binary size comparison unavailable. See the workflow log.")
-          body = "\n".join(lines) + "\n"
-          Path(os.environ["RUNNER_TEMP"], "binary-size-comment.md").write_text(body)
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-              summary.write(body)
-          PYTHON
+          node <<'NODE'
+          const { appendFileSync, writeFileSync } = require("node:fs");
+          const { join } = require("node:path");
+          const lines = [
+            "<!-- binary-size-diff -->",
+            "## Binary size diff",
+            "",
+            "Linux x64 GNU · release · uncompressed, stripped bindings.",
+            "",
+            `Merge: \`${process.env.COMPARE_SHA}\`; base: \`${process.env.BASE_SHA}\`.`,
+            "",
+          ];
+          if (process.env.BUILD_RESULT === "success") {
+            const sizes = JSON.parse(process.env.MEASUREMENTS);
+            const components = ["core", "parser", "codegen"];
+            const expected = ["base", "merge"].flatMap(revision =>
+              components.map(component => `${revision}-${component}`));
+            if (!sizes || Object.keys(sizes).length !== expected.length || !expected.every(key => {
+              const value = sizes[key];
+              const bytes = Number(value);
+              return typeof value === "string" && Number.isSafeInteger(bytes) && bytes > 0 && String(bytes) === value;
+            })) {
+              throw new Error("Invalid binary size measurements");
+            }
+            const formatSize = bytes => `${(bytes / 1024).toLocaleString("en-US", {
+              minimumFractionDigits: 2, maximumFractionDigits: 2,
+            })} KiB`;
+            lines.push(
+              "| Artifact | Merge | Base | Change (bytes) | Change (%) |",
+              "| --- | ---: | ---: | ---: | ---: |",
+            );
+            for (const component of components) {
+              const before = Number(sizes[`base-${component}`]);
+              const after = Number(sizes[`merge-${component}`]);
+              const delta = after - before;
+              const sign = delta > 0 ? "+" : "";
+              const status = delta > 0 ? "🔴" : delta < 0 ? "🟢" : "⚪";
+              lines.push(
+                `| \`@swc-next/${component}\` | ${formatSize(after)} | ${formatSize(before)} ` +
+                `| ${sign}${delta.toLocaleString("en-US")} | ${sign}${(delta / before * 100).toFixed(3)}% ${status} |`,
+              );
+            }
+          } else {
+            lines.push("⚠️ Binary size comparison unavailable. See the workflow log.");
+          }
+          const body = lines.join("\n") + "\n";
+          writeFileSync(join(process.env.RUNNER_TEMP, "binary-size-comment.md"), body);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, body);
+          NODE
 
       - name: Publish binary size diff to pull request
         env:
