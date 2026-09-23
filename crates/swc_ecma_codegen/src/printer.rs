@@ -1618,7 +1618,7 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            SimpleAssignmentTargetData::MemberExpression(m) => self.print_member(m),
+            SimpleAssignmentTargetData::MemberExpression(m) => self.print_member(m, false),
             SimpleAssignmentTargetData::TsAsExpression(e) => {
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
                 self.print(" as ");
@@ -1753,6 +1753,12 @@ impl<'a> Printer<'a> {
     }
 
     fn print_expr(&mut self, expr: Expr, level: Precedence) {
+        self.print_expr_with_context(expr, level, false);
+    }
+
+    // Carry `in_new_callee` through member access, tags, and non-null assertions.
+    // Grouped expressions and nested operands resume ordinary printing.
+    fn print_expr_with_context(&mut self, expr: Expr, level: Precedence, in_new_callee: bool) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
         let is_at_export_default_start = self.js.len() == self.export_default_start;
         self.print_comments_before(expr.span(self.ast).start, false, true);
@@ -1905,10 +1911,10 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::MemberExpression(e) => self.print_member(e),
-            ExprData::CallExpression(e) => self.print_call(e, level),
+            ExprData::MemberExpression(e) => self.print_member(e, in_new_callee),
+            ExprData::CallExpression(e) => self.print_call(e, level, in_new_callee),
             ExprData::ChainExpression(e) => {
-                let wrap = level >= Precedence::Call;
+                let wrap = level >= Precedence::Call || in_new_callee;
                 if wrap {
                     self.print("(");
                 }
@@ -1926,9 +1932,9 @@ impl<'a> Printer<'a> {
                     self.print_expr(tag, Precedence::Lowest);
                     self.print(")");
                 } else if type_arguments.is_some() {
-                    self.print_expr_before_type_arguments(tag, Precedence::Call);
+                    self.print_expr_before_type_arguments(tag, Precedence::Call, in_new_callee);
                 } else {
-                    self.print_expr(tag, Precedence::Postfix);
+                    self.print_expr_with_context(tag, Precedence::Postfix, in_new_callee);
                 }
                 if let Some(args) = type_arguments {
                     self.print_ts_type_args(args);
@@ -1943,9 +1949,28 @@ impl<'a> Printer<'a> {
                 self.print_expr(e.expression(self.ast), Precedence::Lowest);
                 self.print(")");
             }
-            ExprData::Function(e) => self.print_function(e),
-            ExprData::Class(e) => self.print_class(e, false),
+            ExprData::Function(e) => {
+                if in_new_callee {
+                    self.print("(");
+                }
+                self.print_function(e);
+                if in_new_callee {
+                    self.print(")");
+                }
+            }
+            ExprData::Class(e) => {
+                if in_new_callee {
+                    self.print("(");
+                }
+                self.print_class(e, false);
+                if in_new_callee {
+                    self.print(")");
+                }
+            }
             ExprData::ImportExpression(e) => {
+                if in_new_callee {
+                    self.print("(");
+                }
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
                 self.add_source_mapping(expr.span(self.ast).start);
@@ -1999,6 +2024,9 @@ impl<'a> Printer<'a> {
                 }
                 self.print(")");
                 self.forbid_in = old_forbid_in;
+                if in_new_callee {
+                    self.print(")");
+                }
             }
             ExprData::AwaitExpression(e) => {
                 let wrap = level > Precedence::Prefix;
@@ -2075,18 +2103,31 @@ impl<'a> Printer<'a> {
             }
             ExprData::TsNonNullExpression(e) => {
                 let expression = e.expression(self.ast);
-                if self.expr_ends_with_type_arguments(expression) {
+                if matches!(self.ast.expr_data(expression), ExprData::ChainExpression(_))
+                    || self.expr_ends_with_type_arguments(expression)
+                {
                     self.print("(");
                     self.print_expr(expression, Precedence::Lowest);
                     self.print(")");
                 } else {
-                    self.print_expr(expression, Precedence::Postfix);
+                    self.print_expr_with_context(expression, Precedence::Postfix, in_new_callee);
                 }
                 self.print("!");
             }
             ExprData::TsInstantiationExpression(e) => {
-                self.print_expr_before_type_arguments(e.expression(self.ast), Precedence::Call);
+                let wrap = level >= Precedence::Postfix;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_expr_before_type_arguments(
+                    e.expression(self.ast),
+                    Precedence::Call,
+                    in_new_callee && !wrap,
+                );
                 self.print_ts_type_args(e.type_arguments(self.ast));
+                if wrap {
+                    self.print(")");
+                }
             }
             ExprData::JsxElement(e) => self.print_jsx_element(e),
             ExprData::JsxFragment(e) => self.print_jsx_fragment(e),
@@ -2207,7 +2248,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_member(&mut self, e: MemberExpression) {
+    fn print_member(&mut self, e: MemberExpression, in_new_callee: bool) {
         let object = e.object(self.ast);
         let object_data = self.ast.expr_data(object);
         let computed = e.computed(self.ast);
@@ -2224,13 +2265,14 @@ impl<'a> Printer<'a> {
         if wrap_object {
             self.print("(");
         }
-        self.print_expr(
+        self.print_expr_with_context(
             object,
             if matches!(object_data, ExprData::NewExpression(_)) {
                 Precedence::New
             } else {
                 Precedence::Call
             },
+            in_new_callee && !wrap_object,
         );
         if wrap_object {
             self.print(")");
@@ -2305,18 +2347,23 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_expr_before_type_arguments(&mut self, expr: Expr, level: Precedence) {
+    fn print_expr_before_type_arguments(
+        &mut self,
+        expr: Expr,
+        level: Precedence,
+        in_new_callee: bool,
+    ) {
         if self.expr_ends_with_type_arguments(expr) {
             self.print("(");
             self.print_expr(expr, Precedence::Lowest);
             self.print(")");
         } else {
-            self.print_expr(expr, level);
+            self.print_expr_with_context(expr, level, in_new_callee);
         }
     }
 
-    fn print_call(&mut self, e: CallExpression, level: Precedence) {
-        let wrap = level > Precedence::Call;
+    fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
+        let wrap = level > Precedence::Call || in_new_callee;
         if wrap {
             self.print("(");
         }
@@ -2328,7 +2375,7 @@ impl<'a> Printer<'a> {
         };
         let type_arguments = e.type_arguments(self.ast);
         if type_arguments.is_some() {
-            self.print_expr_before_type_arguments(callee, callee_level);
+            self.print_expr_before_type_arguments(callee, callee_level, false);
         } else {
             self.print_expr(callee, callee_level);
         }
@@ -2357,66 +2404,10 @@ impl<'a> Printer<'a> {
         self.print_space();
         let callee = e.callee(self.ast);
         let type_arguments = e.type_arguments(self.ast);
-        match self.ast.expr_data(callee) {
-            ExprData::CallExpression(_)
-            | ExprData::ImportExpression(_)
-            | ExprData::Function(_)
-            | ExprData::Class(_) => {
-                self.print("(");
-                self.print_expr(callee, Precedence::Lowest);
-                self.print(")");
-            }
-            ExprData::ChainExpression(_) => {
-                self.print("(");
-                self.print_expr(callee, Precedence::Lowest);
-                self.print(")");
-            }
-            ExprData::TaggedTemplateExpression(tagged)
-                if matches!(
-                    self.ast.expr_data(tagged.tag(self.ast)),
-                    ExprData::CallExpression(_) | ExprData::ImportExpression(_)
-                ) =>
-            {
-                self.print("(");
-                self.print_expr(tagged.tag(self.ast), Precedence::Lowest);
-                self.print(")");
-                if let Some(args) = tagged.type_arguments(self.ast) {
-                    self.print_ts_type_args(args);
-                }
-                self.print_template(tagged.quasi(self.ast), true);
-            }
-            ExprData::MemberExpression(member)
-                if matches!(
-                    self.ast.expr_data(member.object(self.ast)),
-                    ExprData::CallExpression(_) | ExprData::ImportExpression(_)
-                ) =>
-            {
-                self.print("(");
-                self.print_expr(member.object(self.ast), Precedence::Lowest);
-                self.print(")");
-                if member.optional(self.ast) {
-                    self.print("?.");
-                }
-                if member.computed(self.ast) {
-                    self.print("[");
-                    self.print_property_key_expr(member.property(self.ast));
-                    self.add_source_mapping(member.span(self.ast).end.saturating_sub(1));
-                    self.print("]");
-                } else {
-                    if !member.optional(self.ast) {
-                        self.print(".");
-                    }
-                    self.add_source_mapping(member.property(self.ast).span(self.ast).start);
-                    self.print_property_key_plain(member.property(self.ast));
-                }
-            }
-            _ => {
-                if type_arguments.is_some() {
-                    self.print_expr_before_type_arguments(callee, Precedence::New);
-                } else {
-                    self.print_expr(callee, Precedence::New);
-                }
-            }
+        if type_arguments.is_some() {
+            self.print_expr_before_type_arguments(callee, Precedence::New, true);
+        } else {
+            self.print_expr_with_context(callee, Precedence::New, true);
         }
         if let Some(args) = type_arguments {
             self.print_ts_type_args(args);
@@ -2843,7 +2834,7 @@ impl<'a> Printer<'a> {
             self.print(" extends ");
             let type_arguments = c.super_type_arguments(self.ast);
             if type_arguments.is_some() {
-                self.print_expr_before_type_arguments(s, Precedence::Postfix);
+                self.print_expr_before_type_arguments(s, Precedence::Postfix, false);
             } else {
                 self.print_expr(s, Precedence::Postfix);
             }

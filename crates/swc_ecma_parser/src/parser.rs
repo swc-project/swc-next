@@ -10879,6 +10879,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             callee = match self.current_token.tag() {
                 TokenTag::Dot => self.parse_static_member_expression(callee, false)?,
                 TokenTag::LeftBracket => self.parse_computed_member_expression(callee, false)?,
+                TokenTag::LogicalNot
+                    if self.lang.is_typescript()
+                        && !self.current_token.has_line_terminator_before() =>
+                {
+                    self.parse_non_null_expression(callee)?
+                }
                 TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
                     self.parse_tagged_template_expression(callee, None)?
                 }
@@ -12686,6 +12692,7 @@ fn is_import_expression_or_member_access_on_import_expression(
             ExprData::ImportExpression(_) => return true,
             ExprData::MemberExpression(member) => member.object(ast),
             ExprData::TaggedTemplateExpression(tagged) => tagged.tag(ast),
+            ExprData::TsNonNullExpression(non_null) => non_null.expression(ast),
             _ => return false,
         };
     }
@@ -13244,6 +13251,33 @@ mod tests {
 
         let ends = parse_tag_ends("<div attr=<e></e>></div>", Lang::Tsx);
         assert_eq!(ends, (17, 18));
+    }
+
+    #[test]
+    fn new_expression() {
+        let allocator = Allocator::new();
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let source = "new parent.components!.KeepAlive()";
+        let ast = Parser::init(&allocator, source, options, NoTokenParserConfig)
+            .parse_expression_fragment(FragmentContext::TopLevel)
+            .unwrap();
+        let expression = ast.root_expression().as_new_expression(&ast).unwrap();
+        let callee = expression.callee(&ast).as_member_expression(&ast).unwrap();
+        let property = callee.property(&ast).as_identifier_name(&ast).unwrap();
+        assert_eq!(ast.get_utf8(property.name(&ast)), "KeepAlive");
+        let non_null = callee.object(&ast).as_ts_non_null_expression(&ast).unwrap();
+        let member = non_null
+            .expression(&ast)
+            .as_member_expression(&ast)
+            .unwrap();
+        let property = member.property(&ast).as_identifier_name(&ast).unwrap();
+        assert_eq!(ast.get_utf8(property.name(&ast)), "components");
+        let object = member.object(&ast).as_identifier_reference(&ast).unwrap();
+        assert_eq!(ast.get_utf8(object.name(&ast)), "parent");
+        assert!(expression.arguments(&ast).is_empty());
     }
 
     #[test]

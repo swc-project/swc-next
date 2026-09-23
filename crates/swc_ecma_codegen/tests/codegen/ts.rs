@@ -1,6 +1,14 @@
 use crate::{expect_printed_ts, expect_printed_ts_minify};
 
 #[test]
+fn test_new_expression() {
+    expect_printed_ts(
+        "new parent.components!.KeepAlive();",
+        "new parent.components!.KeepAlive();\n",
+    );
+}
+
+#[test]
 fn test_export_default() {
     expect_printed_ts(
         "export default function(): void;",
