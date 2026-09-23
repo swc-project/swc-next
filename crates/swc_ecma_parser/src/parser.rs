@@ -4615,6 +4615,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.report_missing_export_declaration()
     }
 
+    #[cold]
+    #[inline(never)]
     fn report_missing_export_declaration(&mut self) -> Option<Stmt> {
         self.report_expected(
             self.current_token.span(),
@@ -4624,6 +4626,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         None
     }
 
+    #[inline]
     fn export_kind_for_declaration(&self, declaration: Decl) -> ImportOrExportKind {
         match self.ast.decl_data(declaration) {
             DeclData::TsInterfaceDeclaration(_) | DeclData::TsTypeAliasDeclaration(_) => {
@@ -7864,6 +7867,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_expression_in_cover(Precedence::Assignment)
     }
 
+    #[inline]
     fn infix_precedence(&self, token: Token) -> Precedence {
         match token.tag() {
             TokenTag::Increment | TokenTag::Decrement | TokenTag::As | TokenTag::Satisfies
@@ -7882,7 +7886,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_infix(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
         let token = self.current_token;
-
         match token.tag() {
             TokenTag::As | TokenTag::Satisfies if self.lang.is_typescript() => {
                 return self.parse_as_or_satisfies_expression(left, token.tag());
@@ -12425,6 +12428,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    #[inline]
     fn check_escaped_keyword(&mut self) {
         let current_token = self.current_token;
         if !current_token.is_escaped() {
