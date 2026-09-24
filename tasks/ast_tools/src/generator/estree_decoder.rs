@@ -78,7 +78,7 @@ fn write_node_case(
     for (field_index, field) in ast.fields.iter().enumerate() {
         let skip = field.attrs.estree_skip;
         let field_ty = &schema.types[field.type_id];
-        let (location, aligned_u32) = if let Some((_, byte_offset, _)) =
+        let (location, aligned_i32) = if let Some((_, byte_offset, _)) =
             layout.as_ref().and_then(|layout| {
                 layout
                     .fields
@@ -94,7 +94,7 @@ fn write_node_case(
         if skip {
             continue;
         }
-        let expression = read_expression(field_ty, schema, &location, aligned_u32);
+        let expression = read_expression(field_ty, schema, &location, aligned_i32);
         let field_name = estree_field_name(&ast.name, &field.name);
         fields.push(DecodedField {
             name: field_name,
@@ -109,7 +109,7 @@ fn write_node_case(
         write_generic_node(&mut body, &ast.name, &fields, is_ts);
     }
     if body.contains("extraId") {
-        writeln!(output, "        const extraId = _u32[(payload + 12) >> 2];").unwrap();
+        writeln!(output, "        const extraId = _i32[(payload + 12) >> 2];").unwrap();
     }
     output.push_str(&body);
     writeln!(output, "        break;").unwrap();
@@ -121,21 +121,21 @@ struct DecodedField {
     expression: String,
 }
 
-fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: bool) -> String {
+fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: bool) -> String {
     match ty {
         AstType::Struct(_) | AstType::Enum(_) => {
-            format!("node({})", read_u32(location, aligned_u32))
+            format!("node({})", read_i32(location, aligned_i32))
         }
         AstType::SubRange(range) => {
             let inner = &schema.types[range.inner_type_id];
             let holes = matches!(inner, AstType::Option(_));
-            let start = read_u32(location, aligned_u32);
-            let end = read_u32(&format!("{location} + 4"), aligned_u32);
+            let start = read_i32(location, aligned_i32);
+            let end = read_i32(&format!("{location} + 4"), aligned_i32);
             format!("nodeArray({start}, {end}, {holes})")
         }
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(_) | AstType::Enum(_) => {
-                format!("optionalNode({})", read_u32(location, aligned_u32))
+                format!("optionalNode({})", read_i32(location, aligned_i32))
             }
             AstType::Primitive(primitive) if primitive.name == "ImportPhase" => {
                 format!("optionalEnum(\"ImportPhase\", _dv.getUint8({location}))")
@@ -144,21 +144,21 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
                 "undefined".into()
             }
             AstType::Primitive(primitive) if primitive.name == "Span" => {
-                let start = read_u32(location, aligned_u32);
-                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                let start = read_i32(location, aligned_i32);
+                let end = read_i32(&format!("{location} + 4"), aligned_i32);
                 format!("{{ start: pos({start}), end: pos({end}) }}")
             }
             AstType::Primitive(primitive) if primitive.name == "AstUtf8" => {
-                let start = read_u32(location, aligned_u32);
-                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                let start = read_i32(location, aligned_i32);
+                let end = read_i32(&format!("{location} + 4"), aligned_i32);
                 format!("{start} === NULL && {end} === 0 ? null : str({start}, {end})")
             }
             inner => panic!("unsupported optional decoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
             "AstUtf8" | "AstWtf8" => {
-                let start = read_u32(location, aligned_u32);
-                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                let start = read_i32(location, aligned_i32);
+                let end = read_i32(&format!("{location} + 4"), aligned_i32);
                 format!("str({start}, {end})")
             }
             "bool" => format!("_dv.getUint8({location}) !== 0"),
@@ -166,12 +166,12 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
             "i8" => format!("_dv.getInt8({location})"),
             "u16" => format!("_dv.getUint16({location}, true)"),
             "i16" => format!("_dv.getInt16({location}, true)"),
-            "u32" => read_u32(location, aligned_u32),
+            "u32" => read_u32(location, aligned_i32),
             "i32" => format!("_dv.getInt32({location}, true)"),
             "f64" => format!("_dv.getFloat64({location}, true)"),
             "Span" => {
-                let start = read_u32(location, aligned_u32);
-                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                let start = read_i32(location, aligned_i32);
+                let end = read_i32(&format!("{location} + 4"), aligned_i32);
                 format!("{{ start: pos({start}), end: pos({end}) }}")
             }
             "ScopeId" | "SymbolId" => "undefined".into(),
@@ -206,9 +206,17 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
     }
 }
 
+fn read_i32(location: &str, aligned: bool) -> String {
+    if aligned {
+        format!("_i32[({location}) >> 2]")
+    } else {
+        format!("_dv.getInt32({location}, true)")
+    }
+}
+
 fn read_u32(location: &str, aligned: bool) -> String {
     if aligned {
-        format!("_u32[({location}) >> 2]")
+        format!("({} >>> 0)", read_i32(location, true))
     } else {
         format!("_dv.getUint32({location}, true)")
     }
@@ -776,10 +784,10 @@ fn estree_field_name(node: &str, field: &str) -> String {
 
 const PREAMBLE: &str = r#"// generated by tasks/ast_tools, do not edit
 
-const NULL = 0xffffffff;
+const NULL = -1;
 const HEADER_SIZE = 36;
 const NATIVE_LITTLE_ENDIAN =
-  new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+  new Uint8Array(new Int32Array([1]).buffer)[0] === 1;
 const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
 
 const ENUMS = Object.freeze({
@@ -812,7 +820,7 @@ const PREAMBLE_END: &str = r#"
 
 const DECODE_HELPERS: &str = r#"
 function buildPosMap(source, byteLength) {
-  const map = new Uint32Array(byteLength + 1);
+  const map = new Int32Array(byteLength + 1);
   let byte = 0;
   for (let utf16 = 0; utf16 < source.length; utf16++) {
     const first = source.charCodeAt(utf16);
@@ -876,12 +884,12 @@ function decodePool(bytes) {
   return result;
 }
 
-function copyLittleEndianU32(view) {
-  const u32 = new Uint32Array(view.byteLength >> 2);
+function copyLittleEndianI32(view) {
+  const i32 = new Int32Array(view.byteLength >> 2);
   for (let offset = 0; offset + 4 <= view.byteLength; offset += 4) {
-    u32[offset >> 2] = view.getUint32(offset, true);
+    i32[offset >> 2] = view.getInt32(offset, true);
   }
-  return u32;
+  return i32;
 }
 "#;
 
@@ -889,19 +897,22 @@ const DECODE_PREAMBLE: &str = r#"
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;
   const byteLength = buffer.byteLength;
+  if (byteLength > 0x7fffffff) {
+    throw new RangeError("AST buffer exceeds signed 32-bit range");
+  }
   const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
   const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
-  const _u32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
-    ? new Uint32Array(arrayBuffer, byteOffset, byteLength >> 2)
-    : copyLittleEndianU32(_dv);
-  const nodeCount = _u32[0];
-  const extraCount = _u32[1];
-  const stringPoolLength = _u32[2];
-  const sourceLength = _u32[3];
-  const commentCount = _u32[4];
-  const diagnosticCount = _u32[6];
-  const programIndex = _u32[7];
-  const flags = _u32[8];
+  const _i32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
+    ? new Int32Array(arrayBuffer, byteOffset, byteLength >> 2)
+    : copyLittleEndianI32(_dv);
+  const nodeCount = _i32[0];
+  const extraCount = _i32[1];
+  const stringPoolLength = _i32[2];
+  const sourceLength = _i32[3];
+  const commentCount = _i32[4];
+  const diagnosticCount = _i32[6];
+  const programIndex = _i32[7];
+  const flags = _i32[8];
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
@@ -933,7 +944,7 @@ const DECODE_PREAMBLE: &str = r#"
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
     for (let i = start; i < end; i++) {
-      const index = _u32[(extra >> 2) + i * 2];
+      const index = _i32[(extra >> 2) + i * 2];
       result[i - start] = holes && index === NULL ? null : node(index);
     }
     return result;
@@ -943,8 +954,8 @@ const DECODE_PREAMBLE: &str = r#"
     const result = new Array(commentCount);
     for (let index = 0; index < commentCount; index++) {
       const offset = comments + index * 16;
-      const start = _u32[offset >> 2];
-      const end = _u32[(offset >> 2) + 1];
+      const start = _i32[offset >> 2];
+      const end = _i32[(offset >> 2) + 1];
       const kind = _dv.getUint16(offset + 12, true);
       const first = source.charCodeAt(pos(start));
       const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
@@ -1001,8 +1012,8 @@ const DECODE_PREAMBLE: &str = r#"
 
   function node(index) {
     const span = spans + index * 8;
-    const start = pos(_u32[span >> 2]);
-    const end = pos(_u32[(span >> 2) + 1]);
+    const start = pos(_i32[span >> 2]);
+    const end = pos(_i32[(span >> 2) + 1]);
     const payload = payloads + index * 16;
     let result;
     switch (bytes[kinds + index]) {

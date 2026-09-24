@@ -44,7 +44,7 @@ function encodeOptionBoolean(value, name) {
 export function decode(buffer, source) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const view = new DataView(arrayBuffer, buffer.byteOffset ?? 0, buffer.byteLength);
-  const flags = view.getUint32(FLAGS_OFFSET, true);
+  const flags = view.getInt32(FLAGS_OFFSET, true);
   return (flags & TYPESCRIPT_FLAG) !== 0
     ? decode_ts(buffer, source)
     : decode_js(buffer, source);
