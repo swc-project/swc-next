@@ -64,6 +64,7 @@ enum FormatElement<'a> {
     SoftLineIfBreak(GroupId),
     IfBreak(Text<'a>),
     IfFlat(Text<'a>),
+    LineSuffix(Text<'a>),
     StartIndentIfBreak(GroupId),
     Line,
     BreakParent,
