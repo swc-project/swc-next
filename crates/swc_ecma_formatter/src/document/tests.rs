@@ -568,3 +568,29 @@ fn forced_line_remeasurement() {
         "head\n{\n  longName\n} tail"
     );
 }
+
+#[test]
+fn line_suffixes() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line_suffix("// comment");
+        writer.text(",");
+        writer.line();
+        writer.text("b");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a, // comment\nb"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix("// last");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a // last"
+    );
+}

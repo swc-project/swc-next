@@ -197,6 +197,12 @@ impl<'a> Writer<'a> {
         result
     }
 
+    pub(crate) fn line_suffix(&mut self, text: &'a str) {
+        self.elements
+            .push(FormatElement::LineSuffix(Text::new(text)));
+        self.break_parent();
+    }
+
     pub(crate) fn finish(self) -> Doc<'a> {
         Doc {
             elements: self.elements.into_bump_slice(),
