@@ -13,6 +13,9 @@ pub(crate) use writer::Writer;
 use crate::FormatOptions;
 use text::Text;
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct GroupId(usize);
+
 /// Explicit layout requests stay distinct from preserved source layout.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum GroupRequest {
@@ -58,25 +61,45 @@ enum FormatElement<'a> {
     Text(Text<'a>),
     Space,
     SoftLine,
+    SoftLineIfBreak(GroupId),
+    IfBreak(Text<'a>),
+    IfFlat(Text<'a>),
+    StartIndentIfBreak(GroupId),
     Line,
     BreakParent,
-    StartGroup { effect: BreakEffect },
+    StartGroup {
+        effect: BreakEffect,
+        id: Option<GroupId>,
+    },
     EndGroup,
     HardLine,
     LiteralLine,
     StartIndent,
-    StartAbsoluteIndent { width: usize },
+    StartAbsoluteIndent {
+        width: usize,
+    },
     EndIndent,
-    StartAlign { width: usize },
-    EndAlign { width: usize },
+    StartAlign {
+        width: usize,
+    },
+    EndAlign {
+        width: usize,
+    },
 }
 
 pub(crate) struct Doc<'a> {
     elements: &'a [FormatElement<'a>],
+    group_count: usize,
+    conditional_lines: bool,
 }
 
 impl Doc<'_> {
     pub(crate) fn print(self, options: FormatOptions) -> String {
-        printer::print(self.elements, options)
+        printer::print(
+            self.elements,
+            self.group_count,
+            self.conditional_lines,
+            options,
+        )
     }
 }

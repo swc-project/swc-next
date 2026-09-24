@@ -4,12 +4,14 @@ use std::borrow::Cow;
 
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
-use super::{BreakEffect, Doc, FormatElement, GroupRequest, text::Text};
+use super::{BreakEffect, Doc, FormatElement, GroupId, GroupRequest, text::Text};
 
 pub(crate) struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, FormatElement<'a>>,
     effect: BreakEffect,
+    group_count: usize,
+    conditional_lines: bool,
 }
 
 impl<'a> Writer<'a> {
@@ -18,6 +20,8 @@ impl<'a> Writer<'a> {
             allocator,
             elements: ArenaVec::new_in(allocator),
             effect: BreakEffect::default(),
+            group_count: 0,
+            conditional_lines: false,
         }
     }
 
@@ -113,11 +117,37 @@ impl<'a> Writer<'a> {
         request: GroupRequest,
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
+        self.group_with_id(request, None, write)
+    }
+
+    /// The returned handle refers to a group already written in this document.
+    pub(crate) fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
+        self.named_group_with_request(GroupRequest::from(expand), write)
+    }
+
+    pub(crate) fn named_group_with_request(
+        &mut self,
+        request: GroupRequest,
+        write: impl FnOnce(&mut Self),
+    ) -> GroupId {
+        let id = GroupId(self.group_count);
+        self.group_count += 1;
+        self.group_with_id(request, Some(id), write);
+        id
+    }
+
+    fn group_with_id<T>(
+        &mut self,
+        request: GroupRequest,
+        id: Option<GroupId>,
+        write: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let start = self.elements.len();
         let outer_effect = self.effect;
         self.effect = BreakEffect::from_request(request);
         self.elements.push(FormatElement::StartGroup {
             effect: self.effect,
+            id,
         });
         let result = write(self);
         let effect = self.effect;
@@ -142,9 +172,36 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::Line);
     }
 
+    pub(crate) fn soft_line_if_break(&mut self, group: GroupId) {
+        self.conditional_lines = true;
+        self.elements.push(FormatElement::SoftLineIfBreak(group));
+    }
+
+    pub(crate) fn if_break(&mut self, text: &'a str) {
+        self.elements.push(FormatElement::IfBreak(Text::new(text)));
+    }
+
+    pub(crate) fn if_flat(&mut self, text: &'a str) {
+        self.elements.push(FormatElement::IfFlat(Text::new(text)));
+    }
+
+    /// Unlike group-bound conditionals, fill entries observe their local mode.
+    pub(crate) fn indent_if_break<T>(
+        &mut self,
+        group: GroupId,
+        write: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        self.elements.push(FormatElement::StartIndentIfBreak(group));
+        let result = write(self);
+        self.elements.push(FormatElement::EndIndent);
+        result
+    }
+
     pub(crate) fn finish(self) -> Doc<'a> {
         Doc {
             elements: self.elements.into_bump_slice(),
+            group_count: self.group_count,
+            conditional_lines: self.conditional_lines,
         }
     }
 }
