@@ -497,6 +497,251 @@ fn named_lines() {
     );
 }
 
+fn fill_document(parts: &[&str], width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("[");
+        writer.indent(|writer| {
+            writer.soft_line();
+            writer.fill(|writer| {
+                let mut parts = parts.iter().peekable();
+                let mut first = true;
+                while let Some(part) = parts.next() {
+                    if !first {
+                        writer.fill_entry(|writer| writer.line());
+                    }
+                    writer.fill_entry(|writer| {
+                        writer.text(*part);
+                        if parts.peek().is_some() {
+                            writer.text(",");
+                        } else {
+                            writer.if_break(",");
+                        }
+                    });
+                    first = false;
+                }
+            });
+        });
+        writer.soft_line();
+        writer.text("]");
+    });
+    writer.text(";");
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn grouped_fill_document(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("[");
+        writer.indent(|writer| {
+            writer.soft_line();
+            writer.fill(|writer| {
+                writer.fill_entry(|writer| {
+                    writer.group(false, |writer| {
+                        writer.text("[a");
+                        writer.line();
+                        writer.text("b]");
+                    });
+                    writer.text(",");
+                });
+                writer.fill_entry(|writer| writer.line());
+                writer.fill_entry(|writer| writer.text("x,"));
+                writer.fill_entry(|writer| writer.line());
+                writer.fill_entry(|writer| {
+                    writer.text("y");
+                    writer.if_break(",");
+                });
+            });
+        });
+        writer.soft_line();
+        writer.text("]");
+    });
+    writer.text(";");
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn line_suffixes() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line_suffix("// comment");
+        writer.text(",");
+        writer.line();
+        writer.text("b");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a, // comment\nb"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix("// last");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a // last"
+    );
+}
+
+fn current_mode_fill(width: u16, expand_next: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(true, |writer| {
+        writer.fill(|writer| {
+            writer.fill_entry(|writer| writer.text("aa"));
+            writer.fill_entry(|writer| {
+                writer.if_break(",");
+                writer.if_flat("unused");
+                writer.if_current_break("!");
+                writer.if_current_flat(" ");
+                writer.soft_line();
+            });
+            writer.fill_entry(|writer| writer.group(expand_next, |writer| writer.text("bb")));
+        });
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn current_mode_group(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.if_current_break("B");
+        writer.if_current_flat("1234");
+        writer.line();
+        writer.text("x");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn current_mode_scopes() {
+    assert_eq!(current_mode_fill(8, false), "aa, bb");
+
+    assert_eq!(current_mode_fill(5, false), "aa,!\nbb");
+
+    assert_eq!(current_mode_fill(8, true), "aa,!\nbb");
+
+    assert_eq!(current_mode_group(6), "1234 x");
+
+    assert_eq!(current_mode_group(5), "B\nx");
+}
+
+#[test]
+fn fill_layout() {
+    assert_eq!(
+        fill_document(&["1", "2", "3", "4", "5", "6"], 20),
+        "[1, 2, 3, 4, 5, 6];"
+    );
+
+    assert_eq!(
+        fill_document(&["1", "2", "3", "4", "5", "6"], 10),
+        "[\n  1, 2, 3,\n  4, 5, 6,\n];"
+    );
+
+    assert_eq!(
+        fill_document(&["1", "2", "3", "4", "5", "6"], 8),
+        "[\n  1, 2,\n  3, 4,\n  5, 6,\n];"
+    );
+
+    assert_eq!(
+        fill_document(&["long_element", "2", "3"], 10),
+        "[\n  long_element,\n  2, 3,\n];"
+    );
+
+    assert_eq!(grouped_fill_document(20), "[[a b], x, y];");
+
+    assert_eq!(grouped_fill_document(10), "[\n  [a b],\n  x, y,\n];");
+
+    assert_eq!(grouped_fill_document(7), "[\n  [a\n  b],\n  x, y,\n];");
+}
+#[test]
+fn reserved_gap_rendering() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.space();
+        writer.reserved_space();
+        writer.reserved_space();
+        writer.space();
+        writer.line();
+        writer.text("b");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions {
+            line_width: 3,
+            ..FormatOptions::prettier()
+        }),
+        "a b"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("raw ");
+    writer.reserved_space();
+    writer.hard_line();
+    writer.text("next");
+    writer.reserved_space();
+    writer.literal_line();
+    writer.text(" original ");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "raw \nnext\n original "
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.reserved_space();
+    writer.line_suffix("// tail");
+    writer.hard_line();
+    writer.text("b");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a // tail\nb"
+    );
+}
+
+#[test]
+fn fill_entry_boundaries() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer
+        .fill_with_empty_line_policy(|writer| {
+            let (entry, ()) = writer.fill_entry_with_handle(|writer| writer.text("first"));
+            writer.extend_fill_entry(entry, |writer| writer.text("!"));
+            writer.fill_entry(|writer| {
+                writer.hard_line();
+                writer.hard_line();
+            });
+            writer.fill_entry(|writer| writer.text("second"));
+            Ok::<_, ()>(((), true))
+        })
+        .unwrap();
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "first!\nsecond"
+    );
+}
+
 #[test]
 fn text_line_measurement() {
     let ascii = super::text::Text::new("ASCII");
@@ -569,28 +814,86 @@ fn forced_line_remeasurement() {
     );
 }
 
-#[test]
-fn line_suffixes() {
+fn remeasured_fill_scope(request: GroupRequest) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.group(false, |writer| {
-        writer.text("a");
-        writer.line_suffix("// comment");
-        writer.text(",");
-        writer.line();
-        writer.text("b");
+    writer.fill(|writer| {
+        writer.fill_entry(|writer| {
+            writer.text("first");
+            writer.hard_line();
+            writer.text("a");
+        });
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| {
+            writer.group_with_request(request, |writer| {
+                writer.text("force");
+                writer.line();
+                writer.text("group");
+            });
+        });
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| {
+            writer.group(false, |writer| {
+                writer.text("longName");
+                writer.line();
+                writer.text("name");
+            });
+        });
     });
+    writer.text(" tail");
+    writer.finish().print(FormatOptions {
+        line_width: 15,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn fill_remeasurement_scopes() {
     assert_eq!(
-        writer.finish().print(FormatOptions::prettier()),
-        "a, // comment\nb"
+        remeasured_fill_scope(GroupRequest::Auto),
+        "first\na force group\nlongName name tail"
     );
 
+    assert_eq!(
+        remeasured_fill_scope(GroupRequest::Expanded),
+        "first\na force\ngroup\nlongName name tail"
+    );
+
+    assert_eq!(
+        remeasured_fill_scope(GroupRequest::PreserveSource),
+        "first\na force\ngroup\nlongName name tail"
+    );
+}
+
+fn remeasured_fill_after_expansion() -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.text("a");
-    writer.line_suffix("// last");
+    writer.fill(|writer| {
+        writer.fill_entry(|writer| {
+            writer.text("first");
+            writer.hard_line();
+            writer.group(true, |writer| writer.text("force:"));
+            writer.fill(|writer| {
+                writer.fill_entry(|writer| writer.text("abcdefgh"));
+                writer.fill_entry(Writer::line);
+                writer.fill_entry(|writer| {
+                    writer.text("bb");
+                    writer.line();
+                    writer.text("longName");
+                });
+            });
+        });
+    });
+    writer.finish().print(FormatOptions {
+        line_width: 18,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn fill_measurement_invalidation() {
     assert_eq!(
-        writer.finish().print(FormatOptions::prettier()),
-        "a // last"
+        remeasured_fill_after_expansion(),
+        "first\nforce:abcdefgh\nbb longName"
     );
 }
