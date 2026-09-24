@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{Doc, FormatElement, Writer};
+use super::{Doc, FormatElement, GroupRequest, Writer};
 use crate::{FormatOptions, IndentStyle, LineEnding};
 
 fn nested_document(options: FormatOptions) -> String {
@@ -260,6 +260,65 @@ fn literal_text() {
 }
 
 #[test]
+fn group_breaks() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.group(true, |writer| {
+            writer.text("b");
+            writer.line();
+            writer.text("c");
+        });
+    });
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "a\nb\nc");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.space();
+        writer.line();
+        writer.text("b");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions {
+            line_width: 3,
+            ..FormatOptions::prettier()
+        }),
+        "a b"
+    );
+}
+
+#[test]
+fn group_requests() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+        writer.text("left");
+        writer.soft_line();
+        writer.text("right");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "left\nright"
+    );
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("left");
+        writer.line();
+        writer.text("right");
+        writer.break_parent();
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "left\nright"
+    );
+}
+
+#[test]
 fn text_line_measurement() {
     let ascii = super::text::Text::new("ASCII");
     assert_eq!(ascii.last_line(3), (8, false));
@@ -286,4 +345,47 @@ fn text_line_measurement() {
 
     let crlf = super::text::Text::new("head\r\ntail\n");
     assert_eq!(crlf.last_line(3), (0, true));
+}
+
+fn remeasured_value(writer: &mut Writer<'_>) {
+    writer.text("{");
+    writer.indent(|writer| {
+        writer.soft_line();
+        writer.text("longName");
+    });
+    writer.soft_line();
+    writer.text("}");
+}
+
+fn remeasurement_document(write_line: impl FnOnce(&mut Writer<'_>)) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("head");
+        write_line(writer);
+        writer.group(false, remeasured_value);
+        writer.text(" tail");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: 12,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn forced_line_remeasurement() {
+    assert_eq!(
+        remeasurement_document(|writer| writer.text("\n")),
+        "head\n{\n  longName\n} tail"
+    );
+
+    assert_eq!(
+        remeasurement_document(|writer| writer.hard_line()),
+        "head\n{\n  longName\n} tail"
+    );
+
+    assert_eq!(
+        remeasurement_document(|writer| writer.literal_line()),
+        "head\n{\n  longName\n} tail"
+    );
 }
