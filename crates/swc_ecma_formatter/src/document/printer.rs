@@ -1,11 +1,17 @@
 //! Interpretation of flat text, line breaks and indentation scopes.
-use super::{FormatElement, text::Text};
+use super::{FormatElement, GroupId, text::Text};
 use crate::{FormatOptions, IndentStyle};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
     Flat,
     Break,
+}
+
+#[derive(Clone, Copy)]
+struct GroupState {
+    mode: Mode,
+    restore_mode: Mode,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -67,7 +73,12 @@ impl Indentation {
     }
 }
 
-pub(super) fn print(elements: &[FormatElement<'_>], options: FormatOptions) -> String {
+pub(super) fn print(
+    elements: &[FormatElement<'_>],
+    group_count: usize,
+    conditional_lines: bool,
+    options: FormatOptions,
+) -> String {
     let mut output = Output {
         text: String::new(),
         column: 0,
@@ -79,27 +90,67 @@ pub(super) fn print(elements: &[FormatElement<'_>], options: FormatOptions) -> S
     let mut indents = Vec::new();
     let mut modes = Vec::new();
     let mut mode = Mode::Break;
-    let mut probe_modes = Vec::new();
+    let mut probe = Probe {
+        track_groups: conditional_lines,
+        ..Probe::default()
+    };
+    let mut group_modes = vec![Mode::Flat; group_count];
     for (index, &element) in elements.iter().enumerate() {
         match element {
-            FormatElement::StartGroup { effect } => {
+            FormatElement::StartGroup { effect, id } => {
                 let inherited = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
                 let flat = !effect.preferred_breaks()
                     && (inherited
-                        || fits(
-                            &elements[index + 1..],
+                        || probe.fits(
+                            ProbeRequest {
+                                elements: &elements[index + 1..],
+                                id,
+                            },
                             &modes,
                             &output,
                             options,
                             mode,
-                            &mut probe_modes,
+                            &group_modes,
                         ));
-                modes.push(mode);
-                mode = if flat { Mode::Flat } else { Mode::Break };
-                output.record_group_mode(mode, inherited);
+                let group_mode = if flat { Mode::Flat } else { Mode::Break };
+                output.record_group_mode(group_mode, inherited);
+                if let Some(id) = id {
+                    group_modes[id.0] = group_mode;
+                }
+                modes.push(GroupState {
+                    mode: group_mode,
+                    restore_mode: mode,
+                });
+                mode = group_mode;
             }
             FormatElement::EndGroup => {
-                mode = modes.pop().expect("group scopes must close after opening")
+                mode = modes
+                    .pop()
+                    .expect("group scopes must close after opening")
+                    .restore_mode
+            }
+            FormatElement::SoftLineIfBreak(id) => {
+                if group_modes[id.0] == Mode::Break && mode == Mode::Break {
+                    output.line(indent, options, mode);
+                }
+            }
+            FormatElement::IfBreak(text) | FormatElement::IfFlat(text) => {
+                let group_mode = modes
+                    .last()
+                    .map_or(Mode::Break, |group: &GroupState| group.mode);
+                let active = match element {
+                    FormatElement::IfBreak(_) => group_mode == Mode::Break,
+                    _ => group_mode == Mode::Flat,
+                };
+                if active {
+                    output.write(text, options, mode);
+                }
+            }
+            FormatElement::StartIndentIfBreak(id) => {
+                indents.push(indent);
+                if group_modes[id.0] == Mode::Break {
+                    indent = indent.indented(options);
+                }
             }
             FormatElement::BreakParent => {}
             FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
@@ -196,75 +247,144 @@ impl Output {
     }
 }
 
-fn fits(
-    elements: &[FormatElement<'_>],
-    parents: &[Mode],
-    output: &Output,
-    options: FormatOptions,
-    incoming: Mode,
-    modes: &mut Vec<Mode>,
-) -> bool {
-    let mut column = output.column;
-    let mut pending_space = output.pending_space;
-    let limit = usize::from(options.line_width);
-    let mut parent_len = parents.len();
-    let mut mode = Mode::Flat;
-    modes.clear();
-    modes.push(incoming);
-    if column > limit {
-        return false;
-    }
-    for &element in elements {
-        match element {
-            FormatElement::Text(text) => {
-                column += usize::from(pending_space);
-                pending_space = false;
-                let (next, multiline) = text.first_line(column);
-                column = next;
-                if multiline {
-                    return column <= limit;
-                }
-                if column > limit {
-                    return false;
-                }
-            }
-            FormatElement::Space => pending_space = true,
-            FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
-                if matches!(element, FormatElement::Line) {
-                    pending_space = true;
-                }
-            }
-            FormatElement::SoftLine
-            | FormatElement::Line
-            | FormatElement::HardLine
-            | FormatElement::LiteralLine => return true,
-            FormatElement::StartGroup { effect } => {
-                modes.push(mode);
-                if effect.preferred_breaks() {
-                    mode = Mode::Break;
-                }
-            }
-            FormatElement::EndGroup => {
-                mode = if let Some(restore) = modes.pop() {
-                    restore
-                } else {
-                    parent_len = parent_len
-                        .checked_sub(1)
-                        .expect("fit probe closes an active group scope");
-                    parents[parent_len]
-                };
-            }
-            FormatElement::BreakParent => {
-                if mode == Mode::Flat {
-                    return false;
-                }
-            }
-            FormatElement::StartIndent
-            | FormatElement::StartAbsoluteIndent { .. }
-            | FormatElement::EndIndent
-            | FormatElement::StartAlign { .. }
-            | FormatElement::EndAlign { .. } => {}
+struct ProbeRequest<'a> {
+    elements: &'a [FormatElement<'a>],
+    id: Option<GroupId>,
+}
+
+#[derive(Default)]
+struct Probe {
+    track_groups: bool,
+    group_writes: Vec<(GroupId, Mode)>,
+    modes: Vec<GroupState>,
+}
+
+impl Probe {
+    fn fits(
+        &mut self,
+        request: ProbeRequest<'_>,
+        parents: &[GroupState],
+        output: &Output,
+        options: FormatOptions,
+        incoming: Mode,
+        committed_groups: &[Mode],
+    ) -> bool {
+        let Self {
+            track_groups,
+            group_writes,
+            modes,
+        } = self;
+        group_writes.clear();
+        if *track_groups && let Some(id) = request.id {
+            group_writes.push((id, Mode::Flat));
         }
+        let mut column = output.column;
+        let mut pending_space = output.pending_space;
+        let limit = usize::from(options.line_width);
+        let mut parent_len = parents.len();
+        let mut mode = Mode::Flat;
+        modes.clear();
+        modes.push(GroupState {
+            mode: Mode::Flat,
+            restore_mode: incoming,
+        });
+        if column > limit {
+            return false;
+        }
+        for &element in request.elements {
+            match element {
+                FormatElement::Text(text)
+                | FormatElement::IfBreak(text)
+                | FormatElement::IfFlat(text) => {
+                    if matches!(
+                        element,
+                        FormatElement::IfBreak(_) | FormatElement::IfFlat(_)
+                    ) {
+                        let group_mode = modes
+                            .last()
+                            .map(|group| group.mode)
+                            .or_else(|| parents[..parent_len].last().map(|group| group.mode))
+                            .unwrap_or(Mode::Break);
+                        let active = match element {
+                            FormatElement::IfBreak(_) => group_mode == Mode::Break,
+                            _ => group_mode == Mode::Flat,
+                        };
+                        if !active {
+                            continue;
+                        }
+                    }
+                    column += usize::from(pending_space);
+                    pending_space = false;
+                    let (next, multiline) = text.first_line(column);
+                    column = next;
+                    if multiline {
+                        return column <= limit;
+                    }
+                    if column > limit {
+                        return false;
+                    }
+                }
+                FormatElement::Space => pending_space = true,
+                FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
+                    if matches!(element, FormatElement::Line) {
+                        pending_space = true;
+                    }
+                }
+                FormatElement::SoftLine
+                | FormatElement::Line
+                | FormatElement::HardLine
+                | FormatElement::LiteralLine => return true,
+                FormatElement::StartGroup { effect, id } => {
+                    let group_mode = if effect.preferred_breaks() {
+                        Mode::Break
+                    } else {
+                        mode
+                    };
+                    modes.push(GroupState {
+                        mode: group_mode,
+                        restore_mode: mode,
+                    });
+                    mode = group_mode;
+                    if *track_groups && let Some(id) = id {
+                        group_writes.push((id, mode));
+                    }
+                }
+                FormatElement::EndGroup => {
+                    mode = if let Some(group) = modes.pop() {
+                        group.restore_mode
+                    } else {
+                        parent_len = parent_len
+                            .checked_sub(1)
+                            .expect("fit probe closes an active group scope");
+                        parents[parent_len].restore_mode
+                    };
+                }
+                FormatElement::SoftLineIfBreak(id) => {
+                    if mode == Mode::Flat {
+                        continue;
+                    }
+                    let named = group_writes
+                        .iter()
+                        .rev()
+                        .find(|(written, _)| written.0 == id.0)
+                        .map_or(committed_groups[id.0], |(_, mode)| *mode);
+                    if named == Mode::Break {
+                        return true;
+                    }
+                }
+                FormatElement::BreakParent => {
+                    if mode == Mode::Flat {
+                        return false;
+                    }
+                }
+                FormatElement::StartIndent
+                | FormatElement::StartAbsoluteIndent { .. }
+                | FormatElement::StartIndentIfBreak(_)
+                | FormatElement::EndIndent
+                | FormatElement::StartAlign { .. }
+                | FormatElement::EndAlign { .. } => {}
+            }
+        }
+        column <= limit
     }
-    column <= limit
 }
