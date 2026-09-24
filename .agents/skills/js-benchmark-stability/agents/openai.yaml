@@ -1,0 +1,3 @@
+interface:
+  display_name: "JS Benchmark Stability"
+  short_description: "Reduce noise in JavaScript performance comparisons"
