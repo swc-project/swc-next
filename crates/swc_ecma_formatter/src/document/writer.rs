@@ -4,11 +4,12 @@ use std::borrow::Cow;
 
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
-use super::{Doc, FormatElement, text::Text};
+use super::{BreakEffect, Doc, FormatElement, GroupRequest, text::Text};
 
 pub(crate) struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, FormatElement<'a>>,
+    effect: BreakEffect,
 }
 
 impl<'a> Writer<'a> {
@@ -16,6 +17,7 @@ impl<'a> Writer<'a> {
         Self {
             allocator,
             elements: ArenaVec::new_in(allocator),
+            effect: BreakEffect::default(),
         }
     }
 
@@ -55,10 +57,12 @@ impl<'a> Writer<'a> {
 
     pub(crate) fn hard_line(&mut self) {
         self.elements.push(FormatElement::HardLine);
+        self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     pub(crate) fn literal_line(&mut self) {
         self.elements.push(FormatElement::LiteralLine);
+        self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     pub(crate) fn space(&mut self) {
@@ -93,6 +97,49 @@ impl<'a> Writer<'a> {
         let result = write(self);
         self.elements.push(FormatElement::EndAlign { width });
         result
+    }
+
+    pub(crate) fn break_parent(&mut self) {
+        self.elements.push(FormatElement::BreakParent);
+        self.effect = self.effect.join(BreakEffect::REQUIRED);
+    }
+
+    pub(crate) fn group<T>(&mut self, expand: bool, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.group_with_request(GroupRequest::from(expand), write)
+    }
+
+    pub(crate) fn group_with_request<T>(
+        &mut self,
+        request: GroupRequest,
+        write: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let start = self.elements.len();
+        let outer_effect = self.effect;
+        self.effect = BreakEffect::from_request(request);
+        self.elements.push(FormatElement::StartGroup {
+            effect: self.effect,
+        });
+        let result = write(self);
+        let effect = self.effect;
+        self.effect = outer_effect.join(effect);
+        let FormatElement::StartGroup {
+            effect: group_effect,
+            ..
+        } = &mut self.elements[start]
+        else {
+            unreachable!("group scope retains its opening instruction");
+        };
+        *group_effect = effect;
+        self.elements.push(FormatElement::EndGroup);
+        result
+    }
+
+    pub(crate) fn soft_line(&mut self) {
+        self.elements.push(FormatElement::SoftLine);
+    }
+
+    pub(crate) fn line(&mut self) {
+        self.elements.push(FormatElement::Line);
     }
 
     pub(crate) fn finish(self) -> Doc<'a> {
