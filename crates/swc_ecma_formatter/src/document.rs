@@ -1,6 +1,7 @@
-//! Flat documents with arena-owned instructions and borrowed or generated text.
+//! Flat documents containing borrowed text and explicit line breaks.
 //!
-//! Finishing seals an immutable slice; borrowed source retains its original owner.
+//! Construction owns a growable instruction buffer in the formatting arena.
+//! Finishing seals an immutable slice; source text remains borrowed from its owner.
 
 mod printer;
 #[cfg(test)]
@@ -57,28 +58,37 @@ impl BreakEffect {
 }
 
 #[derive(Debug, Clone, Copy)]
+enum SpaceKind {
+    Deferred,
+    /// One canonical gap reserves fit width before the next text commits it.
+    Reserved,
+}
+
+#[derive(Debug, Clone, Copy)]
 enum FormatElement<'a> {
     Text(Text<'a>),
-    Space,
+    Space(SpaceKind),
     SoftLine,
     SoftLineIfBreak(GroupId),
+    Line,
+    HardLine,
+    BreakParent,
+    LiteralLine,
     IfBreak(Text<'a>),
     IfFlat(Text<'a>),
+    IfCurrentBreak(Text<'a>),
+    IfCurrentFlat(Text<'a>),
     LineSuffix(Text<'a>),
-    StartIndentIfBreak(GroupId),
-    Line,
-    BreakParent,
     StartGroup {
         effect: BreakEffect,
         id: Option<GroupId>,
     },
     EndGroup,
-    HardLine,
-    LiteralLine,
     StartIndent,
     StartAbsoluteIndent {
         width: usize,
     },
+    StartIndentIfBreak(GroupId),
     EndIndent,
     StartAlign {
         width: usize,
@@ -86,6 +96,13 @@ enum FormatElement<'a> {
     EndAlign {
         width: usize,
     },
+    StartFill,
+    EndFill,
+    /// Distance from this opening instruction to its matching EndEntry.
+    StartEntry {
+        end_offset: usize,
+    },
+    EndEntry,
 }
 
 pub(crate) struct Doc<'a> {
