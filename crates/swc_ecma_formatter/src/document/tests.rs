@@ -210,6 +210,8 @@ fn deep_indentation() {
     elements.extend(std::iter::repeat_n(FormatElement::EndIndent, 1025));
     let document = Doc {
         elements: &elements,
+        group_count: 0,
+        conditional_lines: false,
     };
     let options = FormatOptions {
         indent_width: 64.try_into().unwrap(),
@@ -315,6 +317,183 @@ fn group_requests() {
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
         "left\nright"
+    );
+}
+
+fn aligned_document(options: FormatOptions) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("prefix");
+        writer.indent(|writer| {
+            writer.line();
+            writer.if_flat("(");
+            writer.align(2, |writer| {
+                writer.text("first");
+                writer.indent(|writer| {
+                    writer.line();
+                    writer.text("second");
+                });
+            });
+            writer.if_flat(")");
+        });
+    });
+    writer.finish().print(options)
+}
+
+#[test]
+fn aligned_groups() {
+    assert_eq!(
+        aligned_document(FormatOptions::prettier()),
+        "prefix (first second)"
+    );
+
+    let narrow = FormatOptions {
+        line_width: 8,
+        ..FormatOptions::prettier()
+    };
+    assert_eq!(aligned_document(narrow), "prefix\n  first\n      second");
+
+    let tabs = FormatOptions {
+        indent_style: IndentStyle::Tab,
+        ..narrow
+    };
+    assert_eq!(aligned_document(tabs), "prefix\n\tfirst\n\t\t\tsecond");
+}
+
+fn write_pair<'a>(writer: &mut Writer<'a>, first: &'a str, last: &'a str) {
+    writer.group(false, |writer| {
+        writer.text("[");
+        writer.indent(|writer| {
+            writer.soft_line();
+            writer.text(first);
+            writer.text(",");
+            writer.line();
+            writer.text(last);
+            writer.if_break(",");
+        });
+        writer.soft_line();
+        writer.text("]");
+    });
+}
+
+fn pair_document(first: &str, last: &str, width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    write_pair(&mut writer, first, last);
+    writer.text(";");
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn nested_group_document(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(true, |writer| {
+        writer.text("[");
+        writer.indent(|writer| {
+            writer.soft_line();
+            write_pair(writer, "aa", "bb");
+            writer.text(",");
+            writer.line();
+            writer.text("tail");
+            writer.if_break(",");
+        });
+        writer.soft_line();
+        writer.text("]");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn dependent_document(options: FormatOptions) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("target =");
+        let separator = writer.named_group(false, |writer| {
+            writer.indent(Writer::line);
+        });
+        writer.indent_if_break(separator, |writer| write_pair(writer, "first", "second"));
+    });
+    writer.text(";");
+    writer.finish().print(options)
+}
+
+#[test]
+fn dependent_indentation() {
+    assert_eq!(
+        dependent_document(FormatOptions::prettier()),
+        "target = [first, second];"
+    );
+
+    let medium = FormatOptions {
+        line_width: 16,
+        ..FormatOptions::prettier()
+    };
+    assert_eq!(
+        dependent_document(medium),
+        "target = [\n  first,\n  second,\n];"
+    );
+
+    let narrow = FormatOptions {
+        line_width: 8,
+        ..medium
+    };
+    assert_eq!(
+        dependent_document(narrow),
+        "target =\n  [\n    first,\n    second,\n  ];"
+    );
+
+    let tabs = FormatOptions {
+        indent_style: IndentStyle::Tab,
+        ..narrow
+    };
+    assert_eq!(
+        dependent_document(tabs),
+        "target =\n\t[\n\t\tfirst,\n\t\tsecond,\n\t];"
+    );
+}
+
+#[test]
+fn group_continuation() {
+    assert_eq!(pair_document("aa", "bb", 9), "[aa, bb];");
+
+    assert_eq!(pair_document("aa", "bb", 8), "[\n  aa,\n  bb,\n];");
+
+    assert_eq!(nested_group_document(11), "[\n  [aa, bb],\n  tail,\n]");
+
+    assert_eq!(
+        nested_group_document(10),
+        "[\n  [\n    aa,\n    bb,\n  ],\n  tail,\n]"
+    );
+}
+
+#[test]
+fn display_columns() {
+    assert_eq!(pair_document("世界", "a", 10), "[世界, a];");
+
+    assert_eq!(pair_document("世界", "a", 9), "[\n  世界,\n  a,\n];");
+
+    assert_eq!(pair_document("é", "a", 7), "[é, a];");
+
+    assert_eq!(pair_document("é", "a", 6), "[\n  é,\n  a,\n];");
+}
+
+#[test]
+fn named_lines() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let group = writer.named_group(true, |writer| writer.text("first"));
+    writer.soft_line_if_break(group);
+    writer.text("second");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "first\nsecond"
     );
 }
 
