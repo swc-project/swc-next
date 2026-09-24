@@ -86,6 +86,7 @@ pub(super) fn print(
         pending_space: false,
         fit_state: FitState::Measured,
     };
+    let mut suffixes = Vec::new();
     let mut indent = Indentation::default();
     let mut indents = Vec::new();
     let mut modes = Vec::new();
@@ -131,6 +132,7 @@ pub(super) fn print(
             }
             FormatElement::SoftLineIfBreak(id) => {
                 if group_modes[id.0] == Mode::Break && mode == Mode::Break {
+                    flush_suffixes(&mut suffixes, &mut output, options, mode);
                     output.line(indent, options, mode);
                 }
             }
@@ -158,11 +160,21 @@ pub(super) fn print(
                     output.pending_space = true;
                 }
             }
-            FormatElement::SoftLine | FormatElement::Line => output.line(indent, options, mode),
+            FormatElement::SoftLine | FormatElement::Line => {
+                flush_suffixes(&mut suffixes, &mut output, options, mode);
+                output.line(indent, options, mode);
+            }
+            FormatElement::LineSuffix(text) => suffixes.push(text),
             FormatElement::Text(text) => output.write(text, options, mode),
             FormatElement::Space => output.pending_space = true,
-            FormatElement::HardLine => output.line(indent, options, mode),
-            FormatElement::LiteralLine => output.line(Indentation::default(), options, mode),
+            FormatElement::HardLine => {
+                flush_suffixes(&mut suffixes, &mut output, options, mode);
+                output.line(indent, options, mode);
+            }
+            FormatElement::LiteralLine => {
+                flush_suffixes(&mut suffixes, &mut output, options, mode);
+                output.line(Indentation::default(), options, mode);
+            }
             FormatElement::StartIndent => {
                 indents.push(indent);
                 indent = indent.indented(options);
@@ -192,6 +204,7 @@ pub(super) fn print(
             }
         }
     }
+    flush_suffixes(&mut suffixes, &mut output, options, mode);
     output.text
 }
 
@@ -293,6 +306,7 @@ impl Probe {
         }
         for &element in request.elements {
             match element {
+                FormatElement::LineSuffix(_) => {}
                 FormatElement::Text(text)
                 | FormatElement::IfBreak(text)
                 | FormatElement::IfFlat(text) => {
@@ -386,5 +400,17 @@ impl Probe {
             }
         }
         column <= limit
+    }
+}
+
+fn flush_suffixes(
+    suffixes: &mut Vec<Text<'_>>,
+    output: &mut Output,
+    options: FormatOptions,
+    mode: Mode,
+) {
+    for text in suffixes.drain(..) {
+        output.pending_space = true;
+        output.write(text, options, mode);
     }
 }
