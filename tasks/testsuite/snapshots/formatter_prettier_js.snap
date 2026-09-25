@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 12/1070 (1.12%)
-Snapshot matched: 12/1070
-AST parity: 12/12
-AST mismatched: 0/12
+Passed: 17/1070 (1.59%)
+Snapshot matched: 17/1070
+AST parity: 17/17
+AST mismatched: 0/17
 AST format errors: 0/1070
 Mismatched: 0/1070
-Format errors: 1057/1070
+Format errors: 1052/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -668,11 +668,6 @@ Unsupported option sets: 19
 - js/quotes/functions.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/quotes/strings.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/quotes/switch-quote/switch-quote.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/regex/d-flag.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/regex/multiple-flags.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/regex/regexp-modifiers.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/regex/test.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/regex/v-flag.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/require-amd/named-amd-module.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/require-amd/non-amd-define.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/require-amd/require.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
