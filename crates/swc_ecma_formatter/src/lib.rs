@@ -7,17 +7,15 @@
 #![deny(clippy::all)]
 #![deny(unused)]
 
-// The document engine is exercised independently until syntax consumers land.
-#[cfg(test)]
 mod document;
+mod formatter;
 mod options;
-#[cfg(test)]
 mod text_width;
 
 use std::{error::Error, fmt};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Diagnostic, GetSpan, NodeKind, Severity, Span};
+use swc_next_ecma_ast::{Ast, Diagnostic, NodeKind, Severity, Span};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 
 pub use options::{
@@ -110,22 +108,9 @@ pub fn format(
 /// # Panics
 ///
 /// Panics if the AST has no root or its root is not a program.
-pub fn format_ast(ast: &Ast<'_>, _options: FormatOptions) -> Result<String, FormatError> {
-    let program = ast.root_program();
-    if program.body(ast).is_empty()
-        && program.directives(ast).is_empty()
-        && program.hashbang(ast).is_none()
-        && ast.comments().is_empty()
-    {
-        return Ok(if ast.source().starts_with('\u{feff}') {
-            "\u{feff}".to_string()
-        } else {
-            String::new()
-        });
-    }
-    Err(FormatError::unsupported(
-        "program",
-        Some(NodeKind::Program),
-        program.span(ast),
-    ))
+pub fn format_ast(ast: &Ast<'_>, options: FormatOptions) -> Result<String, FormatError> {
+    let allocator = Allocator::new();
+    let mut writer = document::Writer::new(&allocator);
+    formatter::Formatter::new(ast, options).format_program(&mut writer)?;
+    Ok(writer.finish().print(options))
 }
