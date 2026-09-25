@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+{ /** first
+* second
+    */ value; }
+---------- Options ----------
+{}
+---------- Output ----------
+{
+  /** first
+   * second
+   */ value;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+{
+  /** first
+   * second
+   */ value
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+{
+  /** first
+   * second
+   */ value;
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+{
+	/** first
+	 * second
+	 */ value;
+}
