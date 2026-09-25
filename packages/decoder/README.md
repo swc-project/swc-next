@@ -10,7 +10,7 @@ import { parseSync as __parseSync } from "./binding.js";
 
 export function parseSync(source, options) {
   const sourceBuffer = new TextEncoder().encode(source);
-  const buffer = __parseSync(sourceBuffer, options);
+  const buffer = __parseSync(sourceBuffer, source.length, options);
   return decode(buffer, source, sourceBuffer);
 }
 ```

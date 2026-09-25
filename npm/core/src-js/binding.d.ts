@@ -65,8 +65,9 @@ export declare function langFromPath(path: string): Lang
  * # Safety
  *
  * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseSync(source: Buffer, options?: ParserOptions | undefined | null): Buffer
+export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserOptions | undefined | null): Buffer
 
 export declare function printSync(buffer: Buffer, options?: CodegenOptions | undefined | null): CodegenOutput
 

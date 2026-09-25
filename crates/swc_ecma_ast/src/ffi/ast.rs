@@ -98,12 +98,18 @@ pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
 ///
 /// When `buf` is too small, including when it is empty, this returns the
 /// required size without writing a partial payload.
-pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut [u8]) -> usize {
+/// `source_utf16_len` must be the UTF-16 code unit length of `tree.source()`.
+pub fn serialize_into(
+    tree: &Ast<'_>,
+    diagnostics: &[Diagnostic<'_>],
+    buf: &mut [u8],
+    source_utf16_len: usize,
+) -> usize {
     let required = buffer_size(tree, diagnostics);
     if buf.len() < required {
         return required;
     }
-    let positions = build_pos_map(tree.source());
+    let positions = build_pos_map(tree.source(), source_utf16_len);
 
     // ====================== Header ======================
     let node_count = u32::try_from(tree.node_count()).expect("AST node count exceeds u32");
@@ -409,8 +415,8 @@ fn checked_add(left: usize, right: usize) -> Result<usize, DeserializeError> {
         .ok_or(DeserializeError("AST buffer section offset overflow"))
 }
 
-fn build_pos_map(source: &str) -> Option<Vec<u32>> {
-    if source.is_ascii() {
+fn build_pos_map(source: &str, source_utf16_len: usize) -> Option<Vec<u32>> {
+    if source.len() == source_utf16_len {
         return None;
     }
 
@@ -510,7 +516,7 @@ mod tests {
         ast.set_root_program(program);
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
-        assert_eq!(serialize_into(&ast, &[], &mut buffer), buffer.len());
+        assert_eq!(serialize_into(&ast, &[], &mut buffer, 0), buffer.len());
         assert_eq!(buffer.len(), 104);
 
         assert_eq!(u32_at(&buffer, 0), 2); // node count
@@ -538,7 +544,7 @@ mod tests {
         ast.set_root_program(program);
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
-        serialize_into(&ast, &[], &mut buffer);
+        serialize_into(&ast, &[], &mut buffer, 0);
 
         let decoded_allocator = Allocator::new();
         let decoded = deserialize_from(&buffer, &decoded_allocator).unwrap();
@@ -575,11 +581,14 @@ mod tests {
         assert_eq!(required, diagnostics_offset + 40);
 
         let mut too_small = vec![0xaa; required - 1];
-        assert_eq!(serialize_into(&ast, &diagnostics, &mut too_small), required);
+        assert_eq!(
+            serialize_into(&ast, &diagnostics, &mut too_small, 2),
+            required
+        );
         assert!(too_small.iter().all(|&byte| byte == 0xaa));
 
         let mut buffer = vec![0; required];
-        assert_eq!(serialize_into(&ast, &diagnostics, &mut buffer), required);
+        assert_eq!(serialize_into(&ast, &diagnostics, &mut buffer, 2), required);
         assert_eq!(u32_at(&buffer, 24), 1); // diagnostic count
         assert_eq!(u32_at(&buffer, 40), 2); // program end in UTF-16 units
 

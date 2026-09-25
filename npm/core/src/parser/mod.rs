@@ -5,8 +5,13 @@ use swc_next_ecma_ast::{Lang as AstLang, SourceType as AstSourceType};
 /// # Safety
 ///
 /// The caller must ensure that `source` contains valid UTF-8.
-pub unsafe fn parse_sync(source: &[u8], options: Option<ParserOptions>) -> Vec<u8> {
-    unsafe { parse_to_buffer(source, options) }
+/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+pub unsafe fn parse_sync(
+    source: &[u8],
+    source_utf16_len: u32,
+    options: Option<ParserOptions>,
+) -> Vec<u8> {
+    unsafe { parse_to_buffer(source, source_utf16_len, options) }
 }
 
 #[bridge]
