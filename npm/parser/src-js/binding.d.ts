@@ -52,6 +52,11 @@ export declare const enum SourceType {
 }
 export declare function langFromPath(path: string): Lang
 
-export declare function parseSync(source: string, options?: ParserOptions | undefined | null): Buffer
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ */
+export declare function parseSync(source: Buffer, options?: ParserOptions | undefined | null): Buffer
 
 export declare function sourceTypeFromPath(path: string): SourceType

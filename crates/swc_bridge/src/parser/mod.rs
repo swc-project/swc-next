@@ -7,7 +7,11 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
 
 pub use self::options::{CommentMode, Lang, ParserOptions, SourceType};
 
-pub fn parse_to_buffer(source: &str, options: Option<ParserOptions>) -> Vec<u8> {
+/// # Safety
+///
+/// The caller must ensure that `source` contains valid UTF-8.
+pub unsafe fn parse_to_buffer(source: &[u8], options: Option<ParserOptions>) -> Vec<u8> {
+    let source = unsafe { std::str::from_utf8_unchecked(source) };
     let allocator = Allocator::default();
     let result = Parser::init(
         &allocator,

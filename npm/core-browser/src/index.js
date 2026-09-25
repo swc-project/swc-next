@@ -11,6 +11,8 @@ import {
   encodeOptions as encodeCodegenOptions,
 } from "@swc-next/encoder";
 
+const textEncoder = new TextEncoder();
+
 export {
   default,
   CommentMode,
@@ -21,7 +23,9 @@ export {
 } from "./swc-next-core.browser.mjs";
 
 export function parseSync(source, options) {
-  const buffer = __parseSync(source, encodeParserOptions(options));
+  const sourceBuffer = new Uint8Array(source.length * 3);
+  const { written } = textEncoder.encodeInto(source, sourceBuffer);
+  const buffer = __parseSync(sourceBuffer.subarray(0, written), encodeParserOptions(options));
   return decode(buffer, source);
 }
 
