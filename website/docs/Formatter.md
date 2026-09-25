@@ -62,6 +62,11 @@ its own measurement while retaining it for rendering. Only the selected layout
 affects output, indentation, and line suffixes; syntax and comment ownership
 remain unchanged.
 
+## Source and comments
+
+Syntax boundaries give each comment a defined owner. Comments are claimed once
+in source order; an unclaimed comment is an explicit formatting error.
+
 ## Verification
 
 Use local fixtures for representative syntax, comments, options, and widths.
