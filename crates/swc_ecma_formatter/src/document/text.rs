@@ -34,6 +34,27 @@ impl<'a> Text<'a> {
         }
     }
 
+    /// Textual width has no column context and does not prove a flat render view.
+    pub(super) fn clean_width(self) -> Option<usize> {
+        Some(match self.width {
+            Width::Ascii => self.source.len(),
+            Width::Unicode(width) => width as usize,
+            Width::Dynamic => {
+                if self.source.contains(['\r', '\n']) {
+                    return None;
+                }
+                text_width::width(self.source)
+            }
+        })
+    }
+
+    pub(super) fn clean_ascii_width(self) -> Option<usize> {
+        match self.width {
+            Width::Ascii => Some(self.source.len()),
+            _ => None,
+        }
+    }
+
     pub(super) fn first_line(self, column: usize) -> (usize, bool) {
         match self.width {
             Width::Ascii => (column + self.source.len(), false),

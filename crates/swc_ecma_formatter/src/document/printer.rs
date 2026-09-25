@@ -453,6 +453,34 @@ pub(super) fn print(
                 });
                 mode = group_mode;
             }
+            FormatElement::StartGroupWithFlatWidth { width } => {
+                let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
+                let column = output.column + output.pending_gap.reserved_width();
+                let flat = inherit_flat
+                    || column.saturating_add(width) <= usize::from(options.line_width)
+                        && probe.fits(
+                            ProbeRequest {
+                                current: cursor.current,
+                                pending: &cursor.suspended,
+                                continuation: None,
+                                kind: ContinuationProbe::Group(None),
+                                fills: &fills,
+                                entries: &entries,
+                            },
+                            &modes,
+                            &output,
+                            options,
+                            mode,
+                            &group_modes,
+                        );
+                let group_mode = if flat { Mode::Flat } else { Mode::Break };
+                output.record_group_mode(group_mode, inherit_flat);
+                modes.push(GroupState {
+                    mode: group_mode,
+                    restore_mode: mode,
+                });
+                mode = group_mode;
+            }
             FormatElement::EndGroup => {
                 mode = modes
                     .pop()
@@ -838,6 +866,17 @@ impl<'a> Probe<'a> {
                     if *track_groups && let Some(id) = id {
                         group_writes.push((id, group_mode));
                     }
+                }
+                FormatElement::StartGroupWithFlatWidth { width } => {
+                    if mode == Mode::Flat
+                        && column.saturating_add(width) > usize::from(options.line_width)
+                    {
+                        return false;
+                    }
+                    modes.push(GroupState {
+                        mode,
+                        restore_mode: mode,
+                    });
                 }
                 FormatElement::EndGroup => {
                     if let Some(group) = modes.pop() {

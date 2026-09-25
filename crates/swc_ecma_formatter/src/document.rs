@@ -93,6 +93,10 @@ enum FormatElement<'a> {
         effect: BreakEffect,
         id: Option<GroupId>,
     },
+    /// An anonymous Auto group with a lower bound for its own flat contents.
+    StartGroupWithFlatWidth {
+        width: usize,
+    },
     EndGroup,
     FlatGroup(GroupId),
     StartIndent,
@@ -152,6 +156,155 @@ impl<'a> RecordedGroup<'a> {
     }
 }
 
+#[derive(Default)]
+struct CleanTextWidth {
+    width: usize,
+    ascii_width: Option<usize>,
+    unicode: Option<CleanUnicodeText>,
+    pending_space: bool,
+}
+
+#[derive(Clone, Copy)]
+enum CleanUnicodeText {
+    Single(usize),
+    Joined(usize),
+}
+
+fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
+    let mut text = CleanTextWidth {
+        ascii_width: Some(0),
+        ..CleanTextWidth::default()
+    };
+    add_clean_text_width(elements, &mut text)?;
+    let trailing_space = usize::from(text.pending_space);
+    if let Some(width) = text.ascii_width {
+        // This shortcut applies to the complete joined text, including DEL.
+        return Some(width.saturating_add(trailing_space));
+    }
+    let Some(CleanUnicodeText::Joined(bytes)) = text.unicode else {
+        return Some(text.width.saturating_add(trailing_space));
+    };
+    // Clean, non-ASCII text can compose emoji across instruction boundaries.
+    // The synthesized spelling belongs to this measurement, not to the Doc.
+    let mut joined = String::with_capacity(bytes.saturating_add(trailing_space));
+    let mut pending_space = false;
+    append_clean_text(elements, &mut joined, &mut pending_space)?;
+    if pending_space {
+        joined.push(' ');
+    }
+    Some(crate::text_width::width(&joined))
+}
+
+fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidth) -> Option<()> {
+    for element in elements {
+        match *element {
+            FormatElement::Text(part) => {
+                let part_width = part.clean_width()?;
+                let ascii_width = part.clean_ascii_width();
+                let gap = usize::from(text.pending_space);
+                if let Some(unicode) = text.unicode {
+                    let bytes = match unicode {
+                        CleanUnicodeText::Single(bytes) | CleanUnicodeText::Joined(bytes) => bytes,
+                    };
+                    text.unicode = Some(CleanUnicodeText::Joined(
+                        bytes.saturating_add(gap).saturating_add(part.source.len()),
+                    ));
+                } else if ascii_width.is_none() {
+                    // Until this first Unicode part, width also equals byte length.
+                    let bytes = text
+                        .width
+                        .saturating_add(gap)
+                        .saturating_add(part.source.len());
+                    text.unicode = Some(if text.width == 0 {
+                        CleanUnicodeText::Single(bytes)
+                    } else {
+                        CleanUnicodeText::Joined(bytes)
+                    });
+                }
+                text.width = text.width.saturating_add(gap).saturating_add(part_width);
+                text.ascii_width = match (text.ascii_width, ascii_width) {
+                    (Some(width), Some(part_width)) => {
+                        Some(width.saturating_add(gap).saturating_add(part_width))
+                    }
+                    _ => None,
+                };
+                text.pending_space = false;
+            }
+            FormatElement::Space(_) => text.pending_space = true,
+            FormatElement::Fragment(fragment)
+            | FormatElement::FlatFragment(FlatFragment(fragment)) => {
+                if fragment.effect.preferred_breaks() || fragment.conditional_lines {
+                    return None;
+                }
+                add_clean_text_width(fragment.elements, text)?;
+            }
+            _ => return None,
+        }
+    }
+    Some(())
+}
+
+fn append_clean_text(
+    elements: &[FormatElement<'_>],
+    output: &mut String,
+    pending_space: &mut bool,
+) -> Option<()> {
+    for element in elements {
+        match *element {
+            FormatElement::Text(text) => {
+                if *pending_space {
+                    output.push(' ');
+                    *pending_space = false;
+                }
+                output.push_str(text.source);
+            }
+            FormatElement::Space(_) => *pending_space = true,
+            FormatElement::Fragment(fragment)
+            | FormatElement::FlatFragment(FlatFragment(fragment)) => {
+                append_clean_text(fragment.elements, output, pending_space)?;
+            }
+            _ => return None,
+        }
+    }
+    Some(())
+}
+
+/// Measures only direct instructions whose flat mode cannot change before the
+/// scope ends. Leading and trailing gaps are excluded so the result remains a
+/// lower bound regardless of the caller's pending gap.
+fn flat_width(elements: &[FormatElement<'_>]) -> Option<usize> {
+    let mut width = 0usize;
+    let mut has_text = false;
+    let mut pending_space = false;
+    for element in elements {
+        match element {
+            FormatElement::Text(text) | FormatElement::IfFlat(text) => {
+                let text_width = text.clean_ascii_width()?;
+                width = width
+                    .saturating_add(usize::from(has_text && pending_space))
+                    .saturating_add(text_width);
+                has_text = true;
+                pending_space = false;
+            }
+            FormatElement::Space(_) | FormatElement::Line => pending_space = true,
+            FormatElement::SoftLine
+            | FormatElement::IfBreak(_)
+            | FormatElement::StartGroup {
+                effect: BreakEffect(0),
+                id: None,
+            }
+            | FormatElement::EndGroup
+            | FormatElement::StartIndent
+            | FormatElement::StartAbsoluteIndent { .. }
+            | FormatElement::EndIndent
+            | FormatElement::StartAlign { .. }
+            | FormatElement::EndAlign { .. } => {}
+            _ => return None,
+        }
+    }
+    Some(width)
+}
+
 impl<'a> Fragment<'a> {
     /// Whether the normal render path contains a line-breaking opportunity.
     /// Alternatives follow their first candidate, while flat views inspect
@@ -204,6 +357,14 @@ impl<'a> Fragment<'a> {
 
     pub(crate) fn preferred_breaks(self) -> bool {
         self.effect.preferred_breaks()
+    }
+
+    /// Width of a document that reduces to text without observing layout scopes.
+    pub(crate) fn clean_text_width(self) -> Option<usize> {
+        if self.effect.preferred_breaks() || self.conditional_lines {
+            return None;
+        }
+        clean_text_width(self.elements)
     }
 
     /// Measures this complete scope without changing its retained render view.
@@ -267,6 +428,7 @@ impl FragmentCapabilities {
                     effect: BreakEffect(0),
                     id: None,
                 }
+                | FormatElement::StartGroupWithFlatWidth { .. }
                 | FormatElement::EndGroup => continue,
                 FormatElement::Fragment(fragment) => match fragment.capabilities {
                     Self::Neutral => continue,
