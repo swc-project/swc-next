@@ -239,6 +239,192 @@ fn flat_width_document(width: u16, write: impl FnOnce(&mut Writer<'_>)) -> Strin
     })
 }
 
+fn flat_width_layout(width: u16) -> String {
+    flat_width_document(width, |writer| {
+        writer.group(false, |writer| {
+            writer.text("return");
+            writer.space();
+            writer.group_with_flat_width(|writer| {
+                writer.if_break("(");
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    writer.group(false, |writer| {
+                        writer.text("first");
+                        writer.line();
+                        writer.text("second");
+                    });
+                });
+                writer.soft_line();
+                writer.if_break(")");
+            });
+            writer.text(";");
+        });
+    })
+}
+
+#[test]
+fn prepared_group_layouts() {
+    assert_eq!(flat_width_layout(20), "return first second;");
+
+    assert_eq!(flat_width_layout(19), "return (\n  first second\n);");
+
+    assert_eq!(flat_width_layout(14), "return (\n  first second\n);");
+
+    assert_eq!(flat_width_layout(13), "return (\n  first\n  second\n);");
+}
+
+fn flat_width_gaps(reserved: bool) -> String {
+    flat_width_document(5, |writer| {
+        writer.text("a");
+        if reserved {
+            writer.reserved_space();
+        } else {
+            writer.space();
+        }
+        writer.group_with_flat_width(|writer| {
+            writer.space();
+            writer.reserved_space();
+            writer.if_break("(");
+            writer.text("b");
+            writer.space();
+            writer.reserved_space();
+            writer.space();
+            writer.text("c");
+            writer.space();
+            writer.if_break(")");
+        });
+        writer.hard_line();
+        writer.text("d");
+    })
+}
+
+#[test]
+fn prepared_group_gaps() {
+    assert_eq!(flat_width_gaps(false), "a b c\nd");
+
+    assert_eq!(flat_width_gaps(true), "a b c\nd");
+
+    let empty_leading = flat_width_document(4, |writer| {
+        writer.text("a");
+        writer.reserved_space();
+        writer.group_with_flat_width(|writer| {
+            writer.if_flat("");
+            writer.space();
+            writer.if_break("(");
+            writer.text("b");
+            writer.if_break(")");
+        });
+        writer.hard_line();
+        writer.text("c");
+    });
+    assert_eq!(empty_leading, "a  b\nc");
+
+    let empty_middle = flat_width_document(4, |writer| {
+        writer.group_with_flat_width(|writer| {
+            writer.if_break("(");
+            writer.text("a");
+            writer.space();
+            writer.if_flat("");
+            writer.space();
+            writer.text("b");
+            writer.if_break(")");
+        });
+    });
+    assert_eq!(empty_middle, "a  b");
+
+    let empty_trailing = flat_width_document(3, |writer| {
+        writer.text("a");
+        writer.space();
+        writer.group_with_flat_width(|writer| {
+            writer.if_break("(");
+            writer.text("b");
+            writer.space();
+            writer.if_flat("");
+            writer.if_break(")");
+        });
+        writer.hard_line();
+        writer.text("c");
+    });
+    assert_eq!(empty_trailing, "a (b )\nc");
+}
+
+fn flat_width_text(text: &str, width: u16) -> String {
+    flat_width_document(width, |writer| {
+        writer.text("a");
+        writer.space();
+        writer.group_with_flat_width(|writer| {
+            writer.if_break("(");
+            writer.indent(|writer| {
+                writer.soft_line();
+                writer.text_copied(text);
+            });
+            writer.soft_line();
+            writer.if_break(")");
+        });
+        writer.text(";");
+    })
+}
+
+#[test]
+fn prepared_group_columns() {
+    assert_eq!(flat_width_text("世界", 7), "a 世界;");
+
+    assert_eq!(flat_width_text("世界", 6), "a (\n  世界\n);");
+
+    assert_eq!(flat_width_text("a\tb", 5), "a a\tb;");
+
+    assert_eq!(flat_width_text("a\tb", 4), "a (\n  a\tb\n);");
+
+    assert_eq!(flat_width_text("a\u{7f}b", 6), "a a\u{7f}b;");
+
+    assert_eq!(flat_width_text("a\u{7f}b", 5), "a (\n  a\u{7f}b\n);");
+}
+
+#[test]
+fn prepared_group_fallbacks() {
+    let hard_line = flat_width_document(2, |writer| {
+        writer.group_with_flat_width(|writer| {
+            writer.text("a");
+            writer.hard_line();
+            writer.text("long");
+        });
+    });
+    assert_eq!(hard_line, "a\nlong");
+
+    let named = flat_width_document(3, |writer| {
+        writer.group_with_flat_width(|writer| {
+            let group = writer.named_group(false, |writer| {
+                writer.text("aa");
+                writer.line();
+                writer.text("bb");
+            });
+            writer.indent_if_break(group, |writer| {
+                writer.soft_line_if_break(group);
+                writer.text("c");
+            });
+        });
+    });
+    assert_eq!(named, "aa\nbb\n  c");
+}
+
+#[test]
+fn prepared_group_flat_views() {
+    let flat = flat_width_document(4, |writer| {
+        let fragment = record(writer, |writer| {
+            writer.group_with_flat_width(|writer| {
+                writer.if_break("(");
+                writer.text("first");
+                writer.line();
+                writer.if_flat("second");
+                writer.if_break(")");
+            });
+        });
+        writer.text("prefix ");
+        writer.write_flat_fragment(fragment.try_flat().unwrap());
+    });
+    assert_eq!(flat, "prefix first second");
+}
+
 fn probe_line_continuation(hard: bool) -> String {
     flat_width_document(3, |writer| {
         writer.group(false, |writer| {
@@ -885,6 +1071,76 @@ fn display_columns() {
     assert_eq!(pair_document("é", "a", 7), "[é, a];");
 
     assert_eq!(pair_document("é", "a", 6), "[\n  é,\n  a,\n];");
+}
+
+fn clean_parts_width(parts: &[&str]) -> Option<usize> {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer
+        .write_with_clean_text_width(|writer| {
+            for part in parts {
+                writer.text(*part);
+            }
+            Ok::<_, ()>(())
+        })
+        .unwrap()
+}
+
+#[test]
+fn complete_text_measurement() {
+    assert_eq!(clean_parts_width(&["ASCII", "\u{7f}"]), Some(6));
+    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(1));
+    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(2));
+    assert_eq!(clean_parts_width(&["👩", "\u{200d}", "💻"]), Some(2));
+    assert_eq!(clean_parts_width(&["©", "\u{fe0f}"]), Some(2));
+    assert_eq!(clean_parts_width(&["🇺", "🇸"]), Some(2));
+    assert_eq!(clean_parts_width(&["é", "\n"]), None);
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let middle = record(&mut writer, |writer| writer.text("\u{200d}"));
+    let width = writer
+        .write_with_clean_text_width(|writer| {
+            writer.text("👩");
+            writer.write_fragment(middle);
+            writer.text("💻");
+            Ok::<_, ()>(())
+        })
+        .unwrap();
+    assert_eq!(width, Some(2));
+
+    let text = record(&mut writer, |writer| writer.text("👩\u{200d}💻"));
+    assert_eq!(text.clean_text_width(), Some(2));
+
+    let expanded = writer.group_fragment(true, text);
+    assert_eq!(expanded.clean_text_width(), None);
+}
+
+#[test]
+fn cached_text_columns() {
+    assert_eq!(pair_document("لا", "a", 8), "[لا, a];");
+    assert_eq!(pair_document("لا", "a", 7), "[\n  لا,\n  a,\n];");
+    assert_eq!(pair_document("a\u{200d}bcd", "a", 11), "[a\u{200d}bcd, a];");
+    assert_eq!(
+        pair_document("a\u{200d}bcd", "a", 10),
+        "[\n  a\u{200d}bcd,\n  a,\n];"
+    );
+    assert_eq!(pair_document("a\u{7f}b", "a", 9), "[a\u{7f}b, a];");
+    assert_eq!(
+        pair_document("a\u{7f}b", "a", 8),
+        "[\n  a\u{7f}b,\n  a,\n];"
+    );
+    assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
+
+    let tab = super::text::Text::new("a\u{7f}\té");
+    assert_eq!(tab.clean_width(), Some(2));
+    assert_eq!(tab.first_line(0), (2, false));
+    assert_eq!(tab.last_line(0), (2, false));
+
+    let lines = super::text::Text::new("é\r\n\u{7f}b");
+    assert_eq!(lines.clean_width(), None);
+    assert_eq!(lines.first_line(0), (1, true));
+    assert_eq!(lines.last_line(0), (1, true));
 }
 
 #[test]
@@ -2479,6 +2735,72 @@ fn remeasured_value(writer: &mut Writer<'_>) {
     writer.text("}");
 }
 
+fn remeasurement_document(
+    write_line: impl FnOnce(&mut Writer<'_>),
+    fill: bool,
+    bounded: bool,
+) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let line = record(&mut writer, write_line);
+    let line = super::Fragment {
+        effect: super::BreakEffect::default(),
+        ..line
+    };
+    writer.group(false, |writer| {
+        writer.text("head");
+        writer.write_fragment(line);
+        let value = |writer: &mut Writer<'_>| {
+            if bounded {
+                writer.group_with_flat_width(remeasured_value);
+            } else {
+                writer.group(false, remeasured_value);
+            }
+        };
+        if fill {
+            writer.fill(|writer| writer.fill_entry(value));
+        } else {
+            value(writer);
+        }
+        writer.text(" tail");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: 12,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn forced_line_remeasurement() {
+    assert_eq!(
+        remeasurement_document(|writer| writer.hard_line(), false, false),
+        "head\n{\n  longName\n} tail"
+    );
+
+    assert_eq!(
+        remeasurement_document(|writer| writer.literal_line(), false, false),
+        "head\n{\n  longName\n} tail"
+    );
+
+    assert_eq!(
+        remeasurement_document(|writer| writer.text("\n"), false, false),
+        "head\n{\n  longName\n} tail"
+    );
+
+    assert_eq!(
+        remeasurement_document(|writer| writer.hard_line(), false, true),
+        "head\n{\n  longName\n} tail"
+    );
+}
+
+#[test]
+fn fill_measurement_boundaries() {
+    assert_eq!(
+        remeasurement_document(|writer| writer.literal_line(), true, false),
+        "head\n{\n  longName\n} tail"
+    );
+}
+
 fn remeasured_fill_continuation(depth: u8) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -2672,37 +2994,4 @@ fn fill_measurement_invalidation() {
     );
 
     assert_eq!(remeasured_fill_after_measurement(), "first\na force\n{}");
-}
-
-fn remeasurement_document(write_line: impl FnOnce(&mut Writer<'_>)) -> String {
-    let allocator = Allocator::new();
-    let mut writer = Writer::new(&allocator);
-    writer.group(false, |writer| {
-        writer.text("head");
-        write_line(writer);
-        writer.group(false, remeasured_value);
-        writer.text(" tail");
-    });
-    writer.finish().print(FormatOptions {
-        line_width: 12,
-        ..FormatOptions::prettier()
-    })
-}
-
-#[test]
-fn forced_line_remeasurement() {
-    assert_eq!(
-        remeasurement_document(|writer| writer.text("\n")),
-        "head\n{\n  longName\n} tail"
-    );
-
-    assert_eq!(
-        remeasurement_document(|writer| writer.hard_line()),
-        "head\n{\n  longName\n} tail"
-    );
-
-    assert_eq!(
-        remeasurement_document(|writer| writer.literal_line()),
-        "head\n{\n  longName\n} tail"
-    );
 }

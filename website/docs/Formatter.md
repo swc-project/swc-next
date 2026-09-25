@@ -33,6 +33,35 @@ The printer does not interpret AST nodes or recover missing syntax handling.
 Document shape need not match Prettier's internal representation; printed output
 is the compatibility boundary.
 
+## Ownership and document protocol
+
+Typed AST handles and borrowed source stay tied to their backing storage.
+Document text remains valid until printing finishes. Construction and printing
+have separate mutable state.
+
+Generated text belongs to one formatting call and outlives document printing.
+It does not retain formatter allocations in the caller's AST.
+
+Doc construction owns flat instruction buffers. Finishing construction transfers
+the completed instructions to an immutable document.
+
+Group and indentation scopes form a paired layout protocol. Normal expansion
+retains its source preference or required cause, distinct from candidate
+measurement. Recorded views retain their syntax scope's layout owner.
+Fill entry bounds are relative to the entry, so complete recorded scopes keep
+their meaning when viewed or replayed from a different slice origin.
+
+Retained layout candidates freeze complete scopes in storage owned by the
+formatting call. Candidates and grouped or ungrouped views borrow the same
+immutable instructions, preserving required breaks, suffixes, and named scopes.
+Syntax and comments are consumed once, before the printer selects a candidate.
+
+Fit probes use the available width and remaining document without committing
+tentative state to printing. A candidate can ignore source-only expansion during
+its own measurement while retaining it for rendering. Only the selected layout
+affects output, indentation, and line suffixes; syntax and comment ownership
+remain unchanged.
+
 ## Verification
 
 Use local fixtures for representative syntax, comments, options, and widths.
@@ -44,6 +73,9 @@ behavioral checks.
 The pinned conformance corpus reports output mismatches, unsupported syntax,
 parse errors, panics, and idempotency separately. Unsupported programs remain
 visible while syntax support grows.
+
+Document tests verify layout independently of syntax. Report and snapshot
+changes are reviewed with their implementation.
 
 Performance comparisons use equivalent inputs, options, and builds.
 Formatter-only measurements reuse parsed ASTs; source-to-output measurements
