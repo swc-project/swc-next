@@ -656,6 +656,125 @@ fn group_breaks() {
     );
 }
 
+fn reserved_continuation(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("(");
+        writer.indent(|writer| {
+            writer.soft_line();
+            writer.text("aaa");
+        });
+        writer.soft_line();
+        writer.text(")");
+    });
+    writer.reserved_space();
+    writer.soft_line();
+    writer.text("rest");
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn reserved_fill(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("aa");
+    writer.reserved_space();
+    writer.fill(|writer| {
+        writer.fill_entry(|writer| writer.text("b"));
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("c"));
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn reserved_candidate(width: u16, canonical: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let candidate = record(&mut writer, |writer| {
+        writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+            writer.soft_line();
+            writer.text("b");
+        });
+    });
+    let fallback = record(&mut writer, |writer| writer.text("F"));
+    writer.text("aaa");
+    writer.reserved_space();
+    if canonical {
+        writer.write_canonical_alternatives(
+            candidate,
+            &[candidate.canonical_candidate()],
+            fallback,
+        );
+    } else {
+        writer.write_alternatives(candidate, &[candidate], fallback);
+    }
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn reserved_gap_measurement() {
+    assert_eq!(reserved_continuation(6), "(aaa)\nrest");
+
+    assert_eq!(reserved_continuation(5), "(\n  aaa\n)\nrest");
+
+    assert_eq!(reserved_fill(6), "aa b c");
+
+    assert_eq!(reserved_fill(5), "aa b\nc");
+
+    assert_eq!(reserved_candidate(5, true), "aaa\nb");
+
+    assert_eq!(reserved_candidate(4, true), "aaa F");
+
+    assert_eq!(reserved_candidate(4, false), "aaa\nb");
+
+    assert_eq!(reserved_candidate(3, false), "aaa F");
+}
+
+fn reserved_retry_continuation(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let first = record(&mut writer, |writer| {
+        writer.text("x");
+        writer.reserved_space();
+        writer.text("too long");
+    });
+    let second = record(&mut writer, |writer| {
+        writer.text("b");
+        writer.reserved_space();
+    });
+    let fallback = record(&mut writer, |writer| writer.text("F"));
+    writer.text("a");
+    writer.reserved_space();
+    writer.write_alternatives(first, &[first, second], fallback);
+    writer.group(false, |writer| {
+        writer.soft_line();
+        writer.if_flat("c");
+        writer.if_break("C");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn reserved_gap_selection_boundaries() {
+    assert_eq!(reserved_retry_continuation(5), "a b c");
+
+    assert_eq!(reserved_retry_continuation(4), "a b\nC");
+
+    assert_eq!(reserved_retry_continuation(3), "a F\nC");
+}
+
 #[test]
 fn reserved_gap_rendering() {
     let allocator = Allocator::new();
@@ -1213,6 +1332,53 @@ fn retained_fill_suffixes() {
     assert_eq!(retained_fill_suffix(5, true), ">\naa\nbb!\naa\nbb!");
 }
 
+fn rejected_candidate(options: FormatOptions, alternatives: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (preferred, first) = writer
+        .record_with_value(|writer| {
+            let group = writer.named_group(false, |writer| {
+                writer.text("a");
+                writer.indent(|writer| {
+                    writer.align(3, |writer| {
+                        writer.line_suffix("// rejected");
+                        writer.text("too wide for the available line");
+                        writer.hard_line();
+                        writer.text("unselected");
+                    })
+                });
+            });
+            Ok::<_, std::convert::Infallible>(group)
+        })
+        .unwrap();
+    let (fallback, selected) = writer
+        .record_with_value(|writer| {
+            let group = writer.named_group(true, |writer| {
+                writer.text("a");
+                writer.indent(|writer| {
+                    writer.line();
+                    writer.text("b");
+                });
+            });
+            Ok::<_, std::convert::Infallible>(group)
+        })
+        .unwrap();
+    if alternatives {
+        writer.write_alternatives(preferred, &[preferred], fallback);
+    } else {
+        writer.write_fragment(fallback);
+    }
+    writer.indent_if_break(first, |writer| {
+        writer.hard_line();
+        writer.text("first");
+    });
+    writer.indent_if_break(selected, |writer| {
+        writer.hard_line();
+        writer.text("selected");
+    });
+    writer.finish().print(options)
+}
+
 #[test]
 fn retained_scopes() {
     assert_eq!(retained_pair(9), "[aa, bb];");
@@ -1222,6 +1388,536 @@ fn retained_scopes() {
     assert_eq!(retained_fill(20), "prefix:\n[a, b] x y");
 
     assert_eq!(retained_fill(6), "prefix:\n[a, b]\nx\ny");
+}
+
+#[test]
+fn candidate_state() {
+    let narrow = FormatOptions {
+        line_width: 8,
+        ..FormatOptions::prettier()
+    };
+    assert_eq!(
+        rejected_candidate(narrow, true),
+        "a\n  b\nfirst\n  selected"
+    );
+    assert_eq!(
+        rejected_candidate(narrow, true),
+        rejected_candidate(narrow, false)
+    );
+
+    let tabs = FormatOptions {
+        indent_style: IndentStyle::Tab,
+        ..narrow
+    };
+    assert_eq!(rejected_candidate(tabs, true), "a\n\tb\nfirst\n\tselected");
+    assert_eq!(
+        rejected_candidate(tabs, true),
+        rejected_candidate(tabs, false)
+    );
+}
+
+fn source_break_fill() -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let fragment = record(&mut writer, |writer| {
+        writer.text("// required");
+        writer.break_parent();
+        writer.soft_line();
+        writer.text("next");
+    });
+    writer.group(false, |writer| {
+        writer.fill(|writer| {
+            writer.fill_entry(|writer| writer.write_fragment(fragment));
+            writer.fill_entry(Writer::line);
+            writer.fill_entry(|writer| writer.text("tail"));
+        });
+    });
+    writer.finish().print(FormatOptions::prettier())
+}
+
+fn source_break_candidate(expanded: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let preferred = record(&mut writer, |writer| {
+        let contents = |writer: &mut Writer<'_>| {
+            writer.text("// required");
+            writer.break_parent();
+            writer.soft_line();
+            writer.text("next");
+        };
+        if expanded {
+            writer.group(true, |writer| {
+                contents(writer);
+                writer.if_break(" broken");
+            });
+        } else {
+            contents(writer);
+        }
+    });
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.group(false, |writer| {
+        writer.write_alternatives(preferred, &[preferred], fallback)
+    });
+    writer.finish().print(FormatOptions::prettier())
+}
+
+#[test]
+fn retained_flat_scopes() {
+    assert_eq!(source_break_fill(), "// required\nnext\ntail");
+
+    assert_eq!(source_break_candidate(false), "fallback");
+
+    assert_eq!(source_break_candidate(true), "// required\nnext broken");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let mandatory = record(&mut writer, |writer| {
+        writer.text("a");
+        writer.hard_line();
+        writer.text("b");
+    });
+    assert!(mandatory.try_flat().is_none());
+    let literal = record(&mut writer, |writer| writer.literal_text("a\nb"));
+    assert!(literal.try_flat().is_none());
+    let raw = record(&mut writer, |writer| writer.text("a\nb"));
+    assert!(raw.try_flat().is_none());
+
+    let carriage_return = record(&mut writer, |writer| writer.text("a\rb"));
+    assert!(carriage_return.try_flat().is_none());
+
+    let line_separator = record(&mut writer, |writer| writer.text("a\u{2028}b"));
+    assert!(line_separator.try_flat().is_none());
+
+    let paragraph_separator = record(&mut writer, |writer| writer.text("a\u{2029}b"));
+    assert!(paragraph_separator.try_flat().is_none());
+
+    let unicode = record(&mut writer, |writer| writer.text("宽文字"));
+    assert!(unicode.try_flat().is_some());
+
+    let tab = record(&mut writer, |writer| writer.text("a\tb"));
+    assert!(tab.try_flat().is_some());
+
+    let suffix = record(&mut writer, |writer| {
+        writer.text("a");
+        writer.line_suffix("// kept");
+        writer.line();
+        writer.text("b");
+    });
+    assert!(suffix.try_flat().is_none());
+    let source_break = record(&mut writer, |writer| {
+        writer.group(false, |writer| {
+            writer.text("// required line");
+            writer.break_parent();
+            writer.soft_line();
+            writer.text("next");
+        })
+    });
+    assert!(source_break.try_flat().is_none());
+    let compact = record(&mut writer, |writer| write_pair(writer, "a", "b"));
+    let choices = record(&mut writer, |writer| {
+        writer.write_alternatives(compact, &[compact], mandatory)
+    });
+    let flat = choices.try_flat().unwrap();
+    writer.group(false, |writer| {
+        writer.text("before");
+        writer.line();
+        writer.write_flat_fragment(flat);
+        writer.line();
+        writer.text("after");
+    });
+    writer.hard_line();
+    writer.write_fragment(mandatory);
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "before [a, b] after\na\nb"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let preferred = record(&mut writer, |writer| write_pair(writer, "first", "second"));
+    let fallback = record(&mut writer, |writer| {
+        writer.text("fallback");
+        writer.hard_line();
+        writer.text("break");
+    });
+    writer.flat(|writer| writer.write_alternatives(preferred, &[preferred], fallback));
+    assert_eq!(
+        writer.finish().print(FormatOptions {
+            line_width: 3,
+            ..FormatOptions::prettier()
+        }),
+        "[first, second]"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let first = record(&mut writer, |writer| {
+        writer.text("required");
+        writer.hard_line();
+        writer.text("line");
+    });
+    let fallback = record(&mut writer, |writer| writer.text("flat"));
+    let choices = record(&mut writer, |writer| {
+        writer.write_alternatives(first, &[first], fallback)
+    });
+    assert!(choices.try_flat().is_none());
+    writer.flat(|writer| writer.write_fragment(choices));
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "required\nline"
+    );
+}
+
+fn choice_continuation(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let preferred = record(&mut writer, |writer| writer.text("abc"));
+    let fallback = record(&mut writer, |writer| {
+        writer.group(true, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.text("b");
+        })
+    });
+    let choices = record(&mut writer, |writer| {
+        writer.write_alternatives(preferred, &[preferred], fallback)
+    });
+    writer.group(false, |writer| {
+        writer.write_fragment(choices);
+        writer.line();
+        writer.if_flat("flat");
+        writer.if_break("broken");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn candidate_continuation() {
+    assert_eq!(choice_continuation(8), "abc flat");
+    assert_eq!(choice_continuation(7), "abc\nbroken");
+    assert_eq!(choice_continuation(2), "a\nb\nbroken");
+}
+
+fn named_line_reuse(alternatives: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (signature, group) = writer
+        .record_with_value(|writer| {
+            let group = writer.named_group(false, |writer| {
+                writer.text("a");
+                writer.line();
+                writer.text("b");
+            });
+            Ok::<_, std::convert::Infallible>(group)
+        })
+        .unwrap();
+    writer.text("123456");
+    writer.write_fragment(signature);
+    writer.hard_line();
+    let fallback = record(&mut writer, |writer| {
+        writer.write_fragment(signature);
+        writer.soft_line_if_break(group);
+        writer.text("123456");
+    });
+    if alternatives {
+        let preferred = record(&mut writer, |writer| writer.text("rejected candidate"));
+        writer.write_alternatives(preferred, &[preferred], fallback);
+    } else {
+        writer.write_fragment(fallback);
+    }
+    writer.finish().print(FormatOptions {
+        line_width: 8,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn named_line_scopes() {
+    assert_eq!(named_line_reuse(false), "123456a\nb\na\nb\n123456");
+    assert_eq!(named_line_reuse(true), named_line_reuse(false));
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (named, id) = writer
+        .record_with_value(|writer| {
+            let id = writer.named_group(false, |writer| writer.text("a"));
+            Ok::<_, std::convert::Infallible>(id)
+        })
+        .unwrap();
+    writer.group(true, |writer| {
+        writer.write_fragment(named);
+        writer.soft_line_if_break(id);
+        writer.text("b");
+    });
+    let fragment = record(&mut writer, |writer| {
+        writer.named_group(true, |writer| writer.text("c"));
+        writer.soft_line_if_break(id);
+    });
+    writer.write_flat_fragment(fragment.try_flat().unwrap());
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "abc");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let id = writer.named_group(true, |writer| writer.text("a"));
+    writer.group(false, |writer| {
+        writer.soft_line_if_break(id);
+        writer.text("b");
+    });
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "ab");
+}
+
+#[test]
+fn alternative_expansion_boundaries() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let preferred = record(&mut writer, |writer| {
+        writer.group(true, |writer| {
+            writer.text("body");
+            writer.line();
+            writer.text("value");
+        });
+    });
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    let scope = record(&mut writer, |writer| {
+        writer.write_alternatives(fallback, &[preferred], fallback)
+    });
+    assert!(preferred.preferred_breaks());
+    assert!(!scope.preferred_breaks());
+    writer.group(false, |writer| {
+        writer.text("head ");
+        writer.if_flat("F");
+        writer.write_fragment(scope);
+        writer.if_current_flat(" tail");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "head Fbody\nvalue tail"
+    );
+
+    let mut writer = Writer::new(&allocator);
+    let normal = preferred;
+    let inherited = record(&mut writer, |writer| {
+        writer.write_alternatives(normal, &[normal], fallback);
+    });
+    assert!(inherited.preferred_breaks());
+    let flat = inherited
+        .try_flat()
+        .expect("expansion metadata permits a flat view");
+    writer.write_flat_fragment(flat);
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "body value"
+    );
+}
+
+fn write_preserved_pair(writer: &mut Writer<'_>) {
+    writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.text("bbb");
+    });
+}
+
+fn canonical_group_document(request: GroupRequest, width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let candidate = record(&mut writer, |writer| {
+        writer.group_with_request(request, |writer| {
+            writer.group(false, write_preserved_pair);
+        });
+    });
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn canonical_group_scopes() {
+    assert_eq!(canonical_group_document(GroupRequest::Auto, 4), "fallback");
+
+    assert_eq!(canonical_group_document(GroupRequest::Auto, 5), "a\nbbb");
+
+    assert_eq!(
+        canonical_group_document(GroupRequest::Expanded, 4),
+        "a\nbbb"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+        write_preserved_pair(writer);
+        writer.line();
+        write_preserved_pair(writer);
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a\nbbb\na\nbbb"
+    );
+}
+
+fn canonical_named_document(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (candidate, id) = writer
+        .record_with_value(|writer| {
+            let id = writer.group(false, |writer| {
+                let id = writer.named_group_with_request(GroupRequest::PreserveSource, |writer| {
+                    writer.text("a");
+                    writer.line();
+                    writer.if_flat("ffff");
+                    writer.if_break("b");
+                });
+                writer.soft_line_if_break(id);
+                writer.text("cc");
+                id
+            });
+            Ok::<_, std::convert::Infallible>(id)
+        })
+        .unwrap();
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.indent_if_break(id, |writer| {
+        writer.hard_line();
+        writer.text("after");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn canonical_named_scopes() {
+    assert_eq!(canonical_named_document(8), "a\nb\ncc\n  after");
+
+    assert_eq!(canonical_named_document(7), "fallback\nafter");
+}
+
+fn canonical_nested_alternative(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let preserved = record(&mut writer, write_preserved_pair);
+    let unused = record(&mut writer, |writer| writer.text("unused"));
+    let candidate = record(&mut writer, |writer| {
+        writer.group(false, |writer| {
+            writer.write_alternatives(preserved, &[preserved], unused);
+        });
+    });
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn canonical_continuation(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let candidate = record(&mut writer, |writer| writer.text("aaa"));
+    let fallback = record(&mut writer, |writer| writer.text("k"));
+    let continuation = record(&mut writer, |writer| {
+        writer.if_current_break("!");
+        writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+            writer.text("x");
+            writer.line();
+            writer.text("long value");
+        });
+    });
+    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.write_fragment(continuation);
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn canonical_choice_continuation() -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let first = record(&mut writer, |writer| writer.text("aaa"));
+    let first_fallback = record(&mut writer, |writer| writer.text("k"));
+    let second = record(&mut writer, write_preserved_pair);
+    let normal = record(&mut writer, |writer| writer.text("a"));
+    let second_fallback = record(&mut writer, |writer| writer.text("z"));
+    writer.group(false, |writer| {
+        writer.write_canonical_alternatives(first, &[first.canonical_candidate()], first_fallback);
+        writer.write_canonical_alternatives(
+            normal,
+            &[second.canonical_candidate()],
+            second_fallback,
+        );
+    });
+    writer.finish().print(FormatOptions {
+        line_width: 4,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn canonical_candidate_boundaries() {
+    assert_eq!(canonical_nested_alternative(4), "fallback");
+
+    assert_eq!(canonical_nested_alternative(5), "a\nbbb");
+
+    assert_eq!(canonical_continuation(5), "aaa!x\nlong value");
+
+    assert_eq!(canonical_continuation(4), "k!x\nlong value");
+
+    assert_eq!(canonical_choice_continuation(), "aaaz");
+}
+
+fn canonical_fill_document() -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let candidate = record(&mut writer, write_preserved_pair);
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.fill(|writer| {
+        writer.fill_entry(|writer| {
+            writer.write_canonical_alternatives(
+                candidate,
+                &[candidate.canonical_candidate()],
+                fallback,
+            );
+            writer.if_current_flat("F");
+            writer.if_current_break("B");
+        });
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("z"));
+    });
+    writer.finish().print(FormatOptions::prettier())
+}
+
+fn canonical_display_group() -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let candidate = record(&mut writer, write_preserved_pair);
+    let normal = record(&mut writer, |writer| writer.text("a"));
+    let fallback = record(&mut writer, |writer| writer.text("f"));
+    writer.group(false, |writer| {
+        writer.if_flat("F");
+        writer.if_break("B");
+        writer.write_canonical_alternatives(normal, &[candidate.canonical_candidate()], fallback);
+        writer.line();
+        writer.text("tail");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: 8,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn canonical_display_probes() {
+    assert_eq!(canonical_fill_document(), "a\nbbbB\nz");
+
+    assert_eq!(canonical_display_group(), "Ff tail");
 }
 
 #[test]

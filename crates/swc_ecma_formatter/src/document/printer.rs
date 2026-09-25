@@ -1,6 +1,6 @@
 //! Interpretation of flat formatting instructions and bounded fit probes.
 
-use super::{FormatElement, SpaceKind, text::Text};
+use super::{FormatElement, Measurement, SpaceKind, text::Text};
 use crate::{FormatOptions, IndentStyle};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -27,6 +27,7 @@ trait ProbeKind {
 
 enum ContinuationProbe {
     Group(Option<super::GroupId>),
+    Candidate,
 }
 
 impl ProbeKind for ContinuationProbe {
@@ -86,6 +87,7 @@ struct Frame<'a> {
     remaining: &'a [FormatElement<'a>],
     flat: bool,
     restore_mode: Option<Mode>,
+    measurement: Measurement,
 }
 
 impl<'a> Frame<'a> {
@@ -94,6 +96,7 @@ impl<'a> Frame<'a> {
             remaining: elements,
             flat: false,
             restore_mode: None,
+            measurement: Measurement::Display,
         }
     }
 
@@ -151,10 +154,12 @@ struct ProbeCursor<'a, 'scratch> {
 
 impl<'a> ProbeCursor<'a, '_> {
     fn enter(&mut self, elements: &'a [FormatElement<'a>], flat: bool, restore_mode: Option<Mode>) {
+        let measurement = self.current.measurement;
         self.frames.push(self.current);
         self.current = Frame {
             flat,
             restore_mode,
+            measurement,
             ..Frame::new(elements)
         };
     }
@@ -334,6 +339,41 @@ pub(super) fn print(
         match element {
             FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
             FormatElement::FlatFragment(fragment) => cursor.enter(fragment.0.elements, true, None),
+            FormatElement::Alternatives(alternatives)
+            | FormatElement::CanonicalAlternatives(alternatives) => {
+                let measurement = match element {
+                    FormatElement::CanonicalAlternatives(_) => Measurement::Canonical,
+                    _ => Measurement::Display,
+                };
+                let selected = alternatives.preferred.iter().find(|fragment| {
+                    probe.fits(
+                        ProbeRequest {
+                            current: Frame {
+                                restore_mode: Some(mode),
+                                measurement,
+                                ..Frame::new(fragment.elements)
+                            },
+                            pending: &cursor.suspended,
+                            continuation: Some(cursor.current),
+                            kind: ContinuationProbe::Candidate,
+                            fills: &fills,
+                            entries: &entries,
+                        },
+                        &modes,
+                        &output,
+                        options,
+                        mode,
+                        &group_modes,
+                    )
+                });
+                let (fragment, selected_mode) = selected
+                    .map_or((alternatives.fallback, Mode::Break), |fragment| {
+                        (*fragment, Mode::Flat)
+                    });
+                output.record_group_mode(selected_mode, false);
+                cursor.enter(fragment.elements, false, Some(mode));
+                mode = selected_mode;
+            }
             FormatElement::SoftLineIfBreak(id) => {
                 if group_modes[id.0] == Mode::Break && mode == Mode::Break {
                     flush_suffixes(&mut suffixes, &mut output, options, mode);
@@ -782,7 +822,10 @@ impl<'a> Probe<'a> {
                 | FormatElement::HardLine
                 | FormatElement::LiteralLine => return true,
                 FormatElement::StartGroup { effect, id } => {
-                    let expand = effect.preferred_breaks();
+                    let expand = match cursor.current.measurement {
+                        Measurement::Display => effect.preferred_breaks(),
+                        Measurement::Canonical => effect.required(),
+                    };
                     if expand && K::BOUNDED {
                         return false;
                     }
@@ -812,6 +855,15 @@ impl<'a> Probe<'a> {
                 FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
                 FormatElement::FlatFragment(fragment) => {
                     cursor.enter(fragment.0.elements, true, None)
+                }
+                FormatElement::Alternatives(alternatives)
+                | FormatElement::CanonicalAlternatives(alternatives) => {
+                    let fragment = if mode == Mode::Flat {
+                        alternatives.first()
+                    } else {
+                        alternatives.fallback
+                    };
+                    cursor.enter(fragment.elements, false, Some(mode));
                 }
                 FormatElement::SoftLineIfBreak(id) => {
                     if mode == Mode::Flat {

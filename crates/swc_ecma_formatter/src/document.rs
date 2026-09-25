@@ -55,6 +55,16 @@ impl BreakEffect {
     fn preferred_breaks(self) -> bool {
         self.0 != 0
     }
+
+    fn required(self) -> bool {
+        self.0 & Self::REQUIRED.0 != 0
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Measurement {
+    Display,
+    Canonical,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -106,6 +116,8 @@ enum FormatElement<'a> {
     EndEntry,
     Fragment(Fragment<'a>),
     FlatFragment(FlatFragment<'a>),
+    Alternatives(&'a Alternatives<'a>),
+    CanonicalAlternatives(&'a Alternatives<'a>),
 }
 
 /// A complete immutable scope, owned by the current formatting call.
@@ -141,12 +153,25 @@ impl<'a> RecordedGroup<'a> {
 }
 
 impl<'a> Fragment<'a> {
+    pub(crate) fn preferred_breaks(self) -> bool {
+        self.effect.preferred_breaks()
+    }
+
+    /// Measures this complete scope without changing its retained render view.
+    pub(crate) fn canonical_candidate(self) -> CanonicalCandidate<'a> {
+        CanonicalCandidate(self)
+    }
+
     pub(crate) fn try_flat(self) -> Option<FlatFragment<'a>> {
         self.capabilities
             .permits_flat()
             .then_some(FlatFragment(self))
     }
 }
+
+/// A zero-copy measurement request, distinct from a printed Flat projection.
+#[derive(Clone, Copy)]
+pub(crate) struct CanonicalCandidate<'a>(Fragment<'a>);
 
 #[derive(Debug, Clone, Copy)]
 enum FragmentCapabilities {
@@ -208,12 +233,28 @@ impl FragmentCapabilities {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FlatFragment<'a>(Fragment<'a>);
 
+#[derive(Debug)]
+struct Alternatives<'a> {
+    preferred: &'a [Fragment<'a>],
+    fallback: Fragment<'a>,
+}
+
+impl<'a> Alternatives<'a> {
+    /// Flat views and their eligibility always follow this exact path.
+    fn first(&self) -> Fragment<'a> {
+        self.preferred.first().copied().unwrap_or(self.fallback)
+    }
+}
+
 impl FormatElement<'_> {
     fn permits_flat(self) -> bool {
         match self {
             Self::HardLine | Self::LiteralLine | Self::LineSuffix(_) | Self::BreakParent => false,
             Self::Text(text) | Self::IfCurrentFlat(text) => text.is_single_line(),
             Self::Fragment(fragment) => fragment.capabilities.permits_flat(),
+            Self::Alternatives(alternatives) | Self::CanonicalAlternatives(alternatives) => {
+                alternatives.first().capabilities.permits_flat()
+            }
             _ => true,
         }
     }
@@ -225,6 +266,9 @@ impl FormatElement<'_> {
             Self::IfFlat(text) | Self::IfCurrentFlat(text) => Some(Self::Text(text)),
             Self::StartGroup { id: Some(id), .. } => Some(Self::FlatGroup(id)),
             Self::Fragment(fragment) => Some(Self::FlatFragment(FlatFragment(fragment))),
+            Self::Alternatives(alternatives) | Self::CanonicalAlternatives(alternatives) => {
+                Some(Self::FlatFragment(FlatFragment(alternatives.first())))
+            }
             element @ (Self::Text(_)
             | Self::Space(_)
             | Self::FlatGroup(_)
