@@ -5,8 +5,8 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
 use super::{
-    BreakEffect, Doc, FlatFragment, FormatElement, Fragment, FragmentCapabilities, GroupId,
-    GroupRequest, RecordedGroup, SpaceKind, text::Text,
+    Alternatives, BreakEffect, CanonicalCandidate, Doc, FlatFragment, FormatElement, Fragment,
+    FragmentCapabilities, GroupId, GroupRequest, Measurement, RecordedGroup, SpaceKind, text::Text,
 };
 
 pub(crate) struct Writer<'a> {
@@ -415,6 +415,60 @@ impl<'a> Writer<'a> {
 
     pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.elements.push(FormatElement::FlatFragment(fragment));
+    }
+
+    pub(crate) fn write_alternatives(
+        &mut self,
+        normal: Fragment<'a>,
+        preferred: &[Fragment<'a>],
+        fallback: Fragment<'a>,
+    ) {
+        if preferred.is_empty() {
+            self.write_fragment(fallback);
+            return;
+        }
+        let mut choices = ArenaVec::with_capacity_in(preferred.len(), self.allocator);
+        choices.extend_from_slice(preferred);
+        self.write_recorded_alternatives(normal, choices, fallback, Measurement::Display);
+    }
+
+    pub(crate) fn write_canonical_alternatives(
+        &mut self,
+        normal: Fragment<'a>,
+        preferred: &[CanonicalCandidate<'a>],
+        fallback: Fragment<'a>,
+    ) {
+        if preferred.is_empty() {
+            self.write_fragment(fallback);
+            return;
+        }
+        let mut choices = ArenaVec::with_capacity_in(preferred.len(), self.allocator);
+        choices.extend(preferred.iter().map(|candidate| candidate.0));
+        self.write_recorded_alternatives(normal, choices, fallback, Measurement::Canonical);
+    }
+
+    fn write_recorded_alternatives(
+        &mut self,
+        normal: Fragment<'a>,
+        preferred: ArenaVec<'a, Fragment<'a>>,
+        fallback: Fragment<'a>,
+        measurement: Measurement,
+    ) {
+        // The normal layout owns outward expansion. Optional display variants
+        // retain their own groups without expanding the parent.
+        self.effect = self.effect.join(normal.effect);
+        self.conditional_lines |= normal.conditional_lines
+            || fallback.conditional_lines
+            || preferred.iter().any(|fragment| fragment.conditional_lines);
+        let alternatives = self.allocator.alloc(Alternatives {
+            preferred: preferred.into_bump_slice(),
+            fallback,
+        });
+        let element = match measurement {
+            Measurement::Display => FormatElement::Alternatives(alternatives),
+            Measurement::Canonical => FormatElement::CanonicalAlternatives(alternatives),
+        };
+        self.elements.push(element);
     }
 
     pub(crate) fn finish(self) -> Doc<'a> {
