@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* leading */ value;
+---------- Options ----------
+{}
+---------- Output ----------
+/* leading */ value;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/* leading */ value
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/* leading */ value;
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/* leading */ value;

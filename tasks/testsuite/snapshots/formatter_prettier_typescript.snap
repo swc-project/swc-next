@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1/804 (0.12%)
-Snapshot matched: 1/804
-AST parity: 1/1
-AST mismatched: 0/1
+Passed: 2/804 (0.25%)
+Snapshot matched: 2/804
+AST parity: 2/2
+AST mismatched: 0/2
 AST format errors: 0/804
 Mismatched: 0/804
-Format errors: 803/804
+Format errors: 802/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -272,7 +272,6 @@ Unsupported option sets: 7
 - typescript/conformance/classes/mixinClassesAnonymous.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/mixinClassesMembers.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/nestedClassDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/comments/comments.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/declarationEmit/typePredicates/declarationEmitThisPredicatesWithPrivateName01.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/es6/Symbols/symbolProperty15.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/es6/templates/templateStringWithEmbeddedTypeAssertionOnAdditionES6.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

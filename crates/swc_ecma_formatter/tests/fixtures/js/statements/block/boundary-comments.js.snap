@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+{ /* opening */ value; // trailing
+// before closing
+}
+---------- Options ----------
+{}
+---------- Output ----------
+{
+  /* opening */ value; // trailing
+  // before closing
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+{
+  /* opening */ value // trailing
+  // before closing
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+{
+  /* opening */ value; // trailing
+  // before closing
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+{
+	/* opening */ value; // trailing
+	// before closing
+}

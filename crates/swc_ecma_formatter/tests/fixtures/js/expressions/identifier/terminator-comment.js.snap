@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value /* before semicolon */; // trailing
+---------- Options ----------
+{}
+---------- Output ----------
+value; /* before semicolon */ // trailing
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+value /* before semicolon */ // trailing
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+value; /* before semicolon */ // trailing
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+value; /* before semicolon */ // trailing
