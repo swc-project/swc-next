@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 8/1070 (0.75%)
-Snapshot matched: 8/1070
-AST parity: 8/8
-AST mismatched: 0/8
+Passed: 12/1070 (1.12%)
+Snapshot matched: 12/1070
+AST parity: 12/12
+AST mismatched: 0/12
 AST format errors: 0/1070
 Mismatched: 0/1070
-Format errors: 1061/1070
+Format errors: 1057/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -272,7 +272,6 @@ Unsupported option sets: 19
 - js/comments/binary-expressions-parens.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/binary-expressions-single-comments.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/binary-expressions.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/blank.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/break-continue-statements-2.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/break-continue-statements-3.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/break-continue-statements.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
@@ -303,7 +302,6 @@ Unsupported option sets: 19
 - js/comments/jsx.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/last-arg.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/multi-comments-2.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/multi-comments-on-same-line.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/multi-comments.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/preserve-new-line-last.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/return-statement-2.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
