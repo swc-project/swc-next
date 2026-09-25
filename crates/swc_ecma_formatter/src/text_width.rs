@@ -27,6 +27,7 @@ pub(crate) fn ascii_width(source: &str) -> Option<usize> {
         .then_some(source.len())
 }
 
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) fn width(source: &str) -> usize {
     if let Some(width) = ascii_width(source) {
         return width;

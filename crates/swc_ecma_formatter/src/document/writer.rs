@@ -14,12 +14,14 @@ pub(crate) struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, FormatElement<'a>>,
     effect: BreakEffect,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     flattening: bool,
     group_count: usize,
     conditional_lines: bool,
 }
 
 /// A completed entry can retain a suffix while it is still the final scope.
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct FillEntry {
     start: usize,
     end: usize,
@@ -53,6 +55,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Copies transient text into storage owned by this formatting call.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn text_copied(&mut self, text: &str) {
         if text.is_empty() {
             return;
@@ -62,6 +65,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Literal source lines retain their contents without structural indentation.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
@@ -85,6 +89,7 @@ impl<'a> Writer<'a> {
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn literal_line(&mut self) {
         self.elements.push(FormatElement::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
@@ -96,38 +101,46 @@ impl<'a> Writer<'a> {
     }
 
     /// A canonical separator counts during fit probing and disappears at a break.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn reserved_space(&mut self) {
         self.elements
             .push(FormatElement::Space(SpaceKind::Reserved));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn soft_line(&mut self) {
         self.elements.push(FormatElement::SoftLine);
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn soft_line_if_break(&mut self, group: GroupId) {
         self.conditional_lines = true;
         self.elements.push(FormatElement::SoftLineIfBreak(group));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn line(&mut self) {
         self.elements.push(FormatElement::Line);
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_break(&mut self, text: &'a str) {
         self.elements.push(FormatElement::IfBreak(Text::new(text)));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_flat(&mut self, text: &'a str) {
         self.elements.push(FormatElement::IfFlat(Text::new(text)));
     }
 
     /// Unlike group-bound conditionals, fill entries observe their local mode.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_current_break(&mut self, text: &'a str) {
         self.elements
             .push(FormatElement::IfCurrentBreak(Text::new(text)));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_current_flat(&mut self, text: &'a str) {
         self.elements
             .push(FormatElement::IfCurrentFlat(Text::new(text)));
@@ -144,10 +157,12 @@ impl<'a> Writer<'a> {
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group<T>(&mut self, expand: bool, write: impl FnOnce(&mut Self) -> T) -> T {
         self.group_with_request(GroupRequest::from(expand), write)
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_with_request<T>(
         &mut self,
         request: GroupRequest,
@@ -158,6 +173,7 @@ impl<'a> Writer<'a> {
 
     /// Prepares a flat-width rejection from this completed group's own Doc.
     /// Unsupported instructions keep the ordinary Auto group unchanged.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
         let result = self.group(false, write);
@@ -174,10 +190,12 @@ impl<'a> Writer<'a> {
     }
 
     /// The returned handle refers to a group already written in this document.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
         self.named_group_with_request(GroupRequest::from(expand), write)
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn named_group_with_request(
         &mut self,
         request: GroupRequest,
@@ -189,6 +207,7 @@ impl<'a> Writer<'a> {
         id
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn group_with_id<T>(
         &mut self,
         request: GroupRequest,
@@ -219,6 +238,7 @@ impl<'a> Writer<'a> {
 
     /// Removes optional layout breaks in one complete scope. Required source
     /// breaks and line suffixes keep the original document unchanged.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn flat<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         if self.flattening {
             return write(self);
@@ -257,6 +277,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Gives a complete scope its own root-relative indentation.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn absolute_indent<T>(
         &mut self,
         width: usize,
@@ -269,6 +290,7 @@ impl<'a> Writer<'a> {
         result
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn indent_if_break<T>(
         &mut self,
         group: GroupId,
@@ -280,6 +302,7 @@ impl<'a> Writer<'a> {
         result
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn align<T>(&mut self, width: usize, write: impl FnOnce(&mut Self) -> T) -> T {
         if width == 0 {
             return write(self);
@@ -290,6 +313,7 @@ impl<'a> Writer<'a> {
         result
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.elements.push(FormatElement::StartFill);
         let result = write(self);
@@ -298,6 +322,7 @@ impl<'a> Writer<'a> {
     }
 
     /// The completed syntax scope decides whether its empty separator lines collapse.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill_with_empty_line_policy<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<(T, bool), E>,
@@ -331,10 +356,12 @@ impl<'a> Writer<'a> {
     }
 
     /// Fill entries alternate between content and its following separator.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill_entry<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.fill_entry_with_handle(write).1
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill_entry_with_handle<T>(
         &mut self,
         write: impl FnOnce(&mut Self) -> T,
@@ -350,6 +377,7 @@ impl<'a> Writer<'a> {
         (FillEntry { start, end }, result)
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn extend_fill_entry(&mut self, entry: FillEntry, write: impl FnOnce(&mut Self)) {
         assert_eq!(
             self.elements.len(),
@@ -364,6 +392,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Writes once and measures only appended instructions; the slice never escapes.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_with_clean_text_width<E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<(), E>,
@@ -374,6 +403,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Syntax is consumed once; only completed documents are retained.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn record_with_value<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
@@ -398,6 +428,7 @@ impl<'a> Writer<'a> {
         Ok((fragment, value))
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn record_group_with_value<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
@@ -416,10 +447,12 @@ impl<'a> Writer<'a> {
     }
 
     /// Wraps a completed scope without recording its syntax or allocating a named group.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_fragment(&self, expand: bool, fragment: Fragment<'a>) -> Fragment<'a> {
         self.group_fragment_with_request(GroupRequest::from(expand), fragment)
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_fragment_with_request(
         &self,
         request: GroupRequest,
@@ -445,6 +478,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Joins complete scopes with the same optional deferred separator as `space`.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn join_fragments(
         &self,
         left: Fragment<'a>,
@@ -485,6 +519,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Delimiters observe one complete group; the prefix keeps its own outer scope.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn conditional_group_fragment(
         &self,
         prefix: Fragment<'a>,
@@ -525,6 +560,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Flat views project their backing scopes without propagating backing break flags.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn flat_delimited_fragment(
         &self,
         open: &'a str,
@@ -566,6 +602,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Only prefix and body gain the outer indent; suffix retains its own complete scopes.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn indented_delimited_fragment(
         &self,
         open: &'a str,
@@ -605,16 +642,19 @@ impl<'a> Writer<'a> {
         }
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.effect = self.effect.join(fragment.effect);
         self.conditional_lines |= fragment.conditional_lines;
         self.elements.push(FormatElement::Fragment(fragment));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.elements.push(FormatElement::FlatFragment(fragment));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_neutral_fragment(
         &mut self,
         NeutralFragment(fragment): NeutralFragment<'a>,
@@ -625,6 +665,7 @@ impl<'a> Writer<'a> {
             .push(FormatElement::FlatFragment(FlatFragment(fragment)));
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_alternatives(
         &mut self,
         normal: Fragment<'a>,
@@ -640,6 +681,7 @@ impl<'a> Writer<'a> {
         self.write_recorded_alternatives(normal, choices, fallback, Measurement::Display);
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_canonical_alternatives(
         &mut self,
         normal: Fragment<'a>,
@@ -655,6 +697,7 @@ impl<'a> Writer<'a> {
         self.write_recorded_alternatives(normal, choices, fallback, Measurement::Canonical);
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn write_recorded_alternatives(
         &mut self,
         normal: Fragment<'a>,

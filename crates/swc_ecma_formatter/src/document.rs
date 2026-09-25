@@ -19,6 +19,7 @@ pub(crate) struct GroupId(usize);
 
 /// Explicit layout requests stay distinct from preserved source layout.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) enum GroupRequest {
     Auto,
     Expanded,
@@ -37,9 +38,11 @@ impl From<bool> for GroupRequest {
 struct BreakEffect(u8);
 
 impl BreakEffect {
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     const SOURCE: Self = Self(1);
     const REQUIRED: Self = Self(2);
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn from_request(request: GroupRequest) -> Self {
         match request {
             GroupRequest::Auto => Self::default(),
@@ -71,6 +74,7 @@ enum Measurement {
 enum SpaceKind {
     Deferred,
     /// One canonical gap reserves fit width before the next text commits it.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Reserved,
 }
 
@@ -78,49 +82,71 @@ enum SpaceKind {
 enum FormatElement<'a> {
     Text(Text<'a>),
     Space(SpaceKind),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     SoftLine,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     SoftLineIfBreak(GroupId),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Line,
     HardLine,
     BreakParent,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     LiteralLine,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfBreak(Text<'a>),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfFlat(Text<'a>),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfCurrentBreak(Text<'a>),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfCurrentFlat(Text<'a>),
     LineSuffix(Text<'a>),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartGroup {
         effect: BreakEffect,
         id: Option<GroupId>,
     },
     /// An anonymous Auto group with a lower bound for its own flat contents.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartGroupWithFlatWidth {
         width: usize,
     },
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndGroup,
     FlatGroup(GroupId),
     StartIndent,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartAbsoluteIndent {
         width: usize,
     },
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartIndentIfBreak(GroupId),
     EndIndent,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartAlign {
         width: usize,
     },
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndAlign {
         width: usize,
     },
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartFill,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndFill,
     /// Distance from this opening instruction to its matching EndEntry.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartEntry {
         end_offset: usize,
     },
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndEntry,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Fragment(Fragment<'a>),
     FlatFragment(FlatFragment<'a>),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Alternatives(&'a Alternatives<'a>),
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     CanonicalAlternatives(&'a Alternatives<'a>),
 }
 
@@ -128,22 +154,28 @@ enum FormatElement<'a> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Fragment<'a> {
     elements: &'a [FormatElement<'a>],
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     effect: BreakEffect,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     capabilities: FragmentCapabilities,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     conditional_lines: bool,
 }
 
 /// Both views retain the same complete scope; only the anonymous outer group differs.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct RecordedGroup<'a> {
     grouped: Fragment<'a>,
 }
 
 impl<'a> RecordedGroup<'a> {
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn grouped(self) -> Fragment<'a> {
         self.grouped
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn contents(self) -> Fragment<'a> {
         // Construction retains one complete anonymous Auto group. Its wrapper
         // inherits the contents' effects and capabilities without adding any.
@@ -157,6 +189,7 @@ impl<'a> RecordedGroup<'a> {
 }
 
 #[derive(Default)]
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 struct CleanTextWidth {
     width: usize,
     ascii_width: Option<usize>,
@@ -165,11 +198,13 @@ struct CleanTextWidth {
 }
 
 #[derive(Clone, Copy)]
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 enum CleanUnicodeText {
     Single(usize),
     Joined(usize),
 }
 
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     let mut text = CleanTextWidth {
         ascii_width: Some(0),
@@ -195,6 +230,7 @@ fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     Some(crate::text_width::width(&joined))
 }
 
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidth) -> Option<()> {
     for element in elements {
         match *element {
@@ -244,6 +280,7 @@ fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidt
     Some(())
 }
 
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn append_clean_text(
     elements: &[FormatElement<'_>],
     output: &mut String,
@@ -272,6 +309,7 @@ fn append_clean_text(
 /// Measures only direct instructions whose flat mode cannot change before the
 /// scope ends. Leading and trailing gaps are excluded so the result remains a
 /// lower bound regardless of the caller's pending gap.
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn flat_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     let mut width = 0usize;
     let mut has_text = false;
@@ -309,6 +347,7 @@ impl<'a> Fragment<'a> {
     /// Whether the normal render path contains a line-breaking opportunity.
     /// Alternatives follow their first candidate, while flat views inspect
     /// only the instructions that survive their existing projection.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn can_break(self) -> bool {
         if matches!(self.capabilities, FragmentCapabilities::Neutral) {
             return false;
@@ -355,11 +394,13 @@ impl<'a> Fragment<'a> {
         false
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn preferred_breaks(self) -> bool {
         self.effect.preferred_breaks()
     }
 
     /// Width of a document that reduces to text without observing layout scopes.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn clean_text_width(self) -> Option<usize> {
         if self.effect.preferred_breaks() || self.conditional_lines {
             return None;
@@ -368,16 +409,19 @@ impl<'a> Fragment<'a> {
     }
 
     /// Measures this complete scope without changing its retained render view.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn canonical_candidate(self) -> CanonicalCandidate<'a> {
         CanonicalCandidate(self)
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn try_flat(self) -> Option<FlatFragment<'a>> {
         self.capabilities
             .permits_flat()
             .then_some(FlatFragment(self))
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn try_neutral(self) -> Option<NeutralFragment<'a>> {
         matches!(self.capabilities, FragmentCapabilities::Neutral).then_some(NeutralFragment(self))
     }
@@ -385,20 +429,26 @@ impl<'a> Fragment<'a> {
 
 /// A flat view whose complete scope cannot observe layout mode.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct NeutralFragment<'a>(Fragment<'a>);
 
 /// A zero-copy measurement request, distinct from a printed Flat projection.
 #[derive(Clone, Copy)]
+#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct CanonicalCandidate<'a>(Fragment<'a>);
 
 #[derive(Debug, Clone, Copy)]
 enum FragmentCapabilities {
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     General,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     FlatEligible,
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Neutral,
 }
 
 impl FragmentCapabilities {
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn from_flat(flat: bool) -> Self {
         if flat {
             Self::FlatEligible
@@ -407,12 +457,14 @@ impl FragmentCapabilities {
         }
     }
 
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn permits_flat(self) -> bool {
         !matches!(self, Self::General)
     }
 
     /// Fresh Writer records contain complete, balanced scopes. Once neutrality
     /// is ruled out, the same iterator resumes the existing flat-only scan.
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn classify(elements: &[FormatElement<'_>]) -> Self {
         let mut elements = elements.iter().copied();
         while let Some(element) = elements.next() {
@@ -466,6 +518,7 @@ impl<'a> Alternatives<'a> {
 }
 
 impl FormatElement<'_> {
+    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn permits_flat(self) -> bool {
         match self {
             Self::HardLine | Self::LiteralLine | Self::LineSuffix(_) | Self::BreakParent => false,
