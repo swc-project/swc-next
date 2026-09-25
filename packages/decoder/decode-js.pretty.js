@@ -69,7 +69,7 @@ function copyLittleEndianI32(view) {
   }
   return i32;
 }
-export function decodeJs(buffer, sourceBuffer) {
+export function decodeJs(buffer, source, sourceBuffer) {
 
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;
@@ -101,9 +101,19 @@ export function decodeJs(buffer, sourceBuffer) {
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
+  let firstNonAsciiPos = sourceLength;
+  if (source.length !== sourceLength) {
+    firstNonAsciiPos = 0;
+    while (firstNonAsciiPos < sourceLength && sourceBuffer[firstNonAsciiPos] < 0x80) {
+      firstNonAsciiPos++;
+    }
+  }
   const str = (start, end) => {
     if (start === end) return "";
-    if (start < sourceLength) return textDecoder.decode(sourceBuffer.subarray(start, end));
+    if (start < sourceLength) {
+      if (end <= firstNonAsciiPos) return source.slice(start, end);
+      return textDecoder.decode(sourceBuffer.subarray(start, end));
+    }
     return decodePool(bytes.subarray(
       strings + start - sourceLength,
       strings + end - sourceLength,

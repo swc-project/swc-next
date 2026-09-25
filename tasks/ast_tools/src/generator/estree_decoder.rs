@@ -40,7 +40,11 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     }
     output.push_str(PREAMBLE_END);
     output.push_str(DECODE_HELPERS);
-    writeln!(output, "export function {name}(buffer, sourceBuffer) {{").unwrap();
+    writeln!(
+        output,
+        "export function {name}(buffer, source, sourceBuffer) {{"
+    )
+    .unwrap();
     output.push_str(DECODE_PREAMBLE);
 
     for (kind, ty) in schema
@@ -898,9 +902,19 @@ const DECODE_PREAMBLE: &str = r#"
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
+  let firstNonAsciiPos = sourceLength;
+  if (source.length !== sourceLength) {
+    firstNonAsciiPos = 0;
+    while (firstNonAsciiPos < sourceLength && sourceBuffer[firstNonAsciiPos] < 0x80) {
+      firstNonAsciiPos++;
+    }
+  }
   const str = (start, end) => {
     if (start === end) return "";
-    if (start < sourceLength) return textDecoder.decode(sourceBuffer.subarray(start, end));
+    if (start < sourceLength) {
+      if (end <= firstNonAsciiPos) return source.slice(start, end);
+      return textDecoder.decode(sourceBuffer.subarray(start, end));
+    }
     return decodePool(bytes.subarray(
       strings + start - sourceLength,
       strings + end - sourceLength,

@@ -10,5 +10,5 @@ export function parseSync(source, options) {
   const { written } = textEncoder.encodeInto(source, sourceBuffer);
   const sourceBytes = sourceBuffer.subarray(0, written);
   const buffer = __parseSync(sourceBytes, encodeOptions(options));
-  return decode(buffer, sourceBytes);
+  return decode(buffer, source, sourceBytes);
 }
