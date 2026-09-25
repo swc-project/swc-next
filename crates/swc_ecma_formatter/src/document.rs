@@ -153,6 +153,55 @@ impl<'a> RecordedGroup<'a> {
 }
 
 impl<'a> Fragment<'a> {
+    /// Whether the normal render path contains a line-breaking opportunity.
+    /// Alternatives follow their first candidate, while flat views inspect
+    /// only the instructions that survive their existing projection.
+    pub(crate) fn can_break(self) -> bool {
+        if matches!(self.capabilities, FragmentCapabilities::Neutral) {
+            return false;
+        }
+        let mut pending = vec![(self.elements, false)];
+        while let Some((elements, flat)) = pending.pop() {
+            for &element in elements {
+                let element = if flat {
+                    let Some(element) = element.flattened() else {
+                        continue;
+                    };
+                    element
+                } else {
+                    element
+                };
+                match element {
+                    FormatElement::SoftLine
+                    | FormatElement::SoftLineIfBreak(_)
+                    | FormatElement::Line
+                    | FormatElement::HardLine
+                    | FormatElement::LiteralLine => return true,
+                    FormatElement::Text(text)
+                    | FormatElement::IfBreak(text)
+                    | FormatElement::IfFlat(text)
+                    | FormatElement::IfCurrentBreak(text)
+                    | FormatElement::IfCurrentFlat(text)
+                    | FormatElement::LineSuffix(text) => {
+                        if !text.is_single_line() {
+                            return true;
+                        }
+                    }
+                    FormatElement::Fragment(fragment) => pending.push((fragment.elements, false)),
+                    FormatElement::FlatFragment(FlatFragment(fragment)) => {
+                        pending.push((fragment.elements, true));
+                    }
+                    FormatElement::Alternatives(alternatives)
+                    | FormatElement::CanonicalAlternatives(alternatives) => {
+                        pending.push((alternatives.first().elements, false));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        false
+    }
+
     pub(crate) fn preferred_breaks(self) -> bool {
         self.effect.preferred_breaks()
     }
@@ -167,7 +216,15 @@ impl<'a> Fragment<'a> {
             .permits_flat()
             .then_some(FlatFragment(self))
     }
+
+    pub(crate) fn try_neutral(self) -> Option<NeutralFragment<'a>> {
+        matches!(self.capabilities, FragmentCapabilities::Neutral).then_some(NeutralFragment(self))
+    }
 }
+
+/// A flat view whose complete scope cannot observe layout mode.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct NeutralFragment<'a>(Fragment<'a>);
 
 /// A zero-copy measurement request, distinct from a printed Flat projection.
 #[derive(Clone, Copy)]
