@@ -179,12 +179,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content_end = match self.ast.stmt_data(statement) {
             StmtData::ExpressionStatement(node) => {
                 let expression = node.expression(self.ast);
-                match self.ast.expr_data(expression) {
-                    ExprData::IdentifierReference(identifier) => {
-                        writer.text(self.ast.get_utf8(identifier.name(self.ast)))
-                    }
-                    _ => return Err(self.unsupported("expression", expression)),
+                if self.options.semicolons == Semicolons::AsNeeded
+                    && matches!(self.ast.expr_data(expression), ExprData::RegExpLiteral(_))
+                {
+                    writer.text(";");
                 }
+                self.format_expression(expression, writer)?;
                 expression.span(self.ast).end
             }
             StmtData::DebuggerStatement(node) => {

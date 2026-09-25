@@ -1,0 +1,9 @@
+[
+  {},
+  { "semi": false },
+  { "printWidth": 20 },
+  { "printWidth": 19 },
+  { "printWidth": 10 },
+  { "printWidth": 10, "trailingComma": "none" },
+  { "printWidth": 10, "useTabs": true, "tabWidth": 4 }
+]
