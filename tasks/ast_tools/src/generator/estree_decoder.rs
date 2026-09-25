@@ -793,6 +793,11 @@ const HEADER_SIZE = 36;
 const NATIVE_LITTLE_ENDIAN =
   new Uint8Array(new Int32Array([1]).buffer)[0] === 1;
 const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
+const fromCharCode = String.fromCharCode;
+const shortStringChars = Array(65);
+for (let length = 0; length <= 64; length++) {
+  shortStringChars[length] = Array(length).fill(0);
+}
 
 const ENUMS = Object.freeze({
   SourceType: ["module", "script", "commonjs"],
@@ -824,6 +829,17 @@ const PREAMBLE_END: &str = r#"
 
 const DECODE_HELPERS: &str = r#"
 function decodePool(bytes) {
+  const length = bytes.length;
+  if (length <= 64) {
+    const chars = shortStringChars[length];
+    let i = 0;
+    for (; i < length; i++) {
+      const byte = bytes[i];
+      if (byte >= 0x80) break;
+      chars[i] = byte;
+    }
+    if (i === length) return fromCharCode.apply(null, chars);
+  }
   let hasSurrogate = false;
   for (const byte of bytes) {
     if (byte === 0xed) {
@@ -913,6 +929,16 @@ const DECODE_PREAMBLE: &str = r#"
     if (start === end) return "";
     if (start < sourceLength) {
       if (end <= firstNonAsciiPos) return source.slice(start, end);
+      const length = end - start;
+      if (length <= 64) {
+        const chars = shortStringChars[length];
+        for (let i = 0; i < length; i++) {
+          const byte = sourceBuffer[start + i];
+          if (byte >= 0x80) return textDecoder.decode(sourceBuffer.subarray(start, end));
+          chars[i] = byte;
+        }
+        return fromCharCode.apply(null, chars);
+      }
       return textDecoder.decode(sourceBuffer.subarray(start, end));
     }
     return decodePool(bytes.subarray(
