@@ -89,7 +89,6 @@ impl<'a> Writer<'a> {
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn literal_line(&mut self) {
         self.elements.push(FormatElement::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);

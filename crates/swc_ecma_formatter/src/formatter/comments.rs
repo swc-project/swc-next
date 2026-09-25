@@ -3,6 +3,7 @@
 use swc_next_ecma_ast::{Comment, CommentKind, Span};
 
 use super::Formatter;
+use super::source::{lines, split_line};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -11,10 +12,57 @@ pub(super) enum CommentRunLayout {
     CanonicalDangling,
 }
 
+enum CommentText<'ast> {
+    Inline(&'ast str),
+    Literal {
+        first: &'ast str,
+        rest: &'ast str,
+    },
+    Aligned {
+        first: &'ast str,
+        rest: &'ast str,
+        jsdoc: bool,
+    },
+}
+
 struct PreparedComment<'ast> {
     span: Span,
     kind: CommentKind,
-    text: &'ast str,
+    text: CommentText<'ast>,
+}
+
+impl PreparedComment<'_> {
+    fn is_alignable(&self) -> bool {
+        matches!(self.text, CommentText::Aligned { .. })
+    }
+}
+
+impl<'ast> CommentText<'ast> {
+    fn write(&self, writer: &mut Writer<'ast>) {
+        match *self {
+            Self::Inline(text) => writer.text(text),
+            Self::Literal { first, rest } => {
+                writer.text(first);
+                for line in lines(rest) {
+                    writer.literal_line();
+                    writer.text(line);
+                }
+            }
+            Self::Aligned { first, rest, jsdoc } => {
+                writer.text(first.trim_end());
+                for line in lines(rest) {
+                    writer.hard_line();
+                    writer.space();
+                    let trimmed = line.trim();
+                    writer.text(trimmed);
+                    if jsdoc && trimmed != "*" && line.ends_with("  ") {
+                        // Markdown uses two trailing spaces as a hard line break.
+                        writer.text("  ");
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub(super) struct CommentCursor<'ast> {
@@ -75,14 +123,6 @@ impl<'ast> CommentCursor<'ast> {
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_comment(&self, comment: Comment) -> Result<PreparedComment<'ast>, FormatError> {
-        let source = self.source(comment.span);
-        if source.contains(['\r', '\n']) {
-            return Err(FormatError::unsupported(
-                "multiline comment",
-                None,
-                comment.span,
-            ));
-        }
         if self
             .ast
             .get_utf8(comment.value(self.ast.source().as_bytes()))
@@ -91,10 +131,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Err(FormatError::unsupported("suppression", None, comment.span));
         }
+        let source = self.source(comment.span);
+        let (first, rest) = split_line(source);
+        let text = match rest {
+            None => CommentText::Inline(source.trim_end()),
+            Some(rest) if lines(rest).all(|line| line.trim_start().starts_with('*')) => {
+                CommentText::Aligned {
+                    first,
+                    rest,
+                    jsdoc: source.starts_with("/**") && !source.starts_with("/***"),
+                }
+            }
+            Some(rest) => CommentText::Literal { first, rest },
+        };
         Ok(PreparedComment {
             span: comment.span,
             kind: comment.kind,
-            text: source.trim_end(),
+            text,
         })
     }
 
@@ -121,14 +174,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         for &comment in comments {
             let prepared = self.prepare_comment(comment)?;
             if let Some(previous) = previous {
-                match layout {
-                    CommentRunLayout::Source => {
-                        self.comment_gap(previous.span.end, prepared.span.start, writer)
+                let nestled = previous.span.end == prepared.span.start
+                    && previous.is_alignable()
+                    && prepared.is_alignable();
+                if !nestled {
+                    match layout {
+                        CommentRunLayout::Source => {
+                            self.comment_gap(previous.span.end, prepared.span.start, writer)
+                        }
+                        CommentRunLayout::CanonicalDangling => writer.hard_line(),
                     }
-                    CommentRunLayout::CanonicalDangling => writer.hard_line(),
                 }
             }
-            writer.text(prepared.text);
+            prepared.text.write(writer);
             previous = Some(prepared);
         }
         Ok(())
@@ -163,12 +221,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .is_some_and(|previous| previous.kind == CommentKind::Line)
             {
                 writer.hard_line();
-                writer.text(prepared.text);
+                prepared.text.write(writer);
             } else if comment.kind == CommentKind::Line {
-                writer.line_suffix(prepared.text);
+                writer.line_suffix(self.source(comment.span).trim_end());
             } else {
-                writer.space();
-                writer.text(prepared.text);
+                let nestled = previous.as_ref().is_some_and(|previous| {
+                    previous.span.end == prepared.span.start
+                        && previous.is_alignable()
+                        && prepared.is_alignable()
+                });
+                if !nestled {
+                    writer.space();
+                }
+                prepared.text.write(writer);
             }
             previous = Some(prepared);
         }
