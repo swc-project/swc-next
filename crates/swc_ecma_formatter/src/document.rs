@@ -90,7 +90,6 @@ enum FormatElement<'a> {
     Line,
     HardLine,
     BreakParent,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     LiteralLine,
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfBreak(Text<'a>),
