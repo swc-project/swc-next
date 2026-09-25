@@ -80,9 +80,102 @@ struct GroupState {
     restore_mode: Mode,
 }
 
+/// Fill entry distances remain valid when a retained scope starts within its backing slice.
 #[derive(Clone, Copy)]
 struct Frame<'a> {
     remaining: &'a [FormatElement<'a>],
+    flat: bool,
+    restore_mode: Option<Mode>,
+}
+
+impl<'a> Frame<'a> {
+    fn new(elements: &'a [FormatElement<'a>]) -> Self {
+        Self {
+            remaining: elements,
+            flat: false,
+            restore_mode: None,
+        }
+    }
+
+    fn next(&mut self) -> Option<FormatElement<'a>> {
+        while let Some((&element, remaining)) = self.remaining.split_first() {
+            self.remaining = remaining;
+            if self.flat {
+                if let Some(element) = element.flattened() {
+                    return Some(element);
+                }
+            } else {
+                return Some(element);
+            }
+        }
+        None
+    }
+}
+
+struct Cursor<'a> {
+    current: Frame<'a>,
+    suspended: Vec<Frame<'a>>,
+}
+
+impl<'a> Cursor<'a> {
+    fn enter(&mut self, elements: &'a [FormatElement<'a>], flat: bool, restore_mode: Option<Mode>) {
+        self.suspended.push(self.current);
+        self.current = Frame {
+            flat,
+            restore_mode,
+            ..Frame::new(elements)
+        };
+    }
+
+    fn next(&mut self, mode: &mut Mode) -> Option<FormatElement<'a>> {
+        loop {
+            if let Some(element) = self.current.next() {
+                return Some(element);
+            }
+            if let Some(restore) = self.current.restore_mode {
+                *mode = restore;
+            }
+            self.current = self.suspended.pop()?;
+        }
+    }
+}
+
+/// A probe borrows the untouched print continuation. Only new frames go in the
+/// scratch stack; crossing a retained scope never clones the pending queue.
+struct ProbeCursor<'a, 'scratch> {
+    current: Frame<'a>,
+    frames: &'scratch mut Vec<Frame<'a>>,
+    parents: &'scratch [Frame<'a>],
+    parent_len: usize,
+}
+
+impl<'a> ProbeCursor<'a, '_> {
+    fn enter(&mut self, elements: &'a [FormatElement<'a>], flat: bool, restore_mode: Option<Mode>) {
+        self.frames.push(self.current);
+        self.current = Frame {
+            flat,
+            restore_mode,
+            ..Frame::new(elements)
+        };
+    }
+
+    fn next(&mut self, mode: &mut Mode) -> Option<FormatElement<'a>> {
+        loop {
+            if let Some(element) = self.current.next() {
+                return Some(element);
+            }
+            if let Some(restore) = self.current.restore_mode {
+                *mode = restore;
+            }
+            if let Some(frame) = self.frames.pop() {
+                self.current = frame;
+            } else {
+                let index = self.parent_len.checked_sub(1)?;
+                self.parent_len = index;
+                self.current = self.parents[index];
+            }
+        }
+    }
 }
 
 /// Reuses print scopes without copying unrelated ancestors into each fit probe.
@@ -231,12 +324,16 @@ pub(super) fn print(
         track_groups: conditional_lines,
         ..Probe::default()
     };
-    let mut remaining = elements;
+    let mut cursor = Cursor {
+        current: Frame::new(elements),
+        suspended: Vec::new(),
+    };
     let mut fills = Vec::new();
     let mut entries = Vec::new();
-    while let Some((&element, rest)) = remaining.split_first() {
-        remaining = rest;
+    while let Some(element) = cursor.next(&mut mode) {
         match element {
+            FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
+            FormatElement::FlatFragment(fragment) => cursor.enter(fragment.0.elements, true, None),
             FormatElement::SoftLineIfBreak(id) => {
                 if group_modes[id.0] == Mode::Break && mode == Mode::Break {
                     flush_suffixes(&mut suffixes, &mut output, options, mode);
@@ -292,7 +389,9 @@ pub(super) fn print(
                     && (inherit_flat
                         || probe.fits(
                             ProbeRequest {
-                                current: Frame { remaining },
+                                current: cursor.current,
+                                pending: &cursor.suspended,
+                                continuation: None,
                                 kind: ContinuationProbe::Group(id),
                                 fills: &fills,
                                 entries: &entries,
@@ -320,6 +419,7 @@ pub(super) fn print(
                     .expect("group scopes must close after opening")
                     .restore_mode;
             }
+            FormatElement::FlatGroup(id) => group_modes[id.0] = Mode::Flat,
             FormatElement::StartIndent => {
                 indents.push(indent);
                 indent = indent.indented(options);
@@ -382,11 +482,11 @@ pub(super) fn print(
                         Mode::Flat
                     } else {
                         let separator_start = end + 1;
-                        let next_end = match remaining.get(separator_start) {
+                        let next_end = match cursor.current.remaining.get(separator_start) {
                             Some(FormatElement::StartEntry { end_offset }) => {
                                 let separator_end = separator_start + end_offset;
                                 let content_start = separator_end + 1;
-                                match remaining.get(content_start) {
+                                match cursor.current.remaining.get(content_start) {
                                     Some(FormatElement::StartEntry { end_offset }) => {
                                         content_start + end_offset
                                     }
@@ -400,8 +500,12 @@ pub(super) fn print(
                         let pair_fits = probe.fits(
                             ProbeRequest {
                                 current: Frame {
-                                    remaining: &remaining[..next_end],
+                                    remaining: &cursor.current.remaining[..next_end],
+                                    restore_mode: None,
+                                    ..cursor.current
                                 },
+                                pending: &[],
+                                continuation: None,
                                 kind: FillProbe,
                                 fills: &[],
                                 entries: &[],
@@ -421,8 +525,12 @@ pub(super) fn print(
                                 && probe.fits(
                                     ProbeRequest {
                                         current: Frame {
-                                            remaining: &remaining[..end],
+                                            remaining: &cursor.current.remaining[..end],
+                                            restore_mode: None,
+                                            ..cursor.current
                                         },
+                                        pending: &[],
+                                        continuation: None,
                                         kind: FillProbe,
                                         fills: &[],
                                         entries: &[],
@@ -531,22 +639,25 @@ fn flush_suffixes(
 
 struct ProbeRequest<'a, 'pending, K> {
     current: Frame<'a>,
+    pending: &'pending [Frame<'a>],
+    continuation: Option<Frame<'a>>,
     kind: K,
     fills: &'pending [FillState],
     entries: &'pending [Mode],
 }
 
 #[derive(Default)]
-struct Probe {
+struct Probe<'a> {
     track_groups: bool,
     group_writes: Vec<(super::GroupId, Mode)>,
     modes: Vec<GroupState>,
+    frames: Vec<Frame<'a>>,
     fills: Vec<FillContext>,
     entries: Vec<Mode>,
 }
 
-impl Probe {
-    fn fits<'a, K: ProbeKind>(
+impl<'a> Probe<'a> {
+    fn fits<K: ProbeKind>(
         &mut self,
         request: ProbeRequest<'a, '_, K>,
         parents: &[GroupState],
@@ -557,6 +668,8 @@ impl Probe {
     ) -> bool {
         let ProbeRequest {
             current,
+            pending: pending_frames,
+            continuation,
             kind,
             fills: parent_fills,
             entries: parent_entries,
@@ -565,6 +678,7 @@ impl Probe {
             track_groups,
             group_writes,
             modes,
+            frames,
             fills,
             entries,
         } = self;
@@ -580,7 +694,16 @@ impl Probe {
         let mut pending_gap = output.pending_gap;
         let mut column = output.column + pending_gap.reserved_width();
         modes.clear();
-        let mut remaining = current.remaining;
+        frames.clear();
+        if let Some(continuation) = continuation {
+            frames.push(continuation);
+        }
+        let mut cursor = ProbeCursor {
+            current,
+            frames,
+            parents: pending_frames,
+            parent_len: pending_frames.len(),
+        };
         if let Some(ContinuationProbe::Group(id)) = kind.continuation() {
             if *track_groups && let Some(id) = id {
                 group_writes.push((id, Mode::Flat));
@@ -596,8 +719,7 @@ impl Probe {
             return false;
         }
         // Only active text and reserved spaces advance the probe column.
-        while let Some((&element, rest)) = remaining.split_first() {
-            remaining = rest;
+        while let Some(element) = cursor.next(&mut mode) {
             match element {
                 FormatElement::Text(text)
                 | FormatElement::IfBreak(text)
@@ -687,6 +809,10 @@ impl Probe {
                         mode = Mode::Flat;
                     }
                 }
+                FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
+                FormatElement::FlatFragment(fragment) => {
+                    cursor.enter(fragment.0.elements, true, None)
+                }
                 FormatElement::SoftLineIfBreak(id) => {
                     if mode == Mode::Flat {
                         continue;
@@ -698,6 +824,11 @@ impl Probe {
                         .map_or(committed_groups[id.0], |(_, mode)| *mode);
                     if named == Mode::Break {
                         return true;
+                    }
+                }
+                FormatElement::FlatGroup(id) => {
+                    if *track_groups {
+                        group_writes.push((id, Mode::Flat));
                     }
                 }
                 FormatElement::BreakParent => {

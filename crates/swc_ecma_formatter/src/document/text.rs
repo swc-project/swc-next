@@ -27,6 +27,13 @@ impl<'a> Text<'a> {
         Self { source, width }
     }
 
+    pub(super) fn is_single_line(self) -> bool {
+        match self.width {
+            Width::Ascii => true,
+            _ => !self.source.contains(['\n', '\r', '\u{2028}', '\u{2029}']),
+        }
+    }
+
     pub(super) fn first_line(self, column: usize) -> (usize, bool) {
         match self.width {
             Width::Ascii => (column + self.source.len(), false),
