@@ -25,8 +25,9 @@ export {
 export function parseSync(source, options) {
   const sourceBuffer = new Uint8Array(source.length * 3);
   const { written } = textEncoder.encodeInto(source, sourceBuffer);
-  const buffer = __parseSync(sourceBuffer.subarray(0, written), encodeParserOptions(options));
-  return decode(buffer, source);
+  const sourceBytes = sourceBuffer.subarray(0, written);
+  const buffer = __parseSync(sourceBytes, encodeParserOptions(options));
+  return decode(buffer, sourceBytes);
 }
 
 export function printSync(program, options) {

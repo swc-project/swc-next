@@ -41,11 +41,11 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-export function decode(buffer, source) {
+export function decode(buffer, sourceBuffer) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const view = new DataView(arrayBuffer, buffer.byteOffset ?? 0, buffer.byteLength);
   const flags = view.getInt32(FLAGS_OFFSET, true);
   return (flags & TYPESCRIPT_FLAG) !== 0
-    ? decodeTs(buffer, source)
-    : decodeJs(buffer, source);
+    ? decodeTs(buffer, sourceBuffer)
+    : decodeJs(buffer, sourceBuffer);
 }

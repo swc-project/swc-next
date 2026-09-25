@@ -7,19 +7,19 @@
 //!
 //! Layout, in order:
 //! - 36-byte header;
-//! - `node_count` UTF-8 byte spans (`start: u32`, `end: u32`);
+//! - `node_count` UTF-16 spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to four bytes;
 //! - `node_count` 16-byte `NodePayload` values;
 //! - `extra_count` 8-byte `ExtraData` values;
 //! - the raw extra string pool, padded to four bytes;
-//! - `comment_count` 16-byte [`Comment`] records in source order.
-//!   Each record contains the full start, full end, attachment offset,
-//!   kind (`0` line, `1` block), and attachment position.
+//! - `comment_count` 16-byte records in source order. Each record contains
+//!   UTF-16 start/end and UTF-8 byte start/end for extracting comment text.
 //! - `diag_count` packed variable-length diagnostic records: severity (`u8`;
-//!   `0` error, `1` warning, `2` hint, `3` info), start, end, message, optional
-//!   help, label count, then labels (start, end, message). Other integers are
-//!   unaligned little-endian `u32`; strings are a byte length followed by
-//!   unpadded UTF-8 bytes. Optional help uses a one-byte presence flag.
+//!   `0` error, `1` warning, `2` hint, `3` info), UTF-16 start/end, message,
+//!   optional help, label count, then labels (UTF-16 start/end, message).
+//!   Other integers are unaligned little-endian `u32`; strings are a byte
+//!   length followed by unpadded UTF-8 bytes. Optional help uses a one-byte
+//!   presence flag.
 //!
 //! Attached comments are intentionally omitted for now. Their count in the
 //! header is always zero.
@@ -103,6 +103,7 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
     if buf.len() < required {
         return required;
     }
+    let positions = build_pos_map(tree.source());
 
     // ====================== Header ======================
     let node_count = u32::try_from(tree.node_count()).expect("AST node count exceeds u32");
@@ -137,12 +138,12 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
             tree.node_count() * SPAN_SIZE,
         )
     };
-    if cfg!(target_endian = "little") {
+    if positions.is_none() && cfg!(target_endian = "little") {
         write_slice(buf, &mut pos, spans);
     } else {
         for span in unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) } {
-            write_u32(buf, &mut pos, span.start);
-            write_u32(buf, &mut pos, span.end);
+            write_u32(buf, &mut pos, utf16_pos(span.start, positions.as_deref()));
+            write_u32(buf, &mut pos, utf16_pos(span.end, positions.as_deref()));
         }
     }
 
@@ -194,29 +195,22 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
     pad_to_four(buf, &mut pos);
 
     // =================== Comments ====================
-    let comments = unsafe {
-        slice::from_raw_parts(
-            tree.comments().as_ptr().cast::<u8>(),
-            tree.comments().len() * COMMENT_SIZE,
-        )
-    };
-    if cfg!(target_endian = "little") {
-        write_slice(buf, &mut pos, comments);
-    } else {
-        for comment in tree.comments() {
-            write_u32(buf, &mut pos, comment.span.start);
-            write_u32(buf, &mut pos, comment.span.end);
-            write_u32(buf, &mut pos, comment.attached_to);
-            write_u16(buf, &mut pos, comment.kind as u16);
-            write_u16(buf, &mut pos, comment.position as u16);
-        }
+    for comment in tree.comments() {
+        let start = utf16_pos(comment.span.start, positions.as_deref());
+        write_u32(buf, &mut pos, start);
+        let end = utf16_pos(comment.span.end, positions.as_deref());
+        write_u32(buf, &mut pos, end);
+        write_u32(buf, &mut pos, comment.span.start);
+        write_u32(buf, &mut pos, comment.span.end);
     }
 
     // =================== Diagnostics ====================
     for diagnostic in diagnostics {
         write_u8(buf, &mut pos, diagnostic.severity as u8);
-        write_u32(buf, &mut pos, diagnostic.span.start);
-        write_u32(buf, &mut pos, diagnostic.span.end);
+        let start = utf16_pos(diagnostic.span.start, positions.as_deref());
+        write_u32(buf, &mut pos, start);
+        let end = utf16_pos(diagnostic.span.end, positions.as_deref());
+        write_u32(buf, &mut pos, end);
         write_bytes_with_length(buf, &mut pos, diagnostic.message.as_bytes());
         write_u8(buf, &mut pos, u8::from(diagnostic.help.is_some()));
         if let Some(help) = &diagnostic.help {
@@ -226,8 +220,10 @@ pub fn serialize_into(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>], buf: &mut 
             u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
         write_u32(buf, &mut pos, label_count);
         for label in &diagnostic.labels {
-            write_u32(buf, &mut pos, label.span.start);
-            write_u32(buf, &mut pos, label.span.end);
+            let start = utf16_pos(label.span.start, positions.as_deref());
+            write_u32(buf, &mut pos, start);
+            let end = utf16_pos(label.span.end, positions.as_deref());
+            write_u32(buf, &mut pos, end);
             write_bytes_with_length(buf, &mut pos, label.message.as_bytes());
         }
     }
@@ -413,6 +409,30 @@ fn checked_add(left: usize, right: usize) -> Result<usize, DeserializeError> {
         .ok_or(DeserializeError("AST buffer section offset overflow"))
 }
 
+fn build_pos_map(source: &str) -> Option<Vec<u32>> {
+    if source.is_ascii() {
+        return None;
+    }
+
+    let mut map = vec![0; source.len() + 1];
+    let mut utf16 = 0u32;
+    for (byte, ch) in source.char_indices() {
+        map[byte..byte + ch.len_utf8()].fill(utf16);
+        if ch.len_utf8() == 4 {
+            map[byte + 3] = utf16 + 1;
+        }
+        utf16 += ch.len_utf16() as u32;
+    }
+    map[source.len()] = utf16;
+    Some(map)
+}
+
+#[inline]
+fn utf16_pos(byte: u32, map: Option<&[u32]>) -> u32 {
+    map.and_then(|map| map.get(byte as usize).copied())
+        .unwrap_or(byte)
+}
+
 #[inline]
 const fn align_to_four(len: usize) -> usize {
     (len + 3) & !3
@@ -427,11 +447,6 @@ fn pad_to_four(buf: &mut [u8], pos: &mut usize) {
 
 #[inline]
 fn write_u32(buf: &mut [u8], pos: &mut usize, value: u32) {
-    write_bytes(buf, pos, &value.to_le_bytes());
-}
-
-#[inline]
-fn write_u16(buf: &mut [u8], pos: &mut usize, value: u16) {
     write_bytes(buf, pos, &value.to_le_bytes());
 }
 
@@ -566,19 +581,20 @@ mod tests {
         let mut buffer = vec![0; required];
         assert_eq!(serialize_into(&ast, &diagnostics, &mut buffer), required);
         assert_eq!(u32_at(&buffer, 24), 1); // diagnostic count
+        assert_eq!(u32_at(&buffer, 40), 2); // program end in UTF-16 units
 
         let diagnostic = diagnostics_offset;
         assert_eq!(buffer[diagnostic], Severity::Warning as u8);
         assert_eq!(u32_at(&buffer, diagnostic + 1), 0); // start
-        assert_eq!(u32_at(&buffer, diagnostic + 5), 2); // end
+        assert_eq!(u32_at(&buffer, diagnostic + 5), 1); // end
         assert_eq!(u32_at(&buffer, diagnostic + 9), 2); // message length
         assert_eq!(&buffer[diagnostic + 13..diagnostic + 15], "é".as_bytes());
         assert_eq!(buffer[diagnostic + 15], 1); // has help
         assert_eq!(u32_at(&buffer, diagnostic + 16), 1); // help length
         assert_eq!(buffer[diagnostic + 20], b'h');
         assert_eq!(u32_at(&buffer, diagnostic + 21), 1); // label count
-        assert_eq!(u32_at(&buffer, diagnostic + 25), 2); // label start
-        assert_eq!(u32_at(&buffer, diagnostic + 29), 3); // label end
+        assert_eq!(u32_at(&buffer, diagnostic + 25), 1); // label start
+        assert_eq!(u32_at(&buffer, diagnostic + 29), 2); // label end
         assert_eq!(u32_at(&buffer, diagnostic + 33), 3); // label message length
         assert_eq!(&buffer[diagnostic + 37..diagnostic + 40], b"abc");
     }

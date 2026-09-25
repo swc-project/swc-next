@@ -40,7 +40,7 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     }
     output.push_str(PREAMBLE_END);
     output.push_str(DECODE_HELPERS);
-    writeln!(output, "export function {name}(buffer, source) {{").unwrap();
+    writeln!(output, "export function {name}(buffer, sourceBuffer) {{").unwrap();
     output.push_str(DECODE_PREAMBLE);
 
     for (kind, ty) in schema
@@ -146,7 +146,7 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: b
             AstType::Primitive(primitive) if primitive.name == "Span" => {
                 let start = read_i32(location, aligned_i32);
                 let end = read_i32(&format!("{location} + 4"), aligned_i32);
-                format!("{{ start: pos({start}), end: pos({end}) }}")
+                format!("{{ start: {start}, end: {end} }}")
             }
             AstType::Primitive(primitive) if primitive.name == "AstUtf8" => {
                 let start = read_i32(location, aligned_i32);
@@ -172,7 +172,7 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: b
             "Span" => {
                 let start = read_i32(location, aligned_i32);
                 let end = read_i32(&format!("{location} + 4"), aligned_i32);
-                format!("{{ start: pos({start}), end: pos({end}) }}")
+                format!("{{ start: {start}, end: {end} }}")
             }
             "ScopeId" | "SymbolId" => "undefined".into(),
             name if schema.repr_sizes.contains_key(name)
@@ -439,7 +439,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
 "#,
         ),
         "BigIntLiteral" => output.push_str(
-            r#"        const raw = source.slice(start, end);
+            r#"        const raw = `${f_raw}n`;
         const value = BigInt(f_raw.replaceAll("_", ""));
         result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
 "#,
@@ -819,32 +819,6 @@ const PREAMBLE_END: &str = r#"
 "#;
 
 const DECODE_HELPERS: &str = r#"
-function buildPosMap(source, byteLength) {
-  const map = new Int32Array(byteLength + 1);
-  let byte = 0;
-  for (let utf16 = 0; utf16 < source.length; utf16++) {
-    const first = source.charCodeAt(utf16);
-    const isPair =
-      first >= 0xd800 &&
-      first <= 0xdbff &&
-      utf16 + 1 < source.length &&
-      source.charCodeAt(utf16 + 1) >= 0xdc00 &&
-      source.charCodeAt(utf16 + 1) <= 0xdfff;
-    const width =
-      first < 0x80 ? 1 :
-      first < 0x800 ? 2 :
-      isPair ? 4 : 3;
-    for (let i = 0; i < width; i++) map[byte + i] = utf16;
-    byte += width;
-    if (width === 4) {
-      map[byte - 1] = utf16 + 1;
-      utf16++;
-    }
-  }
-  map[byteLength] = source.length;
-  return map;
-}
-
 function decodePool(bytes) {
   let hasSurrogate = false;
   for (const byte of bytes) {
@@ -924,13 +898,9 @@ const DECODE_PREAMBLE: &str = r#"
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  const positions =
-    source.length === sourceLength ? null : buildPosMap(source, sourceLength);
-
-  const pos = positions === null ? byte => byte : byte => positions[byte];
   const str = (start, end) => {
     if (start === end) return "";
-    if (start < sourceLength) return source.slice(pos(start), pos(end));
+    if (start < sourceLength) return textDecoder.decode(sourceBuffer.subarray(start, end));
     return decodePool(bytes.subarray(
       strings + start - sourceLength,
       strings + end - sourceLength,
@@ -959,15 +929,17 @@ const DECODE_PREAMBLE: &str = r#"
       const offset = comments + index * 16;
       const start = _i32[offset >> 2];
       const end = _i32[(offset >> 2) + 1];
-      const kind = _dv.getUint16(offset + 12, true);
-      const first = source.charCodeAt(pos(start));
-      const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
-      const valueEnd = end - (kind === 1 ? 2 : 0);
+      const byteStart = _i32[(offset >> 2) + 2];
+      const byteEnd = _i32[(offset >> 2) + 3];
+      const first = sourceBuffer[byteStart];
+      const kind = sourceBuffer[byteStart + 1] === 0x2a ? 1 : 0;
+      const valueStart = byteStart + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
+      const valueEnd = byteEnd - (kind === 1 ? 2 : 0);
       result[index] = {
         type: kind === 1 ? "Block" : "Line",
         value: str(valueStart, valueEnd),
-        start: pos(start),
-        end: pos(end),
+        start,
+        end,
       };
     }
     return result;
@@ -995,16 +967,16 @@ const DECODE_PREAMBLE: &str = r#"
       if (severity === undefined) {
         throw new RangeError(`Unknown diagnostic severity ${severityValue}`);
       }
-      const start = pos(readU32());
-      const end = pos(readU32());
+      const start = readU32();
+      const end = readU32();
       const message = readDiagnosticString();
       const help = readU8() === 0 ? undefined : readDiagnosticString();
       const labelCount = readU32();
       const labels = new Array(labelCount);
       for (let label = 0; label < labelCount; label++) {
         labels[label] = {
-          start: pos(readU32()),
-          end: pos(readU32()),
+          start: readU32(),
+          end: readU32(),
           message: readDiagnosticString(),
         };
       }
@@ -1015,8 +987,8 @@ const DECODE_PREAMBLE: &str = r#"
 
   function node(index) {
     const span = spans + index * 8;
-    const start = pos(_i32[span >> 2]);
-    const end = pos(_i32[(span >> 2) + 1]);
+    const start = _i32[span >> 2];
+    const end = _i32[(span >> 2) + 1];
     const payload = payloads + index * 16;
     let result;
     switch (bytes[kinds + index]) {

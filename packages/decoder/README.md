@@ -9,8 +9,9 @@ import { decode } from "@swc-next/decoder";
 import { parseSync as __parseSync } from "./binding.js";
 
 export function parseSync(source, options) {
-  const buffer = __parseSync(source, options);
-  return decode(buffer, source);
+  const sourceBuffer = new TextEncoder().encode(source);
+  const buffer = __parseSync(sourceBuffer, options);
+  return decode(buffer, sourceBuffer);
 }
 ```
 
