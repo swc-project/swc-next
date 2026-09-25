@@ -4,12 +4,16 @@ use std::borrow::Cow;
 
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
-use super::{BreakEffect, Doc, FormatElement, GroupId, GroupRequest, SpaceKind, text::Text};
+use super::{
+    BreakEffect, Doc, FlatFragment, FormatElement, Fragment, FragmentCapabilities, GroupId,
+    GroupRequest, RecordedGroup, SpaceKind, text::Text,
+};
 
 pub(crate) struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, FormatElement<'a>>,
     effect: BreakEffect,
+    flattening: bool,
     group_count: usize,
     conditional_lines: bool,
 }
@@ -26,6 +30,7 @@ impl<'a> Writer<'a> {
             allocator,
             elements: ArenaVec::new_in(allocator),
             effect: BreakEffect::default(),
+            flattening: false,
             group_count: 0,
             conditional_lines: false,
         }
@@ -185,6 +190,38 @@ impl<'a> Writer<'a> {
         result
     }
 
+    /// Removes optional layout breaks in one complete scope. Required source
+    /// breaks and line suffixes keep the original document unchanged.
+    pub(crate) fn flat<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        if self.flattening {
+            return write(self);
+        }
+        let start = self.elements.len();
+        let effect = self.effect;
+        let conditional_lines = self.conditional_lines;
+        self.flattening = true;
+        let result = write(self);
+        self.flattening = false;
+        if self.elements[start..]
+            .iter()
+            .any(|element| !element.permits_flat())
+        {
+            return result;
+        }
+        let mut output = start;
+        for index in start..self.elements.len() {
+            let Some(element) = self.elements[index].flattened() else {
+                continue;
+            };
+            self.elements[output] = element;
+            output += 1;
+        }
+        self.elements.truncate(output);
+        self.effect = effect;
+        self.conditional_lines = conditional_lines;
+        result
+    }
+
     pub(crate) fn indent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.elements.push(FormatElement::StartIndent);
         let result = write(self);
@@ -297,6 +334,87 @@ impl<'a> Writer<'a> {
         let end_offset = self.elements.len() - entry.start;
         self.elements[entry.start] = FormatElement::StartEntry { end_offset };
         self.elements.push(FormatElement::EndEntry);
+    }
+
+    /// Syntax is consumed once; only completed documents are retained.
+    pub(crate) fn record_with_value<T, E>(
+        &mut self,
+        write: impl FnOnce(&mut Self) -> Result<T, E>,
+    ) -> Result<(Fragment<'a>, T), E> {
+        let mut child = Self::new(self.allocator);
+        child.group_count = self.group_count;
+        let value = write(&mut child)?;
+        self.group_count = child.group_count;
+        let capabilities = if child.effect.preferred_breaks() || child.conditional_lines {
+            FragmentCapabilities::from_flat(
+                child.elements.iter().all(|element| element.permits_flat()),
+            )
+        } else {
+            FragmentCapabilities::classify(&child.elements)
+        };
+        let fragment = Fragment {
+            elements: child.elements.into_bump_slice(),
+            effect: child.effect,
+            capabilities,
+            conditional_lines: child.conditional_lines,
+        };
+        Ok((fragment, value))
+    }
+
+    pub(crate) fn record_group_with_value<T, E>(
+        &mut self,
+        write: impl FnOnce(&mut Self) -> Result<T, E>,
+    ) -> Result<(RecordedGroup<'a>, T), E> {
+        let (grouped, value) =
+            self.record_with_value(|writer| writer.group_with_request(GroupRequest::Auto, write))?;
+        let [
+            FormatElement::StartGroup { id: None, .. },
+            ..,
+            FormatElement::EndGroup,
+        ] = grouped.elements
+        else {
+            unreachable!("recorded group retains its complete anonymous outer scope");
+        };
+        Ok((RecordedGroup { grouped }, value))
+    }
+
+    /// Wraps a completed scope without recording its syntax or allocating a named group.
+    pub(crate) fn group_fragment(&self, expand: bool, fragment: Fragment<'a>) -> Fragment<'a> {
+        self.group_fragment_with_request(GroupRequest::from(expand), fragment)
+    }
+
+    pub(crate) fn group_fragment_with_request(
+        &self,
+        request: GroupRequest,
+        fragment: Fragment<'a>,
+    ) -> Fragment<'a> {
+        let effect = BreakEffect::from_request(request).join(fragment.effect);
+        let capabilities = if effect.preferred_breaks() || fragment.conditional_lines {
+            FragmentCapabilities::from_flat(fragment.capabilities.permits_flat())
+        } else {
+            fragment.capabilities
+        };
+        let elements = self.allocator.alloc([
+            FormatElement::StartGroup { effect, id: None },
+            FormatElement::Fragment(fragment),
+            FormatElement::EndGroup,
+        ]);
+        Fragment {
+            elements,
+            effect,
+            capabilities,
+            conditional_lines: fragment.conditional_lines,
+        }
+    }
+
+    pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
+        self.effect = self.effect.join(fragment.effect);
+        self.conditional_lines |= fragment.conditional_lines;
+        self.elements.push(FormatElement::Fragment(fragment));
+    }
+
+    pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
+        self.elements.push(FormatElement::FlatFragment(fragment));
     }
 
     pub(crate) fn finish(self) -> Doc<'a> {
