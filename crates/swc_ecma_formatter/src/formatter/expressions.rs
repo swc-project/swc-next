@@ -21,6 +21,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 "false"
             }),
             ExprData::NullLiteral(_) => writer.text("null"),
+            ExprData::NumericLiteral(node) => self.format_numeric_literal(node, writer),
+            ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
             _ => return Err(self.unsupported("expression", expression)),

@@ -55,7 +55,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Copies transient text into storage owned by this formatting call.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn text_copied(&mut self, text: &str) {
         if text.is_empty() {
             return;
