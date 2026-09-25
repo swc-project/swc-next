@@ -6,7 +6,8 @@ use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
 use super::{
     Alternatives, BreakEffect, CanonicalCandidate, Doc, FlatFragment, FormatElement, Fragment,
-    FragmentCapabilities, GroupId, GroupRequest, Measurement, RecordedGroup, SpaceKind, text::Text,
+    FragmentCapabilities, GroupId, GroupRequest, Measurement, NeutralFragment, RecordedGroup,
+    SpaceKind, text::Text,
 };
 
 pub(crate) struct Writer<'a> {
@@ -407,6 +408,167 @@ impl<'a> Writer<'a> {
         }
     }
 
+    /// Joins complete scopes with the same optional deferred separator as `space`.
+    pub(crate) fn join_fragments(
+        &self,
+        left: Fragment<'a>,
+        separate: bool,
+        right: Fragment<'a>,
+    ) -> Fragment<'a> {
+        let effect = left.effect.join(right.effect);
+        let conditional_lines = left.conditional_lines || right.conditional_lines;
+        let capabilities = match (left.capabilities, right.capabilities) {
+            (FragmentCapabilities::General, _) | (_, FragmentCapabilities::General) => {
+                FragmentCapabilities::General
+            }
+            (FragmentCapabilities::Neutral, FragmentCapabilities::Neutral)
+                if !effect.preferred_breaks() && !conditional_lines =>
+            {
+                FragmentCapabilities::Neutral
+            }
+            _ => FragmentCapabilities::FlatEligible,
+        };
+        let elements: &'a [FormatElement<'a>] = if separate {
+            self.allocator.alloc([
+                FormatElement::Fragment(left),
+                FormatElement::Space(SpaceKind::Deferred),
+                FormatElement::Fragment(right),
+            ])
+        } else {
+            self.allocator.alloc([
+                FormatElement::Fragment(left),
+                FormatElement::Fragment(right),
+            ])
+        };
+        Fragment {
+            elements,
+            effect,
+            capabilities,
+            conditional_lines,
+        }
+    }
+
+    /// Delimiters observe one complete group; the prefix keeps its own outer scope.
+    pub(crate) fn conditional_group_fragment(
+        &self,
+        prefix: Fragment<'a>,
+        request: GroupRequest,
+        open: &'a str,
+        body: Fragment<'a>,
+        close: &'a str,
+    ) -> Fragment<'a> {
+        let group_effect = BreakEffect::from_request(request).join(body.effect);
+        let effect = prefix.effect.join(group_effect);
+        let conditional_lines = prefix.conditional_lines || body.conditional_lines;
+        // Conditional delimiters disappear in a flat projection, and both
+        // complete backing scopes retain their own projection eligibility.
+        let capabilities = FragmentCapabilities::from_flat(
+            prefix.capabilities.permits_flat() && body.capabilities.permits_flat(),
+        );
+        let elements = self.allocator.alloc([
+            FormatElement::Fragment(prefix),
+            FormatElement::StartGroup {
+                effect: group_effect,
+                id: None,
+            },
+            FormatElement::IfBreak(Text::new(open)),
+            FormatElement::StartIndent,
+            FormatElement::SoftLine,
+            FormatElement::Fragment(body),
+            FormatElement::EndIndent,
+            FormatElement::SoftLine,
+            FormatElement::IfBreak(Text::new(close)),
+            FormatElement::EndGroup,
+        ]);
+        Fragment {
+            elements,
+            effect,
+            capabilities,
+            conditional_lines,
+        }
+    }
+
+    /// Flat views project their backing scopes without propagating backing break flags.
+    pub(crate) fn flat_delimited_fragment(
+        &self,
+        open: &'a str,
+        prefix: FlatFragment<'a>,
+        body: Fragment<'a>,
+        suffix: FlatFragment<'a>,
+        close: &'a str,
+    ) -> Fragment<'a> {
+        let open = Text::new(open);
+        let close = Text::new(close);
+        let capabilities = if !body.capabilities.permits_flat()
+            || !open.is_single_line()
+            || !close.is_single_line()
+        {
+            FragmentCapabilities::General
+        } else if !body.effect.preferred_breaks()
+            && !body.conditional_lines
+            && matches!(prefix.0.capabilities, FragmentCapabilities::Neutral)
+            && matches!(body.capabilities, FragmentCapabilities::Neutral)
+            && matches!(suffix.0.capabilities, FragmentCapabilities::Neutral)
+        {
+            FragmentCapabilities::Neutral
+        } else {
+            FragmentCapabilities::FlatEligible
+        };
+        let elements = self.allocator.alloc([
+            FormatElement::Text(open),
+            FormatElement::FlatFragment(prefix),
+            FormatElement::Fragment(body),
+            FormatElement::FlatFragment(suffix),
+            FormatElement::Text(close),
+        ]);
+        Fragment {
+            elements,
+            effect: body.effect,
+            capabilities,
+            conditional_lines: body.conditional_lines,
+        }
+    }
+
+    /// Only prefix and body gain the outer indent; suffix retains its own complete scopes.
+    pub(crate) fn indented_delimited_fragment(
+        &self,
+        open: &'a str,
+        prefix: Fragment<'a>,
+        body: Fragment<'a>,
+        suffix: Fragment<'a>,
+        close: &'a str,
+    ) -> Fragment<'a> {
+        let open = Text::new(open);
+        let close = Text::new(close);
+        let effect = prefix.effect.join(body.effect).join(suffix.effect);
+        let conditional_lines =
+            prefix.conditional_lines || body.conditional_lines || suffix.conditional_lines;
+        let capabilities = FragmentCapabilities::from_flat(
+            prefix.capabilities.permits_flat()
+                && body.capabilities.permits_flat()
+                && suffix.capabilities.permits_flat()
+                && open.is_single_line()
+                && close.is_single_line(),
+        );
+        let elements = self.allocator.alloc([
+            FormatElement::StartGroup { effect, id: None },
+            FormatElement::Text(open),
+            FormatElement::StartIndent,
+            FormatElement::Fragment(prefix),
+            FormatElement::Fragment(body),
+            FormatElement::EndIndent,
+            FormatElement::Fragment(suffix),
+            FormatElement::Text(close),
+            FormatElement::EndGroup,
+        ]);
+        Fragment {
+            elements,
+            effect,
+            capabilities,
+            conditional_lines,
+        }
+    }
+
     pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.effect = self.effect.join(fragment.effect);
         self.conditional_lines |= fragment.conditional_lines;
@@ -415,6 +577,16 @@ impl<'a> Writer<'a> {
 
     pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.elements.push(FormatElement::FlatFragment(fragment));
+    }
+
+    pub(crate) fn write_neutral_fragment(
+        &mut self,
+        NeutralFragment(fragment): NeutralFragment<'a>,
+    ) {
+        self.effect = self.effect.join(fragment.effect);
+        self.conditional_lines |= fragment.conditional_lines;
+        self.elements
+            .push(FormatElement::FlatFragment(FlatFragment(fragment)));
     }
 
     pub(crate) fn write_alternatives(
