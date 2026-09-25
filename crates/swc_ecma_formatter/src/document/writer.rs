@@ -52,6 +52,15 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::Text(Text::new(text)));
     }
 
+    /// Copies transient text into storage owned by this formatting call.
+    pub(crate) fn text_copied(&mut self, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+        let text = self.allocator.alloc_str(text);
+        self.elements.push(FormatElement::Text(Text::new(text)));
+    }
+
     /// Literal source lines retain their contents without structural indentation.
     pub(crate) fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
@@ -145,6 +154,23 @@ impl<'a> Writer<'a> {
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
         self.group_with_id(request, None, write)
+    }
+
+    /// Prepares a flat-width rejection from this completed group's own Doc.
+    /// Unsupported instructions keep the ordinary Auto group unchanged.
+    pub(crate) fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        let start = self.elements.len();
+        let result = self.group(false, write);
+        let FormatElement::StartGroup { effect, .. } = self.elements[start] else {
+            unreachable!("group scope retains its opening instruction");
+        };
+        if !effect.preferred_breaks()
+            && let Some(width) =
+                super::flat_width(&self.elements[start + 1..self.elements.len() - 1])
+        {
+            self.elements[start] = FormatElement::StartGroupWithFlatWidth { width };
+        }
+        result
     }
 
     /// The returned handle refers to a group already written in this document.
@@ -335,6 +361,16 @@ impl<'a> Writer<'a> {
         let end_offset = self.elements.len() - entry.start;
         self.elements[entry.start] = FormatElement::StartEntry { end_offset };
         self.elements.push(FormatElement::EndEntry);
+    }
+
+    /// Writes once and measures only appended instructions; the slice never escapes.
+    pub(crate) fn write_with_clean_text_width<E>(
+        &mut self,
+        write: impl FnOnce(&mut Self) -> Result<(), E>,
+    ) -> Result<Option<usize>, E> {
+        let start = self.elements.len();
+        write(self)?;
+        Ok(super::clean_text_width(&self.elements[start..]))
     }
 
     /// Syntax is consumed once; only completed documents are retained.
