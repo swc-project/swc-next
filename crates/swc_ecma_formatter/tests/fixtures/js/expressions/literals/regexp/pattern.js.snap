@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/[a-z\/]+(?:x|y)/;
+---------- Options ----------
+{}
+---------- Output ----------
+/[a-z\/]+(?:x|y)/;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/[a-z\/]+(?:x|y)/
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/[a-z\/]+(?:x|y)/;
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+/[a-z\/]+(?:x|y)/;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/[a-z\/]+(?:x|y)/;
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+/[a-z\/]+(?:x|y)/;
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/[a-z\/]+(?:x|y)/;
