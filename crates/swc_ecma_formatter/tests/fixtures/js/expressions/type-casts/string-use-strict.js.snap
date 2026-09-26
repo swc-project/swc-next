@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {string} */ ("use strict");
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type {string} */ ("use strict");
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/** @type {string} */ ("use strict")
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** @type {string} */ ("use strict");
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @type {string} */ (
+  "use strict"
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/** @type {string} */ (
+  "use strict"
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/** @type {string} */ (
+	"use strict"
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+/** @type {string} */ ("use strict");
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+/** @type {string} */ ('use strict');
