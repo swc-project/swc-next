@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @typedef {number} N */ (first);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @typedef {number} N */ first;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @typedef {number} N */ first
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** @typedef {number} N */ first;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @typedef {number} N */ first;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/** @typedef {number} N */ first;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/** @typedef {number} N */ first;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+/** @typedef {number} N */ first;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+/** @typedef {number} N */ first;
