@@ -1,0 +1,8 @@
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.
+TS9038: Computed property names on class or object literals cannot be inferred with --isolatedDeclarations.

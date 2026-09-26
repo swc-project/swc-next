@@ -1,0 +1,1 @@
+TS9008: Method must have an explicit return type annotation with --isolatedDeclarations.

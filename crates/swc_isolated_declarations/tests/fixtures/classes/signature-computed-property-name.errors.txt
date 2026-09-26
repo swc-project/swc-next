@@ -1,0 +1,4 @@
+TS9014: Computed properties must be number or string literals, variables or dotted expressions with --isolatedDeclarations.
+TS9014: Computed properties must be number or string literals, variables or dotted expressions with --isolatedDeclarations.
+TS9014: Computed properties must be number or string literals, variables or dotted expressions with --isolatedDeclarations.
+TS9014: Computed properties must be number or string literals, variables or dotted expressions with --isolatedDeclarations.

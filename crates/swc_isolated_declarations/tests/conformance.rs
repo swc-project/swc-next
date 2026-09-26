@@ -29,7 +29,7 @@ struct ExpectedDiagnostic {
 #[test]
 fn covers_deduplicated_declaration_emit_fixtures() {
     let fixtures = read_fixtures();
-    assert_eq!(fixtures.len(), 33);
+    assert_eq!(fixtures.len(), 55);
 
     let mut names = HashSet::new();
     let mut sources = HashSet::new();
@@ -59,7 +59,7 @@ fn covers_deduplicated_declaration_emit_fixtures() {
 
     assert_eq!(
         categories,
-        HashSet::from(["bindings", "expressions", "functions",])
+        HashSet::from(["bindings", "classes", "expressions", "functions",])
     );
     if failures.len() == 1 {
         let (fixture, error) = &failures[0];

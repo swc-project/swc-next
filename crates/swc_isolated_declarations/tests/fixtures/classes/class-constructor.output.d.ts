@@ -1,0 +1,14 @@
+// @isolatedDeclarations: true
+export declare class Foo {
+    one?: number | undefined;
+    protected two?: number | undefined;
+    private three?;
+    constructor(one?: number | undefined, two?: number | undefined, three?: number | undefined);
+}
+export declare class Bar {
+    a: number;
+    b: number;
+    c?: number | undefined;
+    d: number;
+    constructor(a: number, b?: number, c?: number | undefined, d?: number);
+}

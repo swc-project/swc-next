@@ -1,0 +1,7 @@
+export declare class Foo {
+    private constructor();
+}
+export declare class Bar {
+    readonly x: number;
+    private constructor();
+}

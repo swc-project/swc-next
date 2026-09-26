@@ -1,0 +1,4 @@
+TS9009: At least one accessor must have an explicit type annotation with --isolatedDeclarations.
+TS9009: At least one accessor must have an explicit type annotation with --isolatedDeclarations.
+TS9009: At least one accessor must have an explicit type annotation with --isolatedDeclarations.
+TS9009: At least one accessor must have an explicit type annotation with --isolatedDeclarations.

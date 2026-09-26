@@ -1,0 +1,4 @@
+TS9017: Only const arrays can be inferred with --isolatedDeclarations.
+TS9017: Only const arrays can be inferred with --isolatedDeclarations.
+TS9017: Only const arrays can be inferred with --isolatedDeclarations.
+TS9017: Only const arrays can be inferred with --isolatedDeclarations.

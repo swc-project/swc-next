@@ -1,0 +1,13 @@
+export declare class A {
+    private p1;
+    private constructor();
+    private accessor myProperty;
+    private func1;
+}
+export declare class B {
+    private a;
+    private constructor();
+}
+export declare class C {
+    #private;
+}

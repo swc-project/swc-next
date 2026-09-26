@@ -1,0 +1,11 @@
+export declare class DefiniteFields {
+    publicField: string;
+    protected protectedField: number;
+    private privateField;
+    readonly readonlyField: string;
+}
+export declare class DefiniteAccessors {
+    accessor publicAccessor: string;
+    protected accessor protectedAccessor: number;
+    private accessor privateAccessor;
+}

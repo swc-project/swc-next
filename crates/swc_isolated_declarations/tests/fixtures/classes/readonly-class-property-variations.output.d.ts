@@ -1,0 +1,35 @@
+export declare class ReadonlyClassPropertyVariations {
+	readonly emptyArray: unknown;
+	readonly emptyArrayAsConst: readonly [];
+	readonly emptyArrayWithTypeAnnotation: number[];
+	readonly emptyArrayAsTypeAssertion: number[];
+	readonly emptyArrayAsConstTypeAssertion: readonly [];
+	readonly nestedEmptyArrayAsConst: readonly [];
+	readonly arrayWithNumberLiterals: unknown;
+	readonly arrayWithMixedLiterals: unknown;
+	readonly arrayWithElision: unknown;
+	readonly arrayWithOnlyElision: unknown;
+	readonly arrayAsConst: readonly [1, "x", true];
+	readonly nestedArray: unknown;
+	readonly arrayWithObjectLiterals: unknown;
+	readonly arrayWithUnaryNumberLiterals: unknown;
+	readonly arrayWithNoExprTemplateLiteral: unknown;
+	readonly arrayWithUndefinedIdentifier: unknown;
+	readonly arrayWithConstAssertedElements: unknown;
+	readonly arrayWithSpreadConstTuple: unknown;
+	readonly arrayWithSpreadLiteral: unknown;
+	readonly arrayWithIdentifierElement: unknown;
+	readonly arrayWithCallElement: unknown;
+	readonly arrayWithTemplateExprElement: unknown;
+	readonly arrayWithInvalidUnaryElement: unknown;
+	readonly arraySatisfies;
+	readonly arrayNonNull;
+	readonly invalidDirectUnary;
+	readonly invalidTemplateLiteral;
+	mutableTemplateLiteral: string;
+	mutableParenthesizedTemplateLiteral: string;
+	readonly annotatedSpread: readonly number[];
+	readonly annotatedIdentifier: readonly [1, 2];
+	readonly annotatedCall: unknown[];
+	readonly annotatedTemplateExpr: string[];
+}
