@@ -34,6 +34,7 @@ impl CommentSemantics {
 #[derive(Clone, Copy)]
 pub(super) enum CommentBinding {
     Unbound,
+    BoundTo(Span),
     SourceBound,
 }
 
@@ -41,6 +42,7 @@ impl CommentBinding {
     pub(super) fn combine(self, other: Self) -> Self {
         match (self, other) {
             (Self::Unbound, binding) | (binding, Self::Unbound) => binding,
+            (Self::BoundTo(left), Self::BoundTo(right)) if left == right => Self::BoundTo(left),
             _ => Self::SourceBound,
         }
     }
@@ -56,9 +58,10 @@ impl CommentBinding {
         combined
     }
 
-    pub(super) fn allows_relocation(&self) -> bool {
+    pub(super) fn allows_relocation(&self, target: Option<Span>) -> bool {
         match self {
             Self::Unbound => true,
+            Self::BoundTo(source) => target == Some(*source),
             Self::SourceBound => false,
         }
     }
@@ -68,7 +71,24 @@ impl CommentBinding {
 pub(super) enum CommentRunLayout {
     Source,
     SourceAfter(u32),
+    Leading(u32),
+    GroupedLeading(u32),
+    FlatLeading(u32),
     CanonicalDangling,
+}
+
+/// A claimed leading run and the source gap owned by its node.
+pub(super) struct NodeHead<'ast> {
+    pub(super) comments: &'ast [Comment],
+    pub(super) content_start: u32,
+    pub(super) layout: CommentRunLayout,
+    pub(super) gap_end: Option<u32>,
+}
+
+/// The cursor stays at a pending tail until its real punctuation owner claims it.
+pub(super) struct ExpressionTail<'ast> {
+    pub(super) source_end: u32,
+    pub(super) comments: &'ast [Comment],
 }
 
 enum CommentText<'ast> {
@@ -367,6 +387,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
     }
 
+    fn leading_comment_gap(
+        &self,
+        comment: &PreparedComment<'ast>,
+        next_start: u32,
+        grouped: bool,
+        writer: &mut Writer<'ast>,
+    ) {
+        self.line_constraint(comment.span.end, next_start).write(
+            writer,
+            FlatSeparator::Space,
+            |writer| match self.line_breaks(comment.span.end, next_start) {
+                0 if comment.kind == CommentKind::Block => writer.space(),
+                1 if comment.kind == CommentKind::Block
+                    && !self.source_position_starts_line(comment.span.start) =>
+                {
+                    if grouped {
+                        writer.line();
+                    } else {
+                        writer.space();
+                    }
+                }
+                0 | 1 => writer.hard_line(),
+                _ => {
+                    writer.hard_line();
+                    if self.next_line_is_empty(comment.span.end, next_start) {
+                        writer.hard_line();
+                    }
+                }
+            },
+        );
+    }
+
     pub(super) fn format_comment_run(
         &self,
         comments: &[Comment],
@@ -376,11 +428,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut previous: Option<PreparedComment<'ast>> = None;
         for &comment in comments {
             let prepared = self.prepare_comment(comment)?;
+            let line_suffix = if let (CommentRunLayout::SourceAfter(start), CommentKind::Line) =
+                (layout, comment.kind)
+            {
+                let end = previous
+                    .as_ref()
+                    .map_or(start, |previous| previous.span.end);
+                self.line_breaks(end, comment.span.start) == 0
+            } else {
+                false
+            };
             if let Some(previous) = previous.as_ref() {
                 let nestled = previous.span.end == prepared.span.start
                     && previous.is_alignable()
                     && prepared.is_alignable();
-                if !nestled {
+                if !nestled && !line_suffix {
                     match layout {
                         CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => {
                             self.comment_gap(previous.span.end, prepared.span.start, writer)
@@ -388,16 +450,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         CommentRunLayout::CanonicalDangling => self
                             .line_constraint(previous.span.end, prepared.span.start)
                             .write(writer, FlatSeparator::Space, Writer::hard_line),
+                        CommentRunLayout::Leading(_) | CommentRunLayout::GroupedLeading(_) => self
+                            .leading_comment_gap(
+                                previous,
+                                prepared.span.start,
+                                matches!(layout, CommentRunLayout::GroupedLeading(_)),
+                                writer,
+                            ),
+                        CommentRunLayout::FlatLeading(_) => self
+                            .line_constraint(previous.span.end, prepared.span.start)
+                            .write(writer, FlatSeparator::Space, |writer| match previous.kind {
+                                CommentKind::Line => writer.hard_line(),
+                                CommentKind::Block => writer.space(),
+                            }),
                     }
                 }
-            }
-            if previous.is_none()
-                && let CommentRunLayout::SourceAfter(start) = layout
+            } else if let CommentRunLayout::SourceAfter(start) = layout
+                && !line_suffix
             {
                 self.comment_gap(start, prepared.span.start, writer);
             }
-            prepared.text.write(writer);
+            if line_suffix {
+                writer.line_suffix(self.source(comment.span).trim_end());
+            } else {
+                prepared.text.write(writer);
+            }
             previous = Some(prepared);
+        }
+        match (layout, previous) {
+            (CommentRunLayout::Leading(next), Some(previous)) => {
+                self.leading_comment_gap(&previous, next, false, writer)
+            }
+            (CommentRunLayout::GroupedLeading(next), Some(previous)) => {
+                self.leading_comment_gap(&previous, next, true, writer)
+            }
+            (CommentRunLayout::FlatLeading(next), Some(previous)) => self
+                .line_constraint(previous.span.end, next)
+                .write(writer, FlatSeparator::Space, |writer| match previous.kind {
+                    CommentKind::Line => writer.hard_line(),
+                    CommentKind::Block => writer.space(),
+                }),
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub(super) fn format_expression_tail(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if let Some(tail) = tail {
+            self.comments.claim(tail.comments)?;
+            self.format_comment_run(
+                tail.comments,
+                CommentRunLayout::SourceAfter(tail.source_end),
+                writer,
+            )?;
         }
         Ok(())
     }
@@ -407,25 +516,60 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         span: Span,
         statement_end: u32,
         has_following: bool,
+        pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<u32, FormatError> {
-        let comments = self.comments.between(span)?;
-        let comments = self.trailing_comment_prefix(comments, span, statement_end, has_following);
-        let comments = self.comments.take(comments.len());
-        let end = comments
-            .last()
-            .map_or(span.start, |comment| comment.span.end);
-        if self
-            .comment_binding(comments, Span::new(span.start, end))
-            .allows_relocation()
-        {
-            self.format_trailing_comment_run(comments, writer)?;
+        let source_end = pending.as_ref().map_or(span.start, |tail| tail.source_end);
+        let comments = self.comments.between(Span::new(source_end, span.end))?;
+        let (comments, source_end) = if let Some(tail) = pending {
+            // Keep the leased child tail and the parent's suffix in one packet:
+            // a later block must not overtake a pending line suffix.
+            let (inherited, following) = comments.split_at(tail.comments.len());
+            let start = inherited
+                .last()
+                .map_or(span.start, |comment| span.start.max(comment.span.end));
+            let following = self.trailing_comment_prefix(
+                following,
+                Span::new(start, span.end),
+                statement_end,
+                has_following,
+            );
+            (
+                &comments[..inherited.len() + following.len()],
+                Some(tail.source_end),
+            )
         } else {
-            self.format_comment_run(comments, CommentRunLayout::SourceAfter(span.start), writer)?;
+            (
+                self.trailing_comment_prefix(comments, span, statement_end, has_following),
+                None,
+            )
+        };
+        self.comments.claim(comments)?;
+        if let Some(last) = comments.last() {
+            if let Some(source_end) = source_end {
+                self.format_comment_run(
+                    comments,
+                    CommentRunLayout::SourceAfter(source_end),
+                    writer,
+                )?;
+            } else {
+                if self
+                    .comment_binding(comments, Span::new(span.start, last.span.end))
+                    .allows_relocation(None)
+                {
+                    self.format_trailing_comment_run(comments, writer)?;
+                } else {
+                    self.format_comment_run(
+                        comments,
+                        CommentRunLayout::SourceAfter(span.start),
+                        writer,
+                    )?;
+                }
+            }
+            Ok(span.start.max(last.span.end))
+        } else {
+            Ok(span.start)
         }
-        Ok(comments
-            .last()
-            .map_or(span.start, |comment| span.start.max(comment.span.end)))
     }
 
     pub(super) fn format_trailing_comment_run(

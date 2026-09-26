@@ -9,8 +9,9 @@ use swc_next_ecma_ast::{
 
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 use super::Formatter;
-use super::comments::{CommentBinding, CommentRunLayout};
+use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
+use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart};
 use super::literals::StringContext;
 use super::source::is_source_whitespace;
 use super::suppression::{ContentMode, is_suppression_comment};
@@ -54,7 +55,6 @@ impl StatementItem {
 #[derive(Clone, Copy)]
 struct StatementLayout {
     guarded: bool,
-    source_parentheses: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -295,7 +295,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_has_target_annotation(comment)
                     || mode == ContentMode::Verbatim && is_suppression_comment(ast, comment)
             });
-            if needs_guard && protected {
+            if needs_guard && protected && mode == ContentMode::Verbatim {
                 writer.text(";");
                 guarded = true;
                 if mode == ContentMode::Verbatim
@@ -310,22 +310,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let source_parentheses = expression.is_some_and(|expression| {
-                matches!(
-                    ast.expr_data(expression),
-                    ExprData::ParenthesizedExpression(_)
-                ) && (self.diagnostic_range_is_sensitive(expression.span(ast))
-                    || leading
-                        .iter()
-                        .any(|&comment| self.comment_is_type_cast(comment)))
-            });
-            let layout = StatementLayout {
-                guarded,
-                source_parentheses,
+            let layout = StatementLayout { guarded };
+            let expression_head = expression.is_some() && mode == ContentMode::Formatted;
+            let head = NodeHead {
+                comments: if expression_head { leading } else { &[] },
+                content_start: statement_span.start,
+                layout: CommentRunLayout::Source,
+                gap_end: Some(statement_span.start),
             };
-            self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
-            if let Some(last) = leading.last() {
-                self.comment_gap(last.span.end, statement_span.start, writer);
+            if !expression_head {
+                self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
+                if let Some(last) = leading.last() {
+                    self.comment_gap(last.span.end, statement_span.start, writer);
+                }
             }
             let content = if mode == ContentMode::Verbatim {
                 StatementMode::Verbatim(
@@ -336,9 +333,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 StatementMode::Formatted
             };
-            let mut boundary = match statement {
+            let (mut boundary, mut expression_tail) = match statement {
                 StatementItem::Statement(node) => {
-                    self.format_statement(node, layout, content, punctuation, writer)?
+                    self.format_statement(node, head, layout, content, punctuation, writer)?
                 }
                 StatementItem::Directive(node) => {
                     let expression = node.expression(ast);
@@ -347,9 +344,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         self.format_string_literal(expression, StringContext::Directive, writer);
                     }
-                    self.finish_statement(expression.span(ast).end, punctuation, writer)?
+                    (
+                        self.finish_statement(expression.span(ast).end, punctuation, writer)?,
+                        None,
+                    )
                 }
             };
+            if source_packet.is_some() || annotation_tail.is_some() || omitted.is_some() {
+                self.format_expression_tail(expression_tail.take(), writer)?;
+            }
             let trailing_start = if let Some(packet) = source_packet {
                 let start = packet.span.start.max(boundary.end());
                 self.format_verbatim(Span::new(start, packet.span.end), writer)?;
@@ -384,6 +387,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Span::new(trailing_start, following.unwrap_or(span.end)),
                     statement_span.end,
                     following.is_some(),
+                    expression_tail,
                     writer,
                 )?
             };
@@ -477,7 +481,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self.comments.take(comments.len());
         if self
             .comment_binding(comments, Span::new(start, end))
-            .allows_relocation()
+            .allows_relocation(None)
         {
             self.format_trailing_comment_run(comments, writer)?;
         } else {
@@ -584,7 +588,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::Unbound
             }
         });
-        if binding.allows_relocation() {
+        if binding.allows_relocation(None) {
             return None;
         }
         let following_gap = if suppression.following == ContentMode::Verbatim {
@@ -608,11 +612,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_statement(
         &mut self,
         statement: Stmt,
+        head: NodeHead<'ast>,
         layout: StatementLayout,
         content: StatementMode,
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
-    ) -> Result<StatementBoundary, FormatError> {
+    ) -> Result<(StatementBoundary, Option<ExpressionTail<'ast>>), FormatError> {
         if let StatementMode::Verbatim(content) = content {
             if !matches!(
                 self.ast.stmt_data(statement),
@@ -640,56 +645,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if parenthesize {
                 writer.text(")");
             }
-            return match content {
+            let boundary = match content {
                 StatementContent::Semicolon(_) => self.finish_statement(end, punctuation, writer),
                 StatementContent::Complete(_) => Ok(StatementBoundary::SourceEnd {
                     end,
                     has_terminator: false,
                 }),
-            };
+            }?;
+            return Ok((boundary, None));
         }
+        let mut tail = None;
         let content_end = match self.ast.stmt_data(statement) {
             StmtData::ExpressionStatement(node) => {
                 let expression = node.expression(self.ast);
-                let parenthesize = self.string_expression_literal(expression).is_some();
-                if !layout.guarded
-                    && self.options.semicolons == Semicolons::AsNeeded
-                    && (parenthesize
-                        || matches!(self.ast.expr_data(expression), ExprData::RegExpLiteral(_)))
-                {
-                    writer.text(";");
-                }
-                if layout.source_parentheses
-                    && let Some(literal) = self.string_expression_literal(expression)
-                {
-                    let outer = expression.span(self.ast);
-                    let inner = literal.span(self.ast);
-                    writer.group(false, |writer| {
-                        writer.text("(");
-                        writer.indent(|writer| {
-                            self.line_constraint(outer.start + 1, inner.start).write(
-                                writer,
-                                FlatSeparator::Empty,
-                                Writer::soft_line,
-                            );
-                            self.format_string_literal(literal, StringContext::Expression, writer);
-                        });
-                        self.line_constraint(inner.end, outer.end - 1).write(
-                            writer,
-                            FlatSeparator::Empty,
-                            Writer::soft_line,
-                        );
-                        writer.text(")");
+                let context = ExpressionContext::at(ExpressionPosition::Statement)
+                    .with_expression_start(if layout.guarded {
+                        ExpressionStart::StatementGuarded
+                    } else {
+                        ExpressionStart::StatementPending
                     });
-                } else {
-                    if parenthesize {
-                        writer.text("(");
-                    }
-                    self.format_expression(expression, writer)?;
-                    if parenthesize {
-                        writer.text(")");
-                    }
-                }
+                tail = self
+                    .format_expression_with_leading_comments(expression, head, context, writer)?;
                 expression.span(self.ast).end
             }
             StmtData::DebuggerStatement(node) => {
@@ -698,14 +674,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             StmtData::BlockStatement(block) => {
                 self.format_block(block, writer)?;
-                return Ok(StatementBoundary::SourceEnd {
-                    end: block.span(self.ast).end,
-                    has_terminator: false,
-                });
+                return Ok((
+                    StatementBoundary::SourceEnd {
+                        end: block.span(self.ast).end,
+                        has_terminator: false,
+                    },
+                    None,
+                ));
             }
             _ => return Err(self.unsupported("statement", statement)),
         };
-        self.finish_statement(content_end, punctuation, writer)
+        let boundary = self.finish_statement(content_end, punctuation, writer)?;
+        Ok((boundary, tail))
     }
 
     fn finish_statement(
@@ -772,16 +752,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: swc_next_ecma_ast::Expr,
         mode: ContentMode,
     ) -> bool {
-        if mode == ContentMode::Verbatim {
-            let source = self.source(expression.span(self.ast));
-            return matches!(self.ast.expr_data(expression), ExprData::StringLiteral(_))
-                || source.starts_with(['(', '[', '/', '`', '<'])
-                || source.starts_with(['+', '-'])
-                    && !source.starts_with("++")
-                    && !source.starts_with("--");
-        }
-        self.string_expression_literal(expression).is_some()
-            || matches!(self.ast.expr_data(expression), ExprData::RegExpLiteral(_))
+        self.expression_needs_asi_guard(
+            expression,
+            ExpressionContext::at(ExpressionPosition::Statement).with_content_mode(mode),
+        )
     }
 
     fn format_block(

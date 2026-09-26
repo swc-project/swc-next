@@ -11,6 +11,14 @@ pub(super) enum ContentMode {
     Verbatim,
 }
 
+/// Source-run placement is intrinsic; the consumer decides whether it supplies
+/// the terminal boundary needed by an own-line trailing suppression.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TrailingSuppression {
+    Inline,
+    Terminal,
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum SuppressionPosition {
     OwnLine,
@@ -103,6 +111,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ContentMode::Formatted
         }
+    }
+
+    pub(super) fn trailing_suppression_from_comments(
+        &self,
+        span: Span,
+        comments: &[Comment],
+        terminal: bool,
+    ) -> Option<TrailingSuppression> {
+        if !self.has_suppression {
+            return None;
+        }
+        let mut previous = span.start;
+        let mut position = TrailingSuppression::Inline;
+        for comment in comments {
+            let gap = self.source(Span::new(previous, comment.span.start));
+            if !gap.chars().all(is_source_whitespace) {
+                break;
+            }
+            if position == TrailingSuppression::Inline
+                && self.line_breaks(previous, comment.span.start) != 0
+            {
+                if !terminal {
+                    break;
+                }
+                position = TrailingSuppression::Terminal;
+            }
+            if is_suppression_comment(self.ast, *comment) {
+                return Some(position);
+            }
+            previous = comment.span.end;
+        }
+        None
     }
 
     pub(super) fn format_verbatim(

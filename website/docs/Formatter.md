@@ -95,6 +95,15 @@ A child can return a borrowed pending comment tail when its parent owns the
 following punctuation or layout scope. The cursor remains at that run until
 the owning boundary claims it.
 
+## Grammar and semantic boundaries
+
+Expression contexts carry precedence, operand roles, and statement-start rules.
+Parenthesis and layout changes must preserve evaluation order, directive status,
+statement boundaries, and semantic comment scopes.
+
+Required token separation and statement guards are decided by syntax formatting
+before printing chooses line breaks or removes optional punctuation.
+
 ## Verification
 
 Use local fixtures for representative syntax, comments, options, and widths.
