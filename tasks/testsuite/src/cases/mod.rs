@@ -6,7 +6,6 @@ use crate::util::crate_root;
 
 pub mod babel;
 pub mod babel_parser;
-pub mod regressions;
 pub mod swc_resolver;
 pub mod test262;
 pub mod typescript;

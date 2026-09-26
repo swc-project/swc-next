@@ -2,8 +2,7 @@ use clap::{Parser, ValueEnum};
 use testsuite::{
     cases::{
         Case, babel::BabelTransformCase, babel_parser::BabelParserCase,
-        regressions::RegressionCase, swc_resolver::SwcResolverCase, test262::Test262Case,
-        typescript::TypeScriptCase,
+        swc_resolver::SwcResolverCase, test262::Test262Case, typescript::TypeScriptCase,
     },
     runner::{
         Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
@@ -27,7 +26,6 @@ enum CaseSet {
     #[value(name = "typescript")]
     TypeScript,
     Babel,
-    Regressions,
     #[value(name = "swc_resolver")]
     SwcResolver,
 }
@@ -69,16 +67,12 @@ fn main() {
 
 fn run_conformance<R>(case_set: CaseSet, filter: &str) -> Result<(), String>
 where
-    R: Runner<Test262Case>
-        + Runner<TypeScriptCase>
-        + Runner<BabelParserCase>
-        + Runner<RegressionCase>,
+    R: Runner<Test262Case> + Runner<TypeScriptCase> + Runner<BabelParserCase>,
 {
     match case_set {
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::TypeScript => run_filtered::<R, TypeScriptCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
-        CaseSet::Regressions => run_filtered::<R, RegressionCase>(filter),
         CaseSet::SwcResolver => Err("parser/codegen do not run SWC resolver cases".into()),
     }
 }

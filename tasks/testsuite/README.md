@@ -36,28 +36,13 @@ instead.
 
 ## Parser and codegen conformance
 
-Project-authored regression fixtures live in `fixtures-manual/regressions/`,
-grouped by feature. These are independent of the upstream suites and require no
-Test262 metadata. Each `.js` file is parsed as a Script and each `.mjs` file as a
-Module. A `.negative.js` or `.negative.mjs` suffix expects a parser or semantic
-syntax error; other files must pass both stages. Codegen checks positive cases
-for print stability. Other file extensions are ignored.
-
-The conformance command includes these cases and writes separate
-`parser_regressions.snap` and `codegen_regressions.snap` summaries. For example,
-run one project regression with:
-
-```sh
-cargo run -p testsuite --bin debug -- --runner parser --case regressions --filter 'duplicate-parameters/generator-declaration.js'
-```
-
 Run the complete conformance matrix:
 
 ```sh
 cargo run -p testsuite --bin conformance
 ```
 
-The command combines four case sources (`test262`, `typescript`, `babel`, and `regressions`)
+The command combines three case sources (`test262`, `typescript`, and `babel`)
 with two runners:
 
 - `parser` parses each case and then performs semantic analysis. A case passes
@@ -66,8 +51,8 @@ with two runners:
   parse → print → parse → print reaches the same byte output after the first
   print.
 
-The eight summaries are written to
-`tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel,regressions}.snap`.
+The six summaries are written to
+`tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel}.snap`.
 The Babel parser and codegen runs use
 `babel/packages/babel-parser/test/fixtures`. Parser cases read their expected
 result from `output.json`/`output.extended.json` and `options.json`; fixtures

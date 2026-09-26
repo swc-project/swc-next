@@ -45,13 +45,6 @@ First run `./scripts/clone_fixtures.sh`. Review changes under `tasks/testsuite/s
 The Test262 parser/codegen runner also discovers `.js` files with Test262 metadata under
 `tasks/testsuite/fixtures-manual/test262-legacy/`, including tests retained after upstream removal.
 
-Project-authored parser/semantic and codegen regressions belong under
-`tasks/testsuite/fixtures-manual/regressions/`, grouped by feature. `.js` files use
-Script mode and `.mjs` files use Module mode; `.negative.js` and `.negative.mjs`
-expect parser or semantic syntax errors. Other cases must pass parser and semantic
-checks and codegen print stability. No Test262 metadata is needed. The conformance
-command includes these cases; use `--case regressions` to debug one.
-
 | Runner    | Suites                     | Check                                                | Command                                                          |
 | --------- | -------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
 | Parser    | Test262, TypeScript, Babel | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance --profile conformance` |
@@ -63,7 +56,7 @@ command includes these cases; use `--case regressions` to debug one.
 Debug one fixture with:
 
 ```sh
-cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver> --case <test262|typescript|babel|regressions|swc_resolver> --filter '<unique substring>'
+cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver> --case <test262|typescript|babel|swc_resolver> --filter '<unique substring>'
 ```
 
 ### Minifier Fixtures
