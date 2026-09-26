@@ -288,9 +288,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let needs_guard = !guarded
                 && self.options.semicolons == Semicolons::AsNeeded
-                && expression.is_some_and(|expression| {
-                    self.statement_expression_needs_guard(expression, mode)
-                });
+                && expression
+                    .map(|expression| self.statement_expression_needs_guard(expression, mode))
+                    .transpose()?
+                    .unwrap_or(false);
             let protected = leading.iter().any(|&comment| {
                 self.comment_has_target_annotation(comment)
                     || mode == ContentMode::Verbatim && is_suppression_comment(ast, comment)
@@ -631,7 +632,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let expression = node.expression(self.ast);
                 if !layout.guarded
                     && self.options.semicolons == Semicolons::AsNeeded
-                    && self.statement_expression_needs_guard(expression, ContentMode::Verbatim)
+                    && self.statement_expression_needs_guard(expression, ContentMode::Verbatim)?
                 {
                     writer.text(";");
                 }
@@ -751,7 +752,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         expression: swc_next_ecma_ast::Expr,
         mode: ContentMode,
-    ) -> bool {
+    ) -> Result<bool, FormatError> {
         self.expression_needs_asi_guard(
             expression,
             ExpressionContext::at(ExpressionPosition::Statement).with_content_mode(mode),
