@@ -1,0 +1,56 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+"u\x73e strict"; item;
+---------- Options ----------
+{}
+---------- Output ----------
+"u\x73e strict";
+item;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+'u\x73e strict';
+item;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+"u\x73e strict"
+item
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+'u\x73e strict'
+item
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+"u\x73e strict";
+item;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+"u\x73e strict";
+item;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+"u\x73e strict";
+item;
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+"u\x73e strict";item;
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+"u\x73e strict";
+item;
