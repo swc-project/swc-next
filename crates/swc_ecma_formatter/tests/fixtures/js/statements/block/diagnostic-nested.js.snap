@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+{ // @ts-expect-error
+{ first; second; }
+next; }
+---------- Options ----------
+{}
+---------- Output ----------
+{
+  // @ts-expect-error
+  { first; second; }
+  next;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+{
+  // @ts-expect-error
+  { first; second }
+  next
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+{
+  // @ts-expect-error
+  { first; second; }
+  next;
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+{
+	// @ts-expect-error
+	{ first; second; }
+	next;
+}
