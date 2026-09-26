@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::{ObjectProperty, Program, RegExpLiteral};
+use swc_next_ecma_ast::{Ast, ObjectProperty, RegExpLiteral};
 use swc_next_ecma_semantic::Semantic;
 
 use crate::state::TransformerCtx;
@@ -9,7 +9,15 @@ pub mod sticky_regex;
 pub(crate) mod util;
 
 pub struct ES2015 {
-    arrow: Option<arrow::ArrowFunctions>,
+    semantic_program: Option<SemanticProgramTransforms>,
+    traverse: TraverseTransforms,
+}
+
+pub(crate) struct SemanticProgramTransforms {
+    arrow: arrow::ArrowFunctions,
+}
+
+pub(crate) struct TraverseTransforms {
     shorthand_properties: bool,
     sticky_regex: bool,
 }
@@ -23,24 +31,36 @@ pub struct ES2015Options {
 
 impl ES2015 {
     pub fn new(options: ES2015Options) -> Self {
+        let ES2015Options {
+            arrow_functions,
+            shorthand_properties,
+            sticky_regex,
+        } = options;
         Self {
-            arrow: options.arrow_functions.map(arrow::ArrowFunctions::new),
-            shorthand_properties: options.shorthand_properties,
-            sticky_regex: options.sticky_regex,
+            semantic_program: arrow_functions.map(|options| SemanticProgramTransforms {
+                arrow: arrow::ArrowFunctions::new(options),
+            }),
+            traverse: TraverseTransforms {
+                shorthand_properties,
+                sticky_regex,
+            },
         }
+    }
+
+    pub(crate) fn into_phases(self) -> (Option<SemanticProgramTransforms>, TraverseTransforms) {
+        (self.semantic_program, self.traverse)
     }
 }
 
-impl ES2015 {
-    pub(crate) fn transform<'a>(
-        &mut self,
-        _node: Program,
-        semantic: &Semantic,
-        ctx: &mut TransformerCtx<'_, 'a>,
-    ) {
-        if let Some(arrow) = &mut self.arrow {
-            arrow.transform(ctx.ast, semantic);
-        }
+impl SemanticProgramTransforms {
+    pub(crate) fn transform<'a>(&mut self, ast: &mut Ast<'a>, semantic: &Semantic) {
+        self.arrow.transform(ast, semantic);
+    }
+}
+
+impl TraverseTransforms {
+    pub(crate) fn is_enabled(&self) -> bool {
+        self.shorthand_properties || self.sticky_regex
     }
 
     pub(crate) fn exit_object_property(
