@@ -1,6 +1,7 @@
 //! Formatting context and the program entry point.
 
 mod comments;
+mod diagnostics;
 mod expressions;
 mod literals;
 mod source;
@@ -16,15 +17,39 @@ pub(crate) struct Formatter<'ast, 'source> {
     ast: &'ast Ast<'source>,
     options: FormatOptions,
     comments: CommentCursor<'ast>,
+    diagnostic_lines: diagnostics::DiagnosticLines,
+    has_target_annotations: bool,
+    has_type_casts: bool,
+    has_file_directives: bool,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(crate) fn new(ast: &'ast Ast<'source>, options: FormatOptions) -> Self {
-        Self {
+        let mut formatter = Self {
             ast,
             options,
             comments: CommentCursor::new(ast.comments()),
+            diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
+            has_target_annotations: false,
+            has_type_casts: false,
+            has_file_directives: false,
+        };
+        for &comment in ast.comments() {
+            if !formatter.has_type_casts {
+                formatter.has_type_casts = formatter.comment_is_type_cast(comment);
+            }
+            if !formatter.has_target_annotations {
+                formatter.has_target_annotations =
+                    formatter.has_type_casts || formatter.comment_is_optimizer_annotation(comment);
+            }
+            if !formatter.has_file_directives {
+                formatter.has_file_directives = formatter.comment_is_file_directive(comment);
+            }
+            if formatter.has_type_casts && formatter.has_file_directives {
+                break;
+            }
         }
+        formatter
     }
 
     pub(crate) fn format_program(mut self, writer: &mut Writer<'ast>) -> Result<(), FormatError> {
@@ -60,7 +85,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comment.span,
             ));
         }
-        if has_content {
+        if has_content.has_content {
             writer.hard_line();
         }
         Ok(())
