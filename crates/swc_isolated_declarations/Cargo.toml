@@ -1,0 +1,20 @@
+[package]
+description          = "TypeScript isolated declaration generation for swc-next"
+edition              = "2024"
+license.workspace    = true
+name                 = "swc_next_isolated_declarations"
+repository.workspace = true
+version              = "0.1.0"
+
+[dependencies]
+bitflags   = { workspace = true }
+rustc-hash = { workspace = true }
+zmij_ecma  = { workspace = true }
+
+swc_next_allocator     = { workspace = true }
+swc_next_ecma_ast      = { workspace = true }
+swc_next_ecma_semantic = { workspace = true }
+
+[dev-dependencies]
+swc_next_ecma_codegen = { workspace = true }
+swc_next_ecma_parser = { workspace = true }

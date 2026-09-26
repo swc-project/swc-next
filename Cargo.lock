@@ -2985,6 +2985,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_isolated_declarations"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "rustc-hash",
+ "swc_next_allocator",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_parser",
+ "swc_next_ecma_semantic",
+ "zmij_ecma",
+]
+
+[[package]]
 name = "swc_next_parser_bridge"
 version = "0.2.3"
 dependencies = [
