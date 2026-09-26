@@ -26,6 +26,17 @@ Gungraun dependency:
 cargo bench -p benchmark --bench gungraun
 ```
 
+The `jsx_lowering` group measures classic, automatic, and development JSX
+lowering. Parsing, TypeScript erasure, normalization, and semantic analysis run
+in setup; output validation and cleanup run in teardown. The `jsx_transform`
+group measures the combined TypeScript, JSX, and optional React Refresh pipeline.
+Run the isolated pass on Linux with Valgrind, or smoke-test it without Valgrind:
+
+```sh
+cargo bench --locked -p benchmark --bench gungraun -- --allow-aslr=yes '*::jsx_lowering::*'
+cargo test --locked -p benchmark --bench gungraun -- --test '*::jsx_lowering::*'
+```
+
 See the [Gungraun workflow](../../.github/workflows/gungraun.yml) for comparisons.
 For the JavaScript N-API boundary, use [JavaScript API Gungraun](js/README.md).
 
