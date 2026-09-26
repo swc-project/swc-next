@@ -8091,6 +8091,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Slash | TokenTag::SlashAssign => self.parse_regexp_literal(),
             TokenTag::LeftBracket => self.parse_array_expression(in_cover),
             TokenTag::LeftBrace => self.parse_object_expression(in_cover),
+            TokenTag::Async => {
+                let identifier = self.parse_identifier()?;
+                if self.current_token.tag() == TokenTag::Function
+                    && !self.current_token.has_line_terminator_before()
+                {
+                    return self.parse_async_function_expression(token);
+                }
+                Some(identifier)
+            }
             TokenTag::Function => Some(Expr::Function(
                 self.parse_function(
                     ParseFunctionOpts {
@@ -8761,6 +8770,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.expression_to_parameter(expression)
     }
 
+    fn parse_async_function_expression(&mut self, async_token: Token) -> Option<Expr> {
+        self.report_if_escaped_keyword(async_token);
+        let function = self.parse_function(
+            ParseFunctionOpts {
+                is_async: true,
+                is_expression: true,
+                ..ParseFunctionOpts::default()
+            },
+            Some(async_token.start()),
+        )?;
+        Some(Expr::Function(function.into_function_expression()))
+    }
+
     fn parse_async_function_or_arrow(&mut self, minimum: Precedence) -> Option<Expr> {
         let token = self.current_token;
         let async_identifier = self.parse_identifier()?;
@@ -8770,22 +8792,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         match self.current_token.tag() {
-            TokenTag::Function => {
-                if token.is_escaped() {
-                    self.report_escaped_keyword(token.span());
-                }
-                Some(Expr::Function(
-                    self.parse_function(
-                        ParseFunctionOpts {
-                            is_async: true,
-                            is_expression: true,
-                            ..ParseFunctionOpts::default()
-                        },
-                        Some(token.start()),
-                    )?
-                    .into_function_expression(),
-                ))
-            }
+            TokenTag::Function => self.parse_async_function_expression(token),
             TokenTag::LeftParen => self.parse_async_arrow_function_or_call(
                 token.span(),
                 async_identifier,
@@ -13278,6 +13285,140 @@ mod tests {
         let object = member.object(&ast).as_identifier_reference(&ast).unwrap();
         assert_eq!(ast.get_utf8(object.name(&ast)), "parent");
         assert!(expression.arguments(&ast).is_empty());
+    }
+
+    #[test]
+    fn async_primary_expressions() {
+        fn parse<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            source_type: SourceType,
+        ) -> Ast<'a> {
+            let options = Options {
+                source_type,
+                ..Options::default()
+            };
+            let result = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+            assert!(result.diagnostics.is_empty());
+            result.ast
+        }
+
+        fn operand(ast: &Ast<'_>) -> Expr {
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            if let Some(declaration) = statement.as_declaration(ast) {
+                return declaration.as_class(ast).unwrap().super_class(ast).unwrap();
+            }
+            let expression = statement
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast);
+            expression.as_new_expression(ast).unwrap().callee(ast)
+        }
+
+        fn function_flags(source: &str, source_type: SourceType) -> (bool, bool) {
+            let allocator = Allocator::new();
+            let ast = parse(&allocator, source, source_type);
+            let function = operand(&ast).as_function(&ast).unwrap();
+            let span = function.span(&ast);
+            let expected = if function.generator(&ast) {
+                "async function*(){}"
+            } else {
+                "async function(){}"
+            };
+            assert_eq!(&source[span.start as usize..span.end as usize], expected);
+            (function.r#async(&ast), function.generator(&ast))
+        }
+
+        fn member_flags(source: &str) -> (bool, bool) {
+            let allocator = Allocator::new();
+            let ast = parse(&allocator, source, SourceType::Module);
+            let member = operand(&ast).as_member_expression(&ast).unwrap();
+            let property = member.property(&ast).as_identifier_name(&ast).unwrap();
+            assert_eq!(ast.get_utf8(property.name(&ast)), "constructor");
+            let function = member.object(&ast).as_function(&ast).unwrap();
+            (function.r#async(&ast), function.generator(&ast))
+        }
+
+        let flags = function_flags("new async function(){};", SourceType::Script);
+        assert_eq!(flags, (true, false));
+
+        let flags = function_flags("new async function*(){};", SourceType::Script);
+        assert_eq!(flags, (true, true));
+
+        let flags = function_flags("class C extends async function(){} {}", SourceType::Script);
+        assert_eq!(flags, (true, false));
+
+        let flags = function_flags("class C extends async function*(){} {}", SourceType::Script);
+        assert_eq!(flags, (true, true));
+
+        let flags = function_flags("new async function(){};", SourceType::Module);
+        assert_eq!(flags, (true, false));
+
+        let flags = function_flags("new async function*(){};", SourceType::Module);
+        assert_eq!(flags, (true, true));
+
+        let flags = function_flags("class C extends async function(){} {}", SourceType::Module);
+        assert_eq!(flags, (true, false));
+
+        let flags = function_flags("class C extends async function*(){} {}", SourceType::Module);
+        assert_eq!(flags, (true, true));
+
+        let flags = member_flags("new async function(){}.constructor(\"return 1\");");
+        assert_eq!(flags, (true, false));
+
+        let flags = member_flags("class C extends async function(){}.constructor {}");
+        assert_eq!(flags, (true, false));
+
+        let flags = member_flags("new async function*(){}.constructor();");
+        assert_eq!(flags, (true, true));
+
+        let flags = member_flags("class C extends async function*(){}.constructor {}");
+        assert_eq!(flags, (true, true));
+
+        let allocator = Allocator::new();
+        let ast = parse(&allocator, "new async(1);", SourceType::Module);
+        let identifier = operand(&ast).as_identifier_reference(&ast).unwrap();
+        assert_eq!(ast.get_utf8(identifier.name(&ast)), "async");
+        let statement = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
+        let expression = statement
+            .as_expression_statement(&ast)
+            .unwrap()
+            .expression(&ast);
+        let constructor = expression.as_new_expression(&ast).unwrap();
+        assert_eq!(constructor.arguments(&ast).len(), 1);
+
+        let ast = parse(&allocator, "class C extends async() {}", SourceType::Module);
+        let call = operand(&ast).as_call_expression(&ast).unwrap();
+        assert!(call.callee(&ast).as_identifier_reference(&ast).is_some());
+
+        let ast = parse(&allocator, "new async\nfunction f(){}", SourceType::Module);
+        assert!(operand(&ast).as_identifier_reference(&ast).is_some());
+        assert_eq!(ast.root_program().body(&ast).len(), 2);
+    }
+
+    #[test]
+    fn async_primary_boundaries() {
+        fn accepts(source: &str) -> bool {
+            let allocator = Allocator::new();
+            let options = Options {
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            result.diagnostics.is_empty()
+        }
+
+        assert!(accepts("new (async function(){})();"));
+        assert!(accepts("class C extends (async function(){}) {}"));
+        assert!(accepts("new function(){};"));
+        assert!(accepts("new async();"));
+        assert!(!accepts("new async x => x;"));
+        assert!(!accepts("new async () => {};"));
+        assert!(!accepts("class C extends async x => x {}"));
+        assert!(!accepts("class C extends async () => {} {}"));
+        assert!(!accepts("class C extends async\nfunction(){} {}"));
+        assert!(!accepts(r"new as\u0079nc function(){};"));
+        assert!(!accepts(r"class C extends as\u0079nc function(){} {}"));
     }
 
     #[test]
