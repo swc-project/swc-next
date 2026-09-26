@@ -6033,7 +6033,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         self.ts_context
             .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
-        let constraint = match self.parse_union_type() {
+        let constraint = match self.parse_type_no_conditional() {
             Some(constraint) => constraint,
             None => {
                 self.rewind(checkpoint);
