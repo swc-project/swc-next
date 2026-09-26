@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
++/* boundary */+item;
+---------- Options ----------
+{}
+---------- Output ----------
++(/* boundary */ (+item));
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;+(/* boundary */ (+item))
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
++(
+  /* boundary */ (+item)
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
++(
+  /* boundary */ (+item)
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
++(
+	/* boundary */ (+item)
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
++(/* boundary */ (+item));
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
++(/* boundary */ (+item));

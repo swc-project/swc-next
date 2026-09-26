@@ -5,11 +5,11 @@ Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
 Passed: 33/1070 (3.08%)
 Snapshot matched: 33/1070
-AST parity: 33/33
-AST mismatched: 0/33
+AST parity: 34/34
+AST mismatched: 0/34
 AST format errors: 0/1070
-Mismatched: 0/1070
-Format errors: 1036/1070
+Mismatched: 1/1070
+Format errors: 1035/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -670,7 +670,7 @@ Unsupported option sets: 19
 - js/sequence-break/break.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/export-default.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/ignore.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/sequence-expression/ignore.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/ignored.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/no-semi/expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized-trailing-comment-unstable.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
