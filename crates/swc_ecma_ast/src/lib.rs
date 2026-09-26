@@ -375,6 +375,11 @@ impl<'a> Ast<'a> {
         self.attached_comments = comments;
     }
 
+    /// Removes all attached comments.
+    pub fn clear_attached_comments(&mut self) {
+        self.attached_comments.clear();
+    }
+
     /// Sets a program as the AST root.
     #[inline]
     pub fn set_root_program(&mut self, root: Program) {

@@ -10,6 +10,7 @@ use crate::{
 };
 
 pub mod assumptions;
+mod comments;
 pub mod es2015;
 pub mod normalize;
 mod state;
