@@ -7979,18 +7979,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_update_expression(true, None);
         }
 
-        if tag == TokenTag::At {
-            let (start, decorators) = self.parse_decorators()?;
-            return Some(Expr::Class(self.parse_class_decorated(
-                ParseClassOpts {
-                    is_expression: true,
-                    ..ParseClassOpts::default()
-                },
-                Some(start),
-                decorators,
-            )?));
-        }
-
         if tag.is_unary_operator() {
             return self.parse_unary_expression();
         }
@@ -8101,6 +8089,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )?
                 .into_function_expression(),
             )),
+            TokenTag::At => {
+                let (start, decorators) = self.parse_decorators()?;
+                Some(Expr::Class(self.parse_class_decorated(
+                    ParseClassOpts {
+                        is_expression: true,
+                        ..ParseClassOpts::default()
+                    },
+                    Some(start),
+                    decorators,
+                )?))
+            }
             TokenTag::Class => Some(Expr::Class(self.parse_class(
                 ParseClassOpts {
                     is_expression: true,
@@ -13278,6 +13277,20 @@ mod tests {
         let object = member.object(&ast).as_identifier_reference(&ast).unwrap();
         assert_eq!(ast.get_utf8(object.name(&ast)), "parent");
         assert!(expression.arguments(&ast).is_empty());
+    }
+
+    #[test]
+    fn decorated_class_expression() {
+        let allocator = Allocator::new();
+        let source = "new @dec class {}(value)";
+        let ast = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig)
+            .parse_expression_fragment(FragmentContext::TopLevel)
+            .unwrap();
+        let expression = ast.root_expression().as_new_expression(&ast).unwrap();
+        let class = expression.callee(&ast).as_class(&ast).unwrap();
+        assert_eq!(class.class_type(&ast), ClassType::ClassExpression);
+        assert_eq!(class.decorators(&ast).len(), 1);
+        assert_eq!(expression.arguments(&ast).len(), 1);
     }
 
     #[test]
