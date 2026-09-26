@@ -1,8 +1,31 @@
 use crate::{
-    AssignmentOperator, BinaryOperator, LogicalOperator, TsTypeOperatorKind, UnaryOperator,
-    UpdateOperator,
+    AssignmentOperator, Ast, BinaryOperator, DeclData, LogicalOperator, Stmt, StmtData,
+    TsTypeOperatorKind, UnaryOperator, UpdateOperator,
 };
 use unicode_id_start::{is_id_continue, is_id_start};
+
+impl Stmt {
+    /// Whether this statement marks its containing program as a ES module.
+    pub fn is_module_indicator(self, ast: &Ast<'_>) -> bool {
+        match ast.stmt_data(self) {
+            StmtData::ImportDeclaration(_)
+            | StmtData::ExportNamedDeclaration(_)
+            | StmtData::ExportDefaultDeclaration(_)
+            | StmtData::ExportAllDeclaration(_)
+            | StmtData::TsExportAssignment(_) => true,
+            StmtData::Declaration(declaration) => {
+                let DeclData::TsImportEqualsDeclaration(declaration) = ast.decl_data(declaration)
+                else {
+                    return false;
+                };
+                declaration
+                    .module_reference(ast)
+                    .is_ts_external_module_reference(ast)
+            }
+            _ => false,
+        }
+    }
+}
 
 impl BinaryOperator {
     pub const fn as_str(self) -> &'static str {

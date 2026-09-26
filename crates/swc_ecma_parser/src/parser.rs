@@ -1608,29 +1608,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ParsedBody { directives, body }
     }
 
-    fn statement_has_module_syntax(&self, statement: Stmt) -> bool {
-        match self.ast.stmt_data(statement) {
-            StmtData::ImportDeclaration(_) => true,
-            StmtData::ExportNamedDeclaration(_) => true,
-            StmtData::ExportDefaultDeclaration(_) => true,
-            StmtData::ExportAllDeclaration(_) => true,
-            StmtData::TsExportAssignment(_) => true,
-            StmtData::Declaration(declaration) => {
-                let DeclData::TsImportEqualsDeclaration(declaration) =
-                    self.ast.decl_data(declaration)
-                else {
-                    return false;
-                };
-                declaration
-                    .module_reference(&self.ast)
-                    .is_ts_external_module_reference(&self.ast)
-            }
-            _ => false,
-        }
-    }
-
     fn record_statement_module_syntax(&mut self, statement: Stmt) {
-        if self.statement_has_module_syntax(statement) {
+        if statement.is_module_indicator(&self.ast) {
             self.state.insert(ParserState::HAS_MODULE_SYNTAX);
         }
     }
