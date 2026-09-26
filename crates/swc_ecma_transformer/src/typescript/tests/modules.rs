@@ -1,5 +1,49 @@
 use super::*;
 
+fn transformed_script(source: &str) -> String {
+    transformed_code_with_source_type(
+        source,
+        Default::default(),
+        false,
+        Lang::Ts,
+        SourceType::Script,
+    )
+}
+
+#[test]
+fn global_aliases() {
+    let source = "namespace N { export const value = 7; } import Alias = N;";
+    let code = transformed_script(source);
+    assert!(code.contains("var Alias = N;"));
+
+    let code = transformed_code(source);
+    assert!(!code.contains("Alias"));
+
+    let source = "namespace N { export const value = 7; } import A = N; import B = A;";
+    let code = transformed_script(source);
+    assert!(code.contains("var A = N;"));
+    assert!(code.contains("var B = A;"));
+
+    let code = transformed_code(source);
+    assert!(!code.contains("var A"));
+    assert!(!code.contains("var B"));
+
+    let code = transformed_script("namespace N { const enum E { A = 1 } } import Alias = N;");
+    assert!(code.contains("N ||"));
+    assert!(code.contains("var Alias = N;"));
+
+    let code = transformed_script("namespace N { export const value = 7; } import type Alias = N;");
+    assert!(!code.contains("Alias"));
+
+    let code = transformed_script("namespace N { export interface T {} } import Alias = N.T;");
+    assert!(!code.contains("Alias"));
+
+    let code = transformed_script(
+        "namespace N { export const value = 7; } namespace Other { import Alias = N; }",
+    );
+    assert!(!code.contains("Alias"));
+}
+
 #[test]
 fn uncertain_alias_dependencies() {
     let allocator = Allocator::new();
@@ -76,6 +120,47 @@ fn default_export_values() {
     );
 
     assert_default_export("export default unknownValue;", true);
+}
+
+#[test]
+fn exported_alias_values() {
+    let code = transformed_code("namespace N { export interface T {} } export import A = N.T;");
+    assert!(!code.contains("N.T"));
+
+    let code = transformed_code(
+        "namespace N { export interface T {} } export namespace Use { export import A = N.T; }",
+    );
+    assert!(!code.contains("N.T"));
+    assert!(code.contains("Use ||"));
+
+    let code = transformed_code("namespace N { export const x = 1; } export import A = N.x;");
+    assert!(code.contains("export var A = N.x;"));
+
+    let code = transformed_code(
+        "namespace N { export const x = 1; } export namespace Use { export import A = N.x; }",
+    );
+    assert!(code.contains("Use.A = N.x;"));
+
+    let code = transformed_code(
+        "namespace N { export namespace Inner { export interface T {} } } export import A = N.Inner.T;",
+    );
+    assert!(!code.contains("N.Inner.T"));
+
+    let code = transformed_code(
+        "class C { static x = 1; } namespace C { export interface x {} } export import A = C.x;",
+    );
+    assert!(code.contains("export var A = C.x;"));
+
+    let code = transformed_code("import * as N from 'pkg'; export import A = N.Member;");
+    assert!(code.contains("export var A = N.Member;"));
+    assert!(code.contains("import * as N"));
+
+    let code = transformed_code(
+        "namespace Original { export interface T {} export const x = 1; } import Root = Original; export import A = Root.T;",
+    );
+    assert!(!code.contains("var Root"));
+    assert!(!code.contains("Root.T"));
+    assert!(code.contains("Original.x = 1"));
 }
 
 #[test]

@@ -8,6 +8,7 @@ use crate::normalize::Normalizer;
 
 mod enums;
 mod modules;
+mod namespaces;
 mod parameters;
 mod syntax;
 
@@ -27,10 +28,29 @@ fn transformed_code_with_pipeline(
     transform_options: TypeScriptOptions,
     arrows: bool,
 ) -> String {
+    transformed_code_with_language(source, transform_options, arrows, Lang::Ts)
+}
+
+fn transformed_code_with_language(
+    source: &str,
+    transform_options: TypeScriptOptions,
+    arrows: bool,
+    lang: Lang,
+) -> String {
+    transformed_code_with_source_type(source, transform_options, arrows, lang, SourceType::Module)
+}
+
+fn transformed_code_with_source_type(
+    source: &str,
+    transform_options: TypeScriptOptions,
+    arrows: bool,
+    lang: Lang,
+    source_type: SourceType,
+) -> String {
     let allocator = Allocator::new();
     let options = ParserOptions {
-        lang: Lang::Ts,
-        source_type: SourceType::Module,
+        lang,
+        source_type,
         ..ParserOptions::default()
     };
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();

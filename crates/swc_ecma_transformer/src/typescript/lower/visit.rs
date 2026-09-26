@@ -2,10 +2,10 @@ use super::{StatementExpansion, TypeScriptLowerer, erase::update_binding_propert
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionExpression, Ast, BindingProperty, CallExpression, CatchClause,
     Class, ClassElement, DUMMY_SP, Expr, ExprData, FormalParameter, FormalParameterRest, GetSpan,
-    JsxOpeningElement, MethodDefinition, NewExpression, ObjectProperty, PropertyDefinition,
-    SimpleAssignmentTarget, SimpleAssignmentTargetData, Stmt, SubRange, SwitchCase,
-    SwitchStatement, TaggedTemplateExpression, VariableDeclaration, VariableDeclarator, VisitMut,
-    VisitMutWith,
+    JsxClosingElement, JsxOpeningElement, MethodDefinition, NewExpression, ObjectProperty,
+    PropertyDefinition, SimpleAssignmentTarget, SimpleAssignmentTargetData, Stmt, SubRange,
+    SwitchCase, SwitchStatement, TaggedTemplateExpression, VariableDeclaration, VariableDeclarator,
+    VisitMut, VisitMutWith,
 };
 
 impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
@@ -43,6 +43,12 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
 
         self.enter_binding_scope();
         let cases = statement.cases(self.ast_ref());
+        if self.analysis.has_merged_runtime_bindings() {
+            for case_id in cases.iter() {
+                let case = self.ast_ref().get_node_in_sub_range(case_id);
+                self.register_scope_runtime_bindings(case.consequent(self.ast_ref()));
+            }
+        }
         if let Some(cases) = cases.visit_mut_with(self) {
             statement.set_cases(self.ast(), cases);
         }
@@ -75,6 +81,9 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
             return Some(self.inline_enum_constant(expression, value));
         }
         let inner = match self.ast_ref().expr_data(expression) {
+            ExprData::IdentifierReference(identifier) => {
+                return self.namespace_identifier_reference(identifier);
+            }
             ExprData::TsAsExpression(wrapper) => Some(wrapper.expression(self.ast())),
             ExprData::TsSatisfiesExpression(wrapper) => Some(wrapper.expression(self.ast())),
             ExprData::TsTypeAssertion(wrapper) => Some(wrapper.expression(self.ast())),
@@ -112,6 +121,12 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         &mut self,
         target: SimpleAssignmentTarget,
     ) -> Option<SimpleAssignmentTarget> {
+        if let SimpleAssignmentTargetData::IdentifierReference(identifier) =
+            self.ast().simple_assignment_target_data(target)
+            && let Some(replacement) = self.namespace_identifier_target(identifier)
+        {
+            return Some(replacement);
+        }
         let inner = match self.ast().simple_assignment_target_data(target) {
             SimpleAssignmentTargetData::TsAsExpression(wrapper) => {
                 Some(wrapper.expression(self.ast()))
@@ -254,6 +269,19 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         element: JsxOpeningElement,
     ) -> Option<JsxOpeningElement> {
         element.set_type_arguments(self.ast(), None);
+        if let Some(name) = self.namespace_jsx_name(element.name(self.ast_ref())) {
+            element.set_name(self.ast(), name);
+        }
+        element.visit_mut_children_with(self)
+    }
+
+    fn visit_mut_jsx_closing_element(
+        &mut self,
+        element: JsxClosingElement,
+    ) -> Option<JsxClosingElement> {
+        if let Some(name) = self.namespace_jsx_name(element.name(self.ast_ref())) {
+            element.set_name(self.ast(), name);
+        }
         element.visit_mut_children_with(self)
     }
 }

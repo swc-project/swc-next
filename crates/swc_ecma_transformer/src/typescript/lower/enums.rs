@@ -42,6 +42,40 @@ impl TypeScriptLowerer<'_, '_> {
         StatementExpansion::with_prefix(prefix, statement)
     }
 
+    pub(super) fn lower_namespace_enum(
+        &mut self,
+        declaration: TsEnumDeclaration,
+        namespace: AstUtf8,
+        output: &mut Vec<Stmt>,
+    ) {
+        if declaration.declare(self.ast_ref()) {
+            return;
+        }
+        let binding = declaration.id(self.ast_ref());
+        let owner = self
+            .semantic
+            .symbol_of(binding.node_id())
+            .expect("an enum declaration has a symbol");
+        if self.analysis.const_enum_is_removable(owner) {
+            return;
+        }
+        let enum_name = binding.name(self.ast_ref());
+        let span = declaration.span(self.ast_ref());
+        if let Some(kind) = self.register_runtime_binding(owner) {
+            output.push(self.runtime_binding_statement(binding, span, kind, false));
+        }
+        output.push(self.enum_iife_statement(
+            declaration,
+            owner,
+            enum_name,
+            RuntimeTarget::IdentifierAndProperty {
+                identifier: enum_name,
+                object: namespace,
+                property: enum_name,
+            },
+        ));
+    }
+
     pub(super) fn inline_enum_constant(
         &mut self,
         expression: Expr,

@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{
     Argument, AssignmentOperator, AssignmentTarget, AstUtf8, DUMMY_SP, Directive, Expr,
     FormalParameterItem, FormalParameterKind, FormalParameterPattern, FunctionType,
-    LogicalOperator, SimpleAssignmentTarget, Span, Stmt, SubRange, VisitMut,
+    LogicalOperator, PropertyKey, SimpleAssignmentTarget, Span, Stmt, SubRange, VisitMut,
 };
 
 use super::TypeScriptLowerer;
@@ -9,6 +9,18 @@ use super::TypeScriptLowerer;
 #[derive(Clone, Copy)]
 pub(super) enum RuntimeTarget {
     Identifier(AstUtf8),
+    IdentifierAndProperty {
+        identifier: AstUtf8,
+        object: AstUtf8,
+        property: AstUtf8,
+    },
+}
+
+/// A single location which supports both reads and assignments.
+#[derive(Clone, Copy)]
+enum RuntimeReference {
+    Identifier(AstUtf8),
+    Property { object: AstUtf8, property: AstUtf8 },
 }
 
 impl TypeScriptLowerer<'_, '_> {
@@ -60,22 +72,84 @@ impl TypeScriptLowerer<'_, '_> {
     }
 
     fn runtime_target_argument(&mut self, target: RuntimeTarget) -> Expr {
-        let RuntimeTarget::Identifier(name) = target;
-        let existing = self.ast().expr_identifier_reference(DUMMY_SP, name);
-        let object = self
-            .ast()
-            .expr_object_expression(DUMMY_SP, SubRange::empty());
-        let identifier = self.ast().identifier_reference(DUMMY_SP, name);
+        let (local, reference) = match target {
+            RuntimeTarget::Identifier(name) => (None, RuntimeReference::Identifier(name)),
+            RuntimeTarget::IdentifierAndProperty {
+                identifier,
+                object,
+                property,
+            } => (
+                Some(identifier),
+                RuntimeReference::Property { object, property },
+            ),
+        };
+        let existing = self.runtime_target_read(reference);
+        let assignment = self.runtime_target_initializer(reference);
+        let value =
+            self.ast()
+                .expr_logical_expression(DUMMY_SP, existing, assignment, LogicalOperator::Or);
+        let Some(local) = local else {
+            return value;
+        };
+        let identifier = self.ast().identifier_reference(DUMMY_SP, local);
         let target = AssignmentTarget::SimpleAssignmentTarget(
             SimpleAssignmentTarget::IdentifierReference(identifier),
         );
-        let assignment = self.ast().expr_assignment_expression(
+        self.ast()
+            .expr_assignment_expression(DUMMY_SP, target, value, AssignmentOperator::Assign)
+    }
+
+    fn runtime_target_initializer(&mut self, target: RuntimeReference) -> Expr {
+        let assignment_target = self.runtime_target_assignment(target);
+        let object = self
+            .ast()
+            .expr_object_expression(DUMMY_SP, SubRange::empty());
+        self.ast().expr_assignment_expression(
             DUMMY_SP,
-            target,
+            assignment_target,
             object,
             AssignmentOperator::Assign,
-        );
-        self.ast()
-            .expr_logical_expression(DUMMY_SP, existing, assignment, LogicalOperator::Or)
+        )
+    }
+
+    fn runtime_target_read(&mut self, target: RuntimeReference) -> Expr {
+        match target {
+            RuntimeReference::Identifier(name) => {
+                self.ast().expr_identifier_reference(DUMMY_SP, name)
+            }
+            RuntimeReference::Property { object, property } => {
+                let member = self.runtime_target_member(object, property);
+                Expr::MemberExpression(member)
+            }
+        }
+    }
+
+    fn runtime_target_assignment(&mut self, target: RuntimeReference) -> AssignmentTarget {
+        let target = match target {
+            RuntimeReference::Identifier(name) => SimpleAssignmentTarget::IdentifierReference(
+                self.ast().identifier_reference(DUMMY_SP, name),
+            ),
+            RuntimeReference::Property { object, property } => {
+                let member = self.runtime_target_member(object, property);
+                SimpleAssignmentTarget::MemberExpression(member)
+            }
+        };
+        AssignmentTarget::SimpleAssignmentTarget(target)
+    }
+
+    fn runtime_target_member(
+        &mut self,
+        object: AstUtf8,
+        property: AstUtf8,
+    ) -> swc_next_ecma_ast::MemberExpression {
+        let object = self.ast().expr_identifier_reference(DUMMY_SP, object);
+        let property = self.ast().identifier_name(DUMMY_SP, property);
+        self.ast().member_expression(
+            DUMMY_SP,
+            object,
+            PropertyKey::IdentifierName(property),
+            false,
+            false,
+        )
     }
 }

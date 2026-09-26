@@ -10,11 +10,13 @@ mod erase;
 mod lexical_env;
 mod modules;
 mod names;
+mod namespaces;
 mod parameters;
 mod runtime;
 mod statements;
 mod visit;
 
+use namespaces::NamespaceState;
 use statements::StatementExpansion;
 
 pub(super) struct TypeScriptLowerer<'visit, 'ast> {
@@ -26,6 +28,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     comment_retargets: CommentRetargets,
     runtime_binding_scopes: Vec<FxHashSet<SymbolId>>,
     enum_member_symbols: FxHashMap<SymbolId, FxHashSet<SymbolId>>,
+    namespaces: NamespaceState,
     // Lazy index; None as a map value means unresolved or conflicting owners.
     source_name_owners: Option<FxHashMap<&'ast [u8], Option<SymbolId>>>,
     uid_generator: Option<UidGenerator<'ast>>,
@@ -48,6 +51,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             comment_retargets: CommentRetargets::default(),
             runtime_binding_scopes: Vec::new(),
             enum_member_symbols: FxHashMap::default(),
+            namespaces: NamespaceState::default(),
             source_name_owners: None,
             uid_generator: None,
         }

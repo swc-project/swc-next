@@ -59,6 +59,9 @@ impl TypeScriptLowerer<'_, '_> {
         statements: SubRange<Stmt>,
     ) -> Option<SubRange<Stmt>> {
         self.enter_binding_scope();
+        if self.analysis.has_merged_runtime_bindings() {
+            self.register_scope_runtime_bindings(statements);
+        }
         let lowered = self.lower_statement_list_in_current_scope(statements);
         self.exit_binding_scope();
         lowered
@@ -97,6 +100,9 @@ impl TypeScriptLowerer<'_, '_> {
     pub(super) fn lower_statement(&mut self, statement: Stmt) -> Option<StatementExpansion> {
         match self.ast_ref().stmt_data(statement) {
             StmtData::Declaration(declaration) => {
+                if let Some(namespace) = declaration.as_ts_module_declaration(self.ast_ref()) {
+                    return Some(self.lower_namespace(namespace, false));
+                }
                 if let Some(enum_declaration) = declaration.as_ts_enum_declaration(self.ast_ref()) {
                     return Some(self.lower_enum(enum_declaration, false));
                 }
@@ -116,6 +122,12 @@ impl TypeScriptLowerer<'_, '_> {
                 return Some(StatementExpansion::Remove);
             }
             StmtData::ExportNamedDeclaration(export) => {
+                if let Some(namespace) = export
+                    .declaration(self.ast_ref())
+                    .and_then(|declaration| declaration.as_ts_module_declaration(self.ast_ref()))
+                {
+                    return Some(self.lower_namespace(namespace, true));
+                }
                 if let Some(enum_declaration) = export
                     .declaration(self.ast_ref())
                     .and_then(|declaration| declaration.as_ts_enum_declaration(self.ast_ref()))

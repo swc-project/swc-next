@@ -1,11 +1,11 @@
 use super::super::TypeScriptOptions;
-use super::{enums::EnumCollector, modules::ModuleCollector};
+use super::{enums::EnumCollector, modules::ModuleCollector, namespaces::NamespaceCollector};
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, CallExpression, ExprData, Function, Lang, MemberExpression,
     MethodDefinition, NodeId, ObjectProperty, PropertyDefinition, PropertyKind,
-    SimpleAssignmentTarget, TsEnumDeclaration, TsGlobalDeclaration, TsImportEqualsDeclaration,
-    TsInterfaceDeclaration, TsModuleDeclaration, TsType, UnaryExpression, VariableDeclaration,
-    Visit, VisitWith,
+    SimpleAssignmentTarget, Stmt, TsEnumDeclaration, TsGlobalDeclaration,
+    TsImportEqualsDeclaration, TsInterfaceDeclaration, TsModuleDeclaration, TsType,
+    UnaryExpression, VariableDeclaration, Visit, VisitWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -17,6 +17,7 @@ pub(super) struct AnalysisCollector<'visit, 'ast> {
     deferred: Option<NodeId>,
     immediately_invoked: Option<NodeId>,
     pub(super) modules: ModuleCollector,
+    pub(super) namespaces: NamespaceCollector,
 }
 
 impl<'visit, 'ast> AnalysisCollector<'visit, 'ast> {
@@ -33,6 +34,7 @@ impl<'visit, 'ast> AnalysisCollector<'visit, 'ast> {
             deferred: None,
             immediately_invoked: None,
             modules: ModuleCollector::new(options),
+            namespaces: NamespaceCollector::default(),
         }
     }
 }
@@ -120,6 +122,11 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
         self.enums.set_assignment_target(previous, self.ast);
     }
 
+    fn visit_stmt(&mut self, statement: Stmt) {
+        self.namespaces.record_statement(statement, self.ast);
+        statement.visit_children_with(self);
+    }
+
     fn visit_ts_enum_declaration(&mut self, declaration: TsEnumDeclaration) {
         self.enums.record_enum_declaration(
             declaration,
@@ -138,6 +145,7 @@ impl<'ast> Visit<'ast> for AnalysisCollector<'_, 'ast> {
     }
 
     fn visit_ts_module_declaration(&mut self, declaration: TsModuleDeclaration) {
+        self.namespaces.record_declaration(declaration);
         let ambient = self.ambient;
         self.ambient |= declaration.declare(self.ast);
         declaration.visit_children_with(self);

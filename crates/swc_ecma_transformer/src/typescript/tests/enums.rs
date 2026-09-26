@@ -8,6 +8,12 @@ fn enum_container_bindings() {
     assert!(code.contains("return E2.A;"));
     assert!(code.contains("E2[E2[\"B\"]"));
     assert!(code.contains("E || (E = {})"));
+
+    let code =
+        transformed_code("namespace N { export enum E { A = 1, B = ((E: number) => A)(42) } }");
+    assert!(code.contains("function(E2)"));
+    assert!(code.contains("=> E2.A"));
+    assert!(code.contains("E = N.E || (N.E = {})"));
 }
 
 #[test]
@@ -81,6 +87,57 @@ fn enum_numeric_constants() {
 }
 
 #[test]
+fn enum_namespace_constants() {
+    let code = transformed_code("namespace N { export const x=42; } enum E { A=N.x, B }");
+    assert!(code.contains("E[\"A\"] = 42"));
+    assert!(code.contains("E[\"B\"] = 43"));
+
+    let code = transformed_code(
+        "namespace N { export const x=40; export const y=x+2; } enum E { A=N.y, B }",
+    );
+    assert!(code.contains("E[\"B\"] = 43"));
+
+    let code = transformed_code(
+        "namespace N { export namespace M { export const x=42; } } import Alias=N.M; enum E { A=Alias.x, B }",
+    );
+    assert!(code.contains("E[\"B\"] = 43"));
+
+    let code = transformed_code("namespace N { export const x:number=42; } enum E { A=N.x }");
+    assert!(code.contains("E[\"A\"] = N.x"));
+
+    let code = transformed_code("namespace N { export const x=42; } enum E { A=N[\"x\"] }");
+    assert!(code.contains("E[\"A\"] = N[\"x\"]"));
+}
+
+#[test]
+fn enum_alias_constants() {
+    let code =
+        transformed_code("namespace N { export const x=42; } import X=N.x; enum E { A=X, B }");
+    assert!(code.contains("E[\"A\"] = 42"));
+    assert!(code.contains("E[\"B\"] = 43"));
+
+    let code = transformed_code(
+        "namespace N { export const x=42; export import y=N.x; export import z=N.y; } enum E { A=N.z, B }",
+    );
+    assert!(code.contains("E[\"B\"] = 43"));
+
+    let code = transformed_code(
+        "namespace N { export const x=42; } import X=N.x; const y=X; enum E { A=y, B }",
+    );
+    assert!(code.contains("E[\"B\"] = 43"));
+
+    let code = transformed_code("enum E { A=42 } import X=E.A; enum F { A=X, B }");
+    assert!(code.contains("F[\"B\"] = 43"));
+
+    let code =
+        transformed_code("namespace N { export const x:number=42; } import X=N.x; enum E { A=X }");
+    assert!(code.contains("E[\"A\"] = X"));
+
+    let code = transformed_code("import X=N.x; enum E { A=X } namespace N { export const x=42; }");
+    assert!(code.contains("E[\"A\"] = X"));
+}
+
+#[test]
 fn enum_optional_constants() {
     let code = transformed_code("enum E { A=42 } enum F { A=E?.A, B }");
     assert!(code.contains("F[\"A\"] = 42"));
@@ -88,6 +145,12 @@ fn enum_optional_constants() {
 
     let code = transformed_code("enum E { A=42 } enum F { A=E?.[\"A\"], B }");
     assert!(code.contains("F[\"B\"] = 43"));
+
+    let code = transformed_code("namespace N { export enum E { A=42 } } enum F { A=N?.E.A, B }");
+    assert!(code.contains("F[\"B\"] = 43"));
+
+    let code = transformed_code("namespace N { export const x=42; } enum E { A=N?.x, B }");
+    assert!(code.contains("E[\"B\"] = 43"));
 
     let code = transformed_code("const enum E { A=42 } export const value=E?.A;");
     assert!(code.contains("function(E)"));
@@ -145,16 +208,42 @@ fn ambient_enum_constants() {
 
 #[test]
 fn const_enum_emission() {
+    let source = "namespace N { export const enum E { X = 1 } } export import A = N.E;";
+    let code = transformed_code(source);
+    assert!(code.contains("export var A = N.E"));
+    assert!(code.contains("function(N)"));
+
     let preserve = TypeScriptOptions {
         preserve_const_enums: true,
         ..TypeScriptOptions::default()
     };
+    let code = transformed_code_with_options(source, preserve.clone());
+    assert!(code.contains("export var A = N.E"));
 
     let verbatim = TypeScriptOptions {
         verbatim_module_syntax: true,
         ..TypeScriptOptions::default()
     };
+    let code = transformed_code_with_options(source, verbatim.clone());
+    assert!(code.contains("export var A = N.E"));
 
+    let code = transformed_code(
+        "namespace N { export const enum E { X = 1 } } import A = N.E; export const x = A.X;",
+    );
+    assert!(code.contains("export const x = 1"));
+    assert!(!code.contains("var A = N.E"));
+
+    let code =
+        transformed_code("namespace N { export const enum E { X = 1 } } export const x = N.E.X;");
+    assert!(code.contains("export const x = 1"));
+    assert!(code.contains("function(N)"));
+
+    let code =
+        transformed_code("namespace N { export const enum E { X = 1 } } export import A = N;");
+    assert!(code.contains("export var A = N"));
+
+    let code = transformed_code("namespace N { export enum E { X = 1 } } export import A = N.E;");
+    assert!(code.contains("export var A = N.E"));
     let source = "const enum E { X = 1 } export const x = E.X;";
     let code = transformed_code(source);
     assert!(code.contains("export const x = 1"));
@@ -171,6 +260,34 @@ fn const_enum_emission() {
     let code = transformed_code("export const enum E { X = 1 } export const x = E.X;");
     assert!(code.contains("export const x = 1"));
     assert!(code.contains("function(E)"));
+    let source =
+        "declare namespace N { const enum E { X = 1 } } import A = N.E; export const x = A.X;";
+    let code = transformed_code(source);
+    assert!(code.contains("export const x = 1"));
+    assert!(!code.contains("N.E"));
+
+    let code = transformed_code_with_options(source, preserve.clone());
+    assert!(code.contains("export const x = 1"));
+    assert!(!code.contains("N.E"));
+
+    let code = transformed_code(
+        "namespace N { export const enum E { X = 1 } } import A = N.E; import B = A; export const x = B.X;",
+    );
+    assert!(code.contains("export const x = 1"));
+    assert!(!code.contains("var A"));
+    assert!(!code.contains("var B"));
+    let code = transformed_code(
+        "declare namespace N { const enum E { X = 1 } } export const x = N[\"E\"].X;",
+    );
+    assert!(code.contains("export const x = 1"));
+    assert!(!code.contains("N["));
+
+    let code = transformed_code(
+        "namespace N { export const enum E { X = 1 } } import A = N.E; const enum F { Y = A.X + 1 } export const x = F.Y;",
+    );
+    assert!(code.contains("export const x = 2"));
+    assert!(!code.contains("function(F)"));
+    assert!(!code.contains("var A"));
 }
 
 #[test]
@@ -189,6 +306,11 @@ fn merged_const_enums() {
     let source = "const enum E { A = 'a' }\nconst enum E { B = 'b' }\nconst enum E { C = E.A + E.B }\nconsole.log(E.C);";
     let code = transformed_code(source);
     assert!(code.contains("console.log(\"ab\")"));
+    assert!(!code.contains("var E"));
+
+    let source = "namespace N { const enum E { A = 1 }\nconst enum E { B = 2 }\nexport const value = E.A + E.B; } console.log(N.value);";
+    let code = transformed_code(source);
+    assert!(code.contains("N.value = 1 + 2"));
     assert!(!code.contains("var E"));
 }
 
@@ -223,6 +345,12 @@ fn merged_const_enum_preservation() {
     assert!(code.contains("E.B = 3"));
     assert!(code.contains("var E"));
 
+    let source =
+        "const enum E { A = 1 }\nnamespace E { export const B = 2; } console.log(E.A, E.B);";
+    let code = transformed_code(source);
+    assert!(code.contains("E.B = 2"));
+    assert!(code.contains("E[\"A\"] = 1"));
+
     let source = "const enum E { A = 1 }\nenum E { B = 2 }\nconsole.log(E.A, E.B);";
     let code = transformed_code(source);
     assert!(code.contains("var E"));
@@ -253,6 +381,28 @@ fn merged_const_enum_preservation() {
     let code = transformed_code_with_options(source, verbatim);
     assert!(code.contains("console.log(E.A, E.B)"));
     assert!(code.contains("var E"));
+}
+
+#[test]
+fn const_enum_namespace_aliases() {
+    let code = transformed_code("namespace N { const enum E { X = 1 } } export import A = N;");
+    assert!(code.contains("function(N)"));
+    assert!(code.contains("export var A = N"));
+    assert!(!code.contains("function(E)"));
+
+    let code = transformed_code(
+        "namespace N { export namespace M { const enum E { X = 1 } } } export import A = N.M;",
+    );
+    assert!(code.contains("N.M"));
+    assert!(code.contains("function(M)"));
+    assert!(!code.contains("function(E)"));
+
+    let code = transformed_code(
+        "namespace N.M { const enum E { X = 1 } } import Root = N; export import A = Root.M;",
+    );
+    assert!(code.contains("function(M)"));
+    assert!(code.contains("var Root = N"));
+    assert!(!code.contains("function(E)"));
 }
 
 #[test]
