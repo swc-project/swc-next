@@ -1,0 +1,63 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+(
+/* prettier-ignore */ missing + second
+);
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+(
+  /* prettier-ignore */ missing + second
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-expect-error
+;(
+  /* prettier-ignore */ missing + second
+)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// @ts-expect-error
+(
+  /* prettier-ignore */ missing + second
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+// @ts-expect-error
+(
+  /* prettier-ignore */ missing + second
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+(
+	/* prettier-ignore */ missing + second
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+// @ts-expect-error
+(
+  /* prettier-ignore */ missing + second
+);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+// @ts-expect-error
+(
+  /* prettier-ignore */ missing + second
+);

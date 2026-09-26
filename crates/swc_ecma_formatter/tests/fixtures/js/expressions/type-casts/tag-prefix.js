@@ -1,0 +1,1 @@
+/**@typedef(number)*/ (1);

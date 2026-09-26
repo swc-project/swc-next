@@ -1,0 +1,3 @@
+(first // @ts-ignore
+);
+next;

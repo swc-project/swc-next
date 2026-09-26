@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {object} */ (this);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type {object} */ (this);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/** @type {object} */ (this)
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/** @type {object} */ (
+  this
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;/** @type {object} */ (
+  this
+)
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/** @type {object} */ (
+	this
+);

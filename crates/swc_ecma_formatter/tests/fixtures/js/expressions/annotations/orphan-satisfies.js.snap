@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first /** @satisfies {number} */);
+---------- Options ----------
+{}
+---------- Output ----------
+(first /** @satisfies {number} */);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(first /** @satisfies {number} */)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  first /** @satisfies {number} */
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+(
+  first /** @satisfies {number} */
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(
+	first /** @satisfies {number} */
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+(first /** @satisfies {number} */);

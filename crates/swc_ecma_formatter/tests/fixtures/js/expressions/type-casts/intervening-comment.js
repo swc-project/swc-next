@@ -1,0 +1,1 @@
+/** @type {number} */ /* ordinary */ (first);
