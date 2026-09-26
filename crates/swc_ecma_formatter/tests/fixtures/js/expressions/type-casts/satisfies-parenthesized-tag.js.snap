@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/**@satisfies(number)*/ (1);
+---------- Options ----------
+{}
+---------- Output ----------
+/**@satisfies(number)*/ (1);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/**@satisfies(number)*/ (1)
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/**@satisfies(number)*/ (1);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/**@satisfies(number)*/ (
+  1
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/**@satisfies(number)*/ (
+  1
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/**@satisfies(number)*/ (
+	1
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+/**@satisfies(number)*/ (1);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+/**@satisfies(number)*/ (1);
