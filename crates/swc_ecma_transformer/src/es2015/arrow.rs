@@ -37,7 +37,7 @@ impl ArrowFunctions {
 
 struct ArrowVisitor<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
-    hoister: FnEnvHoister<'visit>,
+    hoister: FnEnvHoister<'visit, 'ast>,
     in_subclass: bool,
     next_method_is_derived_constructor: Option<bool>,
 }

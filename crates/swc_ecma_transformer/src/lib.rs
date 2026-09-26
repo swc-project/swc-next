@@ -14,6 +14,7 @@ mod comments;
 pub mod es2015;
 pub mod normalize;
 mod state;
+mod uid;
 
 pub struct Transformer {}
 

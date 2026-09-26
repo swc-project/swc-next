@@ -1,11 +1,11 @@
-use std::collections::HashSet;
-
 use swc_next_ecma_ast::{
     AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
     IdentifierReference, Program, StaticBlock, Stmt, SubRange, VariableKind, VisitMut,
     VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
+
+use crate::uid::UidGenerator;
 
 #[derive(Default)]
 pub struct CaptureFrame {
@@ -24,26 +24,19 @@ impl CaptureFrame {
 ///
 /// This is the flat-AST equivalent of `swc_ecma_utils::function::FnEnvHoister`.
 /// It owns capture state, while callers retain ownership of AST traversal.
-pub struct FnEnvHoister<'semantic> {
+pub struct FnEnvHoister<'semantic, 'ast> {
     semantic: &'semantic Semantic<'semantic>,
     frames: Vec<CaptureFrame>,
-    used_names: HashSet<Vec<u8>>,
+    uid: UidGenerator<'ast>,
     in_arrow: bool,
 }
 
-impl<'semantic> FnEnvHoister<'semantic> {
-    pub fn new(ast: &Ast<'_>, semantic: &'semantic Semantic<'semantic>) -> Self {
-        let mut used_names = HashSet::new();
-        for entry in semantic.iter_symbols() {
-            used_names.insert(ast.get_wtf8(entry.symbol.name).as_bytes().to_vec());
-        }
-        for entry in semantic.iter_references() {
-            used_names.insert(ast.get_utf8(entry.reference.name).as_bytes().to_vec());
-        }
+impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
+    pub fn new(ast: &Ast<'ast>, semantic: &'semantic Semantic<'semantic>) -> Self {
         Self {
             semantic,
             frames: vec![CaptureFrame::default()],
-            used_names,
+            uid: UidGenerator::new(ast, semantic),
             in_arrow: false,
         }
     }
@@ -62,33 +55,20 @@ impl<'semantic> FnEnvHoister<'semantic> {
             .expect("a function environment frame exists")
     }
 
-    fn fresh_name(&mut self, base: &str, ast: &mut Ast<'_>) -> AstUtf8 {
-        let mut candidate = base.to_string();
-        let mut suffix = 2u32;
-        while self.used_names.contains(candidate.as_bytes()) {
-            candidate.clear();
-            candidate.push_str(base);
-            candidate.push_str(&suffix.to_string());
-            suffix += 1;
-        }
-        self.used_names.insert(candidate.as_bytes().to_vec());
-        ast.add_utf8(&candidate)
-    }
-
-    fn capture_this(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
+    fn capture_this(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.this) {
             return name;
         }
-        let name = self.fresh_name("_this", ast);
+        let name = self.uid.fresh("_this", ast);
         self.frames.last_mut().expect("a capture frame exists").this = Some(name);
         name
     }
 
-    fn capture_arguments(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
+    fn capture_arguments(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.arguments) {
             return name;
         }
-        let name = self.fresh_name("_arguments", ast);
+        let name = self.uid.fresh("_arguments", ast);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -96,11 +76,11 @@ impl<'semantic> FnEnvHoister<'semantic> {
         name
     }
 
-    fn capture_new_target(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
+    fn capture_new_target(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.new_target) {
             return name;
         }
-        let name = self.fresh_name("_newtarget", ast);
+        let name = self.uid.fresh("_newtarget", ast);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -128,7 +108,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     pub fn transform_this_expression(
         &mut self,
         node: swc_next_ecma_ast::ThisExpression,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Expr {
         if !self.in_arrow {
             return Expr::ThisExpression(node);
@@ -138,7 +118,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         Expr::IdentifierReference(replacement)
     }
 
-    pub fn visit_identifier_reference(&mut self, node: IdentifierReference, ast: &mut Ast<'_>) {
+    pub fn visit_identifier_reference(&mut self, node: IdentifierReference, ast: &mut Ast<'ast>) {
         if self.in_arrow && self.is_unresolved_arguments(node, ast) {
             let name = self.capture_arguments(ast);
             node.set_name(ast, name);
@@ -148,7 +128,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     pub fn transform_meta_property(
         &mut self,
         node: swc_next_ecma_ast::MetaProperty,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Expr {
         if self.in_arrow && self.is_new_target(node, ast) {
             let name = self.capture_new_target(ast);
@@ -163,7 +143,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         &mut self,
         frame: CaptureFrame,
         derived_constructor: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::VariableDeclaration> {
         if frame.is_empty() {
             return None;
@@ -199,7 +179,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         &mut self,
         program: Program,
         frame: CaptureFrame,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
@@ -214,7 +194,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         function: Function,
         frame: CaptureFrame,
         derived_constructor: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let body = function.body(ast);
 
@@ -235,7 +215,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         &mut self,
         block: StaticBlock,
         frame: CaptureFrame,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
