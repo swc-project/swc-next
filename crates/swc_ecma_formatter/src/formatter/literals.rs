@@ -1,13 +1,36 @@
 //! Literal token emission and normalization.
 
 mod number;
+mod string;
 
-use swc_next_ecma_ast::{BigIntLiteral, NumericLiteral, RegExpLiteral};
+use std::borrow::Cow;
+
+use swc_next_ecma_ast::{BigIntLiteral, NumericLiteral, RegExpLiteral, StringLiteral};
+
+pub(super) use string::StringContext;
 
 use super::Formatter;
 use crate::document::Writer;
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_string_literal(
+        &self,
+        literal: StringLiteral,
+        context: StringContext,
+        writer: &mut Writer<'ast>,
+    ) {
+        writer.literal_text(self.string_literal_text(literal, context));
+    }
+
+    pub(in crate::formatter) fn string_literal_text(
+        &self,
+        literal: StringLiteral,
+        context: StringContext,
+    ) -> Cow<'ast, str> {
+        let raw = self.ast.get_utf8(literal.raw(self.ast));
+        string::format_string(raw, self.options.quote_style, context)
+    }
+
     pub(super) fn format_numeric_literal(
         &self,
         literal: NumericLiteral,

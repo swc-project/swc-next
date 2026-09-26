@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+item
+/* own line */;
+other;
+---------- Options ----------
+{}
+---------- Output ----------
+item;
+/* own line */
+other;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+item
+/* own line */
+other
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+item;
+/* own line */
+other;
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+item;
+/* own line */
+other;

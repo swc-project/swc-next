@@ -1,0 +1,30 @@
+[
+  {},
+  {
+    "singleQuote": true
+  },
+  {
+    "semi": false
+  },
+  {
+    "semi": false,
+    "singleQuote": true
+  },
+  {
+    "printWidth": 20
+  },
+  {
+    "printWidth": 10
+  },
+  {
+    "endOfLine": "crlf"
+  },
+  {
+    "endOfLine": "cr"
+  },
+  {
+    "printWidth": 10,
+    "useTabs": true,
+    "tabWidth": 4
+  }
+]

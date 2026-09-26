@@ -9,7 +9,7 @@ mod statements;
 use swc_next_ecma_ast::{Ast, GetSpan};
 
 use self::comments::CommentCursor;
-use self::statements::StatementSequenceKind;
+use self::statements::{StatementItem, StatementSequenceKind};
 use crate::{FormatError, FormatOptions, document::Writer};
 
 pub(crate) struct Formatter<'ast, 'source> {
@@ -29,10 +29,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(crate) fn format_program(mut self, writer: &mut Writer<'ast>) -> Result<(), FormatError> {
         let program = self.ast.root_program();
-        if !program.directives(self.ast).is_empty() {
-            return Err(self.unsupported("directives", program));
-        }
-
         if self.ast.source().starts_with('\u{feff}') {
             writer.text("\u{feff}");
         }
@@ -41,10 +37,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("#!");
             writer.text(self.ast.get_utf8(hashbang.value(self.ast)).trim_end());
         }
+        let ast = self.ast;
+        let statements = program
+            .body(ast)
+            .iter()
+            .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)));
+        let directives = program
+            .directives(ast)
+            .iter()
+            .map(|id| StatementItem::Directive(ast.get_node_in_sub_range(id)));
         let has_content = self.format_statement_sequence(
-            program.body(self.ast),
-            program.span(self.ast),
-            hashbang.map(|node| node.span(self.ast).end),
+            directives.chain(statements).peekable(),
+            program.span(ast),
+            hashbang.map(|node| node.span(ast).end),
             StatementSequenceKind::Program,
             writer,
         )?;
