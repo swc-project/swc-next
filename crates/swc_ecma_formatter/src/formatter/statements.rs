@@ -1,11 +1,13 @@
 //! Basic statement bodies and their enclosing source boundaries.
 
 use swc_next_ecma_ast::{
-    BlockStatement, Comment, ExprData, GetSpan, Span, Stmt, StmtData, SubRange,
+    Ast, BlockStatement, Comment, Directive, EmptyStatement, ExprData, GetSpan, Span, Stmt,
+    StmtData,
 };
 
 use super::Formatter;
 use super::comments::CommentRunLayout;
+use super::literals::StringContext;
 use super::source::is_source_whitespace;
 use crate::{FormatError, Semicolons, document::Writer};
 
@@ -15,24 +17,49 @@ pub(super) enum StatementSequenceKind {
     Block,
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum StatementItem {
+    Directive(Directive),
+    Statement(Stmt),
+}
+
+impl StatementItem {
+    fn empty(self, ast: &Ast<'_>) -> Option<EmptyStatement> {
+        match self {
+            Self::Statement(node) => match ast.stmt_data(node) {
+                StmtData::EmptyStatement(empty) => Some(empty),
+                _ => None,
+            },
+            Self::Directive(_) => None,
+        }
+    }
+
+    fn is_nonempty(self, ast: &Ast<'_>) -> bool {
+        !matches!(self, Self::Statement(statement) if matches!(ast.stmt_data(statement), StmtData::EmptyStatement(_)))
+    }
+
+    fn span(self, ast: &Ast<'_>) -> Span {
+        match self {
+            Self::Directive(node) => node.span(ast),
+            Self::Statement(node) => node.span(ast),
+        }
+    }
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_statement_sequence(
         &mut self,
-        statements: SubRange<Stmt>,
+        mut statements: std::iter::Peekable<impl Iterator<Item = StatementItem>>,
         span: Span,
         mut previous_end: Option<u32>,
         kind: StatementSequenceKind,
         writer: &mut Writer<'ast>,
     ) -> Result<bool, FormatError> {
         let ast = self.ast;
-        let mut statements = statements
-            .iter()
-            .map(|id| ast.get_node_in_sub_range(id))
-            .peekable();
         let mut previous_span_end = previous_end.unwrap_or(span.start);
         let mut previous_omitted: Option<Span> = None;
         while let Some(statement) = statements.next() {
-            if matches!(ast.stmt_data(statement), StmtData::EmptyStatement(_)) {
+            if statement.empty(ast).is_some() {
                 continue;
             }
             let statement_span = statement.span(ast);
@@ -43,7 +70,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let leading = self.comments.take(leading.len());
             let mut omitted: Option<Span> = None;
             while let Some(next) = statements.peek() {
-                if !matches!(ast.stmt_data(*next), StmtData::EmptyStatement(_)) {
+                if next.empty(ast).is_none() {
                     break;
                 }
                 let empty = statements.next().unwrap().span(ast);
@@ -82,7 +109,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if let Some(last) = leading.last() {
                 self.comment_gap(last.span.end, statement_span.start, writer);
             }
-            let content_end = self.format_statement(statement, writer)?;
+            let content_end = match statement {
+                StatementItem::Statement(node) => self.format_statement(node, writer)?,
+                StatementItem::Directive(node) => {
+                    let expression = node.expression(ast);
+                    self.format_string_literal(expression, StringContext::Directive, writer);
+                    if self.options.semicolons == Semicolons::Always {
+                        writer.text(";");
+                    }
+                    expression.span(ast).end
+                }
+            };
             previous_end = Some(if let Some((comments, _)) = omitted {
                 self.format_omitted_statement_tail(comments, content_end, writer)?
             } else {
@@ -179,12 +216,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content_end = match self.ast.stmt_data(statement) {
             StmtData::ExpressionStatement(node) => {
                 let expression = node.expression(self.ast);
+                let parenthesize = self.string_expression_literal(expression).is_some();
                 if self.options.semicolons == Semicolons::AsNeeded
-                    && matches!(self.ast.expr_data(expression), ExprData::RegExpLiteral(_))
+                    && (parenthesize
+                        || matches!(self.ast.expr_data(expression), ExprData::RegExpLiteral(_)))
                 {
                     writer.text(";");
                 }
+                if parenthesize {
+                    writer.text("(");
+                }
                 self.format_expression(expression, writer)?;
+                if parenthesize {
+                    writer.text(")");
+                }
                 expression.span(self.ast).end
             }
             StmtData::DebuggerStatement(node) => {
@@ -208,15 +253,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         block: BlockStatement,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let block_span = block.span(self.ast);
+        let ast = self.ast;
+        let block_span = block.span(ast);
         let body_span = Span::new(block_span.start + 1, block_span.end - 1);
         let body = block.body(self.ast);
         writer.text("{");
         if body.iter().all(|id| {
-            matches!(
-                self.ast.stmt_data(self.ast.get_node_in_sub_range(id)),
-                StmtData::EmptyStatement(_)
-            )
+            !StatementItem::Statement(ast.get_node_in_sub_range(id)).is_nonempty(self.ast)
         }) && self.comments.between(body_span)?.is_empty()
         {
             writer.hard_line();
@@ -224,7 +267,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.indent(|writer| {
                 writer.hard_line();
                 self.format_statement_sequence(
-                    body,
+                    body.iter()
+                        .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)))
+                        .peekable(),
                     body_span,
                     None,
                     StatementSequenceKind::Block,
