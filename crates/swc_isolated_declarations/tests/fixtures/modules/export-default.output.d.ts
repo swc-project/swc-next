@@ -1,0 +1,6 @@
+/**
+* comment should be a leading comment of the class
+*/
+export default class Tokenizer {
+	delimiterClose: Uint8Array;
+}

@@ -1,0 +1,4 @@
+export declare const Externals: {
+    Pinkie: string;
+};
+export declare const magical: () => string;

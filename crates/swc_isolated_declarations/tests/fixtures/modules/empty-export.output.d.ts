@@ -1,0 +1,7 @@
+type A = string;
+export declare function a(): A;
+export declare const ShallowReactiveMarker: unique symbol;
+export type ShallowReactive<T> = T & {
+	[ShallowReactiveMarker]?: true;
+};
+export {};

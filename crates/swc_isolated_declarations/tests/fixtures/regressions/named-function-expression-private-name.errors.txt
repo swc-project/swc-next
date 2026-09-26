@@ -1,0 +1,1 @@
+TS9039: Type containing private name 'h' can't be used with --isolatedDeclarations.

@@ -1,0 +1,14 @@
+export declare const foo1 = 1;
+export declare var foo2: number;
+export declare enum Foo3 {
+    A = "foo",
+    B = "bar"
+}
+export declare enum NonFiniteStrings {
+    Positive = 1 / 0,
+    PositiveString = "Infinity",
+    Negative = -1 / 0,
+    NegativeString = "-Infinity",
+    NotANumber = 0 / 0,
+    NaNString = "NaN"
+}

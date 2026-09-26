@@ -1,0 +1,6 @@
+import React from "react";
+export declare class Component<T> extends React.PureComponent<{
+}, {
+}> {
+    render(): React.ReactNode;
+}

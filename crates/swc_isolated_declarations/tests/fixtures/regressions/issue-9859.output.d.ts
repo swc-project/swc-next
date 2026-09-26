@@ -1,0 +1,6 @@
+export declare class NumberRange implements Iterable<number> {
+    private start;
+    private end;
+    constructor(start: number, end: number);
+    [Symbol.iterator](): Iterator<number>;
+}

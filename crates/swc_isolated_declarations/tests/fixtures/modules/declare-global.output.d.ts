@@ -1,0 +1,7 @@
+declare function MyFunction(): string;
+declare global {
+	interface Window {
+		MyFunction: typeof MyFunction;
+	}
+}
+export {};

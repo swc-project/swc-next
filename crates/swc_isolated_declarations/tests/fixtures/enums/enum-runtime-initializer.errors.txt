@@ -1,0 +1,2 @@
+TS2474: const enum member initializers must be constant expressions.
+TS2474: const enum member initializers must be constant expressions.
