@@ -235,9 +235,9 @@ pub enum FunctionType {
 /// Constrains which binding forms are legal and whether duplicates are
 /// allowed in strict mode.
 ///
-/// `FormalParameters` is a plain `function` parameter list.
-/// `UniqueFormalParameters` covers parameters of a generator, async,
-/// arrow, method, or setter. `ArrowFormalParameters` covers an arrow
+/// `FormalParameters` covers function declarations and expressions, including
+/// generator, async, and async-generator functions. `UniqueFormalParameters`
+/// covers method and setter parameters. `ArrowFormalParameters` covers an arrow
 /// function parameter list. `Signature` covers parameters of a TypeScript
 /// type signature.
 #[repr(u8)]

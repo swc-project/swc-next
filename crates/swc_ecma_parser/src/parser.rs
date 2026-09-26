@@ -2466,14 +2466,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 } else {
                     None
                 };
-            let (this_param, params) = self.parse_formal_parameters(
-                if generator || opts.is_async {
-                    FormalParameterKind::UniqueFormalParameters
-                } else {
-                    FormalParameterKind::FormalParameters
-                },
-                false,
-            )?;
+            let (this_param, params) =
+                self.parse_formal_parameters(FormalParameterKind::FormalParameters, false)?;
             let return_type =
                 if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                     Some(self.parse_return_type_annotation()?)
@@ -13146,6 +13140,77 @@ mod tests {
         let mut buffer = vec![0; buffer_size(ast, &[])];
         serialize_into(ast, &[], &mut buffer);
         buffer
+    }
+
+    #[test]
+    fn formal_parameters() {
+        fn parameter_kinds(source: &str) -> Vec<FormalParameterKind> {
+            struct Parameters<'ast, 'a> {
+                ast: &'ast Ast<'a>,
+                kinds: Vec<FormalParameterKind>,
+            }
+
+            impl<'a> Visit<'a> for Parameters<'_, 'a> {
+                fn ast(&self) -> &Ast<'a> {
+                    self.ast
+                }
+
+                fn visit_formal_parameters(&mut self, parameters: FormalParameters) {
+                    self.kinds.push(parameters.kind(self.ast));
+                    parameters.visit_children_with(self);
+                }
+            }
+
+            let allocator = Allocator::new();
+            let options = Options {
+                source_type: SourceType::Script,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let mut visitor = Parameters {
+                ast: &parsed.ast,
+                kinds: Vec::new(),
+            };
+            parsed.ast.root_program().visit_with(&mut visitor);
+            visitor.kinds
+        }
+
+        let kinds = parameter_kinds("function f(a,a){}");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("function* f(a,a){}");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("async function f(a,a){}");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("async function* f(a,a){}");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("(function* (a,a){});");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("(async function(a,a){});");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("(async function*(a,a){});");
+        assert_eq!(kinds, [FormalParameterKind::FormalParameters]);
+
+        let kinds = parameter_kinds("({*f(a,b){}});");
+        assert_eq!(kinds, [FormalParameterKind::UniqueFormalParameters]);
+
+        let kinds = parameter_kinds("({async f(a,b){}});");
+        assert_eq!(kinds, [FormalParameterKind::UniqueFormalParameters]);
+
+        let kinds = parameter_kinds("({async *f(a,b){}});");
+        assert_eq!(kinds, [FormalParameterKind::UniqueFormalParameters]);
+
+        let kinds = parameter_kinds("(a,b)=>{};");
+        assert_eq!(kinds, [FormalParameterKind::ArrowFormalParameters]);
+
+        let kinds = parameter_kinds("async (a,b)=>{};");
+        assert_eq!(kinds, [FormalParameterKind::ArrowFormalParameters]);
     }
 
     #[test]
