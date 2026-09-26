@@ -21,6 +21,7 @@ pub(in crate::formatter) struct SourceParentheses {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum ParenthesisInner {
     Expression(Expr),
+    SourcePair,
 }
 
 pub(in crate::formatter) struct ExpressionContent {
@@ -32,6 +33,7 @@ pub(in crate::formatter) struct ExpressionContent {
 /// A removed source envelope keeps the binding resolved by its real owner.
 #[derive(Clone, Copy)]
 pub(super) struct RemovedExpressionParentheses {
+    pub(super) source: SourceParentheses,
     pub(super) head: SourceParenthesesHead,
     pub(super) tail: Option<SourceParenthesesTail>,
 }
@@ -122,6 +124,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             inner = child;
         };
         let parentheses = (inner != expression).then(|| RemovedExpressionParentheses {
+            source: SourceParentheses {
+                outer: expression.span(self.ast),
+                inner: inner.span(self.ast),
+                inner_target: ParenthesisInner::Expression(inner),
+            },
             head,
             tail: has_tail_comments.then_some(SourceParenthesesTail {
                 span: Span::new(inner.span(self.ast).end, expression.span(self.ast).end),
@@ -132,6 +139,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             data,
             parentheses,
         }
+    }
+
+    fn verbatim_parentheses_are_removable(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        position: ExpressionPosition,
+    ) -> bool {
+        if matches!(position, ExpressionPosition::Statement) {
+            return false;
+        }
+        let child = parenthesized.expression(self.ast);
+        self.parentheses_are_removable(SourceParentheses {
+            outer: parenthesized.span(self.ast),
+            inner: child.span(self.ast),
+            inner_target: ParenthesisInner::Expression(child),
+        }) && self.expression_needs_parentheses(self.ast.expr_data(child), position) == Some(false)
+    }
+
+    pub(in crate::formatter) fn parentheses_are_removable(
+        &self,
+        boundary: SourceParentheses,
+    ) -> bool {
+        self.removable_parentheses_head(boundary).is_some()
     }
 
     fn removable_parentheses_head(
@@ -308,7 +338,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if cast().is_none() {
                     return CommentBinding::Unbound;
                 }
-                let ParenthesisInner::Expression(expression) = boundary.inner_target;
+                let expression = match boundary.inner_target {
+                    ParenthesisInner::Expression(expression) => expression,
+                    ParenthesisInner::SourcePair => return CommentBinding::BoundTo(boundary.inner),
+                };
                 match self.ast.expr_data(expression) {
                     ExprData::ParenthesizedExpression(node) => {
                         CommentBinding::BoundTo(node.span(self.ast))
@@ -320,7 +353,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExprData::NumericLiteral(_)
                     | ExprData::BigIntLiteral(_)
                     | ExprData::RegExpLiteral(_)
-                    | ExprData::ThisExpression(_) => CommentBinding::Unbound,
+                    | ExprData::ThisExpression(_)
+                    | ExprData::UnaryExpression(_)
+                    | ExprData::UpdateExpression(_) => CommentBinding::Unbound,
                     _ => CommentBinding::SourceBound,
                 }
             })
@@ -363,6 +398,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if mode == ContentMode::Verbatim
             && (matches!(context.position, ExpressionPosition::Statement)
+                || matches!(context.position, ExpressionPosition::UnaryArgument(_))
                 || self.parentheses_separate_diagnostic_lines(boundary)
                 || self
                     .expression_needs_parentheses(self.ast.expr_data(child), context.position)
@@ -434,6 +470,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression) {
+            if context.content_mode == ContentMode::Verbatim
+                && !self.verbatim_parentheses_are_removable(parenthesized, context.position)
+            {
+                context.expression_start =
+                    self.format_expression_head(expression, head, binding, context, writer)?;
+                self.format_verbatim_expression(expression, context, writer)?;
+                return Ok(None);
+            }
             context.expression_start =
                 self.format_expression_head(expression, head, binding, context, writer)?;
             return self.format_source_parentheses(parenthesized, context, writer);
@@ -468,7 +512,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.text("(");
                     writer.indent(|writer| {
                         writer.soft_line();
-                        self.format_expression_data(expression, writer)
+                        let tail = self.format_expression_data(
+                            expression,
+                            context.inside_parentheses(),
+                            writer,
+                        )?;
+                        self.format_expression_tail(tail, writer)
                     })?;
                     writer.soft_line();
                     writer.text(")");
@@ -476,20 +525,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
             writer.text("(");
-            self.format_expression_data(expression, writer)?;
+            let tail = self.format_expression_data(
+                expression,
+                context.with_expression_start(ExpressionStart::None),
+                writer,
+            )?;
             writer.text(")");
-            return Ok(None);
+            return Ok(tail);
         }
         context.expression_start =
             self.format_expression_head(expression, head, binding, context, writer)?;
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
-            && self.expression_needs_asi_guard(expression, context)
+            && self.expression_needs_asi_guard(expression, context)?
         {
             writer.text(";");
+            context.expression_start = ExpressionStart::StatementGuarded;
         }
-        self.format_expression_data(expression, writer)?;
-        Ok(None)
+        self.format_expression_data(expression, context, writer)
     }
 
     fn format_expression_head(
@@ -506,7 +559,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comments
                 .iter()
                 .position(|&comment| self.comment_has_target_annotation(comment))
-            && self.expression_needs_asi_guard(expression, context)
+            && self.expression_needs_asi_guard(expression, context)?
         {
             let source_bound = matches!(binding, CommentBinding::SourceBound);
             let index = if source_bound { 0 } else { index };
@@ -661,6 +714,48 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             inner: inner_span,
             inner_target: ParenthesisInner::Expression(inner),
         };
+        self.format_retained_source_parentheses(
+            boundary,
+            context,
+            kind,
+            writer,
+            |formatter, context, writer| formatter.format_expression(inner, context, writer),
+        )
+    }
+
+    pub(super) fn format_retained_target_parentheses(
+        &mut self,
+        boundary: SourceParentheses,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+        content: impl FnOnce(
+            &mut Self,
+            ExpressionContext,
+            &mut Writer<'ast>,
+        ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let kind = if self.parenthesis_has_type_cast(boundary.outer.start) {
+            RetainedParentheses::Cast
+        } else {
+            RetainedParentheses::Annotation
+        };
+        self.format_retained_source_parentheses(boundary, context, kind, writer, content)
+    }
+
+    fn format_retained_source_parentheses(
+        &mut self,
+        boundary: SourceParentheses,
+        context: ExpressionContext,
+        kind: RetainedParentheses,
+        writer: &mut Writer<'ast>,
+        content: impl FnOnce(
+            &mut Self,
+            ExpressionContext,
+            &mut Writer<'ast>,
+        ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let span = boundary.outer;
+        let inner_span = boundary.inner;
         let source_comments = self.source_parentheses_comments(boundary);
         let leading = self
             .comments
@@ -711,9 +806,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     self.content_mode(source_comments.head)
                 };
-                let tail = self.format_expression(
-                    inner,
-                    ExpressionContext::at(ExpressionPosition::Nested).with_content_mode(mode),
+                let position =
+                    if let (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(operator)) =
+                        (mode, context.position)
+                    {
+                        ExpressionPosition::ParenthesizedUnaryArgument(operator)
+                    } else {
+                        ExpressionPosition::Nested
+                    };
+                let tail = content(
+                    self,
+                    ExpressionContext::at(position)
+                        .with_content_mode(mode)
+                        .inside_parentheses(),
                     writer,
                 )?;
                 let tail =
