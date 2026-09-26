@@ -38,11 +38,9 @@ impl From<bool> for GroupRequest {
 struct BreakEffect(u8);
 
 impl BreakEffect {
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     const SOURCE: Self = Self(1);
     const REQUIRED: Self = Self(2);
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn from_request(request: GroupRequest) -> Self {
         match request {
             GroupRequest::Auto => Self::default(),
@@ -82,7 +80,6 @@ enum SpaceKind {
 enum FormatElement<'a> {
     Text(Text<'a>),
     Space(SpaceKind),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     SoftLine,
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     SoftLineIfBreak(GroupId),
@@ -100,7 +97,6 @@ enum FormatElement<'a> {
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfCurrentFlat(Text<'a>),
     LineSuffix(Text<'a>),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartGroup {
         effect: BreakEffect,
         id: Option<GroupId>,
@@ -110,7 +106,6 @@ enum FormatElement<'a> {
     StartGroupWithFlatWidth {
         width: usize,
     },
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndGroup,
     FlatGroup(GroupId),
     StartIndent,
