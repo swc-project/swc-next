@@ -46,12 +46,13 @@ The Test262 parser/codegen runner also discovers `.js` files with Test262 metada
 `tasks/testsuite/fixtures-manual/test262-legacy/`, including tests retained after upstream removal.
 Local syntax regressions use the same metadata format under
 `tasks/testsuite/fixtures-manual/parser/`; use `flags: [module]` for Module cases,
-otherwise the runner checks both sloppy and strict Script modes.
+otherwise the runner checks both sloppy and strict Script modes. These project-owned
+cases are reported separately in `{parser,codegen}_local.snap`, not Test262 totals.
 
 | Runner    | Suites                     | Check                                                | Command                                                          |
 | --------- | -------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Parser    | Test262, TypeScript, Babel | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance --profile conformance` |
-| Codegen   | Test262, TypeScript, Babel | `parse -> print` is idempotent                       | Same as above                                                    |
+| Parser    | Test262, TypeScript, Babel, local | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance --profile conformance` |
+| Codegen   | Test262, TypeScript, Babel, local | `parse -> print` is idempotent                       | Same as above                                                    |
 | Resolver  | SWC resolver fixtures      | Name resolution text matches `swc-conformance`       | Same as above                                                    |
 | Transform | Babel                      | Normalized output matches Babel fixtures             | `cargo run -p testsuite --bin babel_transform`                   |
 | ESTree    | Test262, TypeScript        | N-API AST matches `estree-conformance`               | `pnpm test:conformance`                                          |
@@ -59,7 +60,7 @@ otherwise the runner checks both sloppy and strict Script modes.
 Debug one fixture with:
 
 ```sh
-cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver> --case <test262|typescript|babel|swc_resolver> --filter '<unique substring>'
+cargo run -p testsuite --bin debug -- --runner <parser|codegen|babel_transform|resolver> --case <test262|typescript|babel|local|swc_resolver> --filter '<unique substring>'
 ```
 
 ### Minifier Fixtures

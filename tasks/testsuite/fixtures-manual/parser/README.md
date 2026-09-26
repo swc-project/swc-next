@@ -2,7 +2,8 @@
 
 These project-owned syntax regressions use Test262 metadata and run through
 both the parser/semantic and codegen conformance runners. They are not upstream
-Test262 tests. Runtime evaluation is not performed: a positive syntax fixture
+Test262 tests. Results are reported separately in `parser_local.snap` and
+`codegen_local.snap`; use `--case local` with the debug runner. Runtime evaluation is not performed: a positive syntax fixture
 may throw at runtime.
 
 Keep one scenario per file. Use `flags: [module]` for Module mode; without it,

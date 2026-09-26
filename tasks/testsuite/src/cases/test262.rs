@@ -61,7 +61,6 @@ impl Test262Case {
         let roots = [
             fixtures().join("test262/test"),
             crate_root().join("fixtures-manual/test262-legacy"),
-            crate_root().join("fixtures-manual/parser"),
         ];
         roots
             .into_iter()
@@ -89,7 +88,7 @@ impl Test262Case {
             .collect()
     }
 
-    fn read_file(path: PathBuf) -> Vec<Self> {
+    pub(super) fn read_file(path: PathBuf) -> Vec<Self> {
         let code = read_to_string(&path).unwrap();
         let Some(meta) = parse_meta(&code) else {
             return Vec::new();

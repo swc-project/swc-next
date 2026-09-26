@@ -3,8 +3,8 @@ use std::{fs, process::ExitCode};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use testsuite::{
     cases::{
-        Case, babel_parser::BabelParserCase, swc_resolver::SwcResolverCase, test262::Test262Case,
-        typescript::TypeScriptCase,
+        Case, babel_parser::BabelParserCase, local::LocalCase, swc_resolver::SwcResolverCase,
+        test262::Test262Case, typescript::TypeScriptCase,
     },
     runner::{Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner},
     suite::TestResult,
@@ -14,6 +14,7 @@ use testsuite::{
 pub fn main() -> ExitCode {
     let panicked = [
         update_snapshots::<Test262Case>(),
+        update_snapshots::<LocalCase>(),
         update_snapshots::<TypeScriptCase>(),
         update_snapshots::<BabelParserCase>(),
         update_snapshot::<ResolverRunner, SwcResolverCase>(&SwcResolverCase::read()),

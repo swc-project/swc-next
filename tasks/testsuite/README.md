@@ -42,17 +42,22 @@ Run the complete conformance matrix:
 cargo run -p testsuite --bin conformance
 ```
 
-The command combines three case sources (`test262`, `typescript`, and `babel`)
+The command combines four case sources (`test262`, `typescript`, `babel`, and `local`)
 with two runners:
 
 - `parser` parses each case and then performs semantic analysis. A case passes
-  when success or failure agrees with the upstream expectation.
+  when success or failure agrees with the fixture expectation.
 - `codegen` ignores cases that expect an error, then checks that
   parse → print → parse → print reaches the same byte output after the first
   print.
 
-The six summaries are written to
-`tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel}.snap`.
+The eight summaries are written to
+`tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel,local}.snap`.
+
+Project-owned syntax regressions under `fixtures-manual/parser` use Test262
+metadata but are counted in the separate `local` suite. Retained upstream cases
+under `fixtures-manual/test262-legacy` remain part of the Test262 suite.
+
 The Babel parser and codegen runs use
 `babel/packages/babel-parser/test/fixtures`. Parser cases read their expected
 result from `output.json`/`output.extended.json` and `options.json`; fixtures
@@ -93,7 +98,7 @@ cargo run -p testsuite --bin debug -- \
 ```
 
 Supported runners are `parser`, `codegen`, and `babel_transform`. The case
-argument selects `test262`, `typescript`, or `babel`; the filter is a contains
+argument selects `test262`, `typescript`, `babel`, or `local`; the filter is a contains
 match against the combined fixture path and case name. If it matches multiple
 cases, the command lists candidates that can be used to narrow it.
 
