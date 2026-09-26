@@ -12,6 +12,7 @@ use crate::{
 pub mod assumptions;
 mod comments;
 pub mod es2015;
+mod jsx_pragma;
 pub mod normalize;
 mod state;
 pub mod typescript;

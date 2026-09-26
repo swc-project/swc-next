@@ -3,6 +3,7 @@
 //! Enum constants determine removable uses, module dependencies propagate the
 //! remaining runtime reads, and namespace instantiation consumes both results.
 
+use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{Ast, NodeId, Program, SymbolId, VisitWith};
 use swc_next_ecma_semantic::{Semantic, SymbolFlags};
 
@@ -14,6 +15,7 @@ use super::TypeScriptOptions;
 mod collector;
 mod constants;
 mod enums;
+mod jsx;
 mod modules;
 mod namespaces;
 
@@ -33,6 +35,7 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         semantic: &Semantic<'ast>,
         options: &TypeScriptOptions,
     ) -> Self {
+        let implicit_usage = jsx::dependencies(program, ast, semantic, &options.jsx);
         // Ordinary imports use semantic reference flags directly during lowering.
         // Only enums, namespaces and import-equals need a precomputed emission plan.
         let source_module = semantic.symbol_of(program.node_id());
@@ -47,10 +50,13 @@ impl<'ast> TypeScriptAnalysis<'ast> {
                 )
         });
         if !needs_plan {
-            return Self::default();
+            return Self {
+                modules: ModuleAnalysis::with_implicit_usage(implicit_usage),
+                ..Self::default()
+            };
         }
 
-        Self::build_runtime_plan(program, ast, semantic, options)
+        Self::build_runtime_plan(program, ast, semantic, options, implicit_usage)
     }
 
     // Keep collector storage out of the path that only erases types.
@@ -60,13 +66,19 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         ast: &Ast<'ast>,
         semantic: &Semantic<'ast>,
         options: &TypeScriptOptions,
+        implicit_usage: FxHashSet<SymbolId>,
     ) -> Self {
         let mut collector = AnalysisCollector::new(ast, semantic, options);
         program.visit_with(&mut collector);
 
         let (enums, inlined_references) = EnumAnalysis::finish(ast, semantic, &collector.enums);
         collector.modules.apply_enum_policy(semantic, &enums);
-        let modules = ModuleAnalysis::finish(collector.modules, semantic, inlined_references);
+        let modules = ModuleAnalysis::finish(
+            collector.modules,
+            semantic,
+            inlined_references,
+            implicit_usage,
+        );
         let namespaces = NamespaceAnalysis::finish(
             ast,
             semantic,

@@ -5,7 +5,7 @@ mod analysis;
 mod lower;
 
 mod options;
-pub use options::TypeScriptOptions;
+pub use options::{JsxImportOptions, TypeScriptOptions};
 
 /// Applies only the TypeScript syntax transform.
 ///

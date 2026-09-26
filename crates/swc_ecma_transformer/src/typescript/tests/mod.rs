@@ -7,6 +7,7 @@ use super::{TypeScriptOptions, transform};
 use crate::normalize::Normalizer;
 
 mod enums;
+mod jsx;
 mod modules;
 mod namespaces;
 mod parameters;

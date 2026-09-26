@@ -59,6 +59,14 @@ type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 type HoistingMap<'a> = Option<swc_next_allocator::boxed::Box<'a, ScopeMap<'a>>>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
+/// JSX syntax whose implicit factory dependencies can be resolved by a consumer.
+/// This records syntax and its lexical environment, not a particular JSX runtime.
+#[derive(Debug, Clone, Copy)]
+pub struct JsxUsage {
+    pub scope: ScopeId,
+    pub is_fragment: bool,
+}
+
 /// The semantic model of a tree, with scopes, symbols, references, and their
 /// lookup certainty cross-indexed. Opaque TypeScript facts may leave multiple
 /// possible reference targets. Backed by the
@@ -71,6 +79,7 @@ type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>
 pub struct Semantic<'a> {
     /// Every scope, indexed by [`ScopeId`].
     scopes: ScopeTree<'a>,
+    jsx_usages: ArenaVec<'a, JsxUsage>,
     /// Every symbol, in declaration order, indexed by [`SymbolId`].
     symbols: ArenaVec<'a, Symbol>,
     /// Every reference, in source order, indexed by [`ReferenceId`].
@@ -95,6 +104,12 @@ pub struct Semantic<'a> {
 }
 
 impl<'a> Semantic<'a> {
+    /// JSX usage in traversal order, coalescing adjacent sites in one scope.
+    /// Intrinsic tags are included; a fragment also requires an element factory.
+    pub fn jsx_usages(&self) -> &[JsxUsage] {
+        &self.jsx_usages
+    }
+
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         self.symbols[id.index()]

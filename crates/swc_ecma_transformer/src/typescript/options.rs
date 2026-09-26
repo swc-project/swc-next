@@ -12,4 +12,14 @@ pub struct TypeScriptOptions {
     /// disabling inlining. Defaults to `false`; only safe, unexported enums
     /// may be removed by this single-file transform.
     pub preserve_const_enums: bool,
+    /// Factory dependencies for JSX preserved for a later transform.
+    pub jsx: JsxImportOptions,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct JsxImportOptions {
+    pub automatic: bool,
+    pub pragma: Option<String>,
+    pub pragma_frag: Option<String>,
 }

@@ -1788,6 +1788,7 @@ pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
     symbols: ArenaVec<'a, Symbol>,
     references: ArenaVec<'a, Reference>,
+    jsx_usages: ArenaVec<'a, crate::JsxUsage>,
     declarations: ArenaVec<'a, Declaration>,
     redeclarations: Redeclarations<'a>,
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
@@ -2001,6 +2002,7 @@ impl<'a> SymbolTracker<'a> {
             allocator,
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
+            jsx_usages: ArenaVec::new_in(allocator),
             declarations: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             redeclarations: Redeclarations::new_in(allocator),
             node_symbols,
@@ -3745,6 +3747,18 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
+    pub fn record_jsx_usage(&mut self, scope: ScopeId, is_fragment: bool) {
+        // Adjacent JSX in one environment has the same implicit dependencies.
+        // Keep scope summaries instead of allocating an entry for every tag.
+        if let Some(usage) = self.jsx_usages.last_mut()
+            && usage.scope == scope
+        {
+            usage.is_fragment |= is_fragment;
+            return;
+        }
+        self.jsx_usages.push(crate::JsxUsage { scope, is_fragment });
+    }
+
     pub fn add_jsx_opening_element_reference(
         &mut self,
         tree: &Ast<'a>,
@@ -4251,6 +4265,7 @@ impl<'a> SymbolTracker<'a> {
             scopes,
             symbols: self.symbols,
             references: self.references,
+            jsx_usages: self.jsx_usages,
             reference_candidates,
             declarations,
             redeclarations,

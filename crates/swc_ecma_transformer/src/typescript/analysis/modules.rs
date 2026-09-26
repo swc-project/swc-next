@@ -106,21 +106,29 @@ pub(super) struct ModuleAnalysis {
 }
 
 impl ModuleAnalysis {
+    pub(super) fn with_implicit_usage(usage: FxHashSet<SymbolId>) -> Self {
+        Self {
+            propagated_runtime_usage: usage,
+            ..Self::default()
+        }
+    }
+
     pub(super) fn finish(
         collector: ModuleCollector,
         semantic: &Semantic<'_>,
         mut ignored_references: FxHashSet<NodeId>,
+        implicit_usage: FxHashSet<SymbolId>,
     ) -> Self {
         ignored_references.extend(collector.initializer_references);
         let mut analysis = Self {
             erased_aliases: collector.erased_aliases,
             ignored_references,
-            ..Self::default()
+            ..Self::with_implicit_usage(implicit_usage)
         };
         if !collector.collect_runtime_usage {
             return analysis;
         }
-        let mut worklist = Vec::new();
+        let mut worklist: Vec<_> = analysis.propagated_runtime_usage.iter().copied().collect();
         for (&alias, dependency) in &collector.alias_dependencies {
             if dependency.global
                 || semantic.symbol(alias).flags.contains(SymbolFlags::EXPORTED)
