@@ -9,7 +9,10 @@ const ASCII_ONLY_MASK: u32 = 0b11 << ASCII_ONLY_SHIFT;
 const MINIFY_SHIFT: u32 = 3;
 const MINIFY_MASK: u32 = 0b11 << MINIFY_SHIFT;
 
-const KNOWN_MASK: u32 = OPTIONS_PRESENT | ASCII_ONLY_MASK | MINIFY_MASK;
+const INLINE_SCRIPT_SHIFT: u32 = 5;
+const INLINE_SCRIPT_MASK: u32 = 0b11 << INLINE_SCRIPT_SHIFT;
+
+const KNOWN_MASK: u32 = OPTIONS_PRESENT | ASCII_ONLY_MASK | MINIFY_MASK | INLINE_SCRIPT_MASK;
 
 #[bridge]
 impl BridgeDecode for Option<CodegenOptions> {
@@ -26,7 +29,12 @@ impl BridgeDecode for Option<CodegenOptions> {
         let ascii_only = boolean_field(value, ASCII_ONLY_MASK, ASCII_ONLY_SHIFT)?;
         let minify = boolean_field(value, MINIFY_MASK, MINIFY_SHIFT)?;
 
-        Some(Some(CodegenOptions { ascii_only, minify }))
+        let inline_script = boolean_field(value, INLINE_SCRIPT_MASK, INLINE_SCRIPT_SHIFT)?;
+        Some(Some(CodegenOptions {
+            ascii_only,
+            minify,
+            inline_script,
+        }))
     }
 }
 

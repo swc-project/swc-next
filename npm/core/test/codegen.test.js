@@ -145,6 +145,21 @@ test("printSync forwards codegen options", () => {
     printSync(program, { asciiOnly: true, minify: true }).code,
     'const emoji="\\u{1F600}";',
   );
+
+  const script = parseSync('const text = "</ScRiPt>";').program;
+  assert.equal(printSync(script).code, 'const text = "</ScRiPt>";\n');
+  assert.equal(
+    printSync(script, { inlineScript: true }).code,
+    'const text = "<\\/ScRiPt>";\n',
+  );
+  assert.equal(
+    printSync(script, { inlineScript: true, asciiOnly: true, minify: true }).code,
+    'const text="<\\/ScRiPt>";',
+  );
+  assert.equal(
+    printSync(script, { inlineScript: false, minify: true }).code,
+    'const text="</ScRiPt>";',
+  );
 });
 
 test("printSync prints modified JSX attribute strings", () => {

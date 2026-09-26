@@ -37,6 +37,7 @@ export function encodeOptions(options) {
   let value = 1;
   value |= encodeOptionBoolean(options.asciiOnly, "asciiOnly") << 1;
   value |= encodeOptionBoolean(options.minify, "minify") << 3;
+  value |= encodeOptionBoolean(options.inlineScript, "inlineScript") << 5;
   return value >>> 0;
 }
 

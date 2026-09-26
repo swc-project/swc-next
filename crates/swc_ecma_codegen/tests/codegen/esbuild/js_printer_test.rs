@@ -1123,6 +1123,27 @@ fn test_jsx_single_line() {
 
 #[test]
 fn test_avoid_slash_script() {
+    let expect_printed = |source, expected| {
+        crate::expect_printed_with_options(
+            source,
+            expected,
+            swc_next_ecma_codegen::Options {
+                inline_script: true,
+                ..Default::default()
+            },
+        )
+    };
+    let expect_printed_minify = |source, expected| {
+        crate::expect_printed_with_options(
+            source,
+            expected,
+            swc_next_ecma_codegen::Options {
+                inline_script: true,
+                minify: true,
+                ..Default::default()
+            },
+        )
+    };
     expect_printed("x = '</script'", "x = \"<\\/script\";\n");
     expect_printed("x = `</script`", "x = `<\\/script`;\n");
     expect_printed("x = `</SCRIPT`", "x = `<\\/SCRIPT`;\n");

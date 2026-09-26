@@ -18,7 +18,13 @@ pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32
     out.push(b'}');
 }
 
-pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, ascii_only: bool) {
+pub(crate) fn quote_into(
+    out: &mut ArenaVec<'_, u8>,
+    value: &Wtf8,
+    quote: u8,
+    ascii_only: bool,
+    inline_script: bool,
+) {
     let value = value.as_bytes();
     out.push(quote);
     let mut i = 0;
@@ -50,7 +56,8 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, as
             11 => out.extend_from_slice(b"\\v"),
             27 => out.extend_from_slice(b"\\x1B"),
             92 => out.extend_from_slice(b"\\\\"),
-            47 if out.last() == Some(&b'<')
+            47 if inline_script
+                && out.last() == Some(&b'<')
                 && value
                     .get(i..i.saturating_add(6))
                     .is_some_and(|tail| tail.eq_ignore_ascii_case(b"script")) =>

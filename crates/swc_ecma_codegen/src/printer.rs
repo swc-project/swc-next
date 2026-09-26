@@ -28,6 +28,11 @@ pub enum NumberFormat {
 #[derive(Clone)]
 pub struct Options {
     pub ascii_only: bool,
+    /// Escape closing script tags in strings, untagged templates, and comments,
+    /// and prevent them from forming across token boundaries. Defaults to false.
+    /// Tagged template raw text is preserved; this is not a guarantee that arbitrary
+    /// output can be embedded in HTML without further processing.
+    pub inline_script: bool,
     pub minify: bool,
     pub number_format: NumberFormat,
     pub source_map_path: Option<PathBuf>,
@@ -38,6 +43,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             ascii_only: false,
+            inline_script: false,
             minify: false,
             number_format: NumberFormat::Preserve,
             source_map_path: None,
@@ -381,7 +387,12 @@ impl<'a> Printer<'a> {
         let expression = directive.expression(self.ast);
         let value = self.ast.get_wtf8(expression.value(self.ast));
         let raw = self.ast.get_utf8(expression.raw(self.ast));
-        let raw_is_safe = !raw.is_empty() && !raw.contains("script");
+        let raw_is_safe = !raw.is_empty()
+            && (!self.options.inline_script
+                || !raw
+                    .as_bytes()
+                    .windows(8)
+                    .any(|text| text.eq_ignore_ascii_case(b"</script")));
         if value == "use strict" && raw.as_bytes().contains(&b'\\') && raw_is_safe {
             self.print_bytes(raw);
             return;
@@ -456,7 +467,7 @@ impl<'a> Printer<'a> {
             match comment.kind {
                 CommentKind::Line => {
                     self.print("//");
-                    self.print_comment_text(value);
+                    self.print_script_text(value);
                     self.print("\n");
                     if !statement {
                         self.print_indent();
@@ -494,7 +505,7 @@ impl<'a> Printer<'a> {
                     continue;
                 }
             };
-            self.print_comment_text(&value[start..end]);
+            self.print_script_text(&value[start..end]);
             self.print("\n");
             self.print_indent();
             start = end + newline_width;
@@ -513,12 +524,15 @@ impl<'a> Printer<'a> {
             }
             search = start;
         }
-        self.print_comment_text(&value[start..]);
+        self.print_script_text(&value[start..]);
         self.print("*/");
     }
 
-    fn print_comment_text(&mut self, text: &[u8]) {
-        // Avoid generating a comment containing the sequence "</script".
+    fn print_script_text(&mut self, text: &[u8]) {
+        if !self.options.inline_script {
+            self.print_bytes(text);
+            return;
+        }
         let mut start = 0;
         for index in 0..text.len().saturating_sub(7) {
             if text[index] == b'<'
@@ -721,7 +735,13 @@ impl<'a> Printer<'a> {
         } else {
             b'"'
         };
-        quote_into(&mut self.js, value, quote, self.options.ascii_only);
+        quote_into(
+            &mut self.js,
+            value,
+            quote,
+            self.options.ascii_only,
+            self.options.inline_script,
+        );
     }
 
     fn print_stmt(&mut self, stmt: Stmt) {
@@ -1826,7 +1846,8 @@ impl<'a> Printer<'a> {
                 // sequence across the token boundary.
                 if let Some(&last) = self.js.last()
                     && (last == b'/'
-                        || (last == b'<'
+                        || (self.options.inline_script
+                            && last == b'<'
                             && self
                                 .ast
                                 .get_utf8(e.pattern(self.ast))
@@ -2714,7 +2735,13 @@ impl<'a> Printer<'a> {
                     self.ast.get_wtf8(quasi.cooked(self.ast))
                 };
                 let start = self.js.len();
-                quote_into(&mut self.js, cooked, b'`', self.options.ascii_only);
+                quote_into(
+                    &mut self.js,
+                    cooked,
+                    b'`',
+                    self.options.ascii_only,
+                    self.options.inline_script,
+                );
                 self.js.remove(start);
                 self.js.pop();
             }

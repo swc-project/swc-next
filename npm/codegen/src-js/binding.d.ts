@@ -2,6 +2,8 @@
 /* eslint-disable */
 export interface CodegenOptions {
   asciiOnly?: boolean
+  /** Escape closing script tags; tagged template raw text is preserved. Defaults to false. */
+  inlineScript?: boolean
   minify?: boolean
 }
 

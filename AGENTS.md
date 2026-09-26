@@ -81,7 +81,7 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 | Scenario                                            | Command                                                                                                          |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Parser diagnostics, tokens, AST counts              | `cargo run -p swc_next_ecma_parser --example parser -- input.js [--preserve-parens]`                             |
-| Printed output, minification, escaping, parentheses | `cargo run -p swc_next_ecma_codegen --example codegen -- input.js [--minify] [--ascii-only] [--preserve-parens]` |
+| Printed output, minification, escaping, parentheses | `cargo run -p swc_next_ecma_codegen --example codegen -- input.js [--minify] [--ascii-only] [--inline-script] [--preserve-parens]` |
 | Scopes, bindings, semantic diagnostics              | `cargo run -p swc_next_ecma_semantic --example semantic -- input.js`                                             |
 | Compare/profile Rspack-like pipelines               | `TARGET=<legacy\|next\|oxc> cargo run -p benchmark --release --example rspack_simulator [--features tracy]`      |
 

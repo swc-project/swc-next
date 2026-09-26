@@ -247,7 +247,7 @@ fn test_directive_string_value() {
     );
     expect_printed_script(r#"'use\x20asm';"#, "'use\\x20asm';\n");
     expect_printed_minify(r#"'use\x20asm';"#, "\"use asm\";");
-    expect_printed_script(r#""</script";"#, "\"<\\/script\";\n");
+    expect_printed_script(r#""</script";"#, "\"</script\";\n");
     expect_printed(
         r#"function f() { "\0" }"#,
         "function f() {\n  \"\\0\";\n}\n",
@@ -394,4 +394,51 @@ fn test_function_source_comments_are_stable() {
         "function f() { foo({ get x() {} // getter\n, next() {} }, 0); }",
         "function f() {\n  foo({ get x() {\n  } // getter\n  , next() {\n  } }, 0);\n}\n",
     );
+}
+
+#[test]
+fn test_inline_script() {
+    let inline = PrintOptions {
+        inline_script: true,
+        ..PrintOptions::default()
+    };
+    let ascii = PrintOptions {
+        ascii_only: true,
+        ..PrintOptions::default()
+    };
+    let minified = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+
+    expect_printed("x = `</script>`", "x = `</script>`;\n");
+    expect_printed_with_options("x = `</script>`", "x = `</script>`;\n", ascii.clone());
+    expect_printed_with_options("x = `</script>`", "x=`</script>`;", minified.clone());
+    expect_printed_with_options("x = `</script>`", "x = `<\\/script>`;\n", inline.clone());
+    expect_printed_with_options(
+        "x = `</script>`",
+        "x = `<\\/script>`;\n",
+        PrintOptions {
+            inline_script: true,
+            ..ascii
+        },
+    );
+    expect_printed_with_options(
+        "x = `</script>`",
+        "x=`<\\/script>`;",
+        PrintOptions {
+            inline_script: true,
+            ..minified
+        },
+    );
+    expect_printed_with_options(
+        "String.raw`</script>`",
+        "String.raw`</script>`;\n",
+        inline.clone(),
+    );
+    expect_printed_with_options(r#""</SCRIPT>";"#, "\"<\\/SCRIPT>\";\n", inline.clone());
+    expect_printed_with_options(r#""use\x20script";"#, "\"use\\x20script\";\n", inline);
+    expect_printed("//! </script>", "//! </script>\n");
+    expect_printed_minify("x < /script/.test(y)", "x</script/.test(y);");
+    expect_printed_minify("x / /script/.test(y)", "x/ /script/.test(y);");
 }

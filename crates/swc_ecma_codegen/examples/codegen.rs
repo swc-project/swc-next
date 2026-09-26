@@ -1,7 +1,7 @@
 //! Generate JavaScript / TypeScript from a JavaScript / TypeScript file.
 //!
 //! Run with:
-//! `cargo run -p swc_next_ecma_codegen --example codegen -- [filename] [--minify] [--ascii-only] [--preserve-parens]`
+//! `cargo run -p swc_next_ecma_codegen --example codegen -- [filename] [--minify] [--ascii-only] [--inline-script] [--preserve-parens]`
 
 use std::{fs, path::Path};
 
@@ -24,6 +24,10 @@ struct Args {
     /// Escape non-ASCII characters in identifiers and literals.
     #[arg(long)]
     ascii_only: bool,
+
+    /// Escape closing script tags for inline HTML (tagged template raw is preserved).
+    #[arg(long)]
+    inline_script: bool,
 
     /// Preserve parentheses from the input where possible.
     #[arg(long)]
@@ -56,6 +60,7 @@ fn main() -> Result<(), String> {
     let options = CodegenOptions {
         minify: args.minify,
         ascii_only: args.ascii_only,
+        inline_script: args.inline_script,
         ..CodegenOptions::default()
     };
     let result = print(&allocator, &ret.ast, options);
