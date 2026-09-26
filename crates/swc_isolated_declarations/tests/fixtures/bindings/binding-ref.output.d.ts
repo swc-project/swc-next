@@ -1,0 +1,4 @@
+export declare const ssrUtils: {
+    createComponentInstance: number;
+};
+export declare function createComponentInstance(): void;

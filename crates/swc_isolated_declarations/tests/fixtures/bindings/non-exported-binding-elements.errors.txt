@@ -1,0 +1,5 @@
+TS9019: Binding elements can't be exported directly with --isolatedDeclarations.
+TS9019: Binding elements can't be exported directly with --isolatedDeclarations.
+TS9019: Binding elements can't be exported directly with --isolatedDeclarations.
+TS9019: Binding elements can't be exported directly with --isolatedDeclarations.
+TS9019: Binding elements can't be exported directly with --isolatedDeclarations.

@@ -1,0 +1,2 @@
+TS9007: Function must have an explicit return type annotation with --isolatedDeclarations.
+TS9008: Method must have an explicit return type annotation with --isolatedDeclarations.

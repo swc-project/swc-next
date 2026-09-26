@@ -1,0 +1,4 @@
+TS9010: Variable must have an explicit type annotation with --isolatedDeclarations.
+TS9010: Variable must have an explicit type annotation with --isolatedDeclarations.
+TS9013: Expression type can't be inferred with --isolatedDeclarations.
+TS9013: Expression type can't be inferred with --isolatedDeclarations.

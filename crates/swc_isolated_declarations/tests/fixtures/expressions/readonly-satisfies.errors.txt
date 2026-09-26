@@ -1,0 +1,1 @@
+TS9012: Property must have an explicit type annotation with --isolatedDeclarations.

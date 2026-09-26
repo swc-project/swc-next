@@ -1,0 +1,4 @@
+export declare function A(): void;
+export declare function B(): (() => void) | undefined;
+export declare function C(x: string): void;
+export declare function C(x: number): void;

@@ -1,0 +1,8 @@
+declare function generatorGood(): Generator<number>;
+declare class GeneratorClassGood {
+	method(): Generator<number>;
+}
+declare function generatorBad();
+declare class GeneratorClassBad {
+	method();
+}

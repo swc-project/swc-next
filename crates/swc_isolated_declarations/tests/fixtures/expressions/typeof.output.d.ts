@@ -1,0 +1,3 @@
+import { ModA } from "mod";
+import { Variable } from "constant";
+export declare const Export: typeof ModA<typeof Variable>;

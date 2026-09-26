@@ -1,0 +1,5 @@
+TS9011: Parameter must have an explicit type annotation with --isolatedDeclarations.
+TS9011: Parameter must have an explicit type annotation with --isolatedDeclarations.
+TS9011: Parameter must have an explicit type annotation with --isolatedDeclarations.
+TS9011: Parameter must have an explicit type annotation with --isolatedDeclarations.
+TS9011: Parameter must have an explicit type annotation with --isolatedDeclarations.

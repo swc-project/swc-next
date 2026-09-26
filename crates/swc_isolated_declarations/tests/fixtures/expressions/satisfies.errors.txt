@@ -1,0 +1,2 @@
+TS9010: Variable must have an explicit type annotation with --isolatedDeclarations.
+TS9010: Variable must have an explicit type annotation with --isolatedDeclarations.

@@ -1,0 +1,3 @@
+TS9007: Function must have an explicit return type annotation with --isolatedDeclarations.
+TS9007: Function must have an explicit return type annotation with --isolatedDeclarations.
+TS9007: Function must have an explicit return type annotation with --isolatedDeclarations.

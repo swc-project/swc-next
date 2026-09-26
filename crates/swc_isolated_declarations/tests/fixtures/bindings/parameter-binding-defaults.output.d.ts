@@ -1,0 +1,3 @@
+export declare function defaultParam({ value }: {
+    value?: Record<string, unknown>;
+}): Promise<void>;
