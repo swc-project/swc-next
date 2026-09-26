@@ -10,7 +10,12 @@ version               = "0.2.4"
 
 [dependencies]
 rustc-hash = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde      = { workspace = true, features = ["derive"] }
 
+swc_next_allocator     = { workspace = true }
 swc_next_ecma_ast      = { workspace = true }
 swc_next_ecma_semantic = { workspace = true }
+
+[dev-dependencies]
+swc_next_ecma_codegen = { workspace = true }
+swc_next_ecma_parser  = { workspace = true }

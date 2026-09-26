@@ -1,6 +1,7 @@
 use swc_next_ecma_ast::{
-    Ast, Expr, ExprData, GetSpan, Program, SequenceExpression, Span, SubRange, TsIntersectionType,
-    TsType, TsTypeData, TsUnionType, VisitMut, VisitMutWith,
+    Ast, Expr, ExprData, GetSpan, Program, SequenceExpression, Span, SubRange,
+    TsInterfaceDeclaration, TsIntersectionType, TsType, TsTypeAliasDeclaration, TsTypeData,
+    TsUnionType, VisitMut, VisitMutWith,
 };
 
 use crate::comments::CommentRetargets;
@@ -13,7 +14,17 @@ pub struct Normalizer {}
 
 impl Normalizer {
     pub fn normalize<'ast>(program: Program, ast: &mut Ast<'ast>) {
-        let mut pass = NormalizePass {
+        Self::run::<true>(program, ast);
+    }
+
+    /// Normalize executable syntax before TypeScript erasure. Type-only subtrees
+    /// are removed by the following pass and do not need canonical forms.
+    pub(crate) fn normalize_runtime<'ast>(program: Program, ast: &mut Ast<'ast>) {
+        Self::run::<false>(program, ast);
+    }
+
+    fn run<'ast, const NORMALIZE_TYPES: bool>(program: Program, ast: &mut Ast<'ast>) {
+        let mut pass = NormalizePass::<NORMALIZE_TYPES> {
             ast,
             comment_retargets: CommentRetargets::default(),
         };
@@ -22,7 +33,7 @@ impl Normalizer {
     }
 }
 
-struct NormalizePass<'visit, 'ast> {
+struct NormalizePass<'visit, 'ast, const NORMALIZE_TYPES: bool> {
     ast: &'visit mut Ast<'ast>,
     comment_retargets: CommentRetargets,
 }
@@ -70,7 +81,7 @@ impl AssociativeType {
     }
 }
 
-impl NormalizePass<'_, '_> {
+impl<const NORMALIZE_TYPES: bool> NormalizePass<'_, '_, NORMALIZE_TYPES> {
     fn record_replacement(&mut self, removed: Span, replacement: Span) {
         self.comment_retargets
             .record_replacement(self.ast, removed, replacement);
@@ -218,7 +229,9 @@ impl NormalizePass<'_, '_> {
     }
 }
 
-impl<'ast> VisitMut<'ast> for NormalizePass<'_, 'ast> {
+impl<'ast, const NORMALIZE_TYPES: bool> VisitMut<'ast>
+    for NormalizePass<'_, 'ast, NORMALIZE_TYPES>
+{
     fn ast(&mut self) -> &mut Ast<'ast> {
         self.ast
     }
@@ -243,7 +256,30 @@ impl<'ast> VisitMut<'ast> for NormalizePass<'_, 'ast> {
         }
     }
 
+    fn visit_mut_ts_type_alias_declaration(
+        &mut self,
+        node: TsTypeAliasDeclaration,
+    ) -> Option<TsTypeAliasDeclaration> {
+        if NORMALIZE_TYPES {
+            node.visit_mut_children_with(self);
+        }
+        None
+    }
+
+    fn visit_mut_ts_interface_declaration(
+        &mut self,
+        node: TsInterfaceDeclaration,
+    ) -> Option<TsInterfaceDeclaration> {
+        if NORMALIZE_TYPES {
+            node.visit_mut_children_with(self);
+        }
+        None
+    }
+
     fn visit_mut_ts_type(&mut self, node: TsType) -> Option<TsType> {
+        if !NORMALIZE_TYPES {
+            return None;
+        }
         match self.ast.ts_type_data(node) {
             TsTypeData::TsParenthesizedType(parenthesized) => {
                 let type_annotation = parenthesized.type_annotation(self.ast);

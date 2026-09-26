@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{
     Ast, ObjectProperty, RegExpLiteral, TraverseMut, TraverseMutCtx, TraverseMutWith,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -14,6 +14,7 @@ mod comments;
 pub mod es2015;
 pub mod normalize;
 mod state;
+pub mod typescript;
 mod uid;
 
 pub struct Transformer {}
@@ -22,6 +23,7 @@ pub struct Transformer {}
 pub struct TransformerOptions {
     pub assumptions: Assumptions,
     pub es2015: es2015::ES2015Options,
+    pub typescript: Option<typescript::TypeScriptOptions>,
 }
 
 pub struct TransformerImpl {
@@ -34,12 +36,27 @@ impl Transformer {
         let TransformerOptions {
             assumptions,
             es2015,
+            typescript,
         } = options;
 
-        Normalizer::normalize(program, ast);
+        let typescript_enabled = typescript.is_some();
+        if let Some(options) = typescript {
+            Normalizer::normalize_runtime(program, ast);
+            typescript::transform(program, ast, semantic, options);
+        } else {
+            Normalizer::normalize(program, ast);
+        }
 
         let (semantic_program_transforms, traverse) = es2015::ES2015::new(es2015).into_phases();
         if let Some(mut transforms) = semantic_program_transforms {
+            let refreshed_semantic = typescript_enabled.then(|| {
+                let options = AnalyzeOptions {
+                    check_syntax: false,
+                    build_module_record: false,
+                };
+                analyze(ast, options).semantic
+            });
+            let semantic = refreshed_semantic.as_ref().unwrap_or(semantic);
             transforms.transform(ast, semantic);
         }
 
