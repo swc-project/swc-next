@@ -5896,26 +5896,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let start = self.current_token.start();
             self.advance()?;
             let inner = self.parse_tuple_element_body()?;
-            if let TsTupleElementData::TsNamedTupleMember(named) =
-                self.ast.ts_tuple_element_data(inner)
-            {
-                let element_type = named.element_type(&self.ast);
-                let rest = self.ast.ts_rest_type(
-                    Span::new(start, element_type.span(&self.ast).end),
-                    element_type,
-                );
-                let named = self.ast.ts_named_tuple_member(
-                    Span::new(start, named.span(&self.ast).end),
-                    named.label(&self.ast),
-                    TsType::TsRestType(rest),
-                    named.optional(&self.ast),
-                );
-                return Some(TsTupleElement::TsNamedTupleMember(named));
-            }
-            let inner_type = tuple_element_as_type(inner, &self.ast);
-            let span = Span::new(start, inner_type.span(&self.ast).end);
+            let span = Span::new(start, inner.span(&self.ast).end);
             return Some(TsTupleElement::TsType(TsType::TsRestType(
-                self.ast.ts_rest_type(span, inner_type),
+                self.ast.ts_rest_type(span, inner),
             )));
         }
         self.parse_tuple_element_body()
@@ -12820,15 +12803,6 @@ fn is_start_of_type(tag: TokenTag) -> bool {
             | TokenTag::BitwiseAnd
             | TokenTag::BitwiseOr
     ) || tag.is_identifier_like()
-}
-
-fn tuple_element_as_type(element: TsTupleElement, ast: &Ast<'_>) -> TsType {
-    match ast.ts_tuple_element_data(element) {
-        TsTupleElementData::TsType(ty) => ty,
-        TsTupleElementData::TsNamedTupleMember(_) => {
-            unreachable!("a named tuple member is handled before conversion")
-        }
-    }
 }
 
 #[inline]

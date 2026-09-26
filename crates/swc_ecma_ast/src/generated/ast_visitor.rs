@@ -4336,7 +4336,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsRestType {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.type_annotation(visitor.ast());
-        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsTupleElement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsJsDocNullableType {
@@ -11429,7 +11429,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsRestType {
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
         let field_value = self.type_annotation(visitor.ast());
         if let Some(field_value) =
-            <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+            <TsTupleElement as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_type_annotation(visitor.ast(), field_value);
         }
@@ -24175,9 +24175,9 @@ fn walk_ts_rest_type<'a, State, T: ?Sized + Traverse<'a, State>>(
     {
         let node_id = (child).node_id();
         traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
+        traverser.enter_ts_tuple_element(child, ctx);
+        walk_ts_tuple_element(child, traverser, ctx);
+        traverser.exit_ts_tuple_element(child, ctx);
         traverser.exit_node(node_id, ctx);
     }
     traverser.exit_ts_rest_type(node, ctx);
@@ -36630,9 +36630,9 @@ fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     {
         let node_id = (child).node_id();
         traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
+        traverser.enter_ts_tuple_element(child, ctx);
+        walk_mut_ts_tuple_element(child, traverser, ctx);
+        traverser.exit_ts_tuple_element(child, ctx);
         traverser.exit_node(node_id, ctx);
     }
     traverser.exit_ts_rest_type(node, ctx);

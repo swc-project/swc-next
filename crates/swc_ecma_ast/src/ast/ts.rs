@@ -802,7 +802,7 @@ pub struct TsOptionalType {
 #[ast]
 pub struct TsRestType {
     /// any ts type or `ts_named_tuple_member`.
-    type_annotation: TsType,
+    type_annotation: TsTupleElement,
 }
 
 /// A JSDoc-style nullable type marker, written as a prefix `?T` or a

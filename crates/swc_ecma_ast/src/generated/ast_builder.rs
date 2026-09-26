@@ -5737,7 +5737,7 @@ impl<'a> Ast<'a> {
         TsType::TsOptionalType(self.ts_optional_type(span, type_annotation).into())
     }
     #[inline]
-    pub fn ts_type_ts_rest_type(&mut self, span: Span, type_annotation: TsType) -> TsType {
+    pub fn ts_type_ts_rest_type(&mut self, span: Span, type_annotation: TsTupleElement) -> TsType {
         TsType::TsRestType(self.ts_rest_type(span, type_annotation).into())
     }
     #[inline]
@@ -6203,7 +6203,7 @@ impl<'a> Ast<'a> {
     pub fn ts_tuple_element_ts_type_ts_rest_type(
         &mut self,
         span: Span,
-        type_annotation: TsType,
+        type_annotation: TsTupleElement,
     ) -> TsTupleElement {
         TsTupleElement::TsType(TsType::TsRestType(
             self.ts_rest_type(span, type_annotation).into(),
@@ -6953,7 +6953,7 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn ts_rest_type(&mut self, span: Span, type_annotation: TsType) -> TsRestType {
+    pub fn ts_rest_type(&mut self, span: Span, type_annotation: TsTupleElement) -> TsRestType {
         TsRestType(self.add_node(
             span,
             NodeKind::TsRestType,

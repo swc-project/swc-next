@@ -3944,7 +3944,7 @@ impl<'a> Printer<'a> {
             }
             TsTypeData::TsRestType(t) => {
                 self.print("...");
-                self.print_ts_type(t.type_annotation(self.ast), TsTypePrecedence::Lowest);
+                self.print_ts_tuple_element(t.type_annotation(self.ast));
             }
             TsTypeData::TsJsDocNullableType(t) => {
                 if !t.postfix(self.ast) {
@@ -4217,11 +4217,6 @@ impl<'a> Printer<'a> {
         match self.ast.ts_tuple_element_data(e) {
             TsTupleElementData::TsType(t) => self.print_ts_type(t, TsTypePrecedence::Lowest),
             TsTupleElementData::TsNamedTupleMember(n) => {
-                let mut element_type = n.element_type(self.ast);
-                if let TsTypeData::TsRestType(rest) = self.ast.ts_type_data(element_type) {
-                    self.print("...");
-                    element_type = rest.type_annotation(self.ast);
-                }
                 let label = n.label(self.ast);
                 let name = self.ast.get_utf8(label.name(self.ast));
                 self.add_source_mapping_for_name(label.span(self.ast).start, name);
@@ -4231,7 +4226,7 @@ impl<'a> Printer<'a> {
                 }
                 self.print(":");
                 self.print_space();
-                self.print_ts_type(element_type, TsTypePrecedence::Lowest);
+                self.print_ts_type(n.element_type(self.ast), TsTypePrecedence::Lowest);
             }
         }
     }

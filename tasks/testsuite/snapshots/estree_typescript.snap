@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11313/11509 (98.30%)
+Positive Passed: 11320/11509 (98.36%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -30,7 +30,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithExportModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/expressionWithJSDocTypeArguments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/genericTupleWithSimplifiableElements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/illegalModifiersOnClassElements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/importAssertionNonstring.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/importDeclWithDeclareModifier.ts
@@ -46,7 +45,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexWithoutP
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexerAsOptional.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexerConstraints2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexerSignatureWithRestParam.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/inferTypesWithFixedTupleExtendsAtVariadicPosition.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/jsxAttributeWithoutExpressionReact.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-invalidContexts.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-scopes.ts
@@ -66,7 +64,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/restParameter
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/restParameterWithBindingPattern3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring_ES6.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/sourceMapValidationDecorators.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/yieldStringLiteral.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/awaitAndYieldInProperty.ts
@@ -186,13 +183,9 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/obje
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParametersOfNonArrayTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParametersOfNonArrayTypes2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParametersWithArrayTypeAnnotations.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/rest/genericRestParameters3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/rest/objectRestNegative.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/rest/objectRestPropertyMustBeLast.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/rest/restElementMustBeLast.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/stringLiteral/stringLiteralTypesAsTags02.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/tuple/contextualTypeTupleEnd.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/tuple/named/namedTupleMembers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/tuple/named/namedTupleMembersErrors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/tuple/restTupleElements1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/tuple/variadicTuples2.ts

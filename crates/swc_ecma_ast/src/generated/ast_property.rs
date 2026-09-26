@@ -7348,13 +7348,17 @@ impl TsOptionalType {
 }
 impl TsRestType {
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsType {
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> TsTupleElement {
         let raw =
             ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
-        TsType(NodeId::from_raw_unchecked(raw))
+        TsTupleElement(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
-    pub fn set_type_annotation<'a>(self, ast: &mut crate::Ast<'a>, type_annotation: TsType) {
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: TsTupleElement,
+    ) {
         let field_val: u32 = type_annotation.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
