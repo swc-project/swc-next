@@ -104,7 +104,6 @@ impl<'a> Writer<'a> {
             .push(FormatElement::Space(SpaceKind::Reserved));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn soft_line(&mut self) {
         self.elements.push(FormatElement::SoftLine);
     }
@@ -154,12 +153,10 @@ impl<'a> Writer<'a> {
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group<T>(&mut self, expand: bool, write: impl FnOnce(&mut Self) -> T) -> T {
         self.group_with_request(GroupRequest::from(expand), write)
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_with_request<T>(
         &mut self,
         request: GroupRequest,
@@ -204,7 +201,6 @@ impl<'a> Writer<'a> {
         id
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn group_with_id<T>(
         &mut self,
         request: GroupRequest,

@@ -3,12 +3,67 @@
 use swc_next_ecma_ast::{Comment, CommentKind, Span};
 
 use super::Formatter;
+use super::diagnostics::FlatSeparator;
 use super::source::{lines, split_line};
 use crate::{FormatError, document::Writer};
+
+/// A comment can carry more than one tool's annotation.
+pub(super) struct CommentSemantics {
+    pub(super) diagnostic: bool,
+    pub(super) file_directive: bool,
+    pub(super) optimizer: bool,
+    pub(super) type_cast: bool,
+}
+
+impl CommentSemantics {
+    pub(super) fn is_ordinary(&self) -> bool {
+        !self.diagnostic && !self.file_directive && !self.has_target_annotation()
+    }
+
+    pub(super) fn has_target_annotation(&self) -> bool {
+        self.optimizer || self.type_cast
+    }
+}
+
+/// A syntax owner resolves the source target before relocating comments.
+/// Unknown annotation targets and diagnostic coverage retain the source boundary.
+#[derive(Clone, Copy)]
+pub(super) enum CommentBinding {
+    Unbound,
+    SourceBound,
+}
+
+impl CommentBinding {
+    pub(super) fn combine(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Unbound, binding) | (binding, Self::Unbound) => binding,
+            _ => Self::SourceBound,
+        }
+    }
+
+    pub(super) fn combine_all(bindings: impl Iterator<Item = Self>) -> Self {
+        let mut combined = Self::Unbound;
+        for binding in bindings {
+            combined = combined.combine(binding);
+            if matches!(combined, Self::SourceBound) {
+                break;
+            }
+        }
+        combined
+    }
+
+    pub(super) fn allows_relocation(&self) -> bool {
+        match self {
+            Self::Unbound => true,
+            Self::SourceBound => false,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub(super) enum CommentRunLayout {
     Source,
+    SourceAfter(u32),
     CanonicalDangling,
 }
 
@@ -122,6 +177,133 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn comment_semantics(&self, comment: Comment) -> CommentSemantics {
+        CommentSemantics {
+            diagnostic: self.comment_is_diagnostic_directive(comment),
+            file_directive: self.has_file_directives && self.comment_is_file_directive(comment),
+            optimizer: self.has_target_annotations && self.comment_is_optimizer_annotation(comment),
+            type_cast: self.has_type_casts && self.comment_is_type_cast(comment),
+        }
+    }
+
+    pub(super) fn comment_is_file_directive(&self, comment: Comment) -> bool {
+        let raw = self.source(comment.span);
+        if !raw.contains('@') && !raw.starts_with("///") {
+            return false;
+        }
+        match comment.kind {
+            CommentKind::Line => {
+                let triple = raw.strip_prefix("///");
+                let marker = triple
+                    .or_else(|| raw.strip_prefix("//"))
+                    .unwrap_or(raw)
+                    .trim_start_matches(super::source::is_source_whitespace);
+                let tag = marker
+                    .split(|character| {
+                        character == ':' || super::source::is_source_whitespace(character)
+                    })
+                    .next()
+                    .unwrap_or(marker);
+                if tag.eq_ignore_ascii_case("@ts-check") || tag.eq_ignore_ascii_case("@ts-nocheck")
+                {
+                    return true;
+                }
+                triple.is_some()
+                    && ["<reference", "<amd-module", "<amd-dependency"]
+                        .iter()
+                        .any(|tag| {
+                            marker
+                                .strip_prefix(tag)
+                                .is_some_and(|rest| rest.starts_with([' ', '\t', '/', '>']))
+                        })
+            }
+            CommentKind::Block => {
+                raw.contains('@')
+                    && raw.char_indices().any(|(offset, character)| {
+                        if character != '@' {
+                            return false;
+                        }
+                        let tag = raw[offset + 1..]
+                            .split(super::source::is_source_whitespace)
+                            .next()
+                            .unwrap_or("");
+                        ["jsx", "jsxfrag", "jsximportsource", "jsxruntime"]
+                            .iter()
+                            .any(|name| tag.eq_ignore_ascii_case(name))
+                    })
+            }
+        }
+    }
+
+    pub(super) fn comment_is_optimizer_annotation(&self, comment: Comment) -> bool {
+        let raw = self.source(comment.span);
+        raw.match_indices('@')
+            .chain(raw.match_indices('#'))
+            .any(|(offset, _)| {
+                let tag = &raw[offset + 1..];
+                tag.starts_with("__PURE__") || tag.starts_with("__NO_SIDE_EFFECTS__")
+            })
+    }
+
+    pub(super) fn comment_has_target_annotation(&self, comment: Comment) -> bool {
+        self.comment_is_optimizer_annotation(comment) || self.comment_is_type_cast(comment)
+    }
+
+    pub(super) fn comment_binding(&self, comments: &[Comment], boundary: Span) -> CommentBinding {
+        let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
+            let semantics = self.comment_semantics(comment);
+            if semantics.is_ordinary() {
+                CommentBinding::Unbound
+            } else {
+                CommentBinding::SourceBound
+            }
+        });
+        if matches!(binding, CommentBinding::SourceBound)
+            || self.diagnostic_range_is_sensitive(boundary)
+        {
+            CommentBinding::SourceBound
+        } else {
+            binding
+        }
+    }
+
+    /// Owners distinguish absent and unknown bindings; a run moves only with one shared target.
+    pub(super) fn comment_run_binding(
+        &self,
+        comments: impl Iterator<Item = Comment>,
+        resolve: impl FnMut(Comment) -> CommentBinding,
+    ) -> CommentBinding {
+        if !self.has_target_annotations
+            && !self.has_file_directives
+            && self.diagnostic_lines.is_empty()
+        {
+            return CommentBinding::Unbound;
+        }
+        CommentBinding::combine_all(comments.map(resolve))
+    }
+
+    pub(super) fn comment_is_type_cast(&self, comment: Comment) -> bool {
+        let raw = self.source(comment.span);
+        if !raw.starts_with("/**") {
+            return false;
+        }
+        for (offset, _) in raw.match_indices('@') {
+            let tag = &raw[offset..];
+            let after = tag
+                .strip_prefix("@type")
+                .or_else(|| tag.strip_prefix("@satisfies"));
+            if after.is_some_and(|after| {
+                after
+                    .as_bytes()
+                    .first()
+                    .is_none_or(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_')
+            }) {
+                return true;
+            }
+        }
+        false
+    }
+
     fn prepare_comment(&self, comment: Comment) -> Result<PreparedComment<'ast>, FormatError> {
         if self
             .ast
@@ -152,16 +334,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn comment_gap(&self, start: u32, end: u32, writer: &mut Writer<'ast>) {
-        match self.line_breaks(start, end) {
-            0 => writer.space(),
-            1 => writer.hard_line(),
-            _ => {
-                writer.hard_line();
-                if self.next_line_is_empty(start, end) {
-                    writer.hard_line();
+        self.line_constraint(start, end)
+            .write(writer, FlatSeparator::Space, |writer| {
+                match self.line_breaks(start, end) {
+                    0 => writer.space(),
+                    1 => writer.hard_line(),
+                    _ => {
+                        writer.hard_line();
+                        if self.next_line_is_empty(start, end) {
+                            writer.hard_line();
+                        }
+                    }
                 }
-            }
-        }
+            });
     }
 
     pub(super) fn format_comment_run(
@@ -173,18 +358,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut previous: Option<PreparedComment<'ast>> = None;
         for &comment in comments {
             let prepared = self.prepare_comment(comment)?;
-            if let Some(previous) = previous {
+            if let Some(previous) = previous.as_ref() {
                 let nestled = previous.span.end == prepared.span.start
                     && previous.is_alignable()
                     && prepared.is_alignable();
                 if !nestled {
                     match layout {
-                        CommentRunLayout::Source => {
+                        CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => {
                             self.comment_gap(previous.span.end, prepared.span.start, writer)
                         }
-                        CommentRunLayout::CanonicalDangling => writer.hard_line(),
+                        CommentRunLayout::CanonicalDangling => self
+                            .line_constraint(previous.span.end, prepared.span.start)
+                            .write(writer, FlatSeparator::Space, Writer::hard_line),
                     }
                 }
+            }
+            if previous.is_none()
+                && let CommentRunLayout::SourceAfter(start) = layout
+            {
+                self.comment_gap(start, prepared.span.start, writer);
             }
             prepared.text.write(writer);
             previous = Some(prepared);
@@ -202,7 +394,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self.comments.between(span)?;
         let comments = self.trailing_comment_prefix(comments, span, statement_end, has_following);
         let comments = self.comments.take(comments.len());
-        self.format_trailing_comment_run(comments, writer)?;
+        let end = comments
+            .last()
+            .map_or(span.start, |comment| comment.span.end);
+        if self
+            .comment_binding(comments, Span::new(span.start, end))
+            .allows_relocation()
+        {
+            self.format_trailing_comment_run(comments, writer)?;
+        } else {
+            self.format_comment_run(comments, CommentRunLayout::SourceAfter(span.start), writer)?;
+        }
         Ok(comments
             .last()
             .map_or(span.start, |comment| span.start.max(comment.span.end)))
@@ -250,6 +452,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut end = span.start;
         let mut count = 0;
         for (index, comment) in comments.iter().enumerate() {
+            if has_following
+                && self.has_target_annotations
+                && self.comment_has_target_annotation(*comment)
+            {
+                break;
+            }
             if self.line_breaks(end, comment.span.start) != 0 {
                 break;
             }
