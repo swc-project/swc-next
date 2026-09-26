@@ -64,7 +64,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Literal source lines retain their contents without structural indentation.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
