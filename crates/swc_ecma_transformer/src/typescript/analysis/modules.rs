@@ -1,7 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use swc_next_ecma_ast::{Ast, ImportOrExportKind, NodeId, SymbolId, TsImportEqualsDeclaration};
-use swc_next_ecma_semantic::{Semantic, SymbolFlags};
+use swc_next_ecma_semantic::{Semantic, SymbolFlags, scope::ScopeKind};
 
 use super::super::TypeScriptOptions;
 
@@ -13,7 +13,9 @@ pub(super) struct ModuleCollector {
 }
 
 struct AliasDependency {
+    declaration: NodeId,
     targets: Vec<SymbolId>,
+    global: bool,
 }
 
 impl ModuleCollector {
@@ -24,6 +26,22 @@ impl ModuleCollector {
             collect_runtime_usage: !options.verbatim_module_syntax,
             alias_dependencies: FxHashMap::default(),
         }
+    }
+
+    pub(super) fn apply_enum_policy(
+        &mut self,
+        semantic: &Semantic<'_>,
+        enums: &super::enums::EnumAnalysis<'_>,
+    ) {
+        self.alias_dependencies.retain(|&alias, dependency| {
+            let erased = semantic
+                .ts_import_alias_target(alias)
+                .is_some_and(|target| enums.is_removable(target));
+            if erased {
+                self.erased_aliases.insert(dependency.declaration);
+            }
+            !erased
+        });
     }
 
     pub(super) fn record_import_equals(
@@ -53,6 +71,11 @@ impl ModuleCollector {
         let (Some(alias), Some(reference)) = (alias, reference) else {
             return;
         };
+        // A script's global aliases can be read by other scripts. The initializer
+        // reference belongs to the declaration's lexical scope, even when its
+        // target resolves to a symbol in another scope.
+        let scope = semantic.reference(reference).scope;
+        let global = semantic.scope(scope).kind == ScopeKind::Global;
         let mut targets: Vec<_> = semantic
             .reference_value_targets(ast, reference)
             .filter_map(|target| target.candidate())
@@ -64,8 +87,14 @@ impl ModuleCollector {
         {
             targets.push(target);
         }
-        self.alias_dependencies
-            .insert(alias, AliasDependency { targets });
+        self.alias_dependencies.insert(
+            alias,
+            AliasDependency {
+                declaration: declaration.node_id(),
+                targets,
+                global,
+            },
+        );
     }
 }
 
@@ -92,8 +121,9 @@ impl ModuleAnalysis {
             return analysis;
         }
         let mut worklist = Vec::new();
-        for &alias in collector.alias_dependencies.keys() {
-            if semantic.symbol(alias).flags.contains(SymbolFlags::EXPORTED)
+        for (&alias, dependency) in &collector.alias_dependencies {
+            if dependency.global
+                || semantic.symbol(alias).flags.contains(SymbolFlags::EXPORTED)
                 || analysis.has_direct_runtime_usage(alias, semantic)
             {
                 analysis.propagated_runtime_usage.insert(alias);

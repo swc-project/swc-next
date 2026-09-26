@@ -47,6 +47,7 @@ fn assert_default_export(source: &str, value: bool) {
             Normalizer::normalize(program, &mut ast);
             let options = TypeScriptOptions {
                 verbatim_module_syntax,
+                ..TypeScriptOptions::default()
             };
             transform(program, &mut ast, &semantic, options);
             let retained = program.body(&ast).iter().any(|id| {
@@ -110,6 +111,7 @@ fn module_side_effects() {
 
     let verbatim = TypeScriptOptions {
         verbatim_module_syntax: true,
+        ..TypeScriptOptions::default()
     };
     let code = transformed_code_with_options("import {} from 'dep';", verbatim.clone());
     assert_eq!(code.trim(), "import \"dep\";");

@@ -150,8 +150,11 @@ impl TypeScriptLowerer<'_, '_> {
             && self
                 .semantic
                 .reference_value_targets(self.ast_ref(), id)
-                .next()
-                .is_none()
+                .all(|target| {
+                    target
+                        .symbol()
+                        .is_some_and(|symbol| self.analysis.value_is_erased(symbol, self.semantic))
+                })
     }
 
     fn binding_has_runtime_usage(&self, binding: BindingIdentifier) -> bool {

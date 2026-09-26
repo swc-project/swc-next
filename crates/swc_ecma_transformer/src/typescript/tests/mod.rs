@@ -6,6 +6,7 @@ use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use super::{TypeScriptOptions, transform};
 use crate::normalize::Normalizer;
 
+mod enums;
 mod modules;
 mod parameters;
 mod syntax;

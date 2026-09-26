@@ -3,8 +3,9 @@ use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionExpression, Ast, BindingProperty, CallExpression, CatchClause,
     Class, ClassElement, DUMMY_SP, Expr, ExprData, FormalParameter, FormalParameterRest, GetSpan,
     JsxOpeningElement, MethodDefinition, NewExpression, ObjectProperty, PropertyDefinition,
-    SimpleAssignmentTarget, SimpleAssignmentTargetData, Stmt, SubRange, TaggedTemplateExpression,
-    VariableDeclaration, VariableDeclarator, VisitMut, VisitMutWith,
+    SimpleAssignmentTarget, SimpleAssignmentTargetData, Stmt, SubRange, SwitchCase,
+    SwitchStatement, TaggedTemplateExpression, VariableDeclaration, VariableDeclarator, VisitMut,
+    VisitMutWith,
 };
 
 impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
@@ -18,11 +19,48 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
                 Some(Stmt::EmptyStatement(self.ast().empty_statement(DUMMY_SP)))
             }
             StatementExpansion::Single(statement) => Some(statement),
+            StatementExpansion::Pair(first, second) => {
+                let body = self.ast().add_sub_range([first, second]);
+                Some(Stmt::BlockStatement(
+                    self.ast().block_statement(DUMMY_SP, body),
+                ))
+            }
         }
     }
 
     fn visit_mut_stmts(&mut self, statements: SubRange<Stmt>) -> Option<SubRange<Stmt>> {
         self.lower_statement_list(statements)
+    }
+
+    fn visit_mut_switch_statement(
+        &mut self,
+        statement: SwitchStatement,
+    ) -> Option<SwitchStatement> {
+        let discriminant = statement.discriminant(self.ast_ref());
+        if let Some(discriminant) = discriminant.visit_mut_with(self) {
+            statement.set_discriminant(self.ast(), discriminant);
+        }
+
+        self.enter_binding_scope();
+        let cases = statement.cases(self.ast_ref());
+        if let Some(cases) = cases.visit_mut_with(self) {
+            statement.set_cases(self.ast(), cases);
+        }
+        self.exit_binding_scope();
+        None
+    }
+
+    fn visit_mut_switch_case(&mut self, case: SwitchCase) -> Option<SwitchCase> {
+        let test = case.test(self.ast_ref());
+        if let Some(test) = test.visit_mut_with(self) {
+            case.set_test(self.ast(), test);
+        }
+
+        let consequent = case.consequent(self.ast_ref());
+        if let Some(consequent) = self.lower_statement_list_in_current_scope(consequent) {
+            case.set_consequent(self.ast(), consequent);
+        }
+        None
     }
 
     fn visit_mut_class_elements(
@@ -33,7 +71,10 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     }
 
     fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
-        let inner = match self.ast().expr_data(expression) {
+        if let Some(value) = self.analysis.inline_const_enum_use(expression.node_id()) {
+            return Some(self.inline_enum_constant(expression, value));
+        }
+        let inner = match self.ast_ref().expr_data(expression) {
             ExprData::TsAsExpression(wrapper) => Some(wrapper.expression(self.ast())),
             ExprData::TsSatisfiesExpression(wrapper) => Some(wrapper.expression(self.ast())),
             ExprData::TsTypeAssertion(wrapper) => Some(wrapper.expression(self.ast())),
@@ -135,13 +176,13 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     }
 
     fn visit_mut_class(&mut self, class: Class) -> Option<Class> {
-        self.lower_parameter_properties(class);
         class.set_type_parameters(self.ast(), None);
         class.set_super_type_arguments(self.ast(), None);
         class.set_implements(self.ast(), SubRange::empty());
         class.set_abstract(self.ast(), false);
         class.set_declare(self.ast(), false);
         class.visit_mut_children_with(self);
+        self.lower_parameter_properties(class);
         None
     }
 

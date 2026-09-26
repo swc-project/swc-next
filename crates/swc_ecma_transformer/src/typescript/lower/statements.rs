@@ -7,13 +7,22 @@ use swc_next_ecma_ast::{
 pub(super) enum StatementExpansion {
     Remove,
     Single(Stmt),
+    Pair(Stmt, Stmt),
 }
 
 impl StatementExpansion {
+    pub(super) fn with_prefix(prefix: Option<Stmt>, statement: Stmt) -> Self {
+        match prefix {
+            Some(prefix) => Self::Pair(prefix, statement),
+            None => Self::Single(statement),
+        }
+    }
+
     pub(super) fn extend_into(self, output: &mut Vec<Stmt>) {
         match self {
             Self::Remove => {}
             Self::Single(statement) => output.push(statement),
+            Self::Pair(first, second) => output.extend([first, second]),
         }
     }
 }
@@ -49,6 +58,18 @@ impl TypeScriptLowerer<'_, '_> {
         &mut self,
         statements: SubRange<Stmt>,
     ) -> Option<SubRange<Stmt>> {
+        self.enter_binding_scope();
+        let lowered = self.lower_statement_list_in_current_scope(statements);
+        self.exit_binding_scope();
+        lowered
+    }
+
+    pub(super) fn lower_statement_list_in_current_scope(
+        &mut self,
+        statements: SubRange<Stmt>,
+    ) -> Option<SubRange<Stmt>> {
+        debug_assert!(!self.runtime_binding_scopes.is_empty());
+
         let mut lowered: Option<Vec<Stmt>> = None;
         for (index, statement_id) in statements.iter().enumerate() {
             let statement = self.ast().get_node_in_sub_range(statement_id);
@@ -76,6 +97,9 @@ impl TypeScriptLowerer<'_, '_> {
     pub(super) fn lower_statement(&mut self, statement: Stmt) -> Option<StatementExpansion> {
         match self.ast_ref().stmt_data(statement) {
             StmtData::Declaration(declaration) => {
+                if let Some(enum_declaration) = declaration.as_ts_enum_declaration(self.ast_ref()) {
+                    return Some(self.lower_enum(enum_declaration, false));
+                }
                 if let Some(import_equals) =
                     declaration.as_ts_import_equals_declaration(self.ast_ref())
                 {
@@ -92,6 +116,12 @@ impl TypeScriptLowerer<'_, '_> {
                 return Some(StatementExpansion::Remove);
             }
             StmtData::ExportNamedDeclaration(export) => {
+                if let Some(enum_declaration) = export
+                    .declaration(self.ast_ref())
+                    .and_then(|declaration| declaration.as_ts_enum_declaration(self.ast_ref()))
+                {
+                    return Some(self.lower_enum(enum_declaration, true));
+                }
                 if let Some(import_equals) =
                     export.declaration(self.ast_ref()).and_then(|declaration| {
                         declaration.as_ts_import_equals_declaration(self.ast_ref())
