@@ -6,8 +6,9 @@ mod expressions;
 mod literals;
 mod source;
 mod statements;
+mod suppression;
 
-use swc_next_ecma_ast::{Ast, GetSpan};
+use swc_next_ecma_ast::{Ast, GetSpan, Span, StmtData};
 
 use self::comments::CommentCursor;
 use self::statements::{StatementItem, StatementSequenceKind};
@@ -18,6 +19,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
+    has_suppression: bool,
     has_target_annotations: bool,
     has_type_casts: bool,
     has_file_directives: bool,
@@ -30,6 +32,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             options,
             comments: CommentCursor::new(ast.comments()),
             diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
+            has_suppression: ast
+                .comments()
+                .iter()
+                .any(|&comment| suppression::is_suppression_comment(ast, comment)),
             has_target_annotations: false,
             has_type_casts: false,
             has_file_directives: false,
@@ -54,6 +60,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(crate) fn format_program(mut self, writer: &mut Writer<'ast>) -> Result<(), FormatError> {
         let program = self.ast.root_program();
+        // With no comment-owning child, an ignore directive belongs to the program.
+        if self.has_suppression
+            && program.directives(self.ast).is_empty()
+            && program.body(self.ast).iter().all(|id| {
+                matches!(
+                    self.ast.stmt_data(self.ast.get_node_in_sub_range(id)),
+                    StmtData::EmptyStatement(_)
+                )
+            })
+        {
+            return self.format_verbatim(Span::new(0, self.ast.source().len() as u32), writer);
+        }
         if self.ast.source().starts_with('\u{feff}') {
             writer.text("\u{feff}");
         }

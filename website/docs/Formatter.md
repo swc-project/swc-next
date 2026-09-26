@@ -67,6 +67,34 @@ remain unchanged.
 Syntax boundaries give each comment a defined owner. Comments are claimed once
 in source order; an unclaimed comment is an explicit formatting error.
 
+Supported annotations and directives retain their effective target and scope;
+keeping comment text alone is insufficient. A known absent binding and an
+unknown source-bound binding are distinct facts.
+
+Previously inactive annotations may become active; existing effective bindings
+must be preserved.
+
+Diagnostic directives retain their source line relationships. Their same-line
+and newline constraints take precedence over optional width-dependent breaks.
+
+Prepare real child owners, source token positions, content modes, and line
+constraints before consuming the relevant comments. Carry those decisions to
+their consumers; claiming a run must not change an already prepared layout
+decision.
+
+Ignore targets and physical delimiter ownership are separate. A prepared
+boundary retains each real sibling's content mode and following line constraint;
+a punctuation slot can retain comments without becoming their target.
+
+Verbatim content retains its selected owner's source interval.
+
+Preserving a protected token gap does not make its adjacent children verbatim:
+each child keeps its independently prepared content mode.
+
+A child can return a borrowed pending comment tail when its parent owns the
+following punctuation or layout scope. The cursor remains at that run until
+the owning boundary claims it.
+
 ## Verification
 
 Use local fixtures for representative syntax, comments, options, and widths.

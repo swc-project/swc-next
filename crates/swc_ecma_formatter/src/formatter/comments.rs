@@ -9,6 +9,7 @@ use crate::{FormatError, document::Writer};
 
 /// A comment can carry more than one tool's annotation.
 pub(super) struct CommentSemantics {
+    pub(super) suppression: bool,
     pub(super) diagnostic: bool,
     pub(super) file_directive: bool,
     pub(super) optimizer: bool,
@@ -17,7 +18,10 @@ pub(super) struct CommentSemantics {
 
 impl CommentSemantics {
     pub(super) fn is_ordinary(&self) -> bool {
-        !self.diagnostic && !self.file_directive && !self.has_target_annotation()
+        !self.suppression
+            && !self.diagnostic
+            && !self.file_directive
+            && !self.has_target_annotation()
     }
 
     pub(super) fn has_target_annotation(&self) -> bool {
@@ -125,6 +129,25 @@ pub(super) struct CommentCursor<'ast> {
 }
 
 impl<'ast> CommentCursor<'ast> {
+    /// A prepared boundary becomes claimable after its preceding child is printed.
+    pub(super) fn claim(&mut self, comments: &'ast [Comment]) -> Result<(), FormatError> {
+        match (self.first(), comments.first()) {
+            (_, None) => Ok(()),
+            (Some(pending), Some(first)) if pending.span == first.span => {
+                self.take(comments.len());
+                Ok(())
+            }
+            (Some(pending), Some(_)) => Err(FormatError::unsupported(
+                "comment placement",
+                None,
+                pending.span,
+            )),
+            (None, Some(_)) => {
+                unreachable!("prepared comment boundary must remain unconsumed")
+            }
+        }
+    }
+
     /// Prepares a later boundary without consuming comments inside its child.
     pub(super) fn in_range(&self, span: Span) -> &'ast [Comment] {
         let first = self
@@ -179,6 +202,8 @@ impl<'ast> CommentCursor<'ast> {
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn comment_semantics(&self, comment: Comment) -> CommentSemantics {
         CommentSemantics {
+            suppression: self.has_suppression
+                && super::suppression::is_suppression_comment(self.ast, comment),
             diagnostic: self.comment_is_diagnostic_directive(comment),
             file_directive: self.has_file_directives && self.comment_is_file_directive(comment),
             optimizer: self.has_target_annotations && self.comment_is_optimizer_annotation(comment),
@@ -275,6 +300,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> CommentBinding {
         if !self.has_target_annotations
             && !self.has_file_directives
+            && !self.has_suppression
             && self.diagnostic_lines.is_empty()
         {
             return CommentBinding::Unbound;
@@ -305,14 +331,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn prepare_comment(&self, comment: Comment) -> Result<PreparedComment<'ast>, FormatError> {
-        if self
-            .ast
-            .get_utf8(comment.value(self.ast.source().as_bytes()))
-            .trim()
-            == "prettier-ignore"
-        {
-            return Err(FormatError::unsupported("suppression", None, comment.span));
-        }
         let source = self.source(comment.span);
         let (first, rest) = split_line(source);
         let text = match rest {
