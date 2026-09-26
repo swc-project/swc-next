@@ -118,6 +118,9 @@ bitflags::bitflags! {
         /// A file-level `export as namespace` alias. It does not introduce a
         /// lexical binding or inherit the meanings of a same-named local.
         const UMD_EXPORT = 1 << 22;
+        /// A TypeScript import-equals declaration, including type-only and
+        /// external `require` aliases. Independent of target resolution.
+        const IMPORT_EQUALS = 1 << 23;
 
         /// `var` / `let` / `const`, parameters and catch bindings included.
         const VARIABLE = Self::FUNCTION_SCOPED_VAR.bits() | Self::BLOCK_SCOPED_VAR.bits();
@@ -2390,6 +2393,7 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         self.pending = import_pending(import_kind, scope.current);
+        self.pending.flags |= SymbolFlags::IMPORT_EQUALS;
     }
 
     pub fn enter_import_specifier(&mut self, tree: &Ast, specifier: ImportSpecifier) {

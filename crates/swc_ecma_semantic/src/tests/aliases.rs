@@ -706,3 +706,31 @@ fn qualified_namespace_owners() {
         b"N",
     );
 }
+
+fn import_binding_flags(source: &str) -> SymbolFlags {
+    let allocator = Allocator::new();
+    let (_, semantic) = analyze_source(&allocator, source, ts_module_options());
+    let alias = semantic.binding(ScopeId::MODULE, b"A").unwrap();
+    semantic.symbol(alias).flags
+}
+
+#[test]
+fn import_binding_forms() {
+    let flags = import_binding_flags("import A from 'dep';");
+    assert!(!flags.contains(SymbolFlags::IMPORT_EQUALS));
+
+    let flags = import_binding_flags("import type A from 'dep';");
+    assert!(!flags.contains(SymbolFlags::IMPORT_EQUALS));
+
+    let flags = import_binding_flags("import A = Unknown.Member;");
+    assert!(flags.contains(SymbolFlags::IMPORT_EQUALS));
+
+    let flags = import_binding_flags("import A = B; import B = A;");
+    assert!(flags.contains(SymbolFlags::IMPORT_EQUALS));
+
+    let flags = import_binding_flags("import A = require('dep');");
+    assert!(flags.contains(SymbolFlags::IMPORT_EQUALS | SymbolFlags::IMPORT));
+
+    let flags = import_binding_flags("import type A = require('dep');");
+    assert!(flags.contains(SymbolFlags::IMPORT_EQUALS | SymbolFlags::TYPE_IMPORT));
+}
