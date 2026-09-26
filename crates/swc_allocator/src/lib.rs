@@ -39,6 +39,16 @@ impl<'a> CloneIn<'a> for &[u8] {
     }
 }
 
+impl<'a> CloneIn<'a> for &wtf8::Wtf8 {
+    type Cloned = &'a wtf8::Wtf8;
+
+    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+        let bytes = self.as_bytes().clone_in(allocator);
+        // SAFETY: Copying valid WTF-8 bytes preserves their encoding.
+        unsafe { wtf8::Wtf8::from_bytes_unchecked(bytes) }
+    }
+}
+
 impl<'a, 'src, C: 'a, T> CloneIn<'a> for boxed::Box<'src, T>
 where
     T: CloneIn<'a, Cloned = C>,
@@ -176,5 +186,24 @@ impl Allocator {
 impl Default for Allocator {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Allocator, CloneIn, wtf8};
+
+    #[test]
+    fn clone_wtf8() {
+        let allocator = Allocator::new();
+        let cloned = {
+            let source = wtf8::Wtf8Buf::from_bytes(b"a\xc3\xa9\xed\xa0\x80".to_vec()).unwrap();
+            let text: &wtf8::Wtf8 = &source;
+            text.clone_in(&allocator)
+        };
+        assert_eq!(cloned.as_bytes(), b"a\xc3\xa9\xed\xa0\x80");
+
+        let empty = wtf8::Wtf8::from_str("").clone_in(&allocator);
+        assert!(empty.is_empty());
     }
 }
