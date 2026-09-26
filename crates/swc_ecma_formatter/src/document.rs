@@ -83,7 +83,6 @@ enum FormatElement<'a> {
     SoftLine,
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     SoftLineIfBreak(GroupId),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Line,
     HardLine,
     BreakParent,
@@ -150,7 +149,6 @@ pub(crate) struct Fragment<'a> {
     elements: &'a [FormatElement<'a>],
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     effect: BreakEffect,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     capabilities: FragmentCapabilities,
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     conditional_lines: bool,
@@ -451,7 +449,6 @@ impl FragmentCapabilities {
         }
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn permits_flat(self) -> bool {
         !matches!(self, Self::General)
     }
@@ -512,7 +509,6 @@ impl<'a> Alternatives<'a> {
 }
 
 impl FormatElement<'_> {
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn permits_flat(self) -> bool {
         match self {
             Self::HardLine | Self::LiteralLine | Self::LineSuffix(_) | Self::BreakParent => false,

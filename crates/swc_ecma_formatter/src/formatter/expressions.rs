@@ -1,23 +1,152 @@
-//! Expression token emission for primitive values.
+//! Expression dispatch and immediate grammar and statement-start contexts.
 
-use swc_next_ecma_ast::{Expr, ExprData, StringLiteral};
+pub(super) mod parentheses;
+
+use swc_next_ecma_ast::{Expr, ExprData, GetSpan};
 
 use super::Formatter;
+use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use super::literals::StringContext;
-use crate::{FormatError, document::Writer};
+use super::suppression::ContentMode;
+use crate::{FormatError, Semicolons, document::Writer};
 
-impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn string_expression_literal(&self, mut expression: Expr) -> Option<StringLiteral> {
-        loop {
-            match self.ast.expr_data(expression) {
-                ExprData::ParenthesizedExpression(node) => expression = node.expression(self.ast),
-                ExprData::StringLiteral(node) => return Some(node),
-                _ => return None,
-            }
+#[derive(Clone, Copy)]
+pub(super) enum ExpressionPosition {
+    Statement,
+    Nested,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ExpressionStart {
+    None,
+    StatementPending,
+    StatementGuarded,
+}
+
+impl ExpressionStart {
+    fn needs_asi_guard(self) -> bool {
+        matches!(self, Self::StatementPending)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct ExpressionContext {
+    position: ExpressionPosition,
+    expression_start: ExpressionStart,
+    content_mode: ContentMode,
+}
+
+impl ExpressionContext {
+    pub(super) fn at(position: ExpressionPosition) -> Self {
+        Self {
+            position,
+            expression_start: match position {
+                ExpressionPosition::Statement => ExpressionStart::StatementPending,
+                ExpressionPosition::Nested => ExpressionStart::None,
+            },
+            content_mode: ContentMode::Formatted,
         }
     }
 
+    pub(super) fn with_expression_start(mut self, start: ExpressionStart) -> Self {
+        self.expression_start = start;
+        self
+    }
+
+    pub(super) fn with_content_mode(mut self, mode: ContentMode) -> Self {
+        self.content_mode = mode;
+        self
+    }
+}
+
+impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_expression(
+        &mut self,
+        expression: Expr,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_expression_with_leading_comments(
+            expression,
+            NodeHead {
+                comments: &[],
+                content_start: expression.span(self.ast).start,
+                layout: CommentRunLayout::Leading(expression.span(self.ast).start),
+                gap_end: None,
+            },
+            context,
+            writer,
+        )
+    }
+
+    pub(super) fn expression_needs_asi_guard(
+        &self,
+        expression: Expr,
+        context: ExpressionContext,
+    ) -> bool {
+        if context.content_mode == ContentMode::Verbatim {
+            let source = self.source(expression.span(self.ast));
+            return self.expression_is_parenthesized(self.ast.expr_data(expression), context)
+                || source.starts_with(['(', '[', '/', '`', '<'])
+                || source.starts_with(['+', '-'])
+                    && !(source.starts_with("++") || source.starts_with("--"));
+        }
+        let data = self.expression_content(expression).data;
+        self.expression_is_parenthesized(data, context)
+            || matches!(
+                data,
+                ExprData::ParenthesizedExpression(_) | ExprData::RegExpLiteral(_)
+            )
+    }
+
+    fn expression_is_parenthesized(&self, data: ExprData, context: ExpressionContext) -> bool {
+        self.expression_needs_parentheses(data, context.position) == Some(true)
+    }
+
+    fn expression_needs_parentheses(
+        &self,
+        data: ExprData,
+        position: ExpressionPosition,
+    ) -> Option<bool> {
+        match data {
+            ExprData::IdentifierReference(_)
+            | ExprData::BooleanLiteral(_)
+            | ExprData::NullLiteral(_)
+            | ExprData::NumericLiteral(_)
+            | ExprData::BigIntLiteral(_)
+            | ExprData::RegExpLiteral(_)
+            | ExprData::ThisExpression(_)
+            | ExprData::ParenthesizedExpression(_) => Some(false),
+            ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
+            _ => None,
+        }
+    }
+
+    fn format_verbatim_expression(
+        &mut self,
+        expression: Expr,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let parenthesize =
+            self.expression_is_parenthesized(self.ast.expr_data(expression), context);
+        if context.expression_start.needs_asi_guard()
+            && self.options.semicolons == Semicolons::AsNeeded
+            && self.expression_needs_asi_guard(expression, context)
+        {
+            writer.text(";");
+        }
+        if parenthesize {
+            writer.text("(");
+        }
+        self.format_verbatim(expression.span(self.ast), writer)?;
+        if parenthesize {
+            writer.text(")");
+        }
+        Ok(())
+    }
+
+    fn format_expression_data(
         &mut self,
         expression: Expr,
         writer: &mut Writer<'ast>,
@@ -34,12 +163,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::NullLiteral(_) => writer.text("null"),
             ExprData::StringLiteral(node) => {
                 self.format_string_literal(node, StringContext::Expression, writer)
-            }
-            ExprData::ParenthesizedExpression(_) => {
-                let literal = self
-                    .string_expression_literal(expression)
-                    .ok_or_else(|| self.unsupported("expression", expression))?;
-                self.format_string_literal(literal, StringContext::Expression, writer);
             }
             ExprData::NumericLiteral(node) => self.format_numeric_literal(node, writer),
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),

@@ -27,7 +27,6 @@ impl<'a> Text<'a> {
         Self { source, width }
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(super) fn is_single_line(self) -> bool {
         match self.width {
             Width::Ascii => true,

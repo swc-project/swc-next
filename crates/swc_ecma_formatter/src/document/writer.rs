@@ -14,7 +14,6 @@ pub(crate) struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, FormatElement<'a>>,
     effect: BreakEffect,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     flattening: bool,
     group_count: usize,
     conditional_lines: bool,
@@ -114,7 +113,6 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::SoftLineIfBreak(group));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn line(&mut self) {
         self.elements.push(FormatElement::Line);
     }
@@ -231,7 +229,6 @@ impl<'a> Writer<'a> {
 
     /// Removes optional layout breaks in one complete scope. Required source
     /// breaks and line suffixes keep the original document unchanged.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn flat<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         if self.flattening {
             return write(self);
