@@ -8092,13 +8092,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftBracket => self.parse_array_expression(in_cover),
             TokenTag::LeftBrace => self.parse_object_expression(in_cover),
             TokenTag::Async => {
-                let identifier = self.parse_identifier()?;
+                self.validate_identifier(token, "an identifier");
+                self.advance_without_escape_check()?;
                 if self.current_token.tag() == TokenTag::Function
                     && !self.current_token.has_line_terminator_before()
                 {
                     return self.parse_async_function_expression(token);
                 }
-                Some(identifier)
+                let name = self.identifier_name(token);
+                Some(self.ast.expr_identifier_reference(token.span(), name))
             }
             TokenTag::Function => Some(Expr::Function(
                 self.parse_function(
