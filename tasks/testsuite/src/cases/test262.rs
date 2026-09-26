@@ -61,6 +61,7 @@ impl Test262Case {
         let roots = [
             fixtures().join("test262/test"),
             crate_root().join("fixtures-manual/test262-legacy"),
+            crate_root().join("fixtures-manual/parser"),
         ];
         roots
             .into_iter()

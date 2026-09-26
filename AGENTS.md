@@ -44,6 +44,9 @@ First run `./scripts/clone_fixtures.sh`. Review changes under `tasks/testsuite/s
 
 The Test262 parser/codegen runner also discovers `.js` files with Test262 metadata under
 `tasks/testsuite/fixtures-manual/test262-legacy/`, including tests retained after upstream removal.
+Local syntax regressions use the same metadata format under
+`tasks/testsuite/fixtures-manual/parser/`; use `flags: [module]` for Module cases,
+otherwise the runner checks both sloppy and strict Script modes.
 
 | Runner    | Suites                     | Check                                                | Command                                                          |
 | --------- | -------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
