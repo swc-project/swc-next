@@ -1,0 +1,2 @@
+target = /* block */ // after
+other;

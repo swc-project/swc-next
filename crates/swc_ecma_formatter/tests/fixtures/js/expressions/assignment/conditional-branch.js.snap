@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? (target = other) : alternate;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? (target = other) : alternate;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition ? (target = other) : alternate
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+condition
+  ? (target = other)
+  : alternate;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+condition
+  ? (target =
+      other)
+  : alternate;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+condition
+    ? (target =
+          other)
+    : alternate;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+condition
+	? (target =
+			other)
+	: alternate;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+condition
+ ? (target = other)
+ : alternate;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+condition ? (target = other) : alternate;

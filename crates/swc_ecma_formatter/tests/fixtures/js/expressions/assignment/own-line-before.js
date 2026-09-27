@@ -1,0 +1,3 @@
+target
+/* before */
+= other;
