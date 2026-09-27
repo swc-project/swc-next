@@ -1,0 +1,72 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {number} */ (first, second), third;
+---------- Options ----------
+{}
+---------- Output ----------
+(/** @type {number} */ (first, second), third);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(/** @type {number} */ (first, second), third)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  /** @type {number} */ (
+    first, second
+  ),
+  third
+);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+(
+  /** @type {number} */ (
+    first,
+    second
+  ),
+  third
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+(
+    /** @type {number} */ (
+        first,
+        second
+    ),
+    third
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(
+	/** @type {number} */ (
+		first,
+		second
+	),
+	third
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+(
+ /** @type {number} */ (
+  first, second
+ ),
+ third
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+(/** @type {number} */ (first, second), third);
