@@ -100,9 +100,17 @@ fn write_node_case(
         }
         let expression = read_expression(field_ty, schema, &location, aligned_i32);
         let field_name = estree_field_name(&ast.name, &field.name);
+        let range = matches!(field_ty, AstType::SubRange(_)).then(|| {
+            format!(
+                "{}, {}",
+                read_i32(&location, aligned_i32),
+                read_i32(&format!("{location} + 4"), aligned_i32)
+            )
+        });
         fields.push(DecodedField {
             name: field_name,
             expression,
+            range,
         });
     }
 
@@ -123,6 +131,7 @@ fn write_node_case(
 struct DecodedField {
     name: String,
     expression: String,
+    range: Option<String>,
 }
 
 fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: bool) -> String {
@@ -311,7 +320,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         let output = &mut body;
         match name {
         "Program" => {
-            output.push_str("        const body = [...f_directives, ...f_body];\n");
+            writeln!(output, "        const body = {};", combined_body_expression(fields)).unwrap();
             output.push_str(if is_ts {
                 "        result = { type: \"Program\", start: body.length !== 0 ? body[0].start : end, end, sourceType, hashbang: f_hashbang, body };\n"
             } else {
@@ -321,12 +330,13 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         "FunctionBody" | "TsModuleBlock" => {
             writeln!(
                 output,
-                "        result = {{ type: \"{}\", start, end, body: [...f_directives, ...f_body] }};",
+                "        result = {{ type: \"{}\", start, end, body: {} }};",
                 if name == "TsModuleBlock" {
                     "TSModuleBlock"
                 } else {
                     "BlockStatement"
-                }
+                },
+                combined_body_expression(fields)
             )
             .unwrap();
         }
@@ -677,6 +687,17 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
     output.push_str(&body);
 }
 
+fn combined_body_expression(fields: &[DecodedField]) -> String {
+    let range = |name| {
+        fields
+            .iter()
+            .find(|field| field.name == name)
+            .and_then(|field| field.range.as_deref())
+            .unwrap_or_else(|| panic!("missing {name} subrange"))
+    };
+    format!("nodeArrayPair({}, {})", range("directives"), range("body"))
+}
+
 fn references_field(body: &str, field: &str) -> bool {
     let identifier = format!("f_{field}");
     body.match_indices(&identifier).any(|(start, _)| {
@@ -959,6 +980,17 @@ const DECODE_PREAMBLE: &str = r#"
     for (let i = start; i < end; i++) {
       const index = _i32[(extra >> 2) + i * 2];
       result[i - start] = holes && index === NULL ? null : node(index);
+    }
+    return result;
+  };
+  const nodeArrayPair = (firstStart, firstEnd, secondStart, secondEnd) => {
+    const result = new Array(firstEnd - firstStart + secondEnd - secondStart);
+    let out = 0;
+    for (let i = firstStart; i < firstEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i * 2]);
+    }
+    for (let i = secondStart; i < secondEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i * 2]);
     }
     return result;
   };

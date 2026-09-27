@@ -161,6 +161,17 @@ export function decodeJs(buffer, source, sourceBuffer) {
     }
     return result;
   };
+  const nodeArrayPair = (firstStart, firstEnd, secondStart, secondEnd) => {
+    const result = new Array(firstEnd - firstStart + secondEnd - secondStart);
+    let out = 0;
+    for (let i = firstStart; i < firstEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i * 2]);
+    }
+    for (let i = secondStart; i < secondEnd; i++) {
+      result[out++] = node(_i32[(extra >> 2) + i * 2]);
+    }
+    return result;
+  };
 
   const _decodeComments = () => {
     const result = new Array(commentCount);
@@ -233,10 +244,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
     switch (bytes[kinds + index]) {
       case 0: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_directives = nodeArray(_i32[(payload + 4) >> 2], _i32[(payload + 4 + 4) >> 2], false);
-        const f_body = nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
         const f_hashbang = optionalNode(_i32[(payload + 0) >> 2]);
-        const body = [...f_directives, ...f_body];
+        const body = nodeArrayPair(_i32[(payload + 4) >> 2], _i32[(payload + 4 + 4) >> 2], _i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
         result = { type: "Program", start, end, sourceType, hashbang: f_hashbang, body };
         break;
       }
@@ -656,9 +665,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 53: {
-        const f_directives = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
-        const f_body = nodeArray(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2], false);
-        result = { type: "BlockStatement", start, end, body: [...f_directives, ...f_body] };
+        result = { type: "BlockStatement", start, end, body: nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]) };
         break;
       }
       case 54: {
