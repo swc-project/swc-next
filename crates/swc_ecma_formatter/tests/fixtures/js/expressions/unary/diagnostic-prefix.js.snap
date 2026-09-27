@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+typeof // @ts-ignore
+first + second;
+---------- Options ----------
+{}
+---------- Output ----------
+typeof // @ts-ignore
+first + second;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+typeof // @ts-ignore
+first + second
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+typeof // @ts-ignore
+first + second;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+typeof // @ts-ignore
+first + second;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+typeof // @ts-ignore
+first + second;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+typeof // @ts-ignore
+first + second;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+typeof // @ts-ignore
+first + second;

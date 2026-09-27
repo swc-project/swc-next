@@ -1,6 +1,6 @@
 //! Line boundaries in source gaps, including ECMAScript line terminators.
 
-use swc_next_ecma_ast::Span;
+use swc_next_ecma_ast::{Comment, Span};
 
 use super::Formatter;
 
@@ -40,6 +40,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None => before,
         };
         line.chars().all(is_source_whitespace)
+    }
+
+    pub(super) fn find_token(&self, span: Span, comments: &[Comment], token: &str) -> Option<u32> {
+        let mut start = span.start;
+        for comment in comments {
+            if comment.span.end <= start {
+                continue;
+            }
+            if comment.span.start >= span.end {
+                break;
+            }
+            if let Some(offset) = self
+                .source(Span::new(start, comment.span.start))
+                .find(token)
+            {
+                return Some(start + offset as u32);
+            }
+            start = comment.span.end;
+        }
+        self.source(Span::new(start, span.end))
+            .find(token)
+            .map(|offset| start + offset as u32)
     }
 
     pub(super) fn source(&self, span: Span) -> &'ast str {
