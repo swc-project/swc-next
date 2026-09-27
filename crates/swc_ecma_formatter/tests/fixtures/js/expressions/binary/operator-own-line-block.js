@@ -1,0 +1,3 @@
+first
+/* before */ +
+/* after */ second;
