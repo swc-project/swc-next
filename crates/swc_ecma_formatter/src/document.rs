@@ -89,7 +89,6 @@ enum FormatElement<'a> {
     LiteralLine,
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfBreak(Text<'a>),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfFlat(Text<'a>),
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfCurrentBreak(Text<'a>),
@@ -115,11 +114,9 @@ enum FormatElement<'a> {
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartIndentIfBreak(GroupId),
     EndIndent,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartAlign {
         width: usize,
     },
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndAlign {
         width: usize,
     },

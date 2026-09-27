@@ -122,7 +122,6 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::IfBreak(Text::new(text)));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_flat(&mut self, text: &'a str) {
         self.elements.push(FormatElement::IfFlat(Text::new(text)));
     }
@@ -292,7 +291,6 @@ impl<'a> Writer<'a> {
         result
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn align<T>(&mut self, width: usize, write: impl FnOnce(&mut Self) -> T) -> T {
         if width == 0 {
             return write(self);
