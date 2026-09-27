@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[{ a, b }, { c, d }];
+[({ a, b }), ({ c, d })];
+[{ a, b }, [c, d]];
+[{ a }, { b, c }];
+[{}];
+[( [a, b] ), ( [c, d] )];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  { a, b },
+  { c, d },
+];
+[
+  { a, b },
+  { c, d },
+];
+[{ a, b }, [c, d]];
+[{ a }, { b, c }];
+[{}];
+[
+  [a, b],
+  [c, d],
+];
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+[
+  { a, b },
+  { c, d },
+];
+[
+  { a, b },
+  { c, d },
+];
+[{ a, b }, [c, d]];
+[{ a }, { b, c }];
+[{}];
+[
+  [a, b],
+  [c, d],
+];
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;[
+  {a, b},
+  {c, d}
+]
+;[
+  {a, b},
+  {c, d}
+]
+;[{a, b}, [c, d]]
+;[{a}, {b, c}]
+;[{}]
+;[
+  [a, b],
+  [c, d]
+]
+
+---------- Options ----------
+{"quoteProps":"preserve","singleQuote":true}
+---------- Output ----------
+[
+  { a, b },
+  { c, d },
+];
+[
+  { a, b },
+  { c, d },
+];
+[{ a, b }, [c, d]];
+[{ a }, { b, c }];
+[{}];
+[
+  [a, b],
+  [c, d],
+];
