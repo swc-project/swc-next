@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+longAssignmentTarget = [longFirstValue, longSecondValue];
+---------- Options ----------
+{}
+---------- Output ----------
+longAssignmentTarget = [longFirstValue, longSecondValue];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+longAssignmentTarget = [longFirstValue, longSecondValue]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+longAssignmentTarget =
+  [
+    longFirstValue,
+    longSecondValue,
+  ];
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+longAssignmentTarget =
+  [
+    longFirstValue,
+    longSecondValue,
+  ];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+longAssignmentTarget =
+    [
+        longFirstValue,
+        longSecondValue,
+    ];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+longAssignmentTarget =
+	[
+		longFirstValue,
+		longSecondValue,
+	];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+longAssignmentTarget =
+ [
+  longFirstValue,
+  longSecondValue,
+ ];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+longAssignmentTarget = [longFirstValue, longSecondValue];

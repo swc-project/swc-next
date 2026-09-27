@@ -1,0 +1,65 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[+1, -1, !item, ~item, typeof item, void item, delete [item]];
+---------- Options ----------
+{}
+---------- Output ----------
+[+1, -1, !item, ~item, typeof item, void item, delete [item]];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[+1, -1, !item, ~item, typeof item, void item, delete [item]]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  +1,
+  -1,
+  !item,
+  ~item,
+  typeof item,
+  void item,
+  delete [item],
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  +1,
+  -1,
+  !item,
+  ~item,
+  typeof item,
+  void item,
+  delete [
+    item,
+  ],
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	+1,
+	-1,
+	!item,
+	~item,
+	typeof item,
+	void item,
+	delete [item],
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+[+1, -1, !item, ~item, typeof item, void item, delete [item]];
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+[+1, -1, !item, ~item, typeof item, void item, delete [item]];

@@ -1,0 +1,128 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first /** one
+ * end
+ *//** two
+ * end
+ */, last];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	first /** one
+	 * end
+	 *//** two
+	 * end
+	 */,
+	last,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  first /** one
+   * end
+   *//** two
+   * end
+   */,
+  last,
+];

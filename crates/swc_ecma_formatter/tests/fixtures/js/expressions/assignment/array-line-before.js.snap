@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target // before
+= [first, second];
+---------- Options ----------
+{}
+---------- Output ----------
+target =
+  // before
+  [first, second];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target =
+  // before
+  [first, second]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target =
+  // before
+  [first, second];
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+target =
+  // before
+  [
+    first,
+    second,
+  ];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+target =
+    // before
+    [first, second];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target =
+	// before
+	[first, second];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+target =
+ // before
+ [first, second];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+target =
+  // before
+  [first, second];
