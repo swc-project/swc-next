@@ -1274,6 +1274,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     /// Returns the decoded content of a template quasi span.
+    fn template_element_raw(&mut self, token: Token, span: Span) -> AstUtf8 {
+        // The lexer marks physical CR as escaped. Ordinary source-backed raw
+        // values need neither a second scan nor an allocation.
+        if !token.is_escaped() {
+            return self.ast.source_slice(span.start, span.end);
+        }
+        let raw = &self.source[span.start as usize..span.end as usize];
+        let Some(first_cr) = memchr::memchr(b'\r', raw.as_bytes()) else {
+            return self.ast.source_slice(span.start, span.end);
+        };
+        // Template Raw Value normalizes CR and CRLF even when an invalid
+        // escape makes the cooked value undefined in a tagged template.
+        let mut normalized = String::with_capacity(raw.len());
+        normalized.push_str(&raw[..first_cr]);
+        for part in raw[first_cr + 1..].split('\r') {
+            normalized.push('\n');
+            normalized.push_str(part.strip_prefix('\n').unwrap_or(part));
+        }
+        self.ast.add_utf8(&normalized)
+    }
+
     fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
         if !token.is_escaped() {
             return self.ast.source_slice_wtf8(span.start, span.end);
@@ -8402,7 +8423,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn add_template_element(&mut self, token: Token, tail: bool, tagged: bool) -> TemplateElement {
         let span = self.get_template_element_span(token);
-        let raw = self.ast.source_slice(span.start, span.end);
+        let raw = self.template_element_raw(token, span);
         let is_cooked_undefined = token.has_invalid_escape();
         if is_cooked_undefined && !tagged {
             self.report(
@@ -13106,6 +13127,51 @@ mod tests {
         )
         .parse()
         .diagnostics
+    }
+
+    #[test]
+    fn template_raw_values() {
+        fn values(source: &str) -> (String, Option<String>) {
+            let allocator = Allocator::new();
+            let parsed =
+                Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let expression = statement
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast);
+            let template = match ast.expr_data(expression) {
+                ExprData::TemplateLiteral(template) => template,
+                ExprData::TaggedTemplateExpression(tagged) => tagged.quasi(ast),
+                _ => panic!("expected a template expression"),
+            };
+            let quasi = template.quasis(ast).get_node(ast, 0).unwrap();
+            let raw = ast.get_utf8(quasi.raw(ast)).to_owned();
+            let cooked = (!quasi.is_cooked_undefined(ast)).then(|| {
+                ast.get_wtf8(quasi.cooked(ast))
+                    .to_string_lossy()
+                    .into_owned()
+            });
+            (raw, cooked)
+        }
+
+        let (raw, cooked) = values("`a\rb\r\nc\r\r\n`");
+        assert_eq!(raw, "a\nb\nc\n\n");
+        assert_eq!(cooked.as_deref(), Some("a\nb\nc\n\n"));
+
+        let (raw, cooked) = values("tag`\\unicode\r\ntext`");
+        assert_eq!(raw, "\\unicode\ntext");
+        assert!(cooked.is_none());
+
+        let (raw, cooked) = values("`a\u{2028}b\u{2029}c`");
+        assert_eq!(raw, "a\u{2028}b\u{2029}c");
+        assert_eq!(cooked.as_deref(), Some("a\u{2028}b\u{2029}c"));
+
+        let (raw, cooked) = values("`a\\rb`");
+        assert_eq!(raw, "a\\rb");
+        assert_eq!(cooked.as_deref(), Some("a\rb"));
     }
 
     #[test]
