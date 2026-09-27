@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ "key"  :
+/* before */ /* prettier-ignore */ /* after */
+value  +  other });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key:
+    /* before */ /* prettier-ignore */ /* after */
+    value  +  other,
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({
+  key:
+    /* before */ /* prettier-ignore */ /* after */
+    value  +  other,
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  key:
+    /* before */ /* prettier-ignore */ /* after */
+    value  +  other,
+})

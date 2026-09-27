@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({a: [ 1,2 ], /* prettier-ignore */ c: [ 3,4 ]});
+({a: [ 1,2 ], /* prettier-ignore */
+c: [ 3,4 ]});
+({ /*x*/
+/* prettier-ignore */
+[a]:[ 1,2 ]});
+({a: [ 1,2 ], /*x*/
+/* prettier-ignore */ c: [ 3,4 ]});
+({a:[ 1,2 ]
+/* prettier-ignore */,b:[ 3,4 ]});
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  a: [1, 2],
+  /* prettier-ignore */ c: [ 3,4 ],
+});
+({
+  a: [ 1,2 ], /* prettier-ignore */
+  c: [3, 4],
+});
+({
+  /*x*/
+  /* prettier-ignore */
+  [a]:[ 1,2 ],
+});
+({
+  a: [1, 2] /*x*/,
+  /* prettier-ignore */ c: [ 3,4 ],
+});
+({
+  a: [1, 2],
+  /* prettier-ignore */ b:[ 3,4 ],
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ a: [1, 2], /* prettier-ignore */ c: [ 3,4 ] });
+({
+  a: [ 1,2 ], /* prettier-ignore */
+  c: [3, 4],
+});
+({
+  /*x*/
+  /* prettier-ignore */
+  [a]:[ 1,2 ],
+});
+({ a: [1, 2] /*x*/, /* prettier-ignore */ c: [ 3,4 ] });
+({ a: [1, 2], /* prettier-ignore */ b:[ 3,4 ] });

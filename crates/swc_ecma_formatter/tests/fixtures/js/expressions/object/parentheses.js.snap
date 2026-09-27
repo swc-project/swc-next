@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ a: 1 }) + b;
+({ a: 1 }) ? b : c;
+a + ({ b: 1 });
+a ? { b: 1 } : { c: 2 };
+({ a: b = c });
+({ [(a = b)]: c });
+---------- Options ----------
+{}
+---------- Output ----------
+({ a: 1 }) + b;
+({ a: 1 }) ? b : c;
+a + { b: 1 };
+a ? { b: 1 } : { c: 2 };
+({ a: (b = c) });
+({ [(a = b)]: c });
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+({ a: 1 }) + b;
+({ a: 1 }) ? b : c;
+a + { b: 1 };
+a ? { b: 1 } : { c: 2 };
+({ a: (b = c) });
+({ [(a = b)]: c });
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({a: 1}) + b
+;({a: 1}) ? b : c
+a + {b: 1}
+a ? {b: 1} : {c: 2}
+;({a: (b = c)})
+;({[(a = b)]: c})
+
+---------- Options ----------
+{"quoteProps":"preserve","singleQuote":true}
+---------- Output ----------
+({ a: 1 }) + b;
+({ a: 1 }) ? b : c;
+a + { b: 1 };
+a ? { b: 1 } : { c: 2 };
+({ a: (b = c) });
+({ [(a = b)]: c });

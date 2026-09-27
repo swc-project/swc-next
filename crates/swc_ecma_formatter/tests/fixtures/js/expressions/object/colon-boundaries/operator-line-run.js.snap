@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key: /* inline */ // line
+/* leading */ value });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  key: /* inline */ // line
+    /* leading */ value,
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key: /* inline */ // line
+    /* leading */ value,
+});
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  key: /* inline */ // line
+    /* leading */ value,
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  key: /* inline */ // line
+    /* leading */ value,
+})
