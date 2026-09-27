@@ -1,11 +1,14 @@
 //! Expression dispatch and immediate grammar and statement-start contexts.
 
+mod binary;
 pub(super) mod parentheses;
 mod targets;
 mod unary;
 
 use swc_next_ecma_ast::{Expr, ExprData, GetSpan, UnaryOperator, UpdateOperator};
 
+use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
+use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
 use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use super::literals::StringContext;
@@ -19,23 +22,46 @@ pub(super) enum ExpressionPosition {
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
     UpdateArgument,
+    BinaryOperand {
+        operator: BinaryOperatorKind,
+        side: OperandSide,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ExpressionStart {
     None,
     StatementPending,
+    StatementGuard,
     StatementGuarded,
 }
 
 impl ExpressionStart {
     fn needs_asi_guard(self) -> bool {
-        matches!(self, Self::StatementPending)
+        matches!(self, Self::StatementPending | Self::StatementGuard)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ParenthesesOwner {
+    Expression,
+    Parent,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum HeadComments {
+    Pending,
+    Claimed,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TailOwner {
+    Expression,
+    ParentOperation,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum OperandIndent {
     Expression,
     Parent,
 }
@@ -46,6 +72,9 @@ pub(super) struct ExpressionContext {
     expression_start: ExpressionStart,
     content_mode: ContentMode,
     parentheses_owner: ParenthesesOwner,
+    head_comments: HeadComments,
+    tail_owner: TailOwner,
+    operand_indent: OperandIndent,
 }
 
 impl ExpressionContext {
@@ -58,6 +87,9 @@ impl ExpressionContext {
             },
             content_mode: ContentMode::Formatted,
             parentheses_owner: ParenthesesOwner::Expression,
+            head_comments: HeadComments::Pending,
+            tail_owner: TailOwner::Expression,
+            operand_indent: OperandIndent::Expression,
         }
     }
 
@@ -69,6 +101,16 @@ impl ExpressionContext {
     pub(super) fn inside_parentheses(mut self) -> Self {
         self.parentheses_owner = ParenthesesOwner::Parent;
         self.expression_start = ExpressionStart::None;
+        self
+    }
+
+    pub(super) fn with_tail_owner(mut self, owner: TailOwner) -> Self {
+        self.tail_owner = owner;
+        self
+    }
+
+    pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
+        self.operand_indent = owner;
         self
     }
 
@@ -98,38 +140,81 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    fn format_expression_prepared(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let binding = prepared
+            .as_ref()
+            .and_then(|content| content.parentheses)
+            .map_or(super::comments::CommentBinding::Unbound, |removed| {
+                removed.head.binding
+            });
+        self.format_expression_leading_prepared(
+            expression,
+            prepared,
+            ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: &[],
+                    content_start: expression.span(self.ast).start,
+                    layout: CommentRunLayout::Source,
+                    gap_end: None,
+                },
+                binding,
+            },
+            context,
+            writer,
+        )
+    }
+
+    pub(super) fn binary_grammar_pair_owns_indent(position: ExpressionPosition) -> bool {
+        matches!(position, ExpressionPosition::UnaryArgument(_))
+    }
+
     pub(super) fn expression_needs_asi_guard(
         &self,
-        expression: Expr,
-        context: ExpressionContext,
+        mut expression: Expr,
+        mut context: ExpressionContext,
     ) -> Result<bool, FormatError> {
-        if context.content_mode == ContentMode::Verbatim {
-            let source = self.source(expression.span(self.ast));
-            return Ok(
-                self.expression_is_parenthesized(self.ast.expr_data(expression), context)
+        loop {
+            if context.content_mode == ContentMode::Verbatim {
+                let source = self.source(expression.span(self.ast));
+                return Ok(self
+                    .expression_is_parenthesized(self.ast.expr_data(expression), context)
                     || source.starts_with(['(', '[', '/', '`', '<'])
                     || source.starts_with(['+', '-'])
-                        && !(source.starts_with("++") || source.starts_with("--")),
-            );
+                        && !(source.starts_with("++") || source.starts_with("--")));
+            }
+            let data = self.expression_content(expression).data;
+            if self.expression_is_parenthesized(data, context)
+                || matches!(
+                    data,
+                    ExprData::ParenthesizedExpression(_) | ExprData::RegExpLiteral(_)
+                )
+                || matches!(data, ExprData::UnaryExpression(node) if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
+            {
+                return Ok(true);
+            }
+            if let ExprData::UpdateExpression(update) = data
+                && !update.prefix(self.ast)
+            {
+                return Ok(self
+                    .update_source_target(update)?
+                    .has_retained_parentheses());
+            }
+            if let Some(binary) = BinaryLike::from_data(data, self.ast) {
+                expression = binary.left;
+                context.position = ExpressionPosition::BinaryOperand {
+                    operator: binary.operator,
+                    side: OperandSide::Left,
+                };
+                continue;
+            }
+            return Ok(false);
         }
-        let data = self.expression_content(expression).data;
-        if self.expression_is_parenthesized(data, context)
-            || matches!(
-                data,
-                ExprData::ParenthesizedExpression(_) | ExprData::RegExpLiteral(_)
-            )
-            || matches!(data, ExprData::UnaryExpression(node) if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
-        {
-            return Ok(true);
-        }
-        if let ExprData::UpdateExpression(update) = data
-            && !update.prefix(self.ast)
-        {
-            return Ok(self
-                .update_source_target(update)?
-                .has_retained_parentheses());
-        }
-        Ok(false)
     }
 
     fn expression_is_parenthesized(&self, data: ExprData, context: ExpressionContext) -> bool {
@@ -142,6 +227,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         data: ExprData,
         position: ExpressionPosition,
     ) -> Option<bool> {
+        if let Some(child) = BinaryOperatorKind::from_data(data, self.ast) {
+            return Some(match position {
+                ExpressionPosition::UnaryArgument(_) => true,
+                ExpressionPosition::BinaryOperand { operator, side } => {
+                    operator.needs_parentheses(child, side)
+                }
+                _ => false,
+            });
+        }
         match data {
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
@@ -150,6 +244,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     matches!(parent, UnaryOperator::Positive | UnaryOperator::Negate)
                         && unary.operator(self.ast) == parent
                 }
+                ExpressionPosition::BinaryOperand { operator, side } => matches!(
+                    (side, operator),
+                    (
+                        OperandSide::Left,
+                        BinaryOperatorKind::Binary(
+                            swc_next_ecma_ast::BinaryOperator::Exponent
+                                | swc_next_ecma_ast::BinaryOperator::In
+                                | swc_next_ecma_ast::BinaryOperator::Instanceof
+                        )
+                    )
+                ),
                 _ => false,
             }),
             ExprData::UpdateExpression(update) => Some(match position {
@@ -162,6 +267,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 | (UnaryOperator::Negate, UpdateOperator::Decrement)
                         )
                 }
+                ExpressionPosition::BinaryOperand { operator, side } => matches!(
+                    (side, operator),
+                    (
+                        OperandSide::Left,
+                        BinaryOperatorKind::Binary(swc_next_ecma_ast::BinaryOperator::Exponent)
+                    )
+                ),
                 _ => false,
             }),
             ExprData::IdentifierReference(_)
@@ -223,6 +335,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
+            ExprData::BinaryExpression(node) => {
+                return self.format_binary(
+                    BinaryLike {
+                        left: node.left(self.ast),
+                        right: node.right(self.ast),
+                        operator: BinaryOperatorKind::Binary(node.operator(self.ast)),
+                    },
+                    context,
+                    writer,
+                );
+            }
+            ExprData::LogicalExpression(node) => {
+                return self.format_binary(
+                    BinaryLike {
+                        left: node.left(self.ast),
+                        right: node.right(self.ast),
+                        operator: BinaryOperatorKind::Logical(node.operator(self.ast)),
+                    },
+                    context,
+                    writer,
+                );
+            }
             ExprData::UnaryExpression(unary) => return self.format_unary(unary, writer),
             ExprData::UpdateExpression(update) => {
                 return self.format_update(update, context, writer);

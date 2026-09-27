@@ -4,9 +4,12 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, ParenthesizedExpression, Span,
 };
 
-use super::{ExpressionContext, ExpressionPosition, ExpressionStart, Formatter};
+use super::{
+    ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, OperandIndent,
+    ParenthesesOwner, TailOwner,
+};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, TrailingSuppression};
 use crate::{FormatError, Semicolons, document::Writer};
@@ -54,6 +57,22 @@ pub(super) struct SourceParenthesesTail {
 struct RemovableSourceParentheses {
     head: SourceParenthesesHead,
     has_tail_comments: bool,
+}
+
+pub(in crate::formatter) struct ResolvedExpressionHead<'ast> {
+    pub(in crate::formatter) head: NodeHead<'ast>,
+    pub(in crate::formatter) binding: CommentBinding,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct GeneratedEnclosureOwner {
+    expression: Expr,
+    annotation: Comment,
+}
+
+pub(super) struct PreparedGeneratedEnclosure {
+    pub(super) owner: GeneratedEnclosureOwner,
+    pub(super) content: ExpressionContent,
 }
 
 #[derive(Clone, Copy)]
@@ -338,25 +357,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if cast().is_none() {
                     return CommentBinding::Unbound;
                 }
-                let expression = match boundary.inner_target {
+                let mut expression = match boundary.inner_target {
                     ParenthesisInner::Expression(expression) => expression,
                     ParenthesisInner::SourcePair => return CommentBinding::BoundTo(boundary.inner),
                 };
-                match self.ast.expr_data(expression) {
-                    ExprData::ParenthesizedExpression(node) => {
-                        CommentBinding::BoundTo(node.span(self.ast))
+                loop {
+                    if expression.span(self.ast).start != boundary.inner.start {
+                        return CommentBinding::SourceBound;
                     }
-                    ExprData::IdentifierReference(_)
-                    | ExprData::BooleanLiteral(_)
-                    | ExprData::NullLiteral(_)
-                    | ExprData::StringLiteral(_)
-                    | ExprData::NumericLiteral(_)
-                    | ExprData::BigIntLiteral(_)
-                    | ExprData::RegExpLiteral(_)
-                    | ExprData::ThisExpression(_)
-                    | ExprData::UnaryExpression(_)
-                    | ExprData::UpdateExpression(_) => CommentBinding::Unbound,
-                    _ => CommentBinding::SourceBound,
+                    let data = self.ast.expr_data(expression);
+                    if let ExprData::ParenthesizedExpression(node) = data {
+                        return CommentBinding::BoundTo(node.span(self.ast));
+                    }
+                    match super::binary::BinaryLike::from_data(data, self.ast) {
+                        Some(binary) => expression = binary.left,
+                        None => return CommentBinding::Unbound,
+                    }
                 }
             })
         })
@@ -380,7 +396,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let trailing_suppression =
             self.trailing_suppression_from_comments(trailing, comments.tail, true);
         if matches!(trailing_suppression, Some(TrailingSuppression::Inline))
-            && matches!(context.position, ExpressionPosition::Statement)
+            && (matches!(context.position, ExpressionPosition::Statement)
+                || context.tail_owner == TailOwner::ParentOperation
+                || self.expression_needs_parentheses(self.ast.expr_data(child), context.position)
+                    == Some(true))
         {
             return SourceParenthesesChoice::Verbatim;
         }
@@ -398,6 +417,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if mode == ContentMode::Verbatim
             && (matches!(context.position, ExpressionPosition::Statement)
+                || trailing_suppression.is_some()
+                    && context.tail_owner == TailOwner::ParentOperation
+                || matches!(context.position, ExpressionPosition::BinaryOperand { operator, side: super::binary::OperandSide::Left } if super::binary::BinaryLike::from_data(self.ast.expr_data(child), self.ast).is_none_or(|binary| !operator.flattens(binary.operator)))
                 || matches!(context.position, ExpressionPosition::UnaryArgument(_))
                 || self.parentheses_separate_diagnostic_lines(boundary)
                 || self
@@ -438,14 +460,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             || self.source_type_cast(span.start),
         );
-        self.format_expression_leading_prepared(expression, head, binding, context, writer)
+        self.format_expression_leading_prepared(
+            expression,
+            None,
+            ResolvedExpressionHead { head, binding },
+            context,
+            writer,
+        )
     }
 
-    fn format_expression_leading_prepared(
+    pub(super) fn format_expression_leading_prepared(
         &mut self,
         expression: Expr,
-        head: NodeHead<'ast>,
-        binding: CommentBinding,
+        prepared: Option<ExpressionContent>,
+        resolved: ResolvedExpressionHead<'ast>,
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -454,69 +482,83 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.line_breaks(span.start, span.end) == 0
         {
             writer.flat(|writer| {
-                self.format_expression_head_and_content(expression, head, binding, context, writer)
+                self.format_expression_head_and_content(
+                    expression, prepared, resolved, context, writer,
+                )
             })
         } else {
-            self.format_expression_head_and_content(expression, head, binding, context, writer)
+            self.format_expression_head_and_content(expression, prepared, resolved, context, writer)
         }
     }
 
     fn format_expression_head_and_content(
         &mut self,
         expression: Expr,
-        head: NodeHead<'ast>,
-        binding: CommentBinding,
+        mut prepared: Option<ExpressionContent>,
+        resolved: ResolvedExpressionHead<'ast>,
         mut context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let ResolvedExpressionHead { head, binding } = resolved;
+        let generated = if self.has_type_casts
+            && !head.comments.is_empty()
+            && matches!(binding, CommentBinding::Unbound)
+            && context.content_mode == ContentMode::Formatted
+            && context.parentheses_owner == ParenthesesOwner::Expression
+        {
+            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            self.generated_enclosure_owner(expression, content, &head, binding, context)
+        } else {
+            None
+        };
+        context.expression_start =
+            self.format_expression_head(expression, head, binding, context, writer)?;
+        if let Some(owner) = generated {
+            return self.format_generated_enclosure(owner, prepared, context, writer);
+        }
         if let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression) {
             if context.content_mode == ContentMode::Verbatim
                 && !self.verbatim_parentheses_are_removable(parenthesized, context.position)
             {
-                context.expression_start =
-                    self.format_expression_head(expression, head, binding, context, writer)?;
                 self.format_verbatim_expression(expression, context, writer)?;
                 return Ok(None);
             }
-            context.expression_start =
-                self.format_expression_head(expression, head, binding, context, writer)?;
-            return self.format_source_parentheses(parenthesized, context, writer);
+            return self.format_source_parentheses(parenthesized, prepared, context, writer);
         }
-        let data = self.ast.expr_data(expression);
         if context.content_mode == ContentMode::Verbatim {
-            context.expression_start =
-                self.format_expression_head(expression, head, binding, context, writer)?;
             self.format_verbatim_expression(expression, context, writer)?;
             return Ok(None);
         }
-        if self.expression_is_parenthesized(data, context) {
-            let generated = matches!(binding, CommentBinding::Unbound)
-                && self
-                    .source_cast_before(head.content_start)
-                    .is_some_and(|annotation| {
-                        head.comments.contains(&annotation)
-                            && !self.diagnostic_range_is_sensitive(Span::new(
-                                annotation.span.start,
-                                expression.span(self.ast).end,
-                            ))
-                    });
-            context.expression_start =
-                self.format_expression_head(expression, head, binding, context, writer)?;
-            if context.expression_start.needs_asi_guard()
+        let expression = prepared
+            .as_ref()
+            .map_or(expression, |content| content.expression);
+        let data = self.ast.expr_data(expression);
+        let parenthesize = self.expression_is_parenthesized(data, context);
+        if let Some(binary) = super::binary::BinaryLike::from_data(data, self.ast) {
+            if context.expression_start == ExpressionStart::StatementPending
+                && self.options.semicolons == Semicolons::AsNeeded
+                && self.expression_needs_parentheses(
+                    self.expression_content(binary.left).data,
+                    ExpressionPosition::BinaryOperand {
+                        operator: binary.operator,
+                        side: super::binary::OperandSide::Left,
+                    },
+                ) == Some(true)
+            {
+                context.expression_start = ExpressionStart::StatementGuard;
+            }
+            if parenthesize
+                && context.expression_start.needs_asi_guard()
                 && self.options.semicolons == Semicolons::AsNeeded
             {
                 writer.text(";");
             }
-            if generated {
+            if parenthesize && Self::binary_grammar_pair_owns_indent(context.position) {
                 return writer.group(false, |writer| {
                     writer.text("(");
                     writer.indent(|writer| {
                         writer.soft_line();
-                        let tail = self.format_expression_data(
-                            expression,
-                            context.inside_parentheses(),
-                            writer,
-                        )?;
+                        let tail = self.format_binary_enclosed(binary, writer)?;
                         self.format_expression_tail(tail, writer)
                     })?;
                     writer.soft_line();
@@ -524,28 +566,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Ok(None)
                 });
             }
-            writer.text("(");
-            let tail = self.format_expression_data(
-                expression,
-                context.with_expression_start(ExpressionStart::None),
-                writer,
-            )?;
-            writer.text(")");
+            if parenthesize {
+                writer.text("(");
+                context.expression_start = ExpressionStart::None;
+            }
+            let tail = self.format_binary(binary, context, writer)?;
+            if parenthesize {
+                writer.text(")");
+            }
             return Ok(tail);
         }
-        context.expression_start =
-            self.format_expression_head(expression, head, binding, context, writer)?;
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
-            && self.expression_needs_asi_guard(expression, context)?
+            && (context.expression_start == ExpressionStart::StatementGuard
+                || self.expression_needs_asi_guard(expression, context)?)
         {
             writer.text(";");
             context.expression_start = ExpressionStart::StatementGuarded;
         }
-        self.format_expression_data(expression, context, writer)
+        if parenthesize {
+            writer.text("(");
+            context.expression_start = ExpressionStart::None;
+        }
+        let tail = self.format_expression_data(expression, context, writer)?;
+        if parenthesize {
+            writer.text(")");
+        }
+        Ok(tail)
     }
 
-    fn format_expression_head(
+    pub(super) fn format_expression_head(
         &self,
         expression: Expr,
         mut head: NodeHead<'ast>,
@@ -607,6 +657,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_source_parentheses(
         &mut self,
         parenthesized: ParenthesizedExpression,
+        prepared: Option<ExpressionContent>,
         mut context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -636,7 +687,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ignored_child
             }
         };
-        let content = self.expression_content(Expr::ParenthesizedExpression(parenthesized));
+        let content = prepared.unwrap_or_else(|| {
+            self.expression_content(Expr::ParenthesizedExpression(parenthesized))
+        });
+        if ignored_child.is_none()
+            && let Some(boundary) = self.protected_grammar_parentheses(&content, context)
+        {
+            return self.format_protected_grammar_parentheses(boundary, content, context, writer);
+        }
         if ignored_child.is_none() && content.parentheses.is_none() {
             return self.format_retained_parentheses(
                 parenthesized,
@@ -673,14 +731,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(CommentBinding::SourceBound, |removed| removed.head.binding);
         let tail = self.format_expression_leading_prepared(
             inner,
-            NodeHead {
-                comments: leading,
-                content_start: inner_span.start,
-                layout,
-                gap_end: matches!(context.position, ExpressionPosition::Statement)
-                    .then_some(inner_span.start),
+            None,
+            ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: leading,
+                    content_start: inner_span.start,
+                    layout,
+                    gap_end: matches!(context.position, ExpressionPosition::Statement)
+                        .then_some(inner_span.start),
+                },
+                binding,
             },
-            binding,
             context.with_content_mode(mode),
             writer,
         )?;
@@ -814,13 +875,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         ExpressionPosition::Nested
                     };
-                let tail = content(
-                    self,
-                    ExpressionContext::at(position)
-                        .with_content_mode(mode)
-                        .inside_parentheses(),
-                    writer,
-                )?;
+                let operand_indent = if context.operand_indent == OperandIndent::Parent && !matches!(kind, RetainedParentheses::Cast)
+                    && matches!(boundary.inner_target, ParenthesisInner::Expression(expression) if matches!(self.ast.expr_data(expression), ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) | ExprData::ParenthesizedExpression(_)))
+                { OperandIndent::Parent } else { OperandIndent::Expression };
+                let tail = content(self, ExpressionContext::at(position).with_content_mode(mode).inside_parentheses()
+                    .with_operand_indent(operand_indent).with_tail_owner(context.tail_owner), writer)?;
                 let tail =
                     self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
                 self.format_expression_tail(tail, writer)
@@ -836,5 +895,170 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(None)
         })
+    }
+    pub(super) fn generated_enclosure_owner(
+        &self,
+        expression: Expr,
+        content: &ExpressionContent,
+        head: &NodeHead<'ast>,
+        binding: CommentBinding,
+        context: ExpressionContext,
+    ) -> Option<GeneratedEnclosureOwner> {
+        if !self.has_type_casts
+            || head.comments.is_empty()
+            || !matches!(binding, CommentBinding::Unbound)
+            || context.content_mode != ContentMode::Formatted
+            || context.parentheses_owner != ParenthesesOwner::Expression
+            || self.expression_needs_parentheses(content.data, context.position) != Some(true)
+        {
+            return None;
+        }
+        // This complete exterior run is the emitted adjacency owner. A binary
+        // hoist may cross removed source openers before reaching its lexical head.
+        let annotation = self.source_cast_before(head.content_start)?;
+        if !head.comments.contains(&annotation)
+            || self.diagnostic_range_is_sensitive(Span::new(
+                annotation.span.start,
+                expression.span(self.ast).end,
+            ))
+        {
+            return None;
+        }
+        Some(GeneratedEnclosureOwner {
+            expression,
+            annotation,
+        })
+    }
+
+    pub(in crate::formatter) fn expression_head_binding(
+        &self,
+        comments: &[Comment],
+        expression: Expr,
+    ) -> CommentBinding {
+        let span = expression.span(self.ast);
+        self.source_parentheses_head_binding(
+            comments,
+            SourceParentheses {
+                outer: span,
+                inner: span,
+                inner_target: ParenthesisInner::Expression(expression),
+            },
+            || self.source_type_cast(span.start),
+        )
+    }
+
+    pub(super) fn source_cast_head(&self, mut expression: Expr) -> Option<ParenthesizedExpression> {
+        if !self.has_type_casts {
+            return None;
+        }
+        while let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression)
+        {
+            if self.parenthesis_has_type_cast(parenthesized.span(self.ast).start) {
+                return Some(parenthesized);
+            }
+            expression = parenthesized.expression(self.ast);
+        }
+        None
+    }
+
+    pub(super) fn format_prepared_generated_enclosure(
+        &mut self,
+        enclosure: PreparedGeneratedEnclosure,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_generated_enclosure(enclosure.owner, Some(enclosure.content), context, writer)
+    }
+
+    fn format_generated_enclosure(
+        &mut self,
+        owner: GeneratedEnclosureOwner,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let GeneratedEnclosureOwner {
+            expression,
+            annotation: _annotation,
+        } = owner;
+        if context.expression_start.needs_asi_guard()
+            && self.options.semicolons == Semicolons::AsNeeded
+        {
+            writer.text(";");
+        }
+        writer.group(false, |writer| {
+            writer.text("(");
+            let tail = writer.indent(|writer| {
+                writer.soft_line();
+                let tail = self.format_expression_prepared(
+                    expression,
+                    prepared,
+                    ExpressionContext::at(ExpressionPosition::Nested)
+                        .inside_parentheses()
+                        .with_content_mode(context.content_mode)
+                        .with_tail_owner(context.tail_owner),
+                    writer,
+                )?;
+                if context.tail_owner == TailOwner::ParentOperation {
+                    Ok(tail)
+                } else {
+                    self.format_expression_tail(tail, writer)?;
+                    Ok(None)
+                }
+            })?;
+            writer.soft_line();
+            writer.text(")");
+            Ok(tail)
+        })
+    }
+
+    pub(super) fn protected_grammar_parentheses(
+        &self,
+        content: &ExpressionContent,
+        context: ExpressionContext,
+    ) -> Option<SourceParentheses> {
+        if context.content_mode != ContentMode::Formatted {
+            return None;
+        }
+        let boundary = content.parentheses?.source;
+        if !matches!(
+            content.data,
+            ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+        ) || !Self::binary_grammar_pair_owns_indent(context.position)
+            || self.line_constraint(boundary.inner.end, boundary.outer.end - 1)
+                != LineConstraint::SameLine
+            || !self.expression_is_parenthesized(content.data, context)
+        {
+            return None;
+        }
+        Some(boundary)
+    }
+
+    pub(super) fn format_protected_grammar_parentheses(
+        &mut self,
+        boundary: SourceParentheses,
+        content: ExpressionContent,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let context = if Self::binary_grammar_pair_owns_indent(context.position) {
+            context.with_operand_indent(OperandIndent::Parent)
+        } else {
+            context
+        };
+        self.format_retained_source_parentheses(
+            boundary,
+            context,
+            RetainedParentheses::Annotation,
+            writer,
+            |formatter, inner, writer| {
+                formatter.format_expression_prepared(
+                    content.expression,
+                    Some(content),
+                    inner.with_tail_owner(context.tail_owner),
+                    writer,
+                )
+            },
+        )
     }
 }

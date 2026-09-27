@@ -47,6 +47,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map(|(_, position)| position)
     }
 
+    pub(super) fn suppression_positions<'a>(
+        &'a self,
+        comments: &'a [Comment],
+        following_start: u32,
+    ) -> impl Iterator<Item = SuppressionPosition> + 'a {
+        self.suppressed_comment_runs(comments, following_start)
+            .map(|(_, position)| position)
+    }
+
     /// Physical runs stop at punctuation and line breaks and share source placement.
     /// Syntax owners resolve each marker's actual target, including Block/Line differences.
     pub(super) fn suppressed_comment_runs<'a>(
