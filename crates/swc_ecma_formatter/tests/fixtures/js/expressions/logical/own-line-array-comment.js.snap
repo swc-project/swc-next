@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first &&
+// before
+[1, 2, 3];
+---------- Options ----------
+{}
+---------- Output ----------
+first &&
+  // before
+  [1, 2, 3];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first &&
+  // before
+  [1, 2, 3]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first &&
+  // before
+  [1, 2, 3];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+first &&
+  // before
+  [
+    1, 2,
+    3,
+  ];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first &&
+	// before
+	[1, 2, 3];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+first &&
+  // before
+  [1, 2, 3];
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+first &&
+  // before
+  [1, 2, 3];

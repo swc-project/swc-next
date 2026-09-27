@@ -117,7 +117,6 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::Line);
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_break(&mut self, text: &'a str) {
         self.elements.push(FormatElement::IfBreak(Text::new(text)));
     }
@@ -298,7 +297,6 @@ impl<'a> Writer<'a> {
         result
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.elements.push(FormatElement::StartFill);
         let result = write(self);
@@ -341,12 +339,10 @@ impl<'a> Writer<'a> {
     }
 
     /// Fill entries alternate between content and its following separator.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill_entry<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.fill_entry_with_handle(write).1
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill_entry_with_handle<T>(
         &mut self,
         write: impl FnOnce(&mut Self) -> T,

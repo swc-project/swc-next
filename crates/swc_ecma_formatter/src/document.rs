@@ -87,7 +87,6 @@ enum FormatElement<'a> {
     HardLine,
     BreakParent,
     LiteralLine,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfBreak(Text<'a>),
     IfFlat(Text<'a>),
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
@@ -119,16 +118,12 @@ enum FormatElement<'a> {
     EndAlign {
         width: usize,
     },
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartFill,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndFill,
     /// Distance from this opening instruction to its matching EndEntry.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartEntry {
         end_offset: usize,
     },
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndEntry,
     Fragment(Fragment<'a>),
     FlatFragment(FlatFragment<'a>),

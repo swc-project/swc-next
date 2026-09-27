@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[this, ...this];
+---------- Options ----------
+{}
+---------- Output ----------
+[this, ...this];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[this, ...this]
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  this,
+  ...this,
+];
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;[this, ...this]
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[this, ...this];
