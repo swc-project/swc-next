@@ -19,7 +19,6 @@ pub(crate) struct GroupId(usize);
 
 /// Explicit layout requests stay distinct from preserved source layout.
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) enum GroupRequest {
     Auto,
     Expanded,
@@ -167,7 +166,6 @@ impl<'a> RecordedGroup<'a> {
 }
 
 #[derive(Default)]
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 struct CleanTextWidth {
     width: usize,
     ascii_width: Option<usize>,
@@ -176,13 +174,11 @@ struct CleanTextWidth {
 }
 
 #[derive(Clone, Copy)]
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 enum CleanUnicodeText {
     Single(usize),
     Joined(usize),
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     let mut text = CleanTextWidth {
         ascii_width: Some(0),
@@ -208,7 +204,6 @@ fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     Some(crate::text_width::width(&joined))
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidth) -> Option<()> {
     for element in elements {
         match *element {
@@ -258,7 +253,6 @@ fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidt
     Some(())
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn append_clean_text(
     elements: &[FormatElement<'_>],
     output: &mut String,
@@ -378,7 +372,6 @@ impl<'a> Fragment<'a> {
     }
 
     /// Width of a document that reduces to text without observing layout scopes.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn clean_text_width(self) -> Option<usize> {
         if self.effect.preferred_breaks() || self.conditional_lines {
             return None;

@@ -373,7 +373,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Writes once and measures only appended instructions; the slice never escapes.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_with_clean_text_width<E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<(), E>,

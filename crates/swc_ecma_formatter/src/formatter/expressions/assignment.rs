@@ -695,17 +695,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .leading
             .first()
             .map_or(boundary.right_start, |comment| comment.span.start);
-        self.property_rhs_layout(data, prefix_start)
+        self.property_rhs_layout(data, prefix_start, false)
     }
 
     pub(in crate::formatter) fn property_rhs_layout(
         &self,
         data: ExprData,
         prefix_start: u32,
+        has_short_key: bool,
     ) -> RhsLayout {
         let Some(content) = self.assignment_right_fluid_content(data) else {
             return RhsLayout::BreakAfterOperator;
         };
+        if has_short_key {
+            return RhsLayout::NeverBreakAfterOperator;
+        }
         if self.assignment_right_prefers_operator_break(content, prefix_start) {
             return RhsLayout::BreakAfterOperator;
         }

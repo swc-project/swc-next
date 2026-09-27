@@ -401,6 +401,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(super) fn property_rhs_content(
+        &self,
+        content: &ExpressionContent,
+        mode: ContentMode,
+    ) -> ExprData {
+        self.source_parentheses_rhs_content(
+            content.data,
+            ExpressionContext::at(ExpressionPosition::PropertyValue).with_content_mode(mode),
+        )
+    }
+
     pub(super) fn source_parentheses_rhs_content(
         &self,
         mut data: ExprData,
@@ -1067,6 +1078,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading.is_empty()
                     && trailing.is_empty()
                     && (!array.elements(self.ast).is_empty()
+                        || self.comments.in_range(inner_span).is_empty())
+            }
+            ExprData::ObjectExpression(object) => {
+                leading.is_empty()
+                    && trailing.is_empty()
+                    && (!object.properties(self.ast).is_empty()
                         || self.comments.in_range(inner_span).is_empty())
             }
             _ => false,

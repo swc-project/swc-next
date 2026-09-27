@@ -5,6 +5,7 @@ mod arrays;
 mod assignment;
 mod binary;
 mod conditional;
+pub(super) mod objects;
 pub(super) mod parentheses;
 mod sequence;
 mod targets;
@@ -28,6 +29,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 pub(super) enum ExpressionPosition {
     Statement,
     Nested,
+    PropertyValue,
     SpreadArgument,
     SequenceMember,
     UnaryArgument(UnaryOperator),
@@ -53,6 +55,13 @@ pub(super) enum ExpressionStart {
 }
 
 impl ExpressionStart {
+    fn is_statement(self) -> bool {
+        matches!(
+            self,
+            Self::StatementPending | Self::StatementGuard | Self::StatementGuarded
+        )
+    }
+
     fn needs_asi_guard(self) -> bool {
         matches!(self, Self::StatementPending | Self::StatementGuard)
     }
@@ -279,7 +288,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn expression_is_parenthesized(&self, data: ExprData, context: ExpressionContext) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
-            && self.expression_needs_parentheses(data, context.position) == Some(true)
+            && (self.expression_needs_parentheses(data, context.position) == Some(true)
+                || matches!(data, ExprData::ObjectExpression(_))
+                    && context.expression_start.is_statement())
     }
 
     fn is_nullish_conditional_operand(&self, data: ExprData, position: ExpressionPosition) -> bool {
@@ -311,6 +322,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match data {
             ExprData::ArrayExpression(_) => Some(false),
+            ExprData::ObjectExpression(_) => {
+                Some(matches!(position, ExpressionPosition::Statement))
+            }
             ExprData::SequenceExpression(_) => Some(true),
             ExprData::ConditionalExpression(_) => Some(matches!(
                 position,
@@ -423,6 +437,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
+            ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
             ExprData::BinaryExpression(node) => {
                 return self.format_binary(
                     BinaryLike {
