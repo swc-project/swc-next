@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+typeof /* marker */ (first ?second :next);
+---------- Options ----------
+{}
+---------- Output ----------
+typeof (/* marker */ (first ? second : next));
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+typeof (/* marker */ (first ? second : next))
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+typeof (
+  /* marker */ (first
+    ? second
+    : next)
+);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+typeof (
+  /* marker */ (first
+    ? second
+    : next)
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+typeof (
+    /* marker */ (first
+        ? second
+        : next)
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+typeof (
+	/* marker */ (first
+		? second
+		: next)
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+typeof (
+ /* marker */ (first
+  ? second
+  : next)
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+typeof (/* marker */ (first ? second : next));

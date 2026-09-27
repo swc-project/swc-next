@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? consequent : alternate;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? consequent : alternate;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition ? consequent : alternate
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+condition
+  ? consequent
+  : alternate;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+condition
+  ? consequent
+  : alternate;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+condition
+    ? consequent
+    : alternate;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+condition
+	? consequent
+	: alternate;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+condition
+ ? consequent
+ : alternate;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+condition ? consequent : alternate;

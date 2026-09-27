@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? /** @type {number} */ (nullableValue ?? fallbackValue) : 0;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? /** @type {number} */ (nullableValue ?? fallbackValue) : 0;
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+condition
+  ? /** @type {number} */ (
+      nullableValue ??
+        fallbackValue
+    )
+  : 0;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition ? /** @type {number} */ (nullableValue ?? fallbackValue) : 0
+

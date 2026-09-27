@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? /* prettier-ignore */ (first  ??second) : alternate;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? /* prettier-ignore */ (first  ??second) : alternate;
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+condition
+  ? /* prettier-ignore */ (first  ??second)
+  : alternate;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition ? /* prettier-ignore */ (first  ??second) : alternate
+

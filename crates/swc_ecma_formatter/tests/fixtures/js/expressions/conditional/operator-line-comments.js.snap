@@ -1,0 +1,62 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first ? // after question
+second : // after colon
+third;
+---------- Options ----------
+{}
+---------- Output ----------
+first // after question
+  ? second // after colon
+  : third;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first // after question
+  ? second // after colon
+  : third
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first // after question
+  ? second // after colon
+  : third;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+first // after question
+  ? second // after colon
+  : third;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+first // after question
+    ? second // after colon
+    : third;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first // after question
+	? second // after colon
+	: third;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+first // after question
+ ? second // after colon
+ : third;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+first // after question
+  ? second // after colon
+  : third;

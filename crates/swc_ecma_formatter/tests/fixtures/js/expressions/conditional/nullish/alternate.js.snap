@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+conditionValue ? consequentValue : firstLongValue ?? secondLongValue;
+---------- Options ----------
+{}
+---------- Output ----------
+conditionValue ? consequentValue : (firstLongValue ?? secondLongValue);
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+conditionValue
+  ? consequentValue
+  : (firstLongValue ??
+    secondLongValue);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+conditionValue ? consequentValue : (firstLongValue ?? secondLongValue)
+
