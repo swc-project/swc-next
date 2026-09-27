@@ -1,5 +1,7 @@
 //! Expression dispatch and immediate grammar and statement-start contexts.
 
+mod arguments;
+mod arrays;
 mod assignment;
 mod binary;
 mod conditional;
@@ -9,7 +11,8 @@ mod targets;
 mod unary;
 
 use swc_next_ecma_ast::{
-    Expr, ExprData, GetSpan, SequenceExpression, UnaryOperator, UpdateOperator,
+    Argument, ArgumentData, Expr, ExprData, GetSpan, SequenceExpression, Span, UnaryOperator,
+    UpdateOperator,
 };
 
 use self::assignment::AssignmentParent;
@@ -25,6 +28,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 pub(super) enum ExpressionPosition {
     Statement,
     Nested,
+    SpreadArgument,
     SequenceMember,
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
@@ -238,6 +242,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExprData::ParenthesizedExpression(_)
                         | ExprData::RegExpLiteral(_)
                         | ExprData::SequenceExpression(_)
+                        | ExprData::ArrayExpression(_)
                 )
                 || matches!(data, ExprData::UnaryExpression(node) if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
             {
@@ -297,7 +302,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let Some(child) = BinaryOperatorKind::from_data(data, self.ast) {
             return Some(match position {
-                ExpressionPosition::UnaryArgument(_) => true,
+                ExpressionPosition::UnaryArgument(_) | ExpressionPosition::SpreadArgument => true,
                 ExpressionPosition::BinaryOperand { operator, side } => {
                     operator.needs_parentheses(child, side)
                 }
@@ -305,11 +310,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         match data {
+            ExprData::ArrayExpression(_) => Some(false),
             ExprData::SequenceExpression(_) => Some(true),
             ExprData::ConditionalExpression(_) => Some(matches!(
                 position,
                 ExpressionPosition::UnaryArgument(_)
                     | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                    | ExpressionPosition::SpreadArgument
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
             )),
@@ -415,6 +422,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
+            ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
             ExprData::BinaryExpression(node) => {
                 return self.format_binary(
                     BinaryLike {
@@ -450,5 +458,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => return Err(self.unsupported("expression", expression)),
         }
         Ok(None)
+    }
+    fn format_argument(
+        &mut self,
+        argument: Argument,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_argument_data(self.ast.argument_data(argument), mode, writer)
+    }
+
+    fn format_argument_data(
+        &mut self,
+        argument: ArgumentData,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        match argument {
+            ArgumentData::Expr(expression) => self.format_expression(
+                expression,
+                ExpressionContext::at(ExpressionPosition::Nested).with_content_mode(mode),
+                writer,
+            ),
+            ArgumentData::SpreadElement(spread) => {
+                if mode == ContentMode::Verbatim {
+                    self.format_verbatim(spread.span(self.ast), writer)?;
+                    return Ok(None);
+                }
+                let argument = spread.argument(self.ast);
+                writer.text("...");
+                let comments = self.comments.between(Span::new(
+                    spread.span(self.ast).start + 3,
+                    argument.span(self.ast).start,
+                ))?;
+                let comments = self.comments.take(comments.len());
+                let mode = self.content_mode(comments);
+                self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+                if let Some(last) = comments.last() {
+                    self.comment_gap(last.span.end, argument.span(self.ast).start, writer);
+                }
+                self.format_expression(
+                    argument,
+                    ExpressionContext::at(ExpressionPosition::SpreadArgument)
+                        .with_content_mode(mode),
+                    writer,
+                )
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@ use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceParent
 use super::{ExpressionContext, ExpressionPosition, Formatter, HeadComments, TailOwner};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::suppression::{ContentMode, DelimitedSuppression};
+use crate::formatter::suppression::{ContentMode, DelimitedFollowing, DelimitedSuppression};
 use crate::{FormatError, Semicolons, document::Writer};
 
 struct SequenceBoundary<'ast> {
@@ -345,7 +345,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comma,
             trailing: &[],
             leading: &[],
-            suppression: self.delimited_suppression(previous.span(self.ast), end),
+            suppression: self.delimited_suppression(
+                previous.span(self.ast),
+                end,
+                DelimitedFollowing::Node,
+            ),
             before_comma: LineConstraint::Unconstrained,
             separator: LineConstraint::Unconstrained,
         })
@@ -409,7 +413,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .is_some_and(|source| source.preceding.is_some())
         {
-            boundary.separator = self.format_delimited_source_gap(gap, writer)?;
+            boundary.separator = self
+                .format_delimited_source_gap(gap, DelimitedFollowing::Node, writer)?
+                .following;
             return Ok(());
         }
         self.prepare_sequence_comments(boundary, gap)?;
