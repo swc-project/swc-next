@@ -73,6 +73,7 @@ pub(super) enum CommentRunLayout {
     SourceAfter(u32),
     Leading(u32),
     GroupedLeading(u32),
+    InlineLeading(u32),
     FlatLeading(u32),
     CanonicalDangling,
 }
@@ -220,6 +221,43 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn split_separator_comments(
+        &self,
+        comments: &'ast [Comment],
+        before_separator: usize,
+        source_end: u32,
+        following_start: Option<u32>,
+    ) -> (&'ast [Comment], &'ast [Comment]) {
+        let mut trailing_count = 0;
+        let mut previous_end = source_end;
+        for (index, comment) in comments.iter().enumerate() {
+            if index >= before_separator
+                && self.has_target_annotations
+                && self.comment_has_target_annotation(*comment)
+            {
+                break;
+            }
+            if self.line_breaks(previous_end, comment.span.start) != 0 {
+                break;
+            }
+            previous_end = comment.span.end;
+            let next_start = comments
+                .get(index + 1)
+                .map(|next| next.span.start)
+                .or(following_start);
+            if index < before_separator {
+                trailing_count = index + 1;
+            }
+            if comment.kind == CommentKind::Line
+                || next_start.is_none_or(|start| self.line_breaks(comment.span.end, start) != 0)
+            {
+                trailing_count = index + 1;
+                break;
+            }
+        }
+        comments.split_at(trailing_count)
+    }
+
     pub(super) fn comment_semantics(&self, comment: Comment) -> CommentSemantics {
         CommentSemantics {
             suppression: self.has_suppression
@@ -392,6 +430,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comment: &PreparedComment<'ast>,
         next_start: u32,
         grouped: bool,
+        inline: bool,
         writer: &mut Writer<'ast>,
     ) {
         self.line_constraint(comment.span.end, next_start).write(
@@ -400,7 +439,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             |writer| match self.line_breaks(comment.span.end, next_start) {
                 0 if comment.kind == CommentKind::Block => writer.space(),
                 1 if comment.kind == CommentKind::Block
-                    && !self.source_position_starts_line(comment.span.start) =>
+                    && (inline || !self.source_position_starts_line(comment.span.start)) =>
                 {
                     if grouped {
                         writer.line();
@@ -450,13 +489,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         CommentRunLayout::CanonicalDangling => self
                             .line_constraint(previous.span.end, prepared.span.start)
                             .write(writer, FlatSeparator::Space, Writer::hard_line),
-                        CommentRunLayout::Leading(_) | CommentRunLayout::GroupedLeading(_) => self
-                            .leading_comment_gap(
-                                previous,
-                                prepared.span.start,
-                                matches!(layout, CommentRunLayout::GroupedLeading(_)),
-                                writer,
-                            ),
+                        CommentRunLayout::Leading(_)
+                        | CommentRunLayout::GroupedLeading(_)
+                        | CommentRunLayout::InlineLeading(_) => self.leading_comment_gap(
+                            previous,
+                            prepared.span.start,
+                            !matches!(layout, CommentRunLayout::Leading(_)),
+                            matches!(layout, CommentRunLayout::InlineLeading(_))
+                                && comments
+                                    .first()
+                                    .is_some_and(|first| first.span == previous.span),
+                            writer,
+                        ),
                         CommentRunLayout::FlatLeading(_) => self
                             .line_constraint(previous.span.end, prepared.span.start)
                             .write(writer, FlatSeparator::Space, |writer| match previous.kind {
@@ -479,11 +523,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match (layout, previous) {
             (CommentRunLayout::Leading(next), Some(previous)) => {
-                self.leading_comment_gap(&previous, next, false, writer)
+                self.leading_comment_gap(&previous, next, false, false, writer)
             }
-            (CommentRunLayout::GroupedLeading(next), Some(previous)) => {
-                self.leading_comment_gap(&previous, next, true, writer)
-            }
+            (
+                CommentRunLayout::GroupedLeading(next) | CommentRunLayout::InlineLeading(next),
+                Some(previous),
+            ) => self.leading_comment_gap(
+                &previous,
+                next,
+                true,
+                matches!(layout, CommentRunLayout::InlineLeading(_))
+                    && comments
+                        .first()
+                        .is_some_and(|first| first.span == previous.span),
+                writer,
+            ),
             (CommentRunLayout::FlatLeading(next), Some(previous)) => self
                 .line_constraint(previous.span.end, next)
                 .write(writer, FlatSeparator::Space, |writer| match previous.kind {
