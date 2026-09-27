@@ -45,7 +45,13 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         "export function {name}(buffer, source, sourceBuffer) {{"
     )
     .unwrap();
-    output.push_str(DECODE_PREAMBLE);
+    if is_ts {
+        output.push_str(
+            &DECODE_PREAMBLE.replace("function node(index)", "function node(index, typeOverride)"),
+        );
+    } else {
+        output.push_str(DECODE_PREAMBLE);
+    }
 
     for (kind, ty) in schema
         .types
@@ -341,39 +347,55 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
             .unwrap();
         }
         "FormalParameter" => {
-            output.push_str("        const left = { ...f_pattern };\n");
             if is_ts {
-                output.push_str("        left.optional = f_optional;\n        left.typeAnnotation = f_typeAnnotation;\n        left.end = f_typeAnnotation?.end ?? (f_optional ? left.end + 1 : left.end);\n");
+                output.push_str(
+                    r#"        if (f_initializer === null) {
+          result = {
+            ...f_pattern, optional: f_optional,
+            typeAnnotation: f_typeAnnotation, end,
+            decorators: f_decorators,
+          };
+        } else {
+          const left = {
+            ...f_pattern, optional: f_optional,
+            typeAnnotation: f_typeAnnotation,
+            end: f_typeAnnotation?.end ?? (f_optional ? f_pattern.end + 1 : f_pattern.end),
+          };
+          result = {
+            type: "AssignmentPattern", start: left.start, end,
+            left, right: f_initializer,
+            decorators: f_decorators, optional: false, typeAnnotation: null,
+          };
+        }
+"#,
+                );
+            } else {
+                output.push_str("        const left = { ...f_pattern };\n");
+                output.push_str("        if (f_initializer === null) {\n          result = left;\n          result.end = end;\n");
+                output.push_str("        } else {\n          result = { type: \"AssignmentPattern\", start: left.start, end, left, right: f_initializer };\n");
+                output.push_str("        }\n");
             }
-            output.push_str("        if (f_initializer === null) {\n          result = left;\n          result.end = end;\n");
-            if is_ts {
-                output.push_str("          result.decorators = f_decorators;\n");
-            }
-            output.push_str("        } else {\n          result = { type: \"AssignmentPattern\", start: left.start, end, left, right: f_initializer };\n");
-            if is_ts {
-                output.push_str("          result.decorators = f_decorators;\n          result.optional = false;\n          result.typeAnnotation = null;\n");
-            }
-            output.push_str("        }\n");
         }
         "FormalParameterRest" => {
-            output.push_str(
-                "        result = { type: \"RestElement\", start, end, argument: f_argument };\n",
-            );
-            if is_ts {
-                output.push_str("        result.decorators = f_decorators;\n        result.optional = false;\n        result.typeAnnotation = f_typeAnnotation;\n        result.value = null;\n");
-            }
+            output.push_str(if is_ts {
+                "        result = { type: \"RestElement\", start, end, argument: f_argument, decorators: f_decorators, optional: false, typeAnnotation: f_typeAnnotation, value: null };\n"
+            } else {
+                "        result = { type: \"RestElement\", start, end, argument: f_argument };\n"
+            });
         }
         "VariableDeclarator" => {
-            output.push_str("        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init };\n");
-            if is_ts {
-                output.push_str("        result.definite = f_definite;\n        result.id = { ...f_id, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_id.end };\n");
-            }
+            output.push_str(if is_ts {
+                "        result = { type: \"VariableDeclarator\", start, end, id: { ...f_id, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_id.end }, init: f_init, definite: f_definite };\n"
+            } else {
+                "        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init };\n"
+            });
         }
         "CatchClause" => {
-            output.push_str("        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n");
-            if is_ts {
-                output.push_str("        if (f_param !== null) result.param = { ...f_param, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_param.end };\n");
-            }
+            output.push_str(if is_ts {
+                "        result = { type: \"CatchClause\", start, end, param: f_param === null ? null : { ...f_param, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_param.end }, body: f_body };\n"
+            } else {
+                "        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n"
+            });
         }
         "TsIndexSignatureParameter" => output.push_str(
             r#"        result = { ...f_name, start, end, typeAnnotation: f_typeAnnotation };
@@ -399,16 +421,16 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
             output.push_str(
                 r#"          body: f_body,
           expression: false,
-        };
 "#,
             );
             if is_ts {
-                output.push_str("        result.typeParameters = f_typeParameters;\n        result.returnType = f_returnType;\n        result.declare = false;\n");
+                output.push_str("          typeParameters: f_typeParameters,\n          returnType: f_returnType,\n          declare: false,\n");
             }
+            output.push_str("        };\n");
         }
         "TsFunction" => output.push_str(
             r#"        result = {
-          type: "TSDeclareFunction",
+          type: typeOverride ?? "TSDeclareFunction",
           start, end,
           id: f_id,
           generator: f_generator,
@@ -429,12 +451,12 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
           id: null, generator: false, async: f_async,
           params: f_params.params,
           body: f_body, expression: f_expression,
-        };
 "#,
             );
             if is_ts {
-                output.push_str("        result.typeParameters = f_typeParameters;\n        result.returnType = f_returnType;\n");
+                output.push_str("          typeParameters: f_typeParameters,\n          returnType: f_returnType,\n");
             }
+            output.push_str("        };\n");
         }
         "Directive" => output.push_str(
             r#"        result = {
@@ -495,21 +517,18 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
           id: f_id,
           superClass: f_superClass,
           body: f_body,
-        };
 "#,
             );
             if is_ts {
-                output.push_str("        result.typeParameters = f_typeParameters;\n        result.superTypeArguments = f_superTypeArguments;\n        result.implements = f_implements;\n        result.abstract = f_abstract;\n        result.declare = f_declare;\n");
+                output.push_str("          typeParameters: f_typeParameters,\n          superTypeArguments: f_superTypeArguments,\n          implements: f_implements,\n          abstract: f_abstract,\n          declare: f_declare,\n");
             }
+            output.push_str("        };\n");
         }
         "MethodDefinition" | "TsMethodDefinition" => {
-            if name == "TsMethodDefinition" {
-                output.push_str("        f_value.type = \"TSEmptyBodyFunctionExpression\";\n");
-            }
             writeln!(
                 output,
                 "        result = {{\n          type: {},",
-                if name == "TsMethodDefinition" {
+                if is_ts {
                     "f_abstract ? \"TSAbstractMethodDefinition\" : \"MethodDefinition\""
                 } else {
                     "\"MethodDefinition\""
@@ -524,30 +543,33 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
           kind: f_kind,
           computed: f_computed,
           static: f_static,
-        };
 "#,
             );
             if is_ts {
-                output.push_str("        result.override = f_override;\n        result.optional = f_optional;\n        result.accessibility = f_accessibility;\n        if (f_abstract) result.type = \"TSAbstractMethodDefinition\";\n");
+                output.push_str("          override: f_override,\n          optional: f_optional,\n          accessibility: f_accessibility,\n");
             }
+            output.push_str("        };\n");
         }
         "PropertyDefinition" => {
+            output.push_str("        const accessor = f_accessor;\n        result = {\n");
+            output.push_str(if is_ts {
+                "          type: f_abstract ? (accessor ? \"TSAbstractAccessorProperty\" : \"TSAbstractPropertyDefinition\") : (accessor ? \"AccessorProperty\" : \"PropertyDefinition\"),\n"
+            } else {
+                "          type: accessor ? \"AccessorProperty\" : \"PropertyDefinition\",\n"
+            });
             output.push_str(
-                r#"        const accessor = f_accessor;
-        result = {
-          type: accessor ? "AccessorProperty" : "PropertyDefinition",
-          start, end,
+                r#"          start, end,
           decorators: f_decorators,
           key: f_key,
           value: f_value,
           computed: f_computed,
           static: f_static,
-        };
 "#,
             );
             if is_ts {
-                output.push_str("        result.typeAnnotation = f_typeAnnotation;\n        result.declare = f_declare;\n        result.override = f_override;\n        result.optional = f_optional;\n        result.definite = f_definite;\n        result.readonly = f_readonly;\n        result.accessibility = f_accessibility;\n        if (f_abstract) result.type = accessor ? \"TSAbstractAccessorProperty\" : \"TSAbstractPropertyDefinition\";\n");
+                output.push_str("          typeAnnotation: f_typeAnnotation,\n          declare: f_declare,\n          override: f_override,\n          optional: f_optional,\n          definite: f_definite,\n          readonly: f_readonly,\n          accessibility: f_accessibility,\n");
             }
+            output.push_str("        };\n");
         }
         "UnaryExpression" => output.push_str(
             r#"        result = {
@@ -562,30 +584,31 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
           type: "Property", start, end, kind: "init",
           key: f_key, value: f_value,
           method: false, shorthand: f_shorthand, computed: f_computed,
-        };
 "#,
             );
             if is_ts {
-                output.push_str("        result.optional = false;\n");
+                output.push_str("          optional: false,\n");
             }
+            output.push_str("        };\n");
         }
         "ArrayPattern" => {
             output.push_str(
                 r#"        const elements = f_rest === null ? f_elements : [...f_elements, f_rest];
-        result = { type: "ArrayPattern", start, end, elements };
 "#,
             );
-            if is_ts {
-                output.push_str("        result.decorators = [];\n        result.optional = false;\n        result.typeAnnotation = null;\n");
-            }
+            output.push_str(if is_ts {
+                "        result = { type: \"ArrayPattern\", start, end, elements, decorators: [], optional: false, typeAnnotation: null };\n"
+            } else {
+                "        result = { type: \"ArrayPattern\", start, end, elements };\n"
+            });
         }
         "ObjectPattern" => {
-            output.push_str(r#"        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];
-        result = { type: "ObjectPattern", start, end, properties };
-"#);
-            if is_ts {
-                output.push_str("        result.decorators = [];\n        result.optional = false;\n        result.typeAnnotation = null;\n");
-            }
+            output.push_str("        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];\n");
+            output.push_str(if is_ts {
+                "        result = { type: \"ObjectPattern\", start, end, properties, decorators: [], optional: false, typeAnnotation: null };\n"
+            } else {
+                "        result = { type: \"ObjectPattern\", start, end, properties };\n"
+            });
         }
         "JsxText" => output.push_str(
             "        result = { type: \"JSXText\", start, end, value: f_value, raw: f_value };\n",
@@ -595,6 +618,14 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         | "TsMethodSignature"
         | "TsCallSignatureDeclaration"
         | "TsConstructSignatureDeclaration" => {
+            if matches!(
+                name,
+                "TsFunctionType" | "TsMethodSignature" | "TsCallSignatureDeclaration"
+            ) {
+                output.push_str(
+                    "        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);\n",
+                );
+            }
             writeln!(
                 output,
                 "        result = {{\n          type: \"{}\", start, end,",
@@ -617,25 +648,12 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
                 r#"          typeParameters: f_typeParameters,
           params: f_params.params,
           returnType: f_returnType,
-        };
 "#,
             );
-            if matches!(
-                name,
-                "TsFunctionType" | "TsMethodSignature" | "TsCallSignatureDeclaration"
-            ) {
-                output.push_str(
-                    "        if (f_thisParam !== null) result.params.unshift(f_thisParam);\n",
-                );
-            }
             if name == "TsMethodSignature" {
-                output.push_str(
-                    r#"        result.accessibility = null;
-        result.readonly = false;
-        result.static = false;
-"#,
-                );
+                output.push_str("          accessibility: null,\n          readonly: false,\n          static: false,\n");
             }
+            output.push_str("        };\n");
         }
         "TsMappedType" => output.push_str(
             r#"        result = {
@@ -648,11 +666,9 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
 "#,
         ),
         "TsModuleDeclaration" => output.push_str(
-            r#"        result = {
-          type: "TSModuleDeclaration", start, end,
-          id: f_id, kind: f_kind, declare: f_declare, global: false,
-        };
-        if (f_body !== null) result.body = f_body;
+            r#"        result = f_body === null
+          ? { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false }
+          : { type: "TSModuleDeclaration", start, end, id: f_id, kind: f_kind, declare: f_declare, global: false, body: f_body };
 "#,
         ),
         "TsGlobalDeclaration" => output.push_str(
@@ -676,6 +692,19 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
     }
     for field in fields {
         if references_field(&body, &field.name) {
+            if name == "TsMethodDefinition" && field.name == "value" {
+                let value_index = field
+                    .expression
+                    .strip_prefix("node(")
+                    .and_then(|expression| expression.strip_suffix(')'))
+                    .expect("TS method value must be a node");
+                writeln!(
+                    output,
+                    "        const f_value = node({value_index}, \"TSEmptyBodyFunctionExpression\");"
+                )
+                .unwrap();
+                continue;
+            }
             writeln!(
                 output,
                 "        const f_{} = {};",
