@@ -77,6 +77,7 @@ pub(super) enum CommentRunLayout {
     FlatLeading(u32),
     CanonicalDangling,
     Lines,
+    OwnLineTrailing,
 }
 
 /// A claimed leading run and the source gap owned by its node.
@@ -144,6 +145,11 @@ impl PreparedTrailingRun<'_> {
     pub(super) fn len(&self) -> usize {
         self.comments.len()
     }
+}
+
+struct BlockCommentPacket {
+    end: u32,
+    multiline: bool,
 }
 
 enum CommentText<'ast> {
@@ -620,6 +626,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
     }
 
+    fn block_comment_packet(&self, comments: &[Comment]) -> Option<BlockCommentPacket> {
+        let first = comments.first()?;
+        if first.kind != CommentKind::Block {
+            return None;
+        }
+        let mut packet = BlockCommentPacket {
+            end: first.span.start,
+            multiline: false,
+        };
+        for comment in comments {
+            if comment.kind != CommentKind::Block
+                || self.line_breaks(packet.end, comment.span.start) != 0
+            {
+                break;
+            }
+            packet.end = comment.span.end;
+            packet.multiline |= self.line_breaks(comment.span.start, comment.span.end) != 0;
+        }
+        Some(packet)
+    }
+
     pub(super) fn format_comment_run(
         &self,
         comments: &[Comment],
@@ -627,7 +654,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let mut previous: Option<PreparedComment<'ast>> = None;
-        for &comment in comments {
+        let mut packet: Option<BlockCommentPacket> = None;
+        for (index, &comment) in comments.iter().enumerate() {
+            if matches!(layout, CommentRunLayout::OwnLineTrailing)
+                && packet
+                    .as_ref()
+                    .is_none_or(|packet| comment.span.start >= packet.end)
+            {
+                packet = self.block_comment_packet(&comments[index..]);
+            }
             let prepared = self.prepare_comment(comment)?;
             let line_suffix = if let (CommentRunLayout::SourceAfter(start), CommentKind::Line) =
                 (layout, comment.kind)
@@ -648,7 +683,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => {
                             self.comment_gap(previous.span.end, prepared.span.start, writer)
                         }
-                        CommentRunLayout::Lines => self
+                        CommentRunLayout::OwnLineTrailing
+                            if previous.kind == CommentKind::Block
+                                && prepared.kind == CommentKind::Block
+                                && packet.as_ref().is_some_and(|packet| packet.multiline)
+                                && self.line_breaks(previous.span.end, prepared.span.start)
+                                    == 0 =>
+                        {
+                            writer.space();
+                        }
+                        CommentRunLayout::Lines | CommentRunLayout::OwnLineTrailing => self
                             .line_constraint(previous.span.end, prepared.span.start)
                             .write(writer, FlatSeparator::Space, |writer| {
                                 writer.hard_line();

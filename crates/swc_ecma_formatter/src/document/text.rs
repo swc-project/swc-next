@@ -35,7 +35,6 @@ impl<'a> Text<'a> {
     }
 
     /// Textual width has no column context and does not prove a flat render view.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(super) fn clean_width(self) -> Option<usize> {
         Some(match self.width {
             Width::Ascii => self.source.len(),
@@ -49,7 +48,6 @@ impl<'a> Text<'a> {
         })
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(super) fn clean_ascii_width(self) -> Option<usize> {
         match self.width {
             Width::Ascii => Some(self.source.len()),

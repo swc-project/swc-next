@@ -527,10 +527,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_prepared_binary_enclosed(chain, context, writer)
             });
         }
-        let parent_indents = matches!(context.position, ExpressionPosition::AssignmentRight(_))
-            && (!self.inline_logical_operand(binary.operator, binary.right)
-                || !BinaryLike::from_data(self.expression_content(binary.left).data, self.ast)
-                    .is_some_and(|left| binary.operator.flattens(left.operator)));
+        let parent_indents = matches!(
+            context.position,
+            ExpressionPosition::AssignmentRight(_) | ExpressionPosition::PropertyValue
+        ) && (!self.inline_logical_operand(binary.operator, binary.right)
+            || !BinaryLike::from_data(self.expression_content(binary.left).data, self.ast)
+                .is_some_and(|left| binary.operator.flattens(left.operator)));
         if parent_indents {
             return writer.group(false, |writer| {
                 self.format_prepared_binary_enclosed(chain, context, writer)
