@@ -111,7 +111,6 @@ enum FormatElement<'a> {
     StartAbsoluteIndent {
         width: usize,
     },
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartIndentIfBreak(GroupId),
     EndIndent,
     StartAlign {
@@ -131,12 +130,9 @@ enum FormatElement<'a> {
     },
     #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     EndEntry,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Fragment(Fragment<'a>),
     FlatFragment(FlatFragment<'a>),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Alternatives(&'a Alternatives<'a>),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     CanonicalAlternatives(&'a Alternatives<'a>),
 }
 
@@ -144,10 +140,8 @@ enum FormatElement<'a> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Fragment<'a> {
     elements: &'a [FormatElement<'a>],
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     effect: BreakEffect,
     capabilities: FragmentCapabilities,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     conditional_lines: bool,
 }
 
@@ -398,12 +392,10 @@ impl<'a> Fragment<'a> {
     }
 
     /// Measures this complete scope without changing its retained render view.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn canonical_candidate(self) -> CanonicalCandidate<'a> {
         CanonicalCandidate(self)
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn try_flat(self) -> Option<FlatFragment<'a>> {
         self.capabilities
             .permits_flat()
@@ -423,21 +415,16 @@ pub(crate) struct NeutralFragment<'a>(Fragment<'a>);
 
 /// A zero-copy measurement request, distinct from a printed Flat projection.
 #[derive(Clone, Copy)]
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct CanonicalCandidate<'a>(Fragment<'a>);
 
 #[derive(Debug, Clone, Copy)]
 enum FragmentCapabilities {
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     General,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     FlatEligible,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Neutral,
 }
 
 impl FragmentCapabilities {
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn from_flat(flat: bool) -> Self {
         if flat {
             Self::FlatEligible
@@ -452,7 +439,6 @@ impl FragmentCapabilities {
 
     /// Fresh Writer records contain complete, balanced scopes. Once neutrality
     /// is ruled out, the same iterator resumes the existing flat-only scan.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn classify(elements: &[FormatElement<'_>]) -> Self {
         let mut elements = elements.iter().copied();
         while let Some(element) = elements.next() {

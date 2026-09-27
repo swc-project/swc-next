@@ -181,12 +181,10 @@ impl<'a> Writer<'a> {
     }
 
     /// The returned handle refers to a group already written in this document.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
         self.named_group_with_request(GroupRequest::from(expand), write)
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn named_group_with_request(
         &mut self,
         request: GroupRequest,
@@ -279,7 +277,6 @@ impl<'a> Writer<'a> {
         result
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn indent_if_break<T>(
         &mut self,
         group: GroupId,
@@ -391,7 +388,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Syntax is consumed once; only completed documents are retained.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn record_with_value<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
@@ -630,14 +626,12 @@ impl<'a> Writer<'a> {
         }
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.effect = self.effect.join(fragment.effect);
         self.conditional_lines |= fragment.conditional_lines;
         self.elements.push(FormatElement::Fragment(fragment));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.elements.push(FormatElement::FlatFragment(fragment));
     }
@@ -669,7 +663,6 @@ impl<'a> Writer<'a> {
         self.write_recorded_alternatives(normal, choices, fallback, Measurement::Display);
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_canonical_alternatives(
         &mut self,
         normal: Fragment<'a>,
@@ -685,7 +678,6 @@ impl<'a> Writer<'a> {
         self.write_recorded_alternatives(normal, choices, fallback, Measurement::Canonical);
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     fn write_recorded_alternatives(
         &mut self,
         normal: Fragment<'a>,

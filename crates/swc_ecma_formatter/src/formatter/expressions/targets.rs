@@ -1,4 +1,4 @@
-//! Update owners recover identifier delimiters from their grammar gaps.
+//! Assignment and update owners recover identifier delimiters from their grammar gaps.
 
 use super::parentheses::{ParenthesisInner, SourceParentheses};
 use super::{ExpressionContext, ExpressionPosition, ExpressionStart, Formatter};
@@ -7,18 +7,34 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, Semicolons, document::Writer};
 use swc_next_ecma_ast::{
-    Comment, Expr, GetSpan, SimpleAssignmentTargetData, Span, UpdateExpression, UpdateOperator,
+    AssignmentExpression, AssignmentOperator, AssignmentTargetData, Comment, Expr, ExprData,
+    GetSpan, SimpleAssignmentTargetData, Span, UpdateExpression, UpdateOperator,
 };
+
+#[derive(Clone, Copy)]
+enum TargetOperator {
+    Assignment(AssignmentOperator),
+    Update(UpdateOperator),
+}
+impl TargetOperator {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Assignment(operator) => operator.as_str(),
+            Self::Update(operator) => operator.as_str(),
+        }
+    }
+}
 
 struct PreparedTarget {
     target: Expr,
     span: Span,
     layers: Vec<TargetLayer>,
+    tail_end: u32,
 }
 
 pub(super) struct SourceTarget {
     envelope: PreparedTarget,
-    operator: UpdateOperator,
+    operator: TargetOperator,
     pub(super) operator_span: Span,
 }
 
@@ -39,6 +55,9 @@ impl SourceTarget {
     }
     pub(super) fn span(&self) -> Span {
         self.envelope.span
+    }
+    pub(super) fn left_end(&self) -> u32 {
+        self.envelope.tail_end
     }
     pub(super) fn has_retained_parentheses(&self) -> bool {
         self.envelope
@@ -95,6 +114,68 @@ impl TargetGap<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn assignment_source_target(
+        &self,
+        assignment: AssignmentExpression,
+    ) -> Result<SourceTarget, FormatError> {
+        let left = assignment.left(self.ast);
+        let target = match self.ast.assignment_target_data(left) {
+            AssignmentTargetData::SimpleAssignmentTarget(node) => {
+                match self.ast.simple_assignment_target_data(node) {
+                    SimpleAssignmentTargetData::IdentifierReference(identifier) => {
+                        Expr::IdentifierReference(identifier)
+                    }
+                    _ => return Err(self.unsupported("assignment target", left)),
+                }
+            }
+            _ => return Err(self.unsupported("assignment target", left)),
+        };
+        let span = target.span(self.ast);
+        let mut source = self.prepare_source_target(
+            target,
+            TargetOperator::Assignment(assignment.operator(self.ast)),
+            Span::new(assignment.span(self.ast).start, span.start),
+            Span::new(span.end, assignment.right(self.ast).span(self.ast).start),
+            None,
+        )?;
+        if let Some(outer) = source.envelope.layers.first_mut()
+            && outer.mode == TargetLayerMode::Remove
+            && self.target_pair_is_semantic_boundary(assignment)
+        {
+            outer.mode = TargetLayerMode::Retain;
+        }
+        source.envelope.tail_end = source
+            .envelope
+            .layers
+            .iter()
+            .find(|layer| layer.mode != TargetLayerMode::Remove)
+            .map_or(span.end, |layer| layer.parentheses.outer.end);
+        Ok(source)
+    }
+
+    fn target_pair_is_semantic_boundary(&self, assignment: AssignmentExpression) -> bool {
+        if !matches!(
+            assignment.operator(self.ast),
+            AssignmentOperator::Assign
+                | AssignmentOperator::LogicalAndAssign
+                | AssignmentOperator::LogicalOrAssign
+                | AssignmentOperator::NullishAssign
+        ) {
+            return false;
+        }
+        // Suppressed right operands can still observe anonymous identifier naming.
+        let mut expression = assignment.right(self.ast);
+        loop {
+            expression = match self.ast.expr_data(expression) {
+                ExprData::ParenthesizedExpression(node) => node.expression(self.ast),
+                ExprData::Function(node) => return node.id(self.ast).is_none(),
+                ExprData::Class(node) => return node.id(self.ast).is_none(),
+                ExprData::ArrowFunctionExpression(_) => return true,
+                _ => return false,
+            };
+        }
+    }
+
     pub(super) fn update_source_target(
         &self,
         update: UpdateExpression,
@@ -123,13 +204,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Span::new(span.end - length, span.end),
             )
         };
-        self.prepare_source_target(target, operator, prefix, suffix, Some(operator_span))
+        self.prepare_source_target(
+            target,
+            TargetOperator::Update(operator),
+            prefix,
+            suffix,
+            Some(operator_span),
+        )
     }
 
     fn prepare_source_target(
         &self,
         target: Expr,
-        operator: UpdateOperator,
+        operator: TargetOperator,
         prefix: Span,
         suffix: Span,
         known_operator: Option<Span>,
@@ -203,6 +290,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             target,
             span: inner,
             layers,
+            tail_end: inner.end,
         })
     }
 
@@ -237,7 +325,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        context.position = ExpressionPosition::UpdateArgument;
+        context.position = match target.operator {
+            TargetOperator::Assignment(_) => ExpressionPosition::AssignmentTarget,
+            TargetOperator::Update(_) => ExpressionPosition::UpdateArgument,
+        };
         if context.content_mode == ContentMode::Verbatim && !target.envelope.layers.is_empty() {
             if context.expression_start.needs_asi_guard()
                 && self.options.semicolons == Semicolons::AsNeeded
@@ -250,7 +341,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_target_layers(
             target.envelope.target,
             &target.envelope.layers,
-            target.envelope.span.end,
+            target.envelope.tail_end,
             context,
             writer,
         )
