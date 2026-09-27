@@ -4,10 +4,13 @@ mod assignment;
 mod binary;
 mod conditional;
 pub(super) mod parentheses;
+mod sequence;
 mod targets;
 mod unary;
 
-use swc_next_ecma_ast::{Expr, ExprData, GetSpan, UnaryOperator, UpdateOperator};
+use swc_next_ecma_ast::{
+    Expr, ExprData, GetSpan, SequenceExpression, UnaryOperator, UpdateOperator,
+};
 
 use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
@@ -22,6 +25,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 pub(super) enum ExpressionPosition {
     Statement,
     Nested,
+    SequenceMember,
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
     UpdateArgument,
@@ -60,12 +64,19 @@ enum ParenthesesOwner {
 pub(super) enum HeadComments {
     Pending,
     Claimed,
+    ClaimedSequence(SequenceExpression),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum TailOwner {
     Expression,
     ParentOperation,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum SourceTailOwner {
+    Consumer,
+    Enclosure,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -84,6 +95,8 @@ pub(super) struct ExpressionContext {
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
     protected_head_start: Option<u32>,
+    source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
+    source_tail_owner: SourceTailOwner,
 }
 
 impl ExpressionContext {
@@ -100,6 +113,8 @@ impl ExpressionContext {
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
+            source_parentheses_tail: None,
+            source_tail_owner: SourceTailOwner::Consumer,
         }
     }
 
@@ -116,8 +131,14 @@ impl ExpressionContext {
 
     pub(super) fn inside_parentheses(mut self) -> Self {
         self.parentheses_owner = ParenthesesOwner::Parent;
+        self.source_parentheses_tail = None;
         self.expression_start = ExpressionStart::None;
         self.protected_head_start = None;
+        self
+    }
+
+    pub(super) fn with_source_tail_owner(mut self, owner: SourceTailOwner) -> Self {
+        self.source_tail_owner = owner;
         self
     }
 
@@ -214,7 +235,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if self.expression_is_parenthesized(data, context)
                 || matches!(
                     data,
-                    ExprData::ParenthesizedExpression(_) | ExprData::RegExpLiteral(_)
+                    ExprData::ParenthesizedExpression(_)
+                        | ExprData::RegExpLiteral(_)
+                        | ExprData::SequenceExpression(_)
                 )
                 || matches!(data, ExprData::UnaryExpression(node) if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
             {
@@ -282,6 +305,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         match data {
+            ExprData::SequenceExpression(_) => Some(true),
             ExprData::ConditionalExpression(_) => Some(matches!(
                 position,
                 ExpressionPosition::UnaryArgument(_)
