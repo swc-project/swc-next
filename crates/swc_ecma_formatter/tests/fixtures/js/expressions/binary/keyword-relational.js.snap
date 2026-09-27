@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(!first) in (second instanceof third);
+---------- Options ----------
+{}
+---------- Output ----------
+(!first) in (second instanceof third);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(!first) in (second instanceof third)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(!first) in
+  (second instanceof
+    third);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+(!first) in
+  (second instanceof
+    third);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(!first) in
+	(second instanceof
+		third);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+(!first) in (second instanceof third);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+(!first) in (second instanceof third);

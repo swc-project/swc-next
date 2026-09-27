@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+! /* x */ (a + b + c);
+---------- Options ----------
+{}
+---------- Output ----------
+!(/* x */ a + b + c);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+!(/* x */ a + b + c)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+!(
+  /* x */ a + b + c
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+!(
+  /* x */ a +
+  b +
+  c
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+!(
+	/* x */ a +
+	b +
+	c
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+!(/* x */ a + b + c);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+!(/* x */ a + b + c);
