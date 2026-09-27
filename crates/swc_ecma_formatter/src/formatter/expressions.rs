@@ -1,5 +1,6 @@
 //! Expression dispatch and immediate grammar and statement-start contexts.
 
+mod assignment;
 mod binary;
 mod conditional;
 pub(super) mod parentheses;
@@ -8,6 +9,7 @@ mod unary;
 
 use swc_next_ecma_ast::{Expr, ExprData, GetSpan, UnaryOperator, UpdateOperator};
 
+use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
@@ -23,6 +25,8 @@ pub(super) enum ExpressionPosition {
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
     UpdateArgument,
+    AssignmentTarget,
+    AssignmentRight(AssignmentParent),
     ConditionalTest,
     ConditionalConsequent,
     ConditionalAlternate,
@@ -122,6 +126,11 @@ impl ExpressionContext {
         self
     }
 
+    pub(super) fn is_formatted_conditional_rhs(&self, data: ExprData) -> bool {
+        self.content_mode == ContentMode::Formatted
+            && matches!(data, ExprData::ConditionalExpression(_))
+    }
+
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
         self.operand_indent = owner;
         self
@@ -211,6 +220,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 return Ok(true);
             }
+            if let ExprData::AssignmentExpression(assignment) = data {
+                return Ok(self
+                    .assignment_source_target(assignment)?
+                    .has_retained_parentheses());
+            }
             if let ExprData::UpdateExpression(update) = data
                 && !update.prefix(self.ast)
             {
@@ -274,6 +288,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::ParenthesizedUnaryArgument(_)
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
+            )),
+            ExprData::AssignmentExpression(_) => Some(!matches!(
+                position,
+                ExpressionPosition::Statement | ExpressionPosition::AssignmentRight(_)
             )),
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
@@ -394,6 +412,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context,
                     writer,
                 );
+            }
+            ExprData::AssignmentExpression(assignment) => {
+                return self.format_assignment(assignment, context, writer);
             }
             ExprData::ConditionalExpression(conditional) => {
                 return self.format_conditional(conditional, context, writer);

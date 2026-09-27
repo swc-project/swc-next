@@ -387,6 +387,108 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(super) fn source_parentheses_rhs_content(
+        &self,
+        mut data: ExprData,
+        mut context: ExpressionContext,
+    ) -> ExprData {
+        let original = data;
+        let mut ignored = false;
+        if !self.has_suppression {
+            return data;
+        }
+        while let ExprData::ParenthesizedExpression(parenthesized) = data {
+            if context.content_mode == ContentMode::Verbatim
+                && !self.verbatim_parentheses_are_removable(parenthesized, context.position)
+            {
+                break;
+            }
+            let (mode, child) = match self.source_parentheses_choice(parenthesized, context) {
+                SourceParenthesesChoice::Content {
+                    mode,
+                    ignored_child: Some(child),
+                } => (mode, child),
+                _ => break,
+            };
+            context.content_mode = mode;
+            ignored = true;
+            data = self.ast.expr_data(child);
+        }
+        if ignored { data } else { original }
+    }
+
+    pub(super) fn ignored_parentheses_child(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        mode: ContentMode,
+    ) -> Option<Expr> {
+        if !self.has_suppression {
+            return None;
+        }
+        let span = parenthesized.span(self.ast);
+        let child = parenthesized.expression(self.ast);
+        let child_span = child.span(self.ast);
+        let mode = self.parentheses_content_mode(
+            SourceParentheses {
+                outer: span,
+                inner: child_span,
+                inner_target: ParenthesisInner::Expression(child),
+            },
+            mode,
+        );
+        if mode != ContentMode::Verbatim {
+            return None;
+        }
+        let head = self
+            .comments
+            .in_range(Span::new(span.start, child_span.start));
+        let trailing = Span::new(child_span.end, span.end - 1);
+        let tail = self.comments.in_range(trailing);
+        self.ignored_parentheses_child_with_comments(
+            child,
+            mode,
+            SourceParenthesesComments { head, tail },
+        )
+    }
+
+    fn ignored_parentheses_child_with_comments(
+        &self,
+        child: Expr,
+        mode: ContentMode,
+        comments: SourceParenthesesComments<'ast>,
+    ) -> Option<Expr> {
+        if !self.has_suppression || mode != ContentMode::Verbatim {
+            return None;
+        }
+        comments
+            .head
+            .iter()
+            .chain(comments.tail)
+            .all(|&comment| {
+                let semantics = self.comment_semantics(comment);
+                semantics.is_ordinary() || semantics.suppression
+            })
+            .then_some(child)
+    }
+
+    fn parentheses_content_mode(
+        &self,
+        boundary: SourceParentheses,
+        mode: ContentMode,
+    ) -> ContentMode {
+        if mode == ContentMode::Verbatim || !self.has_suppression {
+            return mode;
+        }
+        let leading = self
+            .comments
+            .in_range(Span::new(boundary.outer.start, boundary.inner.start));
+        if self.content_mode(leading) == ContentMode::Verbatim {
+            return ContentMode::Verbatim;
+        }
+        let trailing = Span::new(boundary.inner.end, boundary.outer.end - 1);
+        self.trailing_content_mode(trailing, true)
+    }
+
     fn source_parentheses_choice(
         &self,
         parenthesized: ParenthesizedExpression,
@@ -887,6 +989,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary,
             context,
             kind,
+            None,
             writer,
             |formatter, context, writer| formatter.format_expression(inner, context, writer),
         )
@@ -908,7 +1011,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             RetainedParentheses::Annotation
         };
-        self.format_retained_source_parentheses(boundary, context, kind, writer, content)
+        self.format_retained_source_parentheses(boundary, context, kind, None, writer, content)
     }
 
     fn format_retained_source_parentheses(
@@ -916,6 +1019,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: SourceParentheses,
         context: ExpressionContext,
         kind: RetainedParentheses,
+        leading_mode: Option<ContentMode>,
         writer: &mut Writer<'ast>,
         content: impl FnOnce(
             &mut Self,
@@ -943,7 +1047,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::Unbound
             ))
         .then_some(inner_span.start);
-        let opening = if matches!(binding, CommentBinding::SourceBound) {
+        let opening = if leading_mode.is_some() || matches!(binding, CommentBinding::SourceBound) {
             self.source_line_constraint(span.start + 1, first)
         } else {
             self.line_constraint(span.start + 1, first)
@@ -979,7 +1083,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mode = if context.content_mode == ContentMode::Verbatim {
                     ContentMode::Verbatim
                 } else {
-                    self.content_mode(source_comments.head)
+                    leading_mode.unwrap_or_else(|| self.content_mode(source_comments.head))
                 };
                 let position =
                     if let (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(operator)) =
@@ -1389,6 +1493,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary,
             context,
             RetainedParentheses::Annotation,
+            None,
             writer,
             |formatter, inner, writer| {
                 formatter.format_expression_prepared(
