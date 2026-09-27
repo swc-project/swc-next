@@ -14,7 +14,7 @@ test("encode writes spans in canonical little-endian order", () => {
   });
 
   assert.deepEqual(
-    [...buffer.subarray(36, 44)],
+    [...buffer.subarray(40, 48)],
     [0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05],
   );
 });

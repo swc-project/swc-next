@@ -6,7 +6,7 @@
 //! `extra_data` using the same generated AST schema.
 //!
 //! Layout, in order:
-//! - 36-byte header;
+//! - 40-byte header, including the first non-ASCII source byte position;
 //! - `node_count` UTF-16 spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to four bytes;
 //! - `node_count` 16-byte `NodePayload` values;
@@ -39,7 +39,7 @@ use crate::{
     NodePayload, SourceType, Span,
 };
 
-const HEADER_SIZE: usize = 36;
+const HEADER_SIZE: usize = 40;
 const SPAN_SIZE: usize = 8;
 const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
@@ -109,7 +109,7 @@ pub fn serialize_into(
     if buf.len() < required {
         return required;
     }
-    let positions = build_pos_map(tree.source(), source_utf16_len);
+    let (positions, first_non_ascii_pos) = build_pos_map(tree.source(), source_utf16_len);
 
     // ====================== Header ======================
     let node_count = u32::try_from(tree.node_count()).expect("AST node count exceeds u32");
@@ -133,6 +133,7 @@ pub fn serialize_into(
         tree.root_node_id().index() as u32,
         (if tree.is_ts() { FLAG_TS } else { 0 })
             | ((tree.source_type() as u32) << FLAG_SOURCE_TYPE_SHIFT),
+        u32::try_from(first_non_ascii_pos).expect("AST source length exceeds u32"),
     ] {
         write_u32(buf, &mut pos, value);
     }
@@ -415,22 +416,27 @@ fn checked_add(left: usize, right: usize) -> Result<usize, DeserializeError> {
         .ok_or(DeserializeError("AST buffer section offset overflow"))
 }
 
-fn build_pos_map(source: &str, source_utf16_len: usize) -> Option<Vec<u32>> {
+fn build_pos_map(source: &str, source_utf16_len: usize) -> (Option<Vec<u32>>, usize) {
     if source.len() == source_utf16_len {
-        return None;
+        return (None, source.len());
     }
 
     let mut map = vec![0; source.len() + 1];
     let mut utf16 = 0u32;
+    let mut first_non_ascii_pos = source.len();
     for (byte, ch) in source.char_indices() {
-        map[byte..byte + ch.len_utf8()].fill(utf16);
-        if ch.len_utf8() == 4 {
+        let char_len = ch.len_utf8();
+        if char_len != 1 && first_non_ascii_pos == source.len() {
+            first_non_ascii_pos = byte;
+        }
+        map[byte..byte + char_len].fill(utf16);
+        if char_len == 4 {
             map[byte + 3] = utf16 + 1;
         }
         utf16 += ch.len_utf16() as u32;
     }
     map[source.len()] = utf16;
-    Some(map)
+    (Some(map), first_non_ascii_pos)
 }
 
 #[inline]
@@ -517,21 +523,22 @@ mod tests {
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         assert_eq!(serialize_into(&ast, &[], &mut buffer, 0), buffer.len());
-        assert_eq!(buffer.len(), 104);
+        assert_eq!(buffer.len(), 108);
 
         assert_eq!(u32_at(&buffer, 0), 2); // node count
         assert_eq!(u32_at(&buffer, 4), 2); // extra-data count
         assert_eq!(u32_at(&buffer, 28), 1); // root node ID
+        assert_eq!(u32_at(&buffer, 36), 0); // no non-ASCII source bytes
 
-        assert_eq!(u32_at(&buffer, 72), u32::MAX); // no hashbang
-        assert_eq!(u32_at(&buffer, 76), 0); // inline directives start
-        assert_eq!(u32_at(&buffer, 80), 0); // inline directives end
-        assert_eq!(u32_at(&buffer, 84), 1); // out-of-line body field
+        assert_eq!(u32_at(&buffer, 76), u32::MAX); // no hashbang
+        assert_eq!(u32_at(&buffer, 80), 0); // inline directives start
+        assert_eq!(u32_at(&buffer, 84), 0); // inline directives end
+        assert_eq!(u32_at(&buffer, 88), 1); // out-of-line body field
 
-        assert_eq!(u32_at(&buffer, 88), 0); // body element node ID
-        assert_eq!(u32_at(&buffer, 92), 0); // node ID padding
-        assert_eq!(u32_at(&buffer, 96), 0); // body range start
-        assert_eq!(u32_at(&buffer, 100), 1); // body range end
+        assert_eq!(u32_at(&buffer, 92), 0); // body element node ID
+        assert_eq!(u32_at(&buffer, 96), 0); // node ID padding
+        assert_eq!(u32_at(&buffer, 100), 0); // body range start
+        assert_eq!(u32_at(&buffer, 104), 1); // body range end
     }
 
     #[test]
@@ -590,7 +597,8 @@ mod tests {
         let mut buffer = vec![0; required];
         assert_eq!(serialize_into(&ast, &diagnostics, &mut buffer, 2), required);
         assert_eq!(u32_at(&buffer, 24), 1); // diagnostic count
-        assert_eq!(u32_at(&buffer, 40), 2); // program end in UTF-16 units
+        assert_eq!(u32_at(&buffer, 36), 0); // first non-ASCII byte
+        assert_eq!(u32_at(&buffer, 44), 2); // program end in UTF-16 units
 
         let diagnostic = diagnostics_offset;
         assert_eq!(buffer[diagnostic], Severity::Warning as u8);
