@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 49/1070 (4.58%)
-Snapshot matched: 49/1070
-AST parity: 51/51
-AST mismatched: 0/51
+Passed: 52/1070 (4.86%)
+Snapshot matched: 52/1070
+AST parity: 53/53
+AST mismatched: 0/53
 AST format errors: 0/1070
-Mismatched: 2/1070
-Format errors: 1018/1070
+Mismatched: 1/1070
+Format errors: 1016/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -658,10 +658,7 @@ Unsupported option sets: 19
 - js/return/comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-break/break.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/export-default.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/ignore.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/ignored.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/no-semi/expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized-trailing-comment-unstable.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized-trailing-comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
