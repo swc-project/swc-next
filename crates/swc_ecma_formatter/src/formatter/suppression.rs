@@ -11,6 +11,12 @@ pub(super) enum ContentMode {
     Verbatim,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct DelimitedSuppression {
+    pub(super) preceding: Option<Span>,
+    pub(super) following: ContentMode,
+}
+
 /// Source-run placement is intrinsic; the consumer decides whether it supplies
 /// the terminal boundary needed by an own-line trailing suppression.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -122,6 +128,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn delimited_suppression(
+        &self,
+        target: Span,
+        end: u32,
+    ) -> Option<DelimitedSuppression> {
+        if !self.has_suppression {
+            return None;
+        }
+        self.resolve_delimited_suppression(target, end)
+    }
+
+    fn resolve_delimited_suppression(
+        &self,
+        target: Span,
+        end: u32,
+    ) -> Option<DelimitedSuppression> {
+        let span = Span::new(target.end, end);
+        let comments = self.comments.in_range(span);
+        if self.content_mode(comments) != ContentMode::Verbatim {
+            return None;
+        }
+        let mut preceding_target = None;
+        let mut following_mode = ContentMode::Formatted;
+        let mut first = 0;
+        while first < comments.len() {
+            let mut last = first + 1;
+            while last < comments.len() {
+                let gap = Span::new(comments[last - 1].span.end, comments[last].span.start);
+                if self.line_breaks(gap.start, gap.end) != 0
+                    || !self.source(gap).chars().all(is_source_whitespace)
+                {
+                    break;
+                }
+                last += 1;
+            }
+            let run = &comments[first..last];
+            if self.content_mode(run) == ContentMode::Verbatim {
+                let after = run[run.len() - 1];
+                let next = comments.get(last).map_or(end, |comment| comment.span.start);
+                let end_of_line = self.comment_run_ends_line(after, next);
+                let preceding = !self.source_position_starts_line(run[0].span.start)
+                    && (end_of_line
+                        || self
+                            .find_token(Span::new(after.span.end, end), &comments[last..], ",")
+                            .is_some());
+                if preceding {
+                    preceding_target = Some(target);
+                } else {
+                    following_mode = ContentMode::Verbatim;
+                }
+            }
+            first = last;
+        }
+        Some(DelimitedSuppression {
+            preceding: preceding_target,
+            following: following_mode,
+        })
+    }
+
     pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
         if self
             .trailing_suppression_from_comments(span, self.comments.in_range(span), terminal)
@@ -133,7 +198,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_assignment_source_gap(
+    pub(super) fn format_delimited_source_gap(
         &mut self,
         gap: Span,
         writer: &mut Writer<'ast>,

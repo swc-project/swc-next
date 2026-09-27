@@ -2,7 +2,7 @@
 
 use super::binary::BinaryLike;
 use super::parentheses::ExpressionContent;
-use super::{ExpressionContext, ExpressionPosition, Formatter};
+use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
@@ -177,8 +177,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
                 self.format_expression_tail(tail, writer)?;
-                self.format_assignment_source_gap(source.gap, writer)?
-                    .write(writer, FlatSeparator::Space, Writer::space);
+                self.format_delimited_source_gap(source.gap, writer)?.write(
+                    writer,
+                    FlatSeparator::Space,
+                    Writer::space,
+                );
                 let parent = match context.position {
                     ExpressionPosition::Statement => AssignmentParent::Statement,
                     _ => AssignmentParent::Nested,
@@ -186,6 +189,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_expression(
                     right,
                     ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))
+                        .with_source_tail_owner(SourceTailOwner::Enclosure)
                         .with_content_mode(source.right)
                         .with_tail_owner(context.tail_owner),
                     writer,
@@ -206,6 +210,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => AssignmentParent::Nested,
         };
         let right_context = ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))
+            .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_content_mode(boundary.mode)
             .with_tail_owner(context.tail_owner);
         let layout = self.assignment_layout(data, context.position, right_context, &boundary);
