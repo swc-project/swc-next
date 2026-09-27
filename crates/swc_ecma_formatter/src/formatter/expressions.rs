@@ -1,6 +1,7 @@
 //! Expression dispatch and immediate grammar and statement-start contexts.
 
 mod binary;
+mod conditional;
 pub(super) mod parentheses;
 mod targets;
 mod unary;
@@ -22,6 +23,9 @@ pub(super) enum ExpressionPosition {
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
     UpdateArgument,
+    ConditionalTest,
+    ConditionalConsequent,
+    ConditionalAlternate,
     BinaryOperand {
         operator: BinaryOperatorKind,
         side: OperandSide,
@@ -75,6 +79,7 @@ pub(super) struct ExpressionContext {
     head_comments: HeadComments,
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
+    protected_head_start: Option<u32>,
 }
 
 impl ExpressionContext {
@@ -90,6 +95,7 @@ impl ExpressionContext {
             head_comments: HeadComments::Pending,
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
+            protected_head_start: None,
         }
     }
 
@@ -98,9 +104,16 @@ impl ExpressionContext {
         self
     }
 
+    pub(super) fn with_parent_head(mut self, parent: Self) -> Self {
+        self.expression_start = parent.expression_start;
+        self.protected_head_start = parent.protected_head_start;
+        self
+    }
+
     pub(super) fn inside_parentheses(mut self) -> Self {
         self.parentheses_owner = ParenthesesOwner::Parent;
         self.expression_start = ExpressionStart::None;
+        self.protected_head_start = None;
         self
     }
 
@@ -213,6 +226,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 continue;
             }
+            if let ExprData::ConditionalExpression(conditional) = data {
+                expression = conditional.test(self.ast);
+                context.position = ExpressionPosition::ConditionalTest;
+                continue;
+            }
             return Ok(false);
         }
     }
@@ -222,11 +240,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.expression_needs_parentheses(data, context.position) == Some(true)
     }
 
+    fn is_nullish_conditional_operand(&self, data: ExprData, position: ExpressionPosition) -> bool {
+        matches!(
+            position,
+            ExpressionPosition::ConditionalTest
+                | ExpressionPosition::ConditionalConsequent
+                | ExpressionPosition::ConditionalAlternate
+        ) && matches!(data, ExprData::LogicalExpression(node)
+            if node.operator(self.ast) == swc_next_ecma_ast::LogicalOperator::NullishCoalescing)
+    }
+
     fn expression_needs_parentheses(
         &self,
         data: ExprData,
         position: ExpressionPosition,
     ) -> Option<bool> {
+        if self.is_nullish_conditional_operand(data, position) {
+            return Some(true);
+        }
         if let Some(child) = BinaryOperatorKind::from_data(data, self.ast) {
             return Some(match position {
                 ExpressionPosition::UnaryArgument(_) => true,
@@ -237,6 +268,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         match data {
+            ExprData::ConditionalExpression(_) => Some(matches!(
+                position,
+                ExpressionPosition::UnaryArgument(_)
+                    | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                    | ExpressionPosition::BinaryOperand { .. }
+                    | ExpressionPosition::ConditionalTest
+            )),
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
                 ExpressionPosition::UnaryArgument(parent)
@@ -356,6 +394,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context,
                     writer,
                 );
+            }
+            ExprData::ConditionalExpression(conditional) => {
+                return self.format_conditional(conditional, context, writer);
             }
             ExprData::UnaryExpression(unary) => return self.format_unary(unary, writer),
             ExprData::UpdateExpression(update) => {

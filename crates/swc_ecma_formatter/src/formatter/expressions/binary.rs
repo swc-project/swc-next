@@ -159,12 +159,14 @@ struct BinaryChain {
 #[derive(Clone, Copy)]
 struct BinaryHead {
     expression_start: ExpressionStart,
+    protected_head_start: Option<u32>,
 }
 
 impl BinaryHead {
     fn from_context(context: &ExpressionContext) -> Self {
         Self {
             expression_start: context.expression_start,
+            protected_head_start: context.protected_head_start,
         }
     }
 }
@@ -605,6 +607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         chain.first.left_scope = owner.scope;
         let context = ExpressionContext {
             expression_start: head.expression_start,
+            protected_head_start: head.protected_head_start,
             ..context
         };
         let tail = self.format_binary_head(chain.first, head, &mut owner, writer)?;
@@ -627,6 +630,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_expression_start(head.expression_start)
             .with_content_mode(entry.left_mode());
             context.head_comments = HeadComments::Claimed;
+            context.protected_head_start = head.protected_head_start;
             self.format_binary_owned_operand(owner, context, writer)
         })
     }
