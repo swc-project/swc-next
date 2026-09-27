@@ -69,6 +69,16 @@ test("parseSync decodes ASCII strings after non-ASCII source text", () => {
   }
 });
 
+test("parseSync decodes UTF-8 source and pool strings", () => {
+  const longValue = "é".repeat(40);
+  const source = `const short = "é"; const long = "${longValue}"; const escaped = "\\uFEFF";`;
+  const declarations = parseSync(source).program.body;
+
+  assert.equal(declarations[0].declarations[0].init.value, "é");
+  assert.equal(declarations[1].declarations[0].init.value, longValue);
+  assert.equal(declarations[2].declarations[0].init.value, "\uFEFF");
+});
+
 test("parseSync resolves unambiguous CommonJS wrapper syntax", () => {
   const options = { sourceType: SourceType.Unambiguous };
 

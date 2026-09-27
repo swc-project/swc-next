@@ -854,7 +854,15 @@ const NULL = -1;
 const HEADER_SIZE = 36;
 const NATIVE_LITTLE_ENDIAN =
   new Uint8Array(new Int32Array([1]).buffer)[0] === 1;
-const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
+const utf8Slice = typeof Buffer !== "undefined" &&
+  typeof Buffer.prototype.utf8Slice === "function"
+  ? Buffer.prototype.utf8Slice
+  : (() => {
+      const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+      return function(start, end) {
+        return decoder.decode(this.subarray(start, end));
+      };
+    })();
 const latin1Slice = typeof Buffer !== "undefined" &&
   typeof Buffer.prototype.latin1Slice === "function"
   ? Buffer.prototype.latin1Slice
@@ -913,7 +921,7 @@ function decodePool(bytes) {
       break;
     }
   }
-  if (!hasSurrogate) return textDecoder.decode(bytes);
+  if (!hasSurrogate) return utf8Slice.call(bytes, 0, length);
 
   let result = "";
   for (let i = 0; i < bytes.length;) {
@@ -1003,12 +1011,12 @@ const DECODE_PREAMBLE: &str = r#"
       if (length <= 64) {
         for (let i = 0; i < length; i++) {
           if (sourceBuffer[start + i] >= 0x80) {
-            return textDecoder.decode(sourceBuffer.subarray(start, end));
+            return utf8Slice.call(sourceBuffer, start, end);
           }
         }
         return sourceLatin.slice(start, end);
       }
-      return textDecoder.decode(sourceBuffer.subarray(start, end));
+      return utf8Slice.call(sourceBuffer, start, end);
     }
     return decodePool(bytes.subarray(
       strings + start - sourceLength,
@@ -1075,7 +1083,7 @@ const DECODE_PREAMBLE: &str = r#"
     };
     const readDiagnosticString = () => {
       const length = readU32();
-      const value = textDecoder.decode(bytes.subarray(offset, offset + length));
+      const value = utf8Slice.call(bytes, offset, offset + length);
       offset += length;
       return value;
     };
