@@ -1,0 +1,98 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+// marker
+,
+// @ts-ignore
+first];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  // marker
+  ,
+  // @ts-ignore
+  first,]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	// marker
+	,
+	// @ts-ignore
+	first,];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  // marker
+  ,
+  // @ts-ignore
+  first,];

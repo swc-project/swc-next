@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+void [firstLongIdentifier,secondLongIdentifier];
+---------- Options ----------
+{}
+---------- Output ----------
+void [firstLongIdentifier, secondLongIdentifier];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+void [firstLongIdentifier, secondLongIdentifier]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+void [
+  firstLongIdentifier,
+  secondLongIdentifier,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+void [
+  firstLongIdentifier,
+  secondLongIdentifier,
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+void [
+	firstLongIdentifier,
+	secondLongIdentifier,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+void [firstLongIdentifier, secondLongIdentifier];
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+void [firstLongIdentifier, secondLongIdentifier];

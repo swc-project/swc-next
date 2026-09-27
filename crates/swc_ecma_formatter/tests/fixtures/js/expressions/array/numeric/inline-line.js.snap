@@ -1,0 +1,105 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[1,2 // after
+,3,4];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  1,
+  2, // after
+  3,
+  4,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	1,
+	2, // after
+	3,
+	4,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  1,
+  2, // after
+  3,
+  4,
+];

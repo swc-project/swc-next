@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 52/1070 (4.86%)
-Snapshot matched: 52/1070
-AST parity: 53/53
-AST mismatched: 0/53
+Passed: 60/1070 (5.61%)
+Snapshot matched: 60/1070
+AST parity: 61/61
+AST mismatched: 0/61
 AST format errors: 0/1070
 Mismatched: 1/1070
-Format errors: 1016/1070
+Format errors: 1008/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -45,25 +45,21 @@ Unsupported option sets: 19
 
 # Failed
 
-- js/array-spread/multiple.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/array-and-tuple.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/empty.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/holes-in-args.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/issue-10159.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/arrays/last.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/nested.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-in-args.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-in-assignment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-negative-comment-after-minus.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-negative.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/arrays/numbers-trailing-comma.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-with-holes.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-with-trailing-comments.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers-with-tricky-comments.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers1.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrays/numbers3.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/arrays/preserve_empty_lines.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrow-call/arrow_call.js: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
 - js/arrow-call/class-property.js: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
 - js/arrows/array-and-object.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
@@ -591,7 +587,6 @@ Unsupported option sets: 19
 - js/no-semi/blank-lines.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/class.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/comments.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/no-semi/debugger-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/do-while-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/for-in-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/for-of-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
@@ -675,7 +670,6 @@ Unsupported option sets: 19
 - js/strings/escaped.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/strings/multiline-literal.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/strings/non-octal-eight-and-nine.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/strings/strings.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/switch/comments.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/switch/comments2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/switch/empty_lines.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

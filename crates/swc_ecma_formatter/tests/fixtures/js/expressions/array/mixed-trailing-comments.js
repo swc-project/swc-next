@@ -1,0 +1,2 @@
+[first, /* block */ // line
+last];

@@ -1,0 +1,2 @@
+target // before
+= [first, second];

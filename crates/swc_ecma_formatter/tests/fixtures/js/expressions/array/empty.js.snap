@@ -1,0 +1,54 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[];
+---------- Options ----------
+{}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[];

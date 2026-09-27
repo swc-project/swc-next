@@ -1,0 +1,1 @@
+[conditionLong ? consequentLong : alternateLong];

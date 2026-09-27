@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* @__PURE__ */ [/* inside */]);
+---------- Options ----------
+{}
+---------- Output ----------
+(/* @__PURE__ */ [/* inside */]);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(/* @__PURE__ */ [/* inside */])
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(/* @__PURE__ */ [
+    /* inside */
+  ]
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+(/* @__PURE__ */ [
+    /* inside */
+  ]
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(/* @__PURE__ */ [
+		/* inside */
+	]
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+(/* @__PURE__ */ [/* inside */]);
