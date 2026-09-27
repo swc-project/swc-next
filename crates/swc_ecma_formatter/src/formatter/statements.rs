@@ -286,7 +286,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 StatementItem::Directive(_) => None,
             };
-            let needs_guard = !guarded
+            let needs_guard = mode == ContentMode::Verbatim
+                && !guarded
                 && self.options.semicolons == Semicolons::AsNeeded
                 && expression
                     .map(|expression| self.statement_expression_needs_guard(expression, mode))

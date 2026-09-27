@@ -1,14 +1,20 @@
 //! Prefix and postfix operators with explicitly owned operand boundaries.
 
 use swc_next_ecma_ast::{
-    CommentKind, GetSpan, Span, UnaryExpression, UnaryOperator, UpdateExpression,
+    Comment, CommentKind, ExprData, GetSpan, Span, UnaryExpression, UnaryOperator, UpdateExpression,
 };
 
-use super::{ExpressionContext, ExpressionPosition, Formatter, ParenthesesOwner};
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
+use super::binary::BinaryLike;
+use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent, ParenthesesOwner};
+use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
+
+struct UnaryOperandTail<'ast> {
+    binary: BinaryLike,
+    tail: ExpressionTail<'ast>,
+}
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_unary(
@@ -30,12 +36,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = unary.span(self.ast);
         let diagnostic_sensitive = self.diagnostic_range_is_sensitive(span);
         let argument = content.expression;
-        let argument_span = argument.span(self.ast);
-        let leading = self.comments.between(Span::new(
+        let mut argument_span = argument.span(self.ast);
+        let mut leading = self.comments.between(Span::new(
             span.start + operator.as_str().len() as u32,
             argument_span.start,
         ))?;
         let mode = self.content_mode(leading);
+        let source_pair = if diagnostic_sensitive {
+            self.protected_grammar_parentheses(
+                &content,
+                ExpressionContext::at(position).with_content_mode(mode),
+            )
+        } else {
+            None
+        };
+        if let Some(boundary) = source_pair {
+            argument_span = boundary.outer;
+            let count = leading.partition_point(|comment| comment.span.end <= boundary.outer.start);
+            leading = &leading[..count];
+        }
         let trailing = self
             .comments
             .in_range(Span::new(argument_span.end, span.end));
@@ -64,46 +83,74 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             self.line_constraint(previous, argument_span.start)
                 .write(writer, flat, |_| {});
-            let context = ExpressionContext::at(position).with_content_mode(mode);
-            let tail = self.format_expression(argument, context, writer)?;
+            let operand_indent = match content.data {
+                ExprData::BinaryExpression(_)
+                | ExprData::LogicalExpression(_)
+                | ExprData::ParenthesizedExpression(_) => OperandIndent::Parent,
+                _ => OperandIndent::Expression,
+            };
+            let context = ExpressionContext::at(position)
+                .with_content_mode(mode)
+                .with_operand_indent(operand_indent);
+            let tail = match source_pair {
+                Some(boundary) => {
+                    self.format_protected_grammar_parentheses(boundary, content, context, writer)?
+                }
+                None => {
+                    self.format_expression_prepared(argument, Some(content), context, writer)?
+                }
+            };
             return self.capture_expression_tail(Span::new(argument_span.end, span.end), tail);
         }
         if leading.is_empty() && trailing.is_empty() {
             return self.format_expression(argument, ExpressionContext::at(position), writer);
         }
+        let operand_tail = if leading.is_empty() && mode == ContentMode::Formatted {
+            self.prepare_unary_operand_tail(content.data, argument_span, span.end, trailing)
+        } else {
+            None
+        };
         // The operator owns one group around boundary comments and its operand.
         writer.group(false, |writer| {
             writer.text("(");
             writer.indent(|writer| {
                 writer.soft_line();
                 self.comments.claim(leading)?;
-                let position = ExpressionPosition::ParenthesizedUnaryArgument(operator);
-                let mut context = ExpressionContext::at(position)
-                    .with_content_mode(mode)
-                    .inside_parentheses();
-                // A distinct operand pair remains owned by that expression;
-                // otherwise this physical unary pair supplies its frame.
-                if self.expression_needs_parentheses(content.data, position) == Some(true) {
-                    context.parentheses_owner = ParenthesesOwner::Expression;
+                if let Some(owner) = operand_tail {
+                    // A last operand's tail stays in the binary continuation group,
+                    // even after its source parentheses have been removed.
+                    let tail = self.format_binary_enclosed(owner.binary, writer)?;
+                    self.format_expression_tail(tail, writer)?;
+                    self.format_expression_tail(Some(owner.tail), writer)
+                } else {
+                    let position = ExpressionPosition::ParenthesizedUnaryArgument(operator);
+                    let mut context = ExpressionContext::at(position)
+                        .with_content_mode(mode)
+                        .inside_parentheses();
+                    // A distinct operand pair remains owned by that expression;
+                    // otherwise this physical unary pair supplies its frame.
+                    if self.expression_needs_parentheses(content.data, position) == Some(true) {
+                        context.parentheses_owner = ParenthesesOwner::Expression;
+                    }
+                    let tail = self.format_expression_with_leading_comments(
+                        argument,
+                        NodeHead {
+                            comments: leading,
+                            content_start: argument_span.start,
+                            layout: CommentRunLayout::GroupedLeading(leading_end),
+                            gap_end: None,
+                        },
+                        context,
+                        writer,
+                    )?;
+                    self.format_expression_tail(tail, writer)?;
+                    self.comments.claim(trailing)?;
+                    self.format_comment_run(
+                        trailing,
+                        CommentRunLayout::SourceAfter(argument_span.end),
+                        writer,
+                    )
                 }
-                let tail = self.format_expression_with_leading_comments(
-                    argument,
-                    NodeHead {
-                        comments: leading,
-                        content_start: argument_span.start,
-                        layout: CommentRunLayout::GroupedLeading(leading_end),
-                        gap_end: None,
-                    },
-                    context,
-                    writer,
-                )?;
-                self.format_expression_tail(tail, writer)?;
-                self.comments.claim(trailing)?;
-                self.format_comment_run(
-                    trailing,
-                    CommentRunLayout::SourceAfter(argument_span.end),
-                    writer,
-                )
             })?;
             if trailing
                 .last()
@@ -115,6 +162,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             writer.text(")");
             Ok(None)
+        })
+    }
+
+    fn prepare_unary_operand_tail(
+        &self,
+        argument: ExprData,
+        argument_span: Span,
+        unary_end: u32,
+        comments: &'ast [Comment],
+    ) -> Option<UnaryOperandTail<'ast>> {
+        let last = comments.last()?;
+        let binary = BinaryLike::from_data(argument, self.ast)?;
+        let right = binary.right.span(self.ast);
+        if self.line_breaks(argument_span.start, right.start) == 0
+            || self.line_breaks(right.start, last.span.end) != 0
+            || !matches!(
+                self.comment_binding(comments, Span::new(argument_span.end, unary_end)),
+                CommentBinding::Unbound
+            )
+        {
+            return None;
+        }
+        Some(UnaryOperandTail {
+            binary,
+            tail: ExpressionTail {
+                source_end: right.end,
+                comments,
+            },
         })
     }
 
