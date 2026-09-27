@@ -1,0 +1,3 @@
+target /* before
+ comment */
+= other;
