@@ -267,20 +267,20 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 3: {
         const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
         result = { type: "Literal", start, end, value: f_value, raw: f_raw };
         break;
       }
       case 4: {
         const f_value = _dv.getFloat64(payload + 0, true);
-        const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
+        const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : source.slice(start, end);
         const value = f_value;
         const raw = f_raw ?? String(value);
         result = { type: "Literal", start, end, value, raw };
         break;
       }
       case 5: {
-        const f_raw = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end - 1);
         const raw = `${f_raw}n`;
         const value = BigInt(f_raw.replaceAll("_", ""));
         result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
@@ -320,9 +320,8 @@ export function decodeTs(buffer, source, sourceBuffer) {
         break;
       }
       case 10: {
-        const extraId = _i32[(payload + 12) >> 2];
         const f_cooked = str(_dv.getInt32(payload + 2, true), _dv.getInt32(payload + 2 + 4, true));
-        const f_raw = str(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
         const f_tail = _dv.getUint8(payload + 0) !== 0;
         const f_isCookedUndefined = _dv.getUint8(payload + 1) !== 0;
         result = { type: "TemplateElement", start: start - 1, end: f_tail ? end + 1 : end + 2, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };
@@ -1700,7 +1699,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
         break;
       }
       case 174: {
-        const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_value = source.slice(start, end);
         result = { type: "JSXText", start, end, value: f_value, raw: f_value };
         break;
       }
