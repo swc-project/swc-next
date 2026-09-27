@@ -53,6 +53,22 @@ test("parseSync exposes the program lazily", () => {
   assert.equal(result.program, program);
 });
 
+test("parseSync decodes ASCII strings after non-ASCII source text", () => {
+  const longName = "longAsciiIdentifierAfterUnicodePrefix".repeat(3);
+  const source = `/* 😀 */ const asciiName = "plain"; const escaped = "\\u0061"; const 文 = "é"; const ${longName} = 1;`;
+
+  for (const lang of [Lang.Js, Lang.Ts]) {
+    const declarations = parseSync(source, { lang }).program.body;
+    assert.equal(declarations[0].declarations[0].id.name, "asciiName");
+    assert.equal(declarations[0].declarations[0].init.value, "plain");
+    assert.equal(declarations[1].declarations[0].id.name, "escaped");
+    assert.equal(declarations[1].declarations[0].init.value, "a");
+    assert.equal(declarations[2].declarations[0].id.name, "文");
+    assert.equal(declarations[2].declarations[0].init.value, "é");
+    assert.equal(declarations[3].declarations[0].id.name, longName);
+  }
+});
+
 test("parseSync resolves unambiguous CommonJS wrapper syntax", () => {
   const options = { sourceType: SourceType.Unambiguous };
 

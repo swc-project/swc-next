@@ -5,6 +5,10 @@ const HEADER_SIZE = 36;
 const NATIVE_LITTLE_ENDIAN =
   new Uint8Array(new Int32Array([1]).buffer)[0] === 1;
 const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
+const latin1Slice = typeof Buffer !== "undefined" &&
+  typeof Buffer.prototype.latin1Slice === "function"
+  ? Buffer.prototype.latin1Slice
+  : null;
 const fromCharCode = String.fromCharCode;
 const shortStringChars = Array(65);
 for (let length = 0; length <= 64; length++) {
@@ -118,11 +122,15 @@ export function decodeJs(buffer, source, sourceBuffer) {
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
   let firstNonAsciiPos = sourceLength;
+  let sourceLatin;
   if (source.length !== sourceLength) {
     firstNonAsciiPos = 0;
     while (firstNonAsciiPos < sourceLength && sourceBuffer[firstNonAsciiPos] < 0x80) {
       firstNonAsciiPos++;
     }
+    sourceLatin = latin1Slice === null
+      ? new TextDecoder("latin1").decode(sourceBuffer.subarray(0, sourceLength))
+      : latin1Slice.call(sourceBuffer, 0, sourceLength);
   }
   const str = (start, end) => {
     if (start === end) return "";
@@ -130,13 +138,12 @@ export function decodeJs(buffer, source, sourceBuffer) {
       if (end <= firstNonAsciiPos) return source.slice(start, end);
       const length = end - start;
       if (length <= 64) {
-        const chars = shortStringChars[length];
         for (let i = 0; i < length; i++) {
-          const byte = sourceBuffer[start + i];
-          if (byte >= 0x80) return textDecoder.decode(sourceBuffer.subarray(start, end));
-          chars[i] = byte;
+          if (sourceBuffer[start + i] >= 0x80) {
+            return textDecoder.decode(sourceBuffer.subarray(start, end));
+          }
         }
-        return fromCharCode.apply(null, chars);
+        return sourceLatin.slice(start, end);
       }
       return textDecoder.decode(sourceBuffer.subarray(start, end));
     }

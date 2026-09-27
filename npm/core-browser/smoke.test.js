@@ -8,7 +8,8 @@ import init, { parseSync, printSync } from "@swc-next/core-browser";
 
 test("browser exposes parseSync and printSync", async () => {
   await init();
-  const { program } = parseSync("const value = 1;");
+  const { program } = parseSync("/* 😀 */ const value = 1;");
+  expect(program.body[0].declarations[0].id.name).toBe("value");
   program.body[0].declarations[0].init.value = 2;
 
   expect(printSync(program).code).toBe("const value = 2;\n");
