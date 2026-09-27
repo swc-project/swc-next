@@ -1,0 +1,92 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first ? (/* before */ second ? third : fourth) : (fifth ? sixth /* after */ : seventh);
+---------- Options ----------
+{}
+---------- Output ----------
+first
+  ? /* before */ second
+    ? third
+    : fourth
+  : fifth
+    ? sixth /* after */
+    : seventh;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first
+  ? /* before */ second
+    ? third
+    : fourth
+  : fifth
+    ? sixth /* after */
+    : seventh
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first
+  ? /* before */ second
+    ? third
+    : fourth
+  : fifth
+    ? sixth /* after */
+    : seventh;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+first
+  ? /* before */ second
+    ? third
+    : fourth
+  : fifth
+    ? sixth /* after */
+    : seventh;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+first
+    ? /* before */ second
+        ? third
+        : fourth
+    : fifth
+      ? sixth /* after */
+      : seventh;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first
+	? /* before */ second
+		? third
+		: fourth
+	: fifth
+		? sixth /* after */
+		: seventh;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+first
+ ? /* before */ second
+   ? third
+   : fourth
+ : fifth
+   ? sixth /* after */
+   : seventh;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+first
+  ? /* before */ second
+    ? third
+    : fourth
+  : fifth
+    ? sixth /* after */
+    : seventh;

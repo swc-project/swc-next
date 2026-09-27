@@ -1,0 +1,1 @@
+conditionValue ? consequentValue : firstLongValue ?? secondLongValue;
