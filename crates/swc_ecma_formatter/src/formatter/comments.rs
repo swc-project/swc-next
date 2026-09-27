@@ -332,6 +332,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comment_is_optimizer_annotation(comment) || self.comment_is_type_cast(comment)
     }
 
+    /// Reference input normalizes CR/CRLF before attachment. Its backwards
+    /// newline check skips SPACE/TAB only; run gaps use ECMA whitespace instead.
+    pub(super) fn source_line_starts_line(&self, position: u32) -> bool {
+        self.ast.source()[..position as usize]
+            .trim_end_matches([' ', '\t'])
+            .chars()
+            .next_back()
+            .is_some_and(|character| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+    }
+
+    pub(super) fn comment_is_alignable(&self, comment: Comment) -> Result<bool, FormatError> {
+        Ok(self.prepare_comment(comment)?.is_alignable())
+    }
+
     pub(super) fn comment_binding(&self, comments: &[Comment], boundary: Span) -> CommentBinding {
         let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);

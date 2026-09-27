@@ -2,7 +2,7 @@
 
 use swc_next_ecma_ast::{Ast, Comment, CommentKind, Span};
 
-use super::{Formatter, source::is_source_whitespace};
+use super::{Formatter, diagnostics::LineConstraint, source::is_source_whitespace};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -120,6 +120,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ContentMode::Formatted
         }
+    }
+
+    pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
+        if self
+            .trailing_suppression_from_comments(span, self.comments.in_range(span), terminal)
+            .is_some()
+        {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        }
+    }
+
+    pub(super) fn format_assignment_source_gap(
+        &mut self,
+        gap: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<LineConstraint, FormatError> {
+        let comments = self.comments.in_range(gap);
+        let source_end = gap.start
+            + self
+                .source(gap)
+                .trim_end_matches(is_source_whitespace)
+                .len() as u32;
+        let last = comments
+            .last()
+            .filter(|comment| comment.span.end == source_end);
+        let following = if last.is_some() {
+            self.source_line_constraint(source_end, gap.end)
+        } else {
+            self.line_constraint(source_end, gap.end)
+        };
+        self.format_verbatim(Span::new(gap.start, source_end), writer)?;
+        Ok(following)
     }
 
     pub(super) fn trailing_suppression_from_comments(

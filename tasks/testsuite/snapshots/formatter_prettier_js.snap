@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 43/1070 (4.02%)
-Snapshot matched: 43/1070
-AST parity: 44/44
-AST mismatched: 0/44
+Passed: 49/1070 (4.58%)
+Snapshot matched: 49/1070
+AST parity: 51/51
+AST mismatched: 0/51
 AST format errors: 0/1070
-Mismatched: 1/1070
-Format errors: 1025/1070
+Mismatched: 2/1070
+Format errors: 1018/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -114,7 +114,6 @@ Unsupported option sets: 19
 - js/assignment/issue-10218.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/issue-1419.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/issue-15534.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/assignment/issue-17437.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/issue-1966.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/issue-2184.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/issue-2482-1.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -261,9 +260,7 @@ Unsupported option sets: 19
 - js/comments/between-head-and-body/between-head-and-body.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments/between-head-and-body/empty-statement.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments/between-head-and-body/non-block.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/comments/binary-expressions-block-comments.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/binary-expressions-parens.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/binary-expressions-single-comments.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/binary-expressions.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/break-continue-statements-2.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/break-continue-statements-3.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
@@ -612,7 +609,6 @@ Unsupported option sets: 19
 - js/non-strict/argument-name-clash.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/non-strict/keywords.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/nullish-coalescing/nullish_coalesing_operator.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/numeric-separators/number.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/object-colon-bug/bug.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/object-multiline/multiline.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/object-prop-break-in/comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -666,7 +662,7 @@ Unsupported option sets: 19
 - js/sequence-expression/ignore.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/ignored.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/no-semi/expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/parenthesized-trailing-comment-unstable.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/sequence-expression/parenthesized-trailing-comment-unstable.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized-trailing-comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/return.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
