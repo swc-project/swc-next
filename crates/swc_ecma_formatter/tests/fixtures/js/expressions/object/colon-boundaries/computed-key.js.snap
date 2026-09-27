@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [/* key */ name /* tail */] // boundary
+: /* value */ [first, second] });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  [/* key */ name /* tail */]: // boundary
+    /* value */ [first, second],
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [/* key */ name /* tail */]: // boundary
+    /* value */ [
+      first,
+      second,
+    ],
+});
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  [/* key */ name /* tail */]: // boundary
+    /* value */ [first, second],
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  [/* key */ name /* tail */]: // boundary
+    /* value */ [
+      first,
+      second,
+    ],
+})

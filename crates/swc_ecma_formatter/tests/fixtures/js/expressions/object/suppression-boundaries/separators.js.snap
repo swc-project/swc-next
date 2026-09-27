@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({a:1
+/*x*/,b:2});
+({a:1
+
+/*x*/,b:2});
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  a: 1,
+  /*x*/ b: 2,
+});
+({
+  a: 1,
+
+  /*x*/ b: 2,
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ a: 1, /*x*/ b: 2 });
+({
+  a: 1,
+
+  /*x*/ b: 2,
+});

@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key: // value comment
+[first, second] });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  key: // value comment
+    [first, second],
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key: // value comment
+    [first, second],
+});
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  key: // value comment
+    [first, second],
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  key: // value comment
+    [first, second],
+})

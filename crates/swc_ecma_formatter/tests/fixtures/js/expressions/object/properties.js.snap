@@ -1,0 +1,78 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({});
+({ a: 1, b, [a+b]: value, ...rest });
+({ a: { b: 2 }, c: [1, 2] });
+({ "foo": 1, "foo-bar": 2, 0x10: 3, 1n: 4, __proto__: null });
+({ "1": a, "1.5": b, "01": c, "1.0": d, "9007199254740993": e });
+---------- Options ----------
+{}
+---------- Output ----------
+({});
+({ a: 1, b, [a + b]: value, ...rest });
+({ a: { b: 2 }, c: [1, 2] });
+({ foo: 1, "foo-bar": 2, 0x10: 3, 1n: 4, __proto__: null });
+({ 1: a, 1.5: b, "01": c, "1.0": d, "9007199254740993": e });
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+({});
+({
+  a: 1,
+  b,
+  [a + b]: value,
+  ...rest,
+});
+({ a: { b: 2 }, c: [1, 2] });
+({
+  foo: 1,
+  "foo-bar": 2,
+  0x10: 3,
+  1n: 4,
+  __proto__: null,
+});
+({
+  1: a,
+  1.5: b,
+  "01": c,
+  "1.0": d,
+  "9007199254740993": e,
+});
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({})
+;({
+  a: 1,
+  b,
+  [a + b]: value,
+  ...rest
+})
+;({a: {b: 2}, c: [1, 2]})
+;({
+  foo: 1,
+  "foo-bar": 2,
+  0x10: 3,
+  1n: 4,
+  __proto__: null
+})
+;({
+  1: a,
+  1.5: b,
+  "01": c,
+  "1.0": d,
+  "9007199254740993": e
+})
+
+---------- Options ----------
+{"quoteProps":"preserve","singleQuote":true}
+---------- Output ----------
+({});
+({ a: 1, b, [a + b]: value, ...rest });
+({ a: { b: 2 }, c: [1, 2] });
+({ 'foo': 1, 'foo-bar': 2, 0x10: 3, 1n: 4, __proto__: null });
+({ '1': a, '1.5': b, '01': c, '1.0': d, '9007199254740993': e });
