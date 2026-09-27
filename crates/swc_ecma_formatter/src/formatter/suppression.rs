@@ -12,6 +12,18 @@ pub(super) enum ContentMode {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum DelimitedFollowing {
+    Node,
+    End,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct DelimitedSourceGap {
+    pub(super) end: u32,
+    pub(super) following: LineConstraint,
+}
+
+#[derive(Clone, Copy)]
 pub(super) struct DelimitedSuppression {
     pub(super) preceding: Option<Span>,
     pub(super) following: ContentMode,
@@ -132,17 +144,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         target: Span,
         end: u32,
+        following: DelimitedFollowing,
     ) -> Option<DelimitedSuppression> {
         if !self.has_suppression {
             return None;
         }
-        self.resolve_delimited_suppression(target, end)
+        self.resolve_delimited_suppression(target, end, following)
     }
 
     fn resolve_delimited_suppression(
         &self,
         target: Span,
         end: u32,
+        following: DelimitedFollowing,
     ) -> Option<DelimitedSuppression> {
         let span = Span::new(target.end, end);
         let comments = self.comments.in_range(span);
@@ -168,11 +182,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let after = run[run.len() - 1];
                 let next = comments.get(last).map_or(end, |comment| comment.span.start);
                 let end_of_line = self.comment_run_ends_line(after, next);
-                let preceding = !self.source_position_starts_line(run[0].span.start)
-                    && (end_of_line
-                        || self
-                            .find_token(Span::new(after.span.end, end), &comments[last..], ",")
-                            .is_some());
+                let preceding = matches!(following, DelimitedFollowing::End)
+                    || !self.source_position_starts_line(run[0].span.start)
+                        && (end_of_line
+                            || self
+                                .find_token(Span::new(after.span.end, end), &comments[last..], ",")
+                                .is_some());
                 if preceding {
                     preceding_target = Some(target);
                 } else {
@@ -187,22 +202,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
-        if self
-            .trailing_suppression_from_comments(span, self.comments.in_range(span), terminal)
-            .is_some()
-        {
-            ContentMode::Verbatim
-        } else {
-            ContentMode::Formatted
-        }
-    }
-
+    /// Preserve an effective trailing ignore's complete delimiter relationship.
+    /// Node and slot ownership are resolved before this claims the borrowed run.
     pub(super) fn format_delimited_source_gap(
         &mut self,
         gap: Span,
+        following: DelimitedFollowing,
         writer: &mut Writer<'ast>,
-    ) -> Result<LineConstraint, FormatError> {
+    ) -> Result<DelimitedSourceGap, FormatError> {
         let comments = self.comments.in_range(gap);
         let source_end = gap.start
             + self
@@ -212,13 +219,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let last = comments
             .last()
             .filter(|comment| comment.span.end == source_end);
-        let following = if last.is_some() {
-            self.source_line_constraint(source_end, gap.end)
-        } else {
-            self.line_constraint(source_end, gap.end)
+        let following = match following {
+            DelimitedFollowing::Node if last.is_some() => {
+                self.source_line_constraint(source_end, gap.end)
+            }
+            DelimitedFollowing::Node => self.line_constraint(source_end, gap.end),
+            DelimitedFollowing::End => {
+                // The closing delimiter owns its indentation and newline. Literal
+                // source text has no pending suffix to force that closing break.
+                if last.is_some_and(|comment| comment.kind == CommentKind::Line) {
+                    writer.break_parent();
+                }
+                LineConstraint::Unconstrained
+            }
         };
         self.format_verbatim(Span::new(gap.start, source_end), writer)?;
-        Ok(following)
+        Ok(DelimitedSourceGap {
+            end: source_end,
+            following,
+        })
+    }
+
+    pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
+        if self
+            .trailing_suppression_from_comments(span, self.comments.in_range(span), terminal)
+            .is_some()
+        {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        }
     }
 
     pub(super) fn trailing_suppression_from_comments(

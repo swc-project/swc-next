@@ -5,7 +5,9 @@ use super::parentheses::ExpressionContent;
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
+use crate::formatter::suppression::{
+    ContentMode, DelimitedFollowing, SuppressionPosition, is_suppression_comment,
+};
 use crate::{
     FormatError,
     document::{Fragment, Writer},
@@ -177,11 +179,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
                 self.format_expression_tail(tail, writer)?;
-                self.format_delimited_source_gap(source.gap, writer)?.write(
-                    writer,
-                    FlatSeparator::Space,
-                    Writer::space,
-                );
+                self.format_delimited_source_gap(source.gap, DelimitedFollowing::Node, writer)?
+                    .following
+                    .write(writer, FlatSeparator::Space, Writer::space);
                 let parent = match context.position {
                     ExpressionPosition::Statement => AssignmentParent::Statement,
                     _ => AssignmentParent::Nested,

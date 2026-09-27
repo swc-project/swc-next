@@ -97,6 +97,13 @@ enum RetainedParentheses {
     Operand,
 }
 
+struct RetainedSourceParentheses {
+    boundary: SourceParentheses,
+    kind: RetainedParentheses,
+    hug: bool,
+    leading_mode: Option<ContentMode>,
+}
+
 enum SourceParenthesesChoice {
     Verbatim,
     Retained {
@@ -1044,22 +1051,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let span = parenthesized.span(self.ast);
         let child = parenthesized.expression(self.ast);
-        let inner = if context.content_mode == ContentMode::Verbatim {
-            child
+        let (inner, data) = if context.content_mode == ContentMode::Verbatim {
+            (child, self.ast.expr_data(child))
         } else {
-            self.expression_content(child).expression
+            let content = self.expression_content(child);
+            (content.expression, content.data)
         };
         let inner_span = inner.span(self.ast);
-        let boundary = SourceParentheses {
-            outer: span,
-            inner: inner_span,
-            inner_target: ParenthesisInner::Expression(inner),
+        let leading = self
+            .comments
+            .between(Span::new(span.start, inner_span.start))?;
+        let trailing = self.comments.in_range(Span::new(inner_span.end, span.end));
+        let hug = match data {
+            ExprData::ArrayExpression(array) => {
+                leading.is_empty()
+                    && trailing.is_empty()
+                    && (!array.elements(self.ast).is_empty()
+                        || self.comments.in_range(inner_span).is_empty())
+            }
+            _ => false,
         };
         self.format_retained_source_parentheses(
-            boundary,
+            RetainedSourceParentheses {
+                boundary: SourceParentheses {
+                    outer: span,
+                    inner: inner_span,
+                    inner_target: ParenthesisInner::Expression(inner),
+                },
+                kind,
+                hug,
+                leading_mode: None,
+            },
             context,
-            kind,
-            None,
             writer,
             |formatter, context, writer| formatter.format_expression(inner, context, writer),
         )
@@ -1081,15 +1104,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             RetainedParentheses::Annotation
         };
-        self.format_retained_source_parentheses(boundary, context, kind, None, writer, content)
+        self.format_retained_source_parentheses(
+            RetainedSourceParentheses {
+                boundary,
+                kind,
+                hug: false,
+                leading_mode: None,
+            },
+            context,
+            writer,
+            content,
+        )
     }
 
     fn format_retained_source_parentheses(
         &mut self,
-        boundary: SourceParentheses,
+        source: RetainedSourceParentheses,
         context: ExpressionContext,
-        kind: RetainedParentheses,
-        leading_mode: Option<ContentMode>,
         writer: &mut Writer<'ast>,
         content: impl FnOnce(
             &mut Self,
@@ -1097,6 +1128,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Writer<'ast>,
         ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let RetainedSourceParentheses {
+            boundary,
+            kind,
+            hug,
+            leading_mode,
+        } = source;
         let span = boundary.outer;
         let inner_span = boundary.inner;
         let source_comments = self.source_parentheses_comments(boundary);
@@ -1161,41 +1198,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             writer.text(";");
         }
+        let hug = hug
+            && !matches!(opening, LineConstraint::NewLine(_))
+            && !matches!(closing, LineConstraint::NewLine(_));
+        let operand_indent = if context.operand_indent == OperandIndent::Parent
+            && !matches!(kind, RetainedParentheses::Cast)
+            && matches!(boundary.inner_target, ParenthesisInner::Expression(expression) if matches!(self.ast.expr_data(expression), ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) | ExprData::ParenthesizedExpression(_)))
+        {
+            OperandIndent::Parent
+        } else {
+            OperandIndent::Expression
+        };
+        let write_contents = |writer: &mut Writer<'ast>, operand_indent| {
+            self.comments.claim(leading)?;
+            self.format_comment_run(leading, leading_layout, writer)?;
+            let position =
+                if let (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(operator)) =
+                    (mode, context.position)
+                {
+                    ExpressionPosition::ParenthesizedUnaryArgument(operator)
+                } else {
+                    ExpressionPosition::Nested
+                };
+            let mut inner_context = ExpressionContext::at(position)
+                .with_content_mode(mode)
+                .with_operand_indent(operand_indent)
+                .with_tail_owner(context.tail_owner);
+            if !matches!(
+                (mode, context.position),
+                (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(_))
+            ) {
+                inner_context = inner_context.inside_parentheses();
+            }
+            inner_context.protected_head_start = protected_head_start;
+            if let Some((sequence, _)) = sequence_head {
+                inner_context.head_comments = super::HeadComments::ClaimedSequence(sequence);
+            }
+            let tail = content(self, inner_context, writer)?;
+            let tail = self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
+            self.format_expression_tail(tail, writer)
+        };
         writer.group(expand, |writer| {
             writer.text("(");
-            writer.indent(|writer| {
-                opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
-                self.comments.claim(leading)?;
-                self.format_comment_run(leading, leading_layout, writer)?;
-                let position =
-                    if let (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(operator)) =
-                        (mode, context.position)
-                    {
-                        ExpressionPosition::ParenthesizedUnaryArgument(operator)
-                    } else {
-                        ExpressionPosition::Nested
-                    };
-                let operand_indent = if context.operand_indent == OperandIndent::Parent && !matches!(kind, RetainedParentheses::Cast)
-                    && matches!(boundary.inner_target, ParenthesisInner::Expression(expression) if matches!(self.ast.expr_data(expression), ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) | ExprData::ParenthesizedExpression(_)))
-                { OperandIndent::Parent } else { OperandIndent::Expression };
-                let mut inner_context = ExpressionContext::at(position).with_content_mode(mode).with_operand_indent(operand_indent).with_tail_owner(context.tail_owner);
-                if !matches!((mode, context.position), (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(_))) {
-                    inner_context = inner_context.inside_parentheses();
-                }
-                inner_context.protected_head_start = protected_head_start;
-                if let Some((sequence, _)) = sequence_head { inner_context.head_comments = super::HeadComments::ClaimedSequence(sequence); }
-                let tail = content(self, inner_context, writer)?;
-                let tail =
-                    self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
-                self.format_expression_tail(tail, writer)
-            })?;
-            if trailing
-                .last()
-                .is_some_and(|comment| comment.kind == CommentKind::Line)
-            {
-                writer.hard_line();
+            if hug {
+                write_contents(writer, OperandIndent::Expression)?;
             } else {
-                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                writer.indent(|writer| {
+                    opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    write_contents(writer, operand_indent)
+                })?;
+                if trailing
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                {
+                    writer.hard_line();
+                } else {
+                    closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                }
             }
             writer.text(")");
             Ok(None)
@@ -1584,10 +1643,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context
         };
         self.format_retained_source_parentheses(
-            boundary,
+            RetainedSourceParentheses {
+                boundary,
+                kind: RetainedParentheses::Annotation,
+                hug: false,
+                leading_mode: None,
+            },
             context,
-            RetainedParentheses::Annotation,
-            None,
             writer,
             |formatter, inner, writer| {
                 formatter.format_expression_prepared(

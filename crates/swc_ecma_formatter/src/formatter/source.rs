@@ -90,6 +90,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         false
     }
 
+    pub(super) fn previous_line_is_empty(&self, start: u32, end: u32) -> bool {
+        let gap = self
+            .source(Span::new(start, end))
+            .trim_end_matches([' ', '\t']);
+        let Some(previous) = gap
+            .strip_suffix("\r\n")
+            .or_else(|| gap.strip_suffix(['\r', '\n', '\u{2028}', '\u{2029}']))
+        else {
+            return false;
+        };
+        previous
+            .trim_end_matches([' ', '\t'])
+            .ends_with(['\r', '\n', '\u{2028}', '\u{2029}'])
+    }
+
     pub(super) fn line_breaks(&self, start: u32, end: u32) -> u8 {
         let mut characters = self.source(Span::new(start, end)).chars().peekable();
         let mut count = 0;

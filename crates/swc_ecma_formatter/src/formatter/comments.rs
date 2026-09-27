@@ -76,6 +76,7 @@ pub(super) enum CommentRunLayout {
     InlineLeading(u32),
     FlatLeading(u32),
     CanonicalDangling,
+    Lines,
 }
 
 /// A claimed leading run and the source gap owned by its node.
@@ -90,6 +91,59 @@ pub(super) struct NodeHead<'ast> {
 pub(super) struct ExpressionTail<'ast> {
     pub(super) source_end: u32,
     pub(super) comments: &'ast [Comment],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum LineAttachment {
+    Leading,
+    Trailing,
+    Dangling,
+}
+
+/// Placement facts belong to the actual source run, not its eventual Doc.
+#[derive(Clone, Copy)]
+pub(super) struct PreparedLineFact {
+    comment: Comment,
+    run_start: u32,
+    current_starts_line: bool,
+    run_starts_line: bool,
+    ordinary: bool,
+}
+
+impl PreparedLineFact {
+    pub(super) fn attachment(self, has_preceding: bool, has_following: bool) -> LineAttachment {
+        if has_following && (self.run_starts_line || !has_preceding) {
+            LineAttachment::Leading
+        } else if has_preceding {
+            LineAttachment::Trailing
+        } else {
+            LineAttachment::Dangling
+        }
+    }
+
+    fn movable(self) -> bool {
+        self.ordinary && !self.current_starts_line
+    }
+}
+
+struct SourceCommentRun {
+    previous: Comment,
+    start: u32,
+    ordinary: bool,
+}
+
+/// One complete ordinary prefix owned by a real delimiter boundary.
+/// Its final Line and preceding Blocks are emitted together, in source order.
+pub(super) struct PreparedTrailingRun<'ast> {
+    comments: &'ast [Comment],
+    source_end: u32,
+    fact: PreparedLineFact,
+}
+
+impl PreparedTrailingRun<'_> {
+    pub(super) fn len(&self) -> usize {
+        self.comments.len()
+    }
 }
 
 enum CommentText<'ast> {
@@ -221,6 +275,100 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn source_comment_gap_is_run(&self, previous: Comment, next: Comment) -> bool {
+        self.source(Span::new(previous.span.end, next.span.start))
+            .chars()
+            .all(|character| {
+                matches!(
+                    character,
+                    '\u{0009}'
+                        | '\u{000b}'
+                        | '\u{000c}'
+                        | ' '
+                        | '\u{00a0}'
+                        | '\u{1680}'
+                        | '\u{2000}'
+                        ..='\u{200a}' | '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}'
+                )
+            })
+    }
+
+    fn prepare_source_comment(
+        &self,
+        comment: Comment,
+        run: &mut Option<SourceCommentRun>,
+    ) -> Option<PreparedLineFact> {
+        let ordinary = self.comment_semantics(comment).is_ordinary();
+        let (start, ordinary) = match run {
+            Some(previous) if self.source_comment_gap_is_run(previous.previous, comment) => {
+                (previous.start, previous.ordinary && ordinary)
+            }
+            _ => (comment.span.start, ordinary),
+        };
+        *run = Some(SourceCommentRun {
+            previous: comment,
+            start,
+            ordinary,
+        });
+        (comment.kind == CommentKind::Line).then(|| PreparedLineFact {
+            comment,
+            run_start: start,
+            current_starts_line: self.source_line_starts_line(comment.span.start),
+            run_starts_line: self.source_line_starts_line(start),
+            ordinary,
+        })
+    }
+
+    /// Prepare the complete prefix after the old physical boundary decision.
+    /// Canonicalizing only its Line would discard the preceding run's owner.
+    /// A negative fact remains with the array's next leading owner.
+    pub(super) fn prepare_delimited_trailing_run(
+        &self,
+        comments: &'ast [Comment],
+        source_end: u32,
+        trailing_limit: u32,
+        has_following: bool,
+    ) -> Option<PreparedTrailingRun<'ast>> {
+        let mut run = None;
+        let mut ordinary_prefix = true;
+        for (index, &comment) in comments.iter().enumerate() {
+            if comment.span.start >= trailing_limit {
+                break;
+            }
+            let fact = self.prepare_source_comment(comment, &mut run);
+            ordinary_prefix &= run.as_ref().is_none_or(|run| run.ordinary);
+            if let Some(fact) = fact {
+                return (ordinary_prefix
+                    && fact.movable()
+                    && fact.attachment(true, has_following) == LineAttachment::Trailing)
+                    .then_some(PreparedTrailingRun {
+                        comments: &comments[..index + 1],
+                        source_end,
+                        fact,
+                    });
+            }
+        }
+        None
+    }
+
+    pub(super) fn format_prepared_trailing_run(
+        &self,
+        run: PreparedTrailingRun<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        debug_assert!(
+            run.comments
+                .first()
+                .is_some_and(|comment| run.source_end <= comment.span.start)
+                && run.comments.last().is_some_and(|comment| {
+                    comment.kind == CommentKind::Line && comment.span == run.fact.comment.span
+                })
+                && run.fact.run_start <= run.fact.comment.span.start,
+            "a prepared trailing run must retain its actual final Line and delimiter owner",
+        );
+        self.format_trailing_comment_run(run.comments, writer)
+    }
+
     pub(super) fn split_separator_comments(
         &self,
         comments: &'ast [Comment],
@@ -500,6 +648,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => {
                             self.comment_gap(previous.span.end, prepared.span.start, writer)
                         }
+                        CommentRunLayout::Lines => self
+                            .line_constraint(previous.span.end, prepared.span.start)
+                            .write(writer, FlatSeparator::Space, |writer| {
+                                writer.hard_line();
+                                if self
+                                    .previous_line_is_empty(previous.span.end, prepared.span.start)
+                                {
+                                    writer.hard_line();
+                                }
+                            }),
                         CommentRunLayout::CanonicalDangling => self
                             .line_constraint(previous.span.end, prepared.span.start)
                             .write(writer, FlatSeparator::Space, Writer::hard_line),
