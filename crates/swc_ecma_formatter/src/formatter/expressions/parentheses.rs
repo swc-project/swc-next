@@ -383,6 +383,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if let ExprData::ParenthesizedExpression(node) = data {
                         return CommentBinding::BoundTo(node.span(self.ast));
                     }
+                    if let ExprData::MemberExpression(node) = data {
+                        expression = node.object(self.ast);
+                        continue;
+                    }
                     if let ExprData::ConditionalExpression(node) = data {
                         expression = node.test(self.ast);
                         continue;
@@ -816,6 +820,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(")");
             }
             return Ok(tail);
+        }
+        if let ExprData::ConditionalExpression(conditional) = data
+            && parenthesize
+            && matches!(context.position, ExpressionPosition::MemberObject)
+        {
+            return self.format_conditional_enclosed(conditional, context, writer);
         }
         if let ExprData::ConditionalExpression(conditional) = data
             && matches!(context.position, ExpressionPosition::ConditionalTest)
@@ -1369,6 +1379,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     head_start = content.expression.span(self.ast).start;
                     content.expression
                 }
+                ExprData::MemberExpression(node) => node.object(self.ast),
                 ExprData::ConditionalExpression(node) => node.test(self.ast),
                 ExprData::SequenceExpression(node) => {
                     let Some(first) = node.expressions(self.ast).first() else {
@@ -1636,6 +1647,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::ConditionalExpression(_) => {
                 matches!(context.position, ExpressionPosition::ConditionalTest)
+                    || matches!(context.position, ExpressionPosition::MemberObject)
+                        && (context.conditional_closing == super::ConditionalClosing::MemberLine
+                            || context.conditional_envelope
+                                == super::ConditionalEnvelope::OperationHead)
             }
             _ => false,
         };
