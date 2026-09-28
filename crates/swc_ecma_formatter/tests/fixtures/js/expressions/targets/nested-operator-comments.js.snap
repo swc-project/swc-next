@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* outer (= */ (/* inner )++ */ object.property /* inner end (= */) /* outer end */) /* before = */ += /* after ) */ value;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/* outer (= */ /* inner )++ */ object.property /* inner end (= */ /* outer end */ /* before = */ +=
+  /* after ) */ value;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/* outer (= */ /* inner )++ */ object.property /* inner end (= */ /* outer end */ /* before = */ +=
+  /* after ) */ value;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/* outer (= */ /* inner )++ */ object.property /* inner end (= */ /* outer end */ /* before = */ +=
+  /* after ) */ value;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+/* outer (= */ /* inner )++ */ object.property /* inner end (= */ /* outer end */ /* before = */ +=
+  /* after ) */ value
