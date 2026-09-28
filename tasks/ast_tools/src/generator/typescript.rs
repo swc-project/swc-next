@@ -101,6 +101,7 @@ fn write_struct(output: &mut String, ast: &AstStruct, schema: &Schema) {
                 "[]" => "Array<Decorator>",
                 "false" | "true" => "boolean",
                 "null" if *name == "directive" => "string | null",
+                "null" if *name == "typeAnnotation" => "TSTypeAnnotation | null",
                 value => value,
             };
             writeln!(output, "  {name}?: {ty};").unwrap();

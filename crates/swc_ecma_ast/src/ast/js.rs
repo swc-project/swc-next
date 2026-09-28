@@ -1038,6 +1038,7 @@ pub struct VariableDeclarator {
     /// any binding pattern
     id: BindingPattern,
     /// TypeScript annotation on this declaration, outside the binding pattern.
+    #[estree(ts_skip)]
     type_annotation: Option<TsTypeAnnotation>,
     /// any expression. `None` when there is no initializer.
     init: Option<Expr>,
@@ -1187,6 +1188,7 @@ pub struct CatchClause {
     /// any binding pattern. `None` for `catch { }` with no binding.
     param: Option<BindingPattern>,
     /// TypeScript annotation on the catch binding, if one is present.
+    #[estree(ts_skip)]
     type_annotation: Option<TsTypeAnnotation>,
     /// `block_statement`
     body: BlockStatement,
@@ -1530,6 +1532,7 @@ pub struct Function {
     #[estree(ts_optional)]
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
+    #[estree(ts_skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1621,7 +1624,7 @@ pub struct WithStatement {
 /// //                   ^^^^^^^ rest
 /// ```
 #[ast]
-#[estree(ts_alias = "Array<FormalParameterItem | BindingRestElement>")]
+#[estree(ts_alias = "Array<FormalParameterItem | FormalParameterRest | TSThisParameter>")]
 pub struct FormalParameters {
     /// `formal_parameter[]`. May also include `ts_parameter_property` entries
     /// (constructors only).
@@ -1632,7 +1635,7 @@ pub struct FormalParameters {
 }
 
 #[ast]
-#[estree(ts_alias = "FormalParameterPattern")]
+#[estree(ts_alias = "FormalParameterPattern | AssignmentPattern")]
 pub struct FormalParameter {
     /// Legacy parameter decorators, in source order.
     decorators: SubRange<Decorator>,
@@ -1649,6 +1652,7 @@ pub struct FormalParameter {
 
 /// A rest parameter collecting the remaining arguments of a call.
 #[ast]
+#[estree(ts_alias = "BindingRestElement")]
 pub struct FormalParameterRest {
     decorators: SubRange<Decorator>,
     argument: FormalParameterPattern,

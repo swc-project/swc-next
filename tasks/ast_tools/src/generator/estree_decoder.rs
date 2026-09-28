@@ -1,12 +1,14 @@
 use std::fmt::Write;
 
-
 use crate::{
     output::RawOutput,
     schema::{AstStruct, AstType, FieldLocation, Schema},
 };
 
-use super::{estree::{ENUMS, estree_field_name, estree_type, is_ts_field, ts_extra_fields}, js_minifier::minify};
+use super::{
+    estree::{ENUMS, estree_field_name, estree_type, is_ts_field, ts_extra_fields},
+    js_minifier::minify,
+};
 
 const OUTPUT_DIR: &str = "packages/decoder";
 
@@ -34,7 +36,9 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     let mut output = String::new();
     let mut enums = String::from("const ENUMS = Object.freeze({\n");
     for (name, values) in ENUMS {
-        if !is_ts && (*name == "Accessibility" || *name == "ImportOrExportKind" || name.starts_with("Ts")) {
+        if !is_ts
+            && (*name == "Accessibility" || *name == "ImportOrExportKind" || name.starts_with("Ts"))
+        {
             continue;
         }
         writeln!(enums, "  {name}: [{}],", values.join(", ")).unwrap();

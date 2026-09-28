@@ -8,7 +8,7 @@ import { decode } from "@swc-next/decoder";
 const parsed: Program = parseSync("const x = 1").program;
 const focused: Program = parseParser("const x = 1").program;
 const browser: Program = parseBrowser("const x = 1").program;
-const decoded: Program = decode(encode(parsed), "const x = 1").program;
+const decoded: Program = decode(encode(parsed), "const x = 1", new TextEncoder().encode("const x = 1")).program;
 printSync(focused);
 printSync(browser);
 printSync(decoded);
@@ -30,6 +30,20 @@ const declaration: AST.TSDeclareFunction = {
   expression: false,
 };
 printSync({ type: "Program", start: 0, end: 20, hashbang: null, sourceType: "module", body: [declaration] });
+
+const identifier: AST.Identifier = { type: "Identifier", start: 0, end: 1, name: "x" };
+const defaultParameter: AST.FormalParameter = {
+  type: "AssignmentPattern", start: 0, end: 5, left: identifier, right: identifier,
+};
+const restParameter: AST.FormalParameterRest = {
+  type: "RestElement", start: 0, end: 4, argument: identifier,
+};
+declaration.params = [defaultParameter, restParameter];
+const declarator: AST.VariableDeclarator = {
+  type: "VariableDeclarator", start: 0, end: 1, id: identifier, init: null,
+};
+// @ts-expect-error The receiver is exposed in params, not as an internal thisParam field.
+declaration.thisParam;
 
 // Keep useful structure checks on the public AST.
 // @ts-expect-error The discriminant is required.

@@ -11,11 +11,11 @@ export interface BaseNode {
   } | null;
 }
 
-export type SourceType = "module" | "script" | "commonjs";
+export type Lang = "js" | "ts" | "jsx" | "tsx" | "dts";
+
+export type SourceType = "module" | "script" | "commonjs" | "unambiguous";
 
 export type MethodDefinitionKind = "constructor" | "method" | "get" | "set";
-
-export type Accessibility = null | "public" | "private" | "protected";
 
 export type ClassType = "ClassDeclaration" | "ClassExpression";
 
@@ -75,9 +75,11 @@ export type FormalParameterKind = "formal" | "unique" | "arrow" | "signature";
 
 export type PropertyKind = "init" | "get" | "set";
 
-export type ImportOrExportKind = "value" | "type";
-
 export type ImportPhase = "source" | "defer";
+
+export type Accessibility = null | "public" | "private" | "protected";
+
+export type ImportOrExportKind = "value" | "type";
 
 export type TSTypeOperatorKind = "keyof" | "unique" | "readonly";
 
@@ -193,13 +195,7 @@ export type SimpleAssignmentTarget =
   | TSSatisfiesExpression
   | TSTypeAssertion;
 
-export type PropertyKey =
-  | BigIntLiteral
-  | Expr
-  | IdentifierName
-  | NumericLiteral
-  | PrivateIdentifier
-  | StringLiteral;
+export type PropertyKey = Expr | IdentifierName;
 
 export type ModuleExportName = IdentifierName | StringLiteral;
 
@@ -215,7 +211,7 @@ export type ArrowFunctionBody = Expr | FunctionBody;
 
 export type FormalParameterItem = FormalParameter | TSParameterProperty;
 
-export type FormalParameterPattern = BindingPattern | TSThisParameter;
+export type FormalParameterPattern = ArrayPattern | BindingIdentifier | ObjectPattern;
 
 export type ClassElement =
   | MethodDefinition
@@ -319,36 +315,36 @@ export type LabelIdentifier = Identifier;
 
 export interface AssignmentPattern extends BaseNode {
   type: "AssignmentPattern";
-  decorators?: Array<Decorator>;
   left: BindingPattern;
-  typeAnnotation?: TSTypeAnnotation | null;
   right: Expr;
+  decorators?: Array<Decorator>;
   optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface BindingRestElement extends BaseNode {
   type: "RestElement";
-  decorators?: Array<Decorator>;
   argument: BindingPattern;
-  typeAnnotation?: TSTypeAnnotation | null;
-  optional?: boolean;
   value?: null;
+  decorators?: Array<Decorator>;
+  optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface ArrayPattern extends BaseNode {
   type: "ArrayPattern";
-  decorators?: Array<Decorator>;
   elements: Array<BindingPattern | null>;
-  typeAnnotation?: TSTypeAnnotation | null;
+  decorators?: Array<Decorator>;
   optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface ObjectPattern extends BaseNode {
   type: "ObjectPattern";
-  decorators?: Array<Decorator>;
   properties: Array<BindingProperty | BindingRestElement>;
-  typeAnnotation?: TSTypeAnnotation | null;
+  decorators?: Array<Decorator>;
   optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface BindingProperty extends BaseNode {
@@ -620,9 +616,11 @@ export interface WithStatement extends BaseNode {
   body: Stmt;
 }
 
-export type FormalParameters = Array<FormalParameterItem | BindingRestElement>;
+export type FormalParameters = Array<FormalParameterItem | FormalParameterRest | TSThisParameter>;
 
-export type FormalParameter = FormalParameterPattern;
+export type FormalParameter = FormalParameterPattern | AssignmentPattern;
+
+export type FormalParameterRest = BindingRestElement;
 
 export interface ArrayExpression extends BaseNode {
   type: "ArrayExpression";
@@ -870,7 +868,7 @@ export type TSTypeElement =
 
 export type TSTypePredicateName = IdentifierName | TSThisType;
 
-export type TSEnumMemberName = Expr | IdentifierName | StringLiteral | TemplateLiteral;
+export type TSEnumMemberName = IdentifierName | StringLiteral | TemplateLiteral;
 
 export type TSModuleName = BindingIdentifier | StringLiteral | TSQualifiedName;
 
@@ -1055,7 +1053,7 @@ export interface TSOptionalType extends BaseNode {
 
 export interface TSRestType extends BaseNode {
   type: "TSRestType";
-  typeAnnotation: TSType;
+  typeAnnotation: TSTupleElement;
 }
 
 export interface TSJSDocNullableType extends BaseNode {
@@ -1186,7 +1184,7 @@ export interface TSConstructSignatureDeclaration extends BaseNode {
 
 export interface TSIndexSignature extends BaseNode {
   type: "TSIndexSignature";
-  parameters: Array<BindingIdentifier>;
+  parameters: Array<TSIndexSignatureParameter>;
   typeAnnotation: TSTypeAnnotation;
   readonly: boolean;
   static?: boolean;
@@ -1273,7 +1271,7 @@ export interface TSGlobalDeclaration extends BaseNode {
 export interface TSParameterProperty extends BaseNode {
   type: "TSParameterProperty";
   decorators: Array<Decorator>;
-  parameter: BindingPattern;
+  parameter: FormalParameter;
   override: boolean;
   readonly: boolean;
   accessibility: Accessibility;
@@ -1338,6 +1336,8 @@ export interface TSExternalModuleReference extends BaseNode {
   type: "TSExternalModuleReference";
   expression: StringLiteral;
 }
+
+export type TSIndexSignatureParameter = Identifier;
 
 export type JSXElementName = JSXIdentifier | JSXMemberExpression | JSXNamespacedName;
 

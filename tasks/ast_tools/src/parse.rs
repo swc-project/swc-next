@@ -13,7 +13,8 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstSubRange, AstType, EstreeAttrs, FieldLocation, Layout, LayoutMode, Schema, TypeId,
+    AstStructField, AstSubRange, AstType, EstreeAttrs, FieldLocation, Layout, LayoutMode, Schema,
+    TypeId,
 };
 
 const PAYLOAD_SIZE: usize = 16;
@@ -474,33 +475,33 @@ impl Parser {
                 let args = meta_list
                     .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                     .expect("Unable to parse `#[estree]`");
-            for arg in args {
-                let path = arg.path();
-                if path.is_ident("skip") {
-                    field_attrs.estree_skip = true;
-                } else if path.is_ident("ts_skip") && matches!(arg, Meta::Path(_)) {
-                    field_attrs.ts_skip = true;
-                } else if path.is_ident("ts_optional") && matches!(arg, Meta::Path(_)) {
-                    field_attrs.ts_optional = true;
-                } else if path.is_ident("ts_type") || path.is_ident("ts_rename") {
-                    let Meta::NameValue(value) = &arg else {
-                        panic!("Expected ESTree string attribute")
-                    };
-                    let syn::Expr::Lit(value) = &value.value else {
-                        panic!("Expected ESTree string literal")
-                    };
-                    let syn::Lit::Str(value) = &value.lit else {
-                        panic!("Expected ESTree string literal")
-                    };
-                    if path.is_ident("ts_type") {
-                        field_attrs.ts_type = Some(value.value());
+                for arg in args {
+                    let path = arg.path();
+                    if path.is_ident("skip") {
+                        field_attrs.estree_skip = true;
+                    } else if path.is_ident("ts_skip") && matches!(arg, Meta::Path(_)) {
+                        field_attrs.ts_skip = true;
+                    } else if path.is_ident("ts_optional") && matches!(arg, Meta::Path(_)) {
+                        field_attrs.ts_optional = true;
+                    } else if path.is_ident("ts_type") || path.is_ident("ts_rename") {
+                        let Meta::NameValue(value) = &arg else {
+                            panic!("Expected ESTree string attribute")
+                        };
+                        let syn::Expr::Lit(value) = &value.value else {
+                            panic!("Expected ESTree string literal")
+                        };
+                        let syn::Lit::Str(value) = &value.lit else {
+                            panic!("Expected ESTree string literal")
+                        };
+                        if path.is_ident("ts_type") {
+                            field_attrs.ts_type = Some(value.value());
+                        } else {
+                            field_attrs.ts_rename = Some(value.value());
+                        }
                     } else {
-                        field_attrs.ts_rename = Some(value.value());
+                        panic!("Unknown ESTree field attribute: {}", arg.to_token_stream());
                     }
-                } else {
-                    panic!("Unknown ESTree field attribute: {}", arg.to_token_stream());
                 }
-            }
                 continue;
             }
             if meta_list.path.is_ident("ast") {

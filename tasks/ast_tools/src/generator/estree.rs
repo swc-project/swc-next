@@ -77,7 +77,9 @@ pub(super) fn ts_extra_fields(name: &str) -> &'static [(&'static str, &'static s
         | "IdentifierName"
         | "LabelIdentifier"
         | "BindingIdentifier"
-        | "AssignmentPattern" => IDENTIFIER_TS_EXTRAS,
+        | "AssignmentPattern"
+        | "ArrayPattern"
+        | "ObjectPattern" => IDENTIFIER_TS_EXTRAS,
         "ObjectProperty" => OBJECT_PROPERTY_TS_EXTRAS,
         "ExpressionStatement" => EXPRESSION_STATEMENT_TS_EXTRAS,
         "BindingRestElement" => BINDING_REST_TS_EXTRAS,
@@ -102,24 +104,108 @@ pub(super) fn estree_field_name(node: &str, field: &str) -> String {
 
 /// JS enum values shared by the decoder and declaration generator.
 pub(super) const ENUMS: &[(&str, &[&str])] = &[
-    ("Lang", &["\"js\"", "\"ts\"", "\"jsx\"", "\"tsx\"", "\"dts\""]),
-    ("SourceType", &["\"module\"", "\"script\"", "\"commonjs\"", "\"unambiguous\""]),
-    ("MethodDefinitionKind", &["\"constructor\"", "\"method\"", "\"get\"", "\"set\""]),
-    ("ClassType", &["\"ClassDeclaration\"", "\"ClassExpression\""]),
-    ("BinaryOperator", &["\"==\"", "\"!=\"", "\"===\"", "\"!==\"", "\"<\"", "\"<=\"", "\">\"", "\">=\"", "\"+\"", "\"-\"", "\"*\"", "\"/\"", "\"%\"", "\"**\"", "\"|\"", "\"^\"", "\"&\"", "\"<<\"", "\">>\"", "\">>>\"", "\"in\"", "\"instanceof\""]),
+    (
+        "Lang",
+        &["\"js\"", "\"ts\"", "\"jsx\"", "\"tsx\"", "\"dts\""],
+    ),
+    (
+        "SourceType",
+        &[
+            "\"module\"",
+            "\"script\"",
+            "\"commonjs\"",
+            "\"unambiguous\"",
+        ],
+    ),
+    (
+        "MethodDefinitionKind",
+        &["\"constructor\"", "\"method\"", "\"get\"", "\"set\""],
+    ),
+    (
+        "ClassType",
+        &["\"ClassDeclaration\"", "\"ClassExpression\""],
+    ),
+    (
+        "BinaryOperator",
+        &[
+            "\"==\"",
+            "\"!=\"",
+            "\"===\"",
+            "\"!==\"",
+            "\"<\"",
+            "\"<=\"",
+            "\">\"",
+            "\">=\"",
+            "\"+\"",
+            "\"-\"",
+            "\"*\"",
+            "\"/\"",
+            "\"%\"",
+            "\"**\"",
+            "\"|\"",
+            "\"^\"",
+            "\"&\"",
+            "\"<<\"",
+            "\">>\"",
+            "\">>>\"",
+            "\"in\"",
+            "\"instanceof\"",
+        ],
+    ),
     ("LogicalOperator", &["\"&&\"", "\"||\"", "\"??\""]),
-    ("UnaryOperator", &["\"-\"", "\"+\"", "\"!\"", "\"~\"", "\"typeof\"", "\"void\"", "\"delete\""]),
+    (
+        "UnaryOperator",
+        &[
+            "\"-\"",
+            "\"+\"",
+            "\"!\"",
+            "\"~\"",
+            "\"typeof\"",
+            "\"void\"",
+            "\"delete\"",
+        ],
+    ),
     ("UpdateOperator", &["\"++\"", "\"--\""]),
-    ("AssignmentOperator", &["\"=\"", "\"+=\"", "\"-=\"", "\"*=\"", "\"/=\"", "\"%=\"", "\"**=\"", "\"<<=\"", "\">>=\"", "\">>>=\"", "\"|=\"", "\"^=\"", "\"&=\"", "\"||=\"", "\"&&=\"", "\"??=\""]),
-    ("VariableKind", &["\"var\"", "\"let\"", "\"const\"", "\"using\"", "\"await using\""]),
-    ("FunctionType", &["\"FunctionDeclaration\"", "\"FunctionExpression\""]),
-    ("FormalParameterKind", &["\"formal\"", "\"unique\"", "\"arrow\"", "\"signature\""]),
+    (
+        "AssignmentOperator",
+        &[
+            "\"=\"", "\"+=\"", "\"-=\"", "\"*=\"", "\"/=\"", "\"%=\"", "\"**=\"", "\"<<=\"",
+            "\">>=\"", "\">>>=\"", "\"|=\"", "\"^=\"", "\"&=\"", "\"||=\"", "\"&&=\"", "\"??=\"",
+        ],
+    ),
+    (
+        "VariableKind",
+        &[
+            "\"var\"",
+            "\"let\"",
+            "\"const\"",
+            "\"using\"",
+            "\"await using\"",
+        ],
+    ),
+    (
+        "FunctionType",
+        &["\"FunctionDeclaration\"", "\"FunctionExpression\""],
+    ),
+    (
+        "FormalParameterKind",
+        &["\"formal\"", "\"unique\"", "\"arrow\"", "\"signature\""],
+    ),
     ("PropertyKind", &["\"init\"", "\"get\"", "\"set\""]),
     ("ImportPhase", &["\"source\"", "\"defer\""]),
-    ("Accessibility", &["null", "\"public\"", "\"private\"", "\"protected\""]),
+    (
+        "Accessibility",
+        &["null", "\"public\"", "\"private\"", "\"protected\""],
+    ),
     ("ImportOrExportKind", &["\"value\"", "\"type\""]),
-    ("TsTypeOperatorKind", &["\"keyof\"", "\"unique\"", "\"readonly\""]),
-    ("TsMethodSignatureKind", &["\"method\"", "\"get\"", "\"set\""]),
+    (
+        "TsTypeOperatorKind",
+        &["\"keyof\"", "\"unique\"", "\"readonly\""],
+    ),
+    (
+        "TsMethodSignatureKind",
+        &["\"method\"", "\"get\"", "\"set\""],
+    ),
     ("TsModuleDeclarationKind", &["\"namespace\"", "\"module\""]),
     ("TsMappedTypeModifier", &["null", "true", "\"+\"", "\"-\""]),
 ];

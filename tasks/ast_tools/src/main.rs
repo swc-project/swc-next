@@ -3,8 +3,7 @@ use crate::{
     generator::{
         ast_builder::ast_builder, ast_compare::ast_compare, ast_node::ast_node,
         ast_payload::ast_payload, ast_property::ast_property, ast_visitor::ast_visitor,
-        estree_decoder::estree_decoder, estree_encoder::estree_encoder,
-        typescript::typescript,
+        estree_decoder::estree_decoder, estree_encoder::estree_encoder, typescript::typescript,
     },
     parse::parse_files,
 };

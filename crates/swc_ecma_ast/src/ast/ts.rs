@@ -227,6 +227,7 @@ pub struct TsFunction {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
+    #[estree(ts_skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1003,6 +1004,7 @@ pub struct TsFunctionType {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
+    #[estree(ts_skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1182,6 +1184,7 @@ pub struct TsMethodSignature {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
+    #[estree(ts_skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1210,6 +1213,7 @@ pub struct TsCallSignatureDeclaration {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
+    #[estree(ts_skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1730,6 +1734,7 @@ pub struct TsExternalModuleReference {
 
 /// The named, typed binding of an index signature.
 #[ast]
+#[estree(ts_alias = "Identifier")]
 pub struct TsIndexSignatureParameter {
     name: BindingIdentifier,
     type_annotation: TsTypeAnnotation,
