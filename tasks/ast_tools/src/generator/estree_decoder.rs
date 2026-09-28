@@ -4,8 +4,7 @@ use convert_case::{Case, Casing};
 
 use crate::{
     output::RawOutput,
-    schema::{AstStruct, AstType, Schema},
-    util::calculate_inline_layout,
+    schema::{AstStruct, AstType, FieldLocation, Schema},
 };
 
 use super::js_minifier::minify;
@@ -81,25 +80,17 @@ fn write_node_case(
 ) {
     writeln!(output, "      case {kind}: {{").unwrap();
 
-    let layout = calculate_inline_layout(ast, schema);
+    let layout = &ast.layout;
     let mut fields = Vec::new();
 
-    let mut extra_offset = 0usize;
     for (field_index, field) in ast.fields.iter().enumerate() {
         let skip = field.attrs.estree_skip;
         let field_ty = &schema.types[field.type_id];
-        let (location, aligned_i32) = if let Some((_, byte_offset, _)) =
-            layout.as_ref().and_then(|layout| {
-                layout
-                    .fields
-                    .iter()
-                    .find(|(index, _, _)| *index == field_index)
-            }) {
-            (format!("payload + {byte_offset}"), byte_offset % 4 == 0)
-        } else {
-            let location = format!("extra + (extraId + {extra_offset}) * 8");
-            extra_offset += 1;
-            (location, true)
+        let (location, aligned_i32) = match layout.fields[field_index] {
+            FieldLocation::Payload { offset, .. } => {
+                (format!("payload + {offset}"), offset % 4 == 0)
+            }
+            FieldLocation::Extra { index } => (format!("extra + (extraId + {index}) * 8"), true),
         };
         if skip {
             continue;
@@ -139,7 +130,14 @@ fn write_node_case(
         write_generic_node(&mut body, &ast.name, &fields, is_ts);
     }
     if body.contains("extraId") {
-        writeln!(output, "        const extraId = _i32[(payload + 12) >> 2];").unwrap();
+        let offset = layout
+            .extra_start_offset()
+            .expect("extra fields need a payload pointer");
+        writeln!(
+            output,
+            "        const extraId = _i32[(payload + {offset}) >> 2];"
+        )
+        .unwrap();
     }
     output.push_str(&body);
     writeln!(output, "        break;").unwrap();

@@ -4,12 +4,10 @@ use quote::{ToTokens, format_ident, quote};
 
 use crate::{
     AST_CRATE_PATH,
+    generator::ast_payload::{direct_payload_field, payload_member},
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstType, Schema},
-    util::{
-        EXTRA_DATA_ID_BIT_OFFSET, InlineStorageMode, calculate_inline_layout,
-        generate_field_to_u32, generate_field_to_u64, safe_ident,
-    },
+    schema::{AstEnum, AstStruct, AstType, Layout, LayoutMode, Schema},
+    util::{generate_field_to_u32, generate_field_to_u64, safe_ident},
 };
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
@@ -42,6 +40,7 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
                 clippy::too_many_arguments
             )]
             use crate::*;
+            use crate::generated::ast_payload::*;
             use oxc_index::Idx;
 
             impl<'a> Ast<'a> {
@@ -61,141 +60,120 @@ fn generate_build_function_for_struct(ast: &AstStruct, schema: &Schema) -> Token
     let ret_ty = format_ident!("{}", ast.name);
     let fn_params = generate_fn_params_decl(ast, schema);
 
-    // Check if this struct can use inline storage
-    if let Some(layout) = calculate_inline_layout(ast, schema) {
-        generate_build_function_inline(ast, schema, fn_name, ret_ty, fn_params, &layout)
-    } else {
-        generate_build_function_extra_data(ast, schema, fn_name, ret_ty, fn_params)
-    }
+    generate_build_function_inline(ast, schema, fn_name, ret_ty, fn_params, &ast.layout)
 }
 
-/// Generate a builder by packing fields into a u128 payload.
+/// Generate a builder that constructs the node's concrete payload layout.
 fn generate_build_function_inline(
     ast: &AstStruct,
     schema: &Schema,
     fn_name: syn::Ident,
     ret_ty: syn::Ident,
     fn_params: TokenStream,
-    layout: &crate::util::InlineLayout,
+    layout: &Layout,
 ) -> TokenStream {
-    if layout.fields.is_empty() {
+    if ast.fields.is_empty() {
         return quote! {
             #[inline]
             pub fn #fn_name(&mut self, span: Span) -> #ret_ty {
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload(0),
+                    NodePayload { raw: 0 },
                 ))
             }
         };
     }
 
-    let mut pack_u128 = TokenStream::new();
-
-    for &(field_idx, byte_offset, byte_size) in &layout.fields {
-        let field = &ast.fields[field_idx];
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-
-        let bit_offset = byte_offset * 8;
-        if byte_size == std::mem::size_of::<u64>() {
-            let field_u64 = generate_field_to_u64(field_ty, &field_name, schema);
-            pack_u128.extend(quote! { | ((#field_u64 as u128) << #bit_offset) });
-            continue;
-        }
-
-        let field_u32 = generate_field_to_u32(field_ty, &field_name, quote!(self), schema);
-        pack_u128.extend(quote! { | ((#field_u32 as u128) << #bit_offset) });
-    }
-
     match layout.mode {
-        InlineStorageMode::Full => quote! {
-            #[inline]
-            pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                #ret_ty(self.add_node(
-                    span,
-                    NodeKind::#ret_ty,
-                    NodePayload(0u128 #pack_u128),
-                ))
-            }
-        },
-        InlineStorageMode::Partial => {
-            let mut extra_data_values = Vec::new();
-
-            for (field_index, field) in ast.fields.iter().enumerate() {
-                if layout
-                    .fields
-                    .iter()
-                    .any(|(inline_index, _, _)| *inline_index == field_index)
-                {
-                    continue;
+        LayoutMode::Full => {
+            let payload = generate_payload_constructor(ast, schema, layout, None);
+            quote! {
+                #[inline]
+                pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                    #ret_ty(self.add_node(span, NodeKind::#ret_ty, #payload))
                 }
-
-                let field_name = format_ident!("{}", field.name);
-                extra_data_values.push(quote!(#field_name));
             }
+        }
+        LayoutMode::Partial => {
+            let extra_data_values = layout
+                .extra_fields()
+                .map(|(field_index, _)| {
+                    let field_name = safe_ident(&ast.fields[field_index].name);
+                    quote!(#field_name)
+                })
+                .collect::<Vec<_>>();
 
             let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
             let start_id = start_id.expect("partial layout must contain an extra-data field");
+            let payload = generate_payload_constructor(ast, schema, layout, Some(start_id));
 
             quote! {
                 #[inline]
                 pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
                     #add_extra_data
-                    #ret_ty(self.add_node(
-                        span,
-                        NodeKind::#ret_ty,
-                        NodePayload(
-                            0u128
-                            #pack_u128
-                            | ((#start_id.index() as u128) << #EXTRA_DATA_ID_BIT_OFFSET)
-                        ),
-                    ))
+                    #ret_ty(self.add_node(span, NodeKind::#ret_ty, #payload))
                 }
             }
         }
     }
 }
 
-/// Generate build function using extra_data storage (for large nodes)
-fn generate_build_function_extra_data(
+fn generate_payload_constructor(
     ast: &AstStruct,
-    _schema: &Schema,
-    fn_name: syn::Ident,
-    ret_ty: syn::Ident,
-    fn_params: TokenStream,
+    schema: &Schema,
+    layout: &Layout,
+    extra_data_start: Option<TokenStream>,
 ) -> TokenStream {
-    let mut extra_data_values = Vec::new();
-    for field in &ast.fields {
-        let field_name = format_ident!("{}", field.name);
-        extra_data_values.push(quote!(#field_name));
+    let member = payload_member(ast);
+    let layout_name = format_ident!("{}Payload", ast.name);
+    let mut fields = layout.payload_fields().collect::<Vec<_>>();
+    fields.sort_by_key(|&(_, offset, _)| offset);
+
+    let mut initializers = TokenStream::new();
+    let mut cursor = 0;
+    let mut pad_index = 0;
+    for (field_index, offset, size) in fields {
+        if cursor < offset {
+            let pad = format_ident!("_pad{pad_index}");
+            let len = offset - cursor;
+            initializers.extend(quote!(#pad: [0; #len],));
+            pad_index += 1;
+        }
+        let field = &ast.fields[field_index];
+        let field_name = safe_ident(&field.name);
+        let field_ty = &schema.types[field.type_id];
+        let value = if direct_payload_field(field_ty, schema) {
+            quote!(#field_name)
+        } else if size == 8 {
+            generate_field_to_u64(field_ty, &field_name, schema)
+        } else {
+            let value = generate_field_to_u32(field_ty, &field_name, quote!(self), schema);
+            if size == 4 {
+                value
+            } else {
+                quote!(#value as _)
+            }
+        };
+        initializers.extend(quote!(#field_name: #value,));
+        cursor = offset + size;
     }
 
-    let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
-    let node_payload = match start_id {
-        Some(start_id) => {
-            quote!(NodePayload((#start_id.index() as u128) << #EXTRA_DATA_ID_BIT_OFFSET))
+    let end = layout.extra_start_offset().unwrap_or(16);
+    if cursor < end {
+        let pad = format_ident!("_pad{pad_index}");
+        let len = end - cursor;
+        initializers.extend(quote!(#pad: [0; #len],));
+    }
+    if let Some(start) = extra_data_start {
+        initializers.extend(quote!(extra_data_start: #start,));
+    }
+
+    quote! {
+        NodePayload {
+            #member: #layout_name { #initializers }
         }
-        None => quote!(NodePayload(0)),
-    };
-
-    let tokens = quote! {
-        #[inline]
-        pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-            #add_extra_data
-
-            #ret_ty(
-                self.add_node(
-                    span,
-                    NodeKind::#ret_ty,
-                    #node_payload,
-                )
-            )
-        }
-    };
-
-    tokens
+    }
 }
 
 fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<TokenStream>) {

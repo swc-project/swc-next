@@ -4,6 +4,7 @@ use swc_next_allocator::{
 
 macro_rules! define_ast_string {
     ($name:ident) => {
+        #[repr(C)]
         #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
         pub struct $name {
             pub(crate) start: u32,

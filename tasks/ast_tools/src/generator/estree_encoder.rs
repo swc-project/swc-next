@@ -7,8 +7,7 @@ use convert_case::{Case, Casing};
 
 use crate::{
     output::RawOutput,
-    schema::{AstStruct, AstType, Schema, TypeId},
-    util::{InlineStorageMode, calculate_inline_layout},
+    schema::{AstStruct, AstType, FieldLocation, Schema, TypeId},
 };
 
 use super::js_minifier::minify;
@@ -64,8 +63,7 @@ fn write_struct_encoder(
     }
     write_special_prelude(output, name);
 
-    let layout = calculate_inline_layout(ast, schema);
-    let mut extra_offset = 0usize;
+    let layout = &ast.layout;
     let mut fields = Vec::with_capacity(ast.fields.len());
 
     for (field_index, field) in ast.fields.iter().enumerate() {
@@ -80,23 +78,16 @@ fn write_struct_encoder(
         let local = format!("v_{field_index}");
         writeln!(output, "    const {local} = {value};").unwrap();
 
-        let location = if let Some((_, byte_offset, _)) = layout.as_ref().and_then(|layout| {
-            layout
-                .fields
-                .iter()
-                .find(|(index, _, _)| *index == field_index)
-        }) {
-            FieldLocation::Payload(*byte_offset)
-        } else {
-            let offset = extra_offset;
-            extra_offset += 1;
-            FieldLocation::Extra(offset)
-        };
-        fields.push((ty, local, location));
+        fields.push((ty, local, layout.fields[field_index]));
     }
 
-    if extra_offset != 0 {
-        writeln!(output, "    const extraId = allocExtra({extra_offset});").unwrap();
+    if layout.extra_count != 0 {
+        writeln!(
+            output,
+            "    const extraId = allocExtra({});",
+            layout.extra_count
+        )
+        .unwrap();
     }
     let (start, end) = span_expression(name);
     writeln!(
@@ -104,22 +95,13 @@ fn write_struct_encoder(
         "    const index = allocNode({kind}, {start}, {end});"
     )
     .unwrap();
-    if layout
-        .as_ref()
-        .is_none_or(|layout| layout.mode == InlineStorageMode::Partial)
-    {
-        output.push_str("    setPayloadU32(index, 12, extraId);\n");
+    if let Some(offset) = layout.extra_start_offset() {
+        writeln!(output, "    setPayloadU32(index, {offset}, extraId);").unwrap();
     }
     for (ty, local, location) in fields {
         write_value(output, ty, schema, &local, location);
     }
     output.push_str("    return index;\n  }\n\n");
-}
-
-#[derive(Clone, Copy)]
-enum FieldLocation {
-    Payload(usize),
-    Extra(usize),
 }
 
 fn write_value(
@@ -130,14 +112,14 @@ fn write_value(
     location: FieldLocation,
 ) {
     let setter = |kind: &str, byte_offset: usize, component: &str| match location {
-        FieldLocation::Payload(offset) => {
+        FieldLocation::Payload { offset, .. } => {
             format!(
                 "setPayload{kind}(index, {}, {component});",
                 offset + byte_offset
             )
         }
-        FieldLocation::Extra(offset) => {
-            format!("setExtra{kind}(extraId + {offset}, {byte_offset}, {component});")
+        FieldLocation::Extra { index } => {
+            format!("setExtra{kind}(extraId + {index}, {byte_offset}, {component});")
         }
     };
 

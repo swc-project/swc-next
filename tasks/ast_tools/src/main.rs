@@ -2,8 +2,8 @@ use crate::{
     derive::ast_clone_in::ast_clone_in,
     generator::{
         ast_builder::ast_builder, ast_compare::ast_compare, ast_node::ast_node,
-        ast_property::ast_property, ast_visitor::ast_visitor, estree_decoder::estree_decoder,
-        estree_encoder::estree_encoder,
+        ast_payload::ast_payload, ast_property::ast_property, ast_visitor::ast_visitor,
+        estree_decoder::estree_decoder, estree_encoder::estree_encoder,
     },
     parse::parse_files,
 };
@@ -26,8 +26,11 @@ const AST_CRATE_PATH: &str = "swc_ecma_ast";
 fn main() -> std::io::Result<()> {
     let schema = parse_files(SOURCE_PATHS);
 
-    let ast_builder_ret = ast_builder(&schema);
-    ast_builder_ret.write_to_file()?;
+    let ast_builder = ast_builder(&schema);
+    ast_builder.write_to_file().unwrap();
+
+    let ast_payload = ast_payload(&schema);
+    ast_payload.write_to_file().unwrap();
 
     let ast_property_ret = ast_property(&schema);
     ast_property_ret.write_to_file()?;

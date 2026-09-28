@@ -23,8 +23,11 @@ The input list is defined in `src/main.rs` and currently contains:
 Only structs and enums marked with `#[ast]` become AST schema types. The schema
 also records field types, enum variants, `Option<T>`/`SubRange<T>` wrappers,
 and integer `#[repr(uN)]` sizes needed to lay values out in the compact node
-payload. Field declarations use their actual storage types; the generator does
-not translate collection types.
+payload. After parsing all types, it assigns every struct field a `Layout`
+location: a byte offset and size in the 16-byte payload, or an index in the
+extra-data table. Rust and JavaScript generators read these same locations.
+Field declarations use their actual storage types; the generator does not
+translate collection types.
 
 ## Generated outputs
 
@@ -33,7 +36,8 @@ All output is written under
 
 | File                   | Generated API                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------ |
-| `ast_builder.rs`       | `Ast` constructors that encode node fields into inline payload bits and extra-data storage |
+| `ast_builder.rs`       | `Ast` constructors that build typed payloads and extra-data storage                       |
+| `ast_payload.rs`       | Concrete payload layouts and their 16-byte union                                          |
 | `ast_property.rs`      | Typed field getters/setters and enum variant accessors                                     |
 | `ast_node.rs`          | AST enum data, constructors, `NodeKind`, typed/untyped node conversion, node IDs, and spans |
 | `ast_clone_in.rs`      | Arena-aware `CloneIn` implementations for AST nodes                                        |

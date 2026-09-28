@@ -5,13 +5,14 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use super::ast_node::concrete_node_kinds;
+use super::ast_payload::{direct_payload_field, payload_member};
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema},
+    schema::{AstEnum, AstStruct, AstStructField, AstType, Layout, Schema},
     util::{
-        InlineLayout, InlineStorageMode, calculate_inline_layout, generate_field_to_u32,
-        generate_field_to_u64, generate_u32_to_field, generate_u64_to_field, safe_ident,
+        generate_field_to_u32, generate_field_to_u64, generate_u32_to_field, generate_u64_to_field,
+        safe_ident,
     },
 };
 
@@ -48,27 +49,20 @@ fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream
     let mut field_getters = TokenStream::new();
     let mut field_setters = TokenStream::new();
 
-    // Check if this struct uses inline storage
-    if let Some(layout) = calculate_inline_layout(ast, schema) {
-        generate_inline_property_accessors(
-            ast,
-            schema,
-            &mut field_getters,
-            &mut field_setters,
-            &layout,
-        );
-        if layout.mode == InlineStorageMode::Partial {
-            generate_extra_data_property_accessors_partial(
-                ast,
-                schema,
-                &mut field_getters,
-                &mut field_setters,
-                &layout,
-            );
-        }
-    } else {
-        generate_extra_data_property_accessors(ast, schema, &mut field_getters, &mut field_setters);
-    }
+    generate_inline_property_accessors(
+        ast,
+        schema,
+        &mut field_getters,
+        &mut field_setters,
+        &ast.layout,
+    );
+    generate_extra_data_property_accessors(
+        ast,
+        schema,
+        &mut field_getters,
+        &mut field_setters,
+        &ast.layout,
+    );
 
     quote! {
         impl #name {
@@ -84,16 +78,18 @@ fn generate_inline_property_accessors(
     schema: &Schema,
     field_getters: &mut TokenStream,
     field_setters: &mut TokenStream,
-    layout: &InlineLayout,
+    layout: &Layout,
 ) {
-    for &(field_idx, byte_offset, byte_size) in &layout.fields {
+    for (field_idx, _, byte_size) in layout.payload_fields() {
         let field = &ast.fields[field_idx];
         let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id];
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         let ret_ty = field_ty.repr_ident(schema);
 
-        let read_expr = generate_inline_read(field_ty, schema, byte_offset, byte_size);
+        let member = payload_member(ast);
+        let stored_field = safe_ident(&field.name);
+        let read_expr = generate_inline_read(field_ty, schema, &member, &stored_field, byte_size);
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #ret_ty {
@@ -106,7 +102,8 @@ fn generate_inline_property_accessors(
         let write_expr = generate_inline_write(
             field_ty,
             &field_name,
-            byte_offset,
+            &member,
+            &stored_field,
             byte_size,
             schema,
             invalidations,
@@ -120,14 +117,20 @@ fn generate_inline_property_accessors(
     }
 }
 
-/// Generate read expression for a field from inline storage using bit operations
+/// Generate a read from a concrete inline payload field.
 fn generate_inline_read(
     field_ty: &AstType,
     schema: &Schema,
-    byte_offset: usize,
+    member: &syn::Ident,
+    stored_field: &syn::Ident,
     byte_size: usize,
 ) -> TokenStream {
-    let extract_expr = generate_extract_bits(byte_offset, byte_size);
+    if direct_payload_field(field_ty, schema) {
+        return quote! {
+            unsafe { ast.nodes.data_unchecked(self.0).#member.#stored_field }
+        };
+    }
+    let extract_expr = generate_extract_bits(member, stored_field, byte_size);
     let cast_expr = if byte_size == std::mem::size_of::<u64>() {
         generate_u64_to_field(field_ty, schema)
     } else {
@@ -140,40 +143,68 @@ fn generate_inline_read(
     }
 }
 
-/// Generate code to extract a field value using u128 bit operations.
-fn generate_extract_bits(byte_offset: usize, byte_size: usize) -> TokenStream {
-    let bit_offset = byte_offset * 8;
+/// Load an inline field in its stored width.
+fn generate_extract_bits(
+    member: &syn::Ident,
+    stored_field: &syn::Ident,
+    byte_size: usize,
+) -> TokenStream {
     if byte_size == std::mem::size_of::<u64>() {
         return quote! {
-            let raw =
-                (unsafe { ast.nodes.data_unchecked(self.0).0 } >> #bit_offset) as u64;
+            let raw = unsafe { ast.nodes.data_unchecked(self.0).#member.#stored_field };
         };
     }
 
-    let bit_size = byte_size * 8;
-    let mask = if bit_size >= 32 {
-        u32::MAX
+    if byte_size == 4 {
+        quote! {
+            let raw = unsafe { ast.nodes.data_unchecked(self.0).#member.#stored_field };
+        }
     } else {
-        (1u32 << bit_size) - 1
-    };
-    quote! {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> #bit_offset) as u32) & #mask;
+        quote! {
+            let raw = unsafe { ast.nodes.data_unchecked(self.0).#member.#stored_field as u32 };
+        }
     }
 }
 
-/// Generate write expression for a field to inline storage using bit operations
+/// Generate a direct write to an inline payload field.
 fn generate_inline_write(
     field_ty: &AstType,
     field_name: &syn::Ident,
-    byte_offset: usize,
+    member: &syn::Ident,
+    stored_field: &syn::Ident,
     byte_size: usize,
     schema: &Schema,
     invalidations: TokenStream,
 ) -> TokenStream {
-    let insert_expr = generate_insert_bits(byte_offset, byte_size);
+    if direct_payload_field(field_ty, schema) {
+        let change_guard = if invalidations.is_empty() {
+            TokenStream::new()
+        } else {
+            assert!(matches!(field_ty, AstType::Primitive(primitive) if primitive.name == "f64"));
+            quote! {
+                if unsafe { ast.nodes.data_unchecked(self.0).#member.#stored_field }.to_bits()
+                    == #field_name.to_bits() {
+                    return;
+                }
+            }
+        };
+        return quote! {
+            #change_guard
+            unsafe { ast.nodes.data_mut_unchecked(self.0).#member.#stored_field = #field_name; }
+            #invalidations
+        };
+    }
+    let insert_expr = if byte_size >= 4 {
+        quote! {
+            unsafe { ast.nodes.data_mut_unchecked(self.0).#member.#stored_field = field_val; }
+        }
+    } else {
+        quote! {
+            unsafe { ast.nodes.data_mut_unchecked(self.0).#member.#stored_field = field_val as _; }
+        }
+    };
     let change_guard = (!invalidations.is_empty()).then(|| {
-        let extract_expr = generate_extract_bits(byte_offset, byte_size);
+        let extract_expr = generate_extract_bits(member, stored_field, byte_size);
         quote! {
             #extract_expr
             if raw == field_val {
@@ -201,81 +232,21 @@ fn generate_inline_write(
     }
 }
 
-/// Generate code to insert a field value using bit operations (read-modify-write)
-fn generate_insert_bits(byte_offset: usize, byte_size: usize) -> TokenStream {
-    let bit_size = byte_size * 8;
-    let mask = if bit_size >= 128 {
-        u128::MAX
-    } else {
-        (1u128 << bit_size) - 1
-    };
-    let bit_offset = byte_offset * 8;
-    let clear_mask = !(mask << bit_offset);
-    quote! {
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 =
-            (payload.0 & #clear_mask)
-            | (((field_val as u128) & #mask) << #bit_offset);
-    }
-}
-
-/// Generate getters/setters for extra_data storage (original implementation)
+/// Generate getters/setters for fields stored in extra data.
 fn generate_extra_data_property_accessors(
     ast: &AstStruct,
     schema: &Schema,
     field_getters: &mut TokenStream,
     field_setters: &mut TokenStream,
+    layout: &Layout,
 ) {
-    for (offset, field) in ast.fields.iter().enumerate() {
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id].repr_ident(schema);
-
-        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        let extra_offset = generate_extra_data_offset(offset);
-        field_getters.extend(quote! {
-            #[inline]
-            pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                #extra_offset
-                unsafe {
-                    ExtraDataValue::from_extra_data(
-                        ast.extra_data.as_slice().get_unchecked(offset.index()),
-                    )
-                }
-            }
-        });
-
-        field_setters.extend(generate_extra_data_setter(
-            field,
-            &field_name,
-            field_ty,
-            offset,
-        ));
-    }
-}
-
-fn generate_extra_data_property_accessors_partial(
-    ast: &AstStruct,
-    schema: &Schema,
-    field_getters: &mut TokenStream,
-    field_setters: &mut TokenStream,
-    layout: &InlineLayout,
-) {
-    let mut extra_offset = 0usize;
-
-    for (field_index, field) in ast.fields.iter().enumerate() {
-        if layout
-            .fields
-            .iter()
-            .any(|(inline_index, _, _)| *inline_index == field_index)
-        {
-            continue;
-        }
-
+    let member = payload_member(ast);
+    for (field_index, offset) in layout.extra_fields() {
+        let field = &ast.fields[field_index];
         let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        let offset = extra_offset;
-        let offset_expr = generate_extra_data_offset(offset);
+        let offset_expr = generate_extra_data_offset(offset, &member);
 
         field_getters.extend(quote! {
             #[inline]
@@ -294,15 +265,14 @@ fn generate_extra_data_property_accessors_partial(
             &field_name,
             field_ty,
             offset,
+            &member,
         ));
-
-        extra_offset += 1;
     }
 }
 
-fn generate_extra_data_offset(field_offset: usize) -> TokenStream {
+fn generate_extra_data_offset(field_offset: usize, member: &syn::Ident) -> TokenStream {
     quote! {
-        let start = unsafe { ast.nodes.data_unchecked(self.0).0 >> 96 } as u32 as usize;
+        let start = unsafe { ast.nodes.data_unchecked(self.0).#member.extra_data_start.index() };
         let offset = unsafe { start.unchecked_add(#field_offset) };
         debug_assert!(offset < ast.extra_data.len());
         let offset = ExtraDataId::from_usize_unchecked(offset);
@@ -314,10 +284,11 @@ fn generate_extra_data_setter(
     field_name: &syn::Ident,
     field_ty: &TokenStream,
     offset: usize,
+    member: &syn::Ident,
 ) -> TokenStream {
     let setter_name = format_ident!("set_{}", field_name);
     let invalidations = generate_invalidations(field);
-    let extra_offset = generate_extra_data_offset(offset);
+    let extra_offset = generate_extra_data_offset(offset, member);
     if invalidations.is_empty() {
         return quote! {
             #[inline]

@@ -13,14 +13,20 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstSubRange, AstType, Schema, TypeId,
+    AstStructField, AstSubRange, AstType, FieldLocation, Layout, LayoutMode, Schema, TypeId,
 };
+
+const PAYLOAD_SIZE: usize = 16;
+const EXTRA_START_SIZE: usize = 4;
+const EXTRA_START_OFFSET: usize = PAYLOAD_SIZE - EXTRA_START_SIZE;
 
 struct Parser {
     /// Mapping all type names to their type ids
     type_names: IndexSet<String>,
+    top_level_type_count: usize,
     /// Types exclude top level structs and enums
     extra_types: IndexVec<TypeId, AstType>,
+    repr_sizes: HashMap<String, usize>,
 }
 
 pub fn parse_files(file_paths: &[&str]) -> Schema {
@@ -93,8 +99,10 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     }
 
     let mut parser = Parser {
+        top_level_type_count: type_names.len(),
         type_names,
         extra_types: IndexVec::default(),
+        repr_sizes,
     };
 
     // Collect inner types like struct fields and enum variants
@@ -119,7 +127,10 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     }
 
     types.extend(parser.extra_types);
-    let schema = Schema { types, repr_sizes };
+    let schema = Schema {
+        types,
+        repr_sizes: parser.repr_sizes,
+    };
     validate_invalidations(&schema);
     schema
 }
@@ -275,15 +286,17 @@ fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
 impl Parser {
     fn parse_struct(&mut self, type_id: TypeId, attrs: AstAttrs, item: ItemStruct) -> AstType {
         let name = item.ident.to_string();
-        let fields = item
+        let fields: Vec<AstStructField> = item
             .fields
             .into_iter()
             .map(|field| self.parse_struct_field(field))
             .collect();
+        let layout = self.calculate_layout(&fields);
         AstType::Struct(AstStruct {
             type_id,
             name,
             fields,
+            layout,
             _attrs: attrs,
         })
     }
@@ -293,7 +306,7 @@ impl Parser {
         let type_id = self
             .parse_type_name(&field.ty)
             .unwrap_or_else(|| panic!("Cannot parse type {}", field.ty.to_token_stream()));
-        let attrs = parse_field_attrs(&field.attrs);
+        let attrs = Self::parse_field_attrs(&field.attrs);
 
         AstStructField {
             type_id,
@@ -418,51 +431,146 @@ impl Parser {
         };
         Some(type_id)
     }
+
+    fn parse_field_attrs(attrs: &[Attribute]) -> AstFieldAttrs {
+        let mut field_attrs = AstFieldAttrs::default();
+
+        for attr in attrs {
+            let Meta::List(meta_list) = &attr.meta else {
+                continue;
+            };
+            if meta_list.path.is_ident("estree") {
+                let args = meta_list
+                    .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                    .expect("Unable to parse `#[estree]`");
+                field_attrs.estree_skip = args.into_iter().any(|arg| match arg {
+                    Meta::Path(path) => path.is_ident("skip"),
+                    Meta::List(list) => list.path.is_ident("skip"),
+                    Meta::NameValue(name_value) => name_value.path.is_ident("skip"),
+                });
+                continue;
+            }
+            if meta_list.path.is_ident("ast") {
+                let args = meta_list
+                    .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                    .expect("Unable to parse AST field attributes");
+                for arg in args {
+                    let Meta::List(list) = arg else {
+                        panic!("AST field attributes must use list syntax");
+                    };
+                    if !list.path.is_ident("invalidates") {
+                        panic!(
+                            "Unknown AST field attribute `{}`",
+                            list.path.to_token_stream()
+                        );
+                    }
+                    let targets = list
+                        .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+                        .expect("Unable to parse `invalidates(...)`");
+                    field_attrs
+                        .invalidates
+                        .extend(targets.into_iter().map(|target| target.to_string()));
+                }
+            }
+        }
+
+        field_attrs
+    }
 }
 
-fn parse_field_attrs(attrs: &[Attribute]) -> AstFieldAttrs {
-    let mut field_attrs = AstFieldAttrs::default();
+impl Parser {
+    fn extra_type(&self, type_id: TypeId) -> Option<&AstType> {
+        (type_id.index() >= self.top_level_type_count).then(|| {
+            &self.extra_types[TypeId::from_usize(type_id.index() - self.top_level_type_count)]
+        })
+    }
 
-    for attr in attrs {
-        let Meta::List(meta_list) = &attr.meta else {
-            continue;
-        };
-        if meta_list.path.is_ident("estree") {
-            let args = meta_list
-                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                .expect("Unable to parse `#[estree]`");
-            field_attrs.estree_skip = args.into_iter().any(|arg| match arg {
-                Meta::Path(path) => path.is_ident("skip"),
-                Meta::List(list) => list.path.is_ident("skip"),
-                Meta::NameValue(name_value) => name_value.path.is_ident("skip"),
-            });
-            continue;
-        }
-        if meta_list.path.is_ident("ast") {
-            let args = meta_list
-                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                .expect("Unable to parse AST field attributes");
-            for arg in args {
-                let Meta::List(list) = arg else {
-                    panic!("AST field attributes must use list syntax");
-                };
-                if !list.path.is_ident("invalidates") {
-                    panic!(
-                        "Unknown AST field attribute `{}`",
-                        list.path.to_token_stream()
-                    );
-                }
-                let targets = list
-                    .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
-                    .expect("Unable to parse `invalidates(...)`");
-                field_attrs
-                    .invalidates
-                    .extend(targets.into_iter().map(|target| target.to_string()));
-            }
+    fn field_byte_size(&self, type_id: TypeId) -> Option<usize> {
+        match self.extra_type(type_id) {
+            // Top-level structs and enums both occupy four bytes in the payload.
+            None | Some(AstType::Struct(_) | AstType::Enum(_)) => Some(4),
+            Some(AstType::SubRange(_)) => Some(8),
+            Some(AstType::Option(option)) => match self.extra_type(option.inner_type_id) {
+                None | Some(AstType::Struct(_) | AstType::Enum(_)) => Some(4),
+                Some(AstType::SubRange(_)) => Some(8),
+                Some(AstType::Primitive(primitive)) => match primitive.name {
+                    "Span" | "AstUtf8" => Some(8),
+                    "ScopeId" | "SymbolId" => Some(4),
+                    _ => None,
+                },
+                Some(AstType::Option(_)) => None,
+            },
+            Some(AstType::Primitive(primitive)) => match primitive.name {
+                "bool" | "u8" | "i8" => Some(1),
+                "u16" | "i16" => Some(2),
+                "u32" | "i32" => Some(4),
+                "u64" | "f64" | "Span" | "AstUtf8" | "AstWtf8" => Some(8),
+                name => self.repr_sizes.get(name).copied(),
+            },
         }
     }
 
-    field_attrs
+    fn calculate_layout(&self, fields: &[AstStructField]) -> Layout {
+        let mut eligible = Vec::new();
+        let mut total_size = 0;
+        let mut all_fields_inlinable = true;
+        for (index, field) in fields.iter().enumerate() {
+            if let Some(size) = self.field_byte_size(field.type_id) {
+                assert!(size <= 8);
+                eligible.push((index, size));
+                total_size += size;
+            } else {
+                all_fields_inlinable = false;
+            }
+        }
+
+        let (mode, payload_fields) = if all_fields_inlinable && total_size <= PAYLOAD_SIZE {
+            eligible.sort_by_key(|&(_, size)| std::cmp::Reverse(size));
+            (LayoutMode::Full, Self::place_fields(eligible, PAYLOAD_SIZE))
+        } else {
+            // Small fields first maximizes the number stored in the low 12 bytes.
+            eligible.sort_by_key(|&(index, size)| (size, index));
+            let fields = Self::place_fields(eligible, EXTRA_START_OFFSET);
+            assert!(!fields.is_empty(), "partial layout needs an inline field");
+            (LayoutMode::Partial, fields)
+        };
+
+        let mut locations = vec![None; fields.len()];
+        for (index, offset, size) in payload_fields {
+            locations[index] = Some(FieldLocation::Payload { offset, size });
+        }
+        let mut extra_count = 0;
+        let fields = locations
+            .into_iter()
+            .map(|location| {
+                location.unwrap_or_else(|| {
+                    let index = extra_count;
+                    extra_count += 1;
+                    FieldLocation::Extra { index }
+                })
+            })
+            .collect();
+        debug_assert_eq!(mode == LayoutMode::Full, extra_count == 0);
+
+        Layout {
+            mode,
+            fields,
+            extra_count,
+            extra_start_offset: (extra_count != 0).then_some(EXTRA_START_OFFSET),
+        }
+    }
+
+    fn place_fields(fields: Vec<(usize, usize)>, capacity: usize) -> Vec<(usize, usize, usize)> {
+        let mut placed = Vec::new();
+        let mut used = 0;
+        for (index, size) in fields {
+            if used + size <= capacity {
+                placed.push((index, used, size));
+                used += size;
+            }
+        }
+        placed
+    }
 }
 
 fn validate_invalidations(schema: &Schema) {

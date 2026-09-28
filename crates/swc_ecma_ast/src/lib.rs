@@ -14,10 +14,12 @@ mod generated {
     mod ast_builder;
     mod ast_clone_in;
     pub mod ast_node;
+    pub(crate) mod ast_payload;
     mod ast_property;
     pub(crate) mod ast_visitor;
 }
 
+use generated::ast_payload::NodePayload;
 use node_id::ExtraData;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
@@ -68,15 +70,6 @@ multi_index_vec! {
         pub(crate) data => data_mut => data_unchecked => data_mut_unchecked: NodePayload,
     }
 }
-
-/// Compact 128-bit payload for a node.
-///
-/// Fully inlined nodes use all 128 bits. Nodes with out-of-line fields use the
-/// low 96 bits for inline data and the high 32 bits for the start index in
-/// [Ast::extra_data].
-#[repr(transparent)]
-#[derive(Clone, Copy)]
-pub(crate) struct NodePayload(pub(crate) u128);
 
 impl<'a> Ast<'a> {
     #[inline]

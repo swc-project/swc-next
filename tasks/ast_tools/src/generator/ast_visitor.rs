@@ -8,7 +8,7 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstType, Schema, TypeId},
-    util::{EXTRA_DATA_ID_BIT_OFFSET, calculate_inline_layout, safe_ident},
+    util::safe_ident,
 };
 
 use super::ast_node::concrete_node_kinds;
@@ -56,10 +56,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     }
                 });
                 // VisitWith/VisitMutWith
-                let uses_extra_data = calculate_inline_layout(ast, schema).is_none();
-                let mut getter_field_loads = TokenStream::new();
-                let mut extra_data_field_loads = TokenStream::new();
-                let mut field_values = Vec::new();
+                let mut field_loads = TokenStream::new();
                 let mut visit_children = TokenStream::new();
                 let mut visit_mut_children = TokenStream::new();
 
@@ -73,19 +70,9 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     let getter_name = safe_ident(&field.name.to_case(Case::Snake));
                     let setter_name = format_ident!("set_{}", field.name.to_case(Case::Snake));
                     let field_value = format_ident!("field_value_{field_index}");
-                    getter_field_loads.extend(quote! {
+                    field_loads.extend(quote! {
                         let #field_value = self.#getter_name(visitor.ast());
                     });
-                    extra_data_field_loads.extend(quote! {
-                        let offset = extra_data_start.wrapping_add(#field_index);
-                        debug_assert!(offset < extra_data.len());
-                        let #field_value: #field_ty_ident = unsafe {
-                            ExtraDataValue::from_extra_data(
-                                extra_data.get_unchecked(offset)
-                            )
-                        };
-                    });
-                    field_values.push(field_value.clone());
                     visit_children.extend(quote! {
                         <#field_ty_ident as VisitWith<'a, V>>::visit_with(#field_value, visitor);
                     });
@@ -99,28 +86,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
                     });
                 }
-
-                // Keep inline-data access behind the typed getters. For extra-data nodes, decode
-                // all visitable fields in one block so the node's base offset and the extra-data
-                // slice are loaded once. The block also releases the immutable AST borrow before
-                // calling back into the mutable visitor.
-                let field_loads = if uses_extra_data && field_values.len() > 1 {
-                    quote! {
-                        let (#(#field_values,)*) = {
-                            let ast = visitor.ast();
-                            let extra_data_start = unsafe {
-                                (ast.nodes.data_unchecked(self.0).0
-                                    >> #EXTRA_DATA_ID_BIT_OFFSET)
-                                    as u32 as usize
-                            };
-                            let extra_data = ast.extra_data.as_slice();
-                            #extra_data_field_loads
-                            (#(#field_values,)*)
-                        };
-                    }
-                } else {
-                    getter_field_loads
-                };
 
                 visit_with_impls.extend(quote! {
                     impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for #ty_ident {
@@ -465,8 +430,9 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
     let traverse_mut = generate_traverse(schema, true);
 
     let output = quote! {
-        #![allow(unused, clippy::useless_conversion, clippy::single_match)]
-        use crate::*;
+            #![allow(unused, clippy::useless_conversion, clippy::single_match)]
+            use crate::*;
+            use oxc_index::Idx;
         use crate::visit::{TraverseCtx, TraverseMutCtx};
 
             pub trait Visit<'a> {

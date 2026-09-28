@@ -63,7 +63,56 @@ pub struct AstStruct {
     pub type_id: TypeId,
     pub name: String,
     pub fields: Vec<AstStructField>,
+    pub layout: Layout,
     pub _attrs: AstAttrs,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LayoutMode {
+    #[default]
+    Full,
+    Partial,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldLocation {
+    Payload { offset: usize, size: usize },
+    Extra { index: usize },
+}
+
+#[derive(Debug, Default)]
+pub struct Layout {
+    pub mode: LayoutMode,
+    /// One location per struct field, in schema order.
+    pub fields: Vec<FieldLocation>,
+    pub extra_count: usize,
+    pub extra_start_offset: Option<usize>,
+}
+
+impl Layout {
+    pub fn payload_fields(&self) -> impl Iterator<Item = (usize, usize, usize)> + '_ {
+        self.fields
+            .iter()
+            .enumerate()
+            .filter_map(|(field_index, location)| match location {
+                FieldLocation::Payload { offset, size } => Some((field_index, *offset, *size)),
+                FieldLocation::Extra { .. } => None,
+            })
+    }
+
+    pub fn extra_fields(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
+        self.fields
+            .iter()
+            .enumerate()
+            .filter_map(|(field_index, location)| match location {
+                FieldLocation::Payload { .. } => None,
+                FieldLocation::Extra { index } => Some((field_index, *index)),
+            })
+    }
+
+    pub fn extra_start_offset(&self) -> Option<usize> {
+        self.extra_start_offset
+    }
 }
 
 #[derive(Debug)]
