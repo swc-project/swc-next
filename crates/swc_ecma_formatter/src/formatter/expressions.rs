@@ -34,6 +34,7 @@ pub(super) enum ExpressionPosition {
     PropertyValue,
     SpreadArgument,
     MemberObject,
+    MemberAssignmentObject,
     SequenceMember,
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
@@ -69,6 +70,18 @@ impl ExpressionStart {
     fn needs_asi_guard(self) -> bool {
         matches!(self, Self::StatementPending | Self::StatementGuard)
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MemberLayout {
+    Normal,
+    Tight,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ExpressionHead {
+    None,
+    Statement,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -112,9 +125,11 @@ pub(super) struct ExpressionContext {
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
     protected_head_start: Option<u32>,
+    expression_head: ExpressionHead,
     computed_receiver: Option<Expr>,
     conditional_closing: ConditionalClosing,
     conditional_envelope: ConditionalEnvelope,
+    member_layout: MemberLayout,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
 }
@@ -140,7 +155,13 @@ impl ExpressionContext {
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
+            expression_head: if matches!(position, ExpressionPosition::Statement) {
+                ExpressionHead::Statement
+            } else {
+                ExpressionHead::None
+            },
             computed_receiver: None,
+            member_layout: MemberLayout::Normal,
             conditional_closing: ConditionalClosing::Inline,
             conditional_envelope: match position {
                 ExpressionPosition::AssignmentRight(_)
@@ -160,6 +181,7 @@ impl ExpressionContext {
 
     pub(super) fn with_parent_head(mut self, parent: Self) -> Self {
         self.expression_start = parent.expression_start;
+        self.expression_head = parent.expression_head;
         self.protected_head_start = parent.protected_head_start;
         self
     }
@@ -251,7 +273,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn binary_grammar_pair_owns_indent(position: ExpressionPosition) -> bool {
         matches!(
             position,
-            ExpressionPosition::UnaryArgument(_) | ExpressionPosition::MemberObject
+            ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::MemberObject
+                | ExpressionPosition::MemberAssignmentObject
         )
     }
 
@@ -283,14 +307,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(true);
             }
             if let ExprData::AssignmentExpression(assignment) = data {
-                return Ok(self.assignment_source_target(assignment)?.needs_asi_guard());
+                return self
+                    .source_target_needs_asi_guard(&self.assignment_source_target(assignment)?);
             }
             if let ExprData::UpdateExpression(update) = data
                 && !update.prefix(self.ast)
             {
-                return Ok(self
-                    .update_source_target(update)?
-                    .has_retained_parentheses());
+                return self.source_target_needs_asi_guard(&self.update_source_target(update)?);
             }
             if let Some(binary) = BinaryLike::from_data(data, self.ast) {
                 expression = binary.left;
@@ -360,7 +383,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Some(match position {
                 ExpressionPosition::UnaryArgument(_)
                 | ExpressionPosition::SpreadArgument
-                | ExpressionPosition::MemberObject => true,
+                | ExpressionPosition::MemberObject
+                | ExpressionPosition::MemberAssignmentObject => true,
                 ExpressionPosition::BinaryOperand { operator, side } => {
                     operator.needs_parentheses(child, side)
                 }
@@ -381,6 +405,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
                     | ExpressionPosition::MemberObject
+                    | ExpressionPosition::MemberAssignmentObject
             )),
             ExprData::AssignmentExpression(assignment) => {
                 Some(if matches!(position, ExpressionPosition::Statement) {
@@ -394,7 +419,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
-                ExpressionPosition::MemberObject => true,
+                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject => {
+                    true
+                }
                 ExpressionPosition::UnaryArgument(parent)
                 | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
                     matches!(parent, UnaryOperator::Positive | UnaryOperator::Negate)
@@ -414,7 +441,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => false,
             }),
             ExprData::UpdateExpression(update) => Some(match position {
-                ExpressionPosition::MemberObject => true,
+                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject => {
+                    true
+                }
                 ExpressionPosition::UnaryArgument(parent)
                 | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
                     update.prefix(self.ast)
@@ -433,9 +462,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ),
                 _ => false,
             }),
-            ExprData::NumericLiteral(_) => {
-                Some(matches!(position, ExpressionPosition::MemberObject))
-            }
+            ExprData::NumericLiteral(_) => Some(matches!(
+                position,
+                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject
+            )),
             ExprData::IdentifierReference(_)
             | ExprData::BooleanLiteral(_)
             | ExprData::NullLiteral(_)

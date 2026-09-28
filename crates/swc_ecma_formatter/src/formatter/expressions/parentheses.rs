@@ -779,25 +779,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_sequence(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
-        if let Some(binary) = super::binary::BinaryLike::from_data(data, self.ast) {
-            if context.expression_start == ExpressionStart::StatementPending
-                && self.options.semicolons == Semicolons::AsNeeded
-                && self.expression_needs_parentheses(
+        let binary = super::binary::BinaryLike::from_data(data, self.ast);
+        if context.expression_start == ExpressionStart::StatementPending
+            && self.options.semicolons == Semicolons::AsNeeded
+        {
+            let mut asi_guard = parenthesize
+                || match data {
+                    ExprData::ArrayExpression(_) | ExprData::RegExpLiteral(_) => true,
+                    ExprData::UnaryExpression(unary) => matches!(
+                        unary.operator(self.ast),
+                        swc_next_ecma_ast::UnaryOperator::Positive
+                            | swc_next_ecma_ast::UnaryOperator::Negate
+                    ),
+                    _ => false,
+                };
+            if let Some(binary) = binary {
+                asi_guard |= self.expression_needs_parentheses(
                     self.expression_content(binary.left).data,
                     ExpressionPosition::BinaryOperand {
                         operator: binary.operator,
                         side: super::binary::OperandSide::Left,
                     },
-                ) == Some(true)
-            {
+                ) == Some(true);
+            }
+            if asi_guard {
                 context.expression_start = ExpressionStart::StatementGuard;
             }
-            if parenthesize
-                && context.expression_start.needs_asi_guard()
-                && self.options.semicolons == Semicolons::AsNeeded
-            {
-                writer.text(";");
-            }
+        }
+        let conditional = matches!(data, ExprData::ConditionalExpression(_));
+        if context.expression_start == ExpressionStart::StatementGuard
+            && (binary.is_none() && !conditional || parenthesize)
+        {
+            writer.text(";");
+            context.expression_start = ExpressionStart::None;
+        }
+        if let Some(binary) = binary {
             if parenthesize && Self::binary_grammar_pair_owns_indent(context.position) {
                 return writer.group(false, |writer| {
                     writer.text("(");
@@ -823,7 +839,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let ExprData::ConditionalExpression(conditional) = data
             && parenthesize
-            && matches!(context.position, ExpressionPosition::MemberObject)
+            && matches!(
+                context.position,
+                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject
+            )
         {
             return self.format_conditional_enclosed(conditional, context, writer);
         }
@@ -847,15 +866,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(")");
                 Ok(None)
             });
-        }
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
-            && (context.expression_start == ExpressionStart::StatementGuard
-                || self.expression_needs_asi_guard(expression, context)?)
-            && (!matches!(data, ExprData::ConditionalExpression(_)) || parenthesize)
-        {
-            writer.text(";");
-            context.expression_start = ExpressionStart::StatementGuarded;
         }
         if parenthesize {
             writer.text("(");
@@ -1259,6 +1269,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) {
                 inner_context = inner_context.inside_parentheses();
             }
+            inner_context.member_layout = context.member_layout;
             inner_context.protected_head_start = protected_head_start;
             if let Some((sequence, _)) = sequence_head {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(sequence);
@@ -1647,10 +1658,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::ConditionalExpression(_) => {
                 matches!(context.position, ExpressionPosition::ConditionalTest)
-                    || matches!(context.position, ExpressionPosition::MemberObject)
-                        && (context.conditional_closing == super::ConditionalClosing::MemberLine
-                            || context.conditional_envelope
-                                == super::ConditionalEnvelope::OperationHead)
+                    || matches!(
+                        context.position,
+                        ExpressionPosition::MemberObject
+                            | ExpressionPosition::MemberAssignmentObject
+                    ) && (context.conditional_closing == super::ConditionalClosing::MemberLine
+                        || context.conditional_envelope
+                            == super::ConditionalEnvelope::OperationHead)
             }
             _ => false,
         };
