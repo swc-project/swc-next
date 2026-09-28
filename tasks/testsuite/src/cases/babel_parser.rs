@@ -26,6 +26,7 @@ const UNSUPPORTED_PARSER_PATHS: &[&str] = &[
     "/export-ns-from/",
     "/annex-b/disabled/",
     "/annex-b/enabled/valid-assignment-target-type/",
+    "/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/",
     "/module-block/",
     "/typescript/arrow-function/arrow-like-in-conditional-2/",
     "/typescript/cast/satisfies-const-error/",
@@ -115,6 +116,7 @@ impl BabelParserCase {
             "placeholders",
             "decorators-legacy",
             "recordAndTuple",
+            "moduleBlocks",
         ];
 
         is_supported_parser_path(&self.path)

@@ -1,11 +1,8 @@
 parser * babel
 ========================
-Positive Passed: 2235/2238 (99.87%)
+Positive Passed: 2235/2235 (100.00%)
 Negative Passed: 1636/1743 (93.86%)
-Panicked: 0/3981 (0.00%)
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/async-explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 17..18
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/explicit-resource-management/valid-module-block-top-level-using-binding/input.js - es2026/explicit-resource-management/valid-module-block-top-level-using-binding: parser: Expected a semicolon or an implicit semicolon after a statement, but found '{' at 7..8
+Panicked: 0/3978 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded
