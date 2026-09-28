@@ -192,17 +192,18 @@ pub fn serialize_into(
             tree.node_count() * NODE_PAYLOAD_SIZE,
         )
     };
-    write_slice(buf, &mut pos, payloads);
-    if cfg!(target_endian = "big") {
-        let start = pos - payloads.len();
+    if cfg!(target_endian = "little") {
+        write_slice(buf, &mut pos, payloads);
+    } else {
         for index in 0..tree.node_count() {
-            let payload: &mut [u8; NODE_PAYLOAD_SIZE] = (&mut buf
-                [start + index * NODE_PAYLOAD_SIZE..start + (index + 1) * NODE_PAYLOAD_SIZE])
+            let start = index * NODE_PAYLOAD_SIZE;
+            let mut payload: [u8; NODE_PAYLOAD_SIZE] = payloads[start..start + NODE_PAYLOAD_SIZE]
                 .try_into()
                 .unwrap();
             // SAFETY: The AST node table contains `node_count` initialized kinds.
             let kind = unsafe { *tree.nodes.kind.as_ptr().add(index) };
-            crate::generated::ast_payload::swap_payload_endian(payload, kind);
+            crate::generated::ast_payload::swap_payload_endian(&mut payload, kind);
+            write_slice(buf, &mut pos, &payload);
         }
     }
 
@@ -213,10 +214,11 @@ pub fn serialize_into(
             tree.extra_data_count() * EXTRA_DATA_SIZE,
         )
     };
-    write_slice(buf, &mut pos, extra_data);
-    if cfg!(target_endian = "big") {
-        for word in buf[pos - extra_data.len()..pos].as_chunks_mut::<4>().0 {
-            word.reverse();
+    if cfg!(target_endian = "little") {
+        write_slice(buf, &mut pos, extra_data);
+    } else {
+        for data in tree.extra_data.as_slice() {
+            write_slice(buf, &mut pos, &data.raw().to_le_bytes());
         }
     }
 
