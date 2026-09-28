@@ -5,6 +5,7 @@ mod arrays;
 pub(super) mod assignment;
 mod binary;
 mod conditional;
+mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;
 mod sequence;
@@ -18,6 +19,7 @@ use swc_next_ecma_ast::{
 
 use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
+use self::conditional::{ConditionalClosing, ConditionalEnvelope};
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
 use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
@@ -31,6 +33,7 @@ pub(super) enum ExpressionPosition {
     Nested,
     PropertyValue,
     SpreadArgument,
+    MemberObject,
     SequenceMember,
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
@@ -109,14 +112,19 @@ pub(super) struct ExpressionContext {
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
     protected_head_start: Option<u32>,
+    computed_receiver: Option<Expr>,
+    conditional_closing: ConditionalClosing,
+    conditional_envelope: ConditionalEnvelope,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
 }
 
 impl ExpressionContext {
     pub(super) fn binding_initializer() -> Self {
-        Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
-            .with_source_tail_owner(SourceTailOwner::Enclosure)
+        let mut context = Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
+            .with_source_tail_owner(SourceTailOwner::Enclosure);
+        context.conditional_envelope = ConditionalEnvelope::Local;
+        context
     }
 
     pub(super) fn at(position: ExpressionPosition) -> Self {
@@ -132,6 +140,14 @@ impl ExpressionContext {
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
+            computed_receiver: None,
+            conditional_closing: ConditionalClosing::Inline,
+            conditional_envelope: match position {
+                ExpressionPosition::AssignmentRight(_)
+                | ExpressionPosition::Initializer(_)
+                | ExpressionPosition::UnaryArgument(_) => ConditionalEnvelope::ContinuationRoot,
+                _ => ConditionalEnvelope::Local,
+            },
             source_parentheses_tail: None,
             source_tail_owner: SourceTailOwner::Consumer,
         }
@@ -233,7 +249,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn binary_grammar_pair_owns_indent(position: ExpressionPosition) -> bool {
-        matches!(position, ExpressionPosition::UnaryArgument(_))
+        matches!(
+            position,
+            ExpressionPosition::UnaryArgument(_) | ExpressionPosition::MemberObject
+        )
     }
 
     pub(super) fn expression_needs_asi_guard(
@@ -281,6 +300,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 continue;
             }
+            if let ExprData::MemberExpression(member) = data {
+                (expression, context) = self.source_member_receiver(member, context)?;
+                continue;
+            }
             if let ExprData::ConditionalExpression(conditional) = data {
                 expression = conditional.test(self.ast);
                 context.position = ExpressionPosition::ConditionalTest;
@@ -293,8 +316,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn expression_is_parenthesized(&self, data: ExprData, context: ExpressionContext) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
             && (self.expression_needs_parentheses(data, context.position) == Some(true)
+                || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
                     && context.expression_start.is_statement())
+    }
+
+    /// The actual computed receiver owns the lexical pair, not its whole member.
+    fn lexical_identifier_head_needs_parentheses(
+        &self,
+        data: ExprData,
+        context: ExpressionContext,
+    ) -> bool {
+        let Some(receiver) = context.computed_receiver else {
+            return false;
+        };
+        let ExprData::IdentifierReference(identifier) = data else {
+            return false;
+        };
+        self.ast.get_utf8(identifier.name(self.ast)) == "let"
+            && matches!(self.expression_content(receiver).data,
+                ExprData::IdentifierReference(node) if node == identifier)
     }
 
     fn is_nullish_conditional_operand(&self, data: ExprData, position: ExpressionPosition) -> bool {
@@ -317,7 +358,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let Some(child) = BinaryOperatorKind::from_data(data, self.ast) {
             return Some(match position {
-                ExpressionPosition::UnaryArgument(_) | ExpressionPosition::SpreadArgument => true,
+                ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::SpreadArgument
+                | ExpressionPosition::MemberObject => true,
                 ExpressionPosition::BinaryOperand { operator, side } => {
                     operator.needs_parentheses(child, side)
                 }
@@ -337,6 +380,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::SpreadArgument
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
+                    | ExpressionPosition::MemberObject
             )),
             ExprData::AssignmentExpression(assignment) => {
                 Some(if matches!(position, ExpressionPosition::Statement) {
@@ -350,6 +394,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
+                ExpressionPosition::MemberObject => true,
                 ExpressionPosition::UnaryArgument(parent)
                 | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
                     matches!(parent, UnaryOperator::Positive | UnaryOperator::Negate)
@@ -369,6 +414,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => false,
             }),
             ExprData::UpdateExpression(update) => Some(match position {
+                ExpressionPosition::MemberObject => true,
                 ExpressionPosition::UnaryArgument(parent)
                 | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
                     update.prefix(self.ast)
@@ -387,14 +433,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ),
                 _ => false,
             }),
+            ExprData::NumericLiteral(_) => {
+                Some(matches!(position, ExpressionPosition::MemberObject))
+            }
             ExprData::IdentifierReference(_)
             | ExprData::BooleanLiteral(_)
             | ExprData::NullLiteral(_)
-            | ExprData::NumericLiteral(_)
             | ExprData::BigIntLiteral(_)
             | ExprData::RegExpLiteral(_)
             | ExprData::ThisExpression(_)
-            | ExprData::ParenthesizedExpression(_) => Some(false),
+            | ExprData::ParenthesizedExpression(_)
+            | ExprData::MemberExpression(_) => Some(false),
             _ => None,
         }
     }
@@ -448,6 +497,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
             ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
+            ExprData::MemberExpression(member) => {
+                return self.format_member(member, context, writer);
+            }
             ExprData::BinaryExpression(node) => {
                 return self.format_binary(
                     BinaryLike {

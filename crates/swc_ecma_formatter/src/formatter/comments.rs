@@ -3,7 +3,7 @@
 use swc_next_ecma_ast::{Comment, CommentKind, Span};
 
 use super::Formatter;
-use super::diagnostics::FlatSeparator;
+use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::source::{lines, split_line};
 use crate::{FormatError, document::Writer};
 
@@ -92,6 +92,39 @@ pub(super) struct NodeHead<'ast> {
 pub(super) struct ExpressionTail<'ast> {
     pub(super) source_end: u32,
     pub(super) comments: &'ast [Comment],
+}
+
+/// Source facts remain valid after the pending run has been claimed.
+pub(super) struct CommentBoundary<'ast> {
+    comments: &'ast [Comment],
+    source_end: u32,
+    gap: CommentGap,
+}
+
+impl CommentBoundary<'_> {
+    pub(super) fn gap(&self) -> CommentGap {
+        self.gap
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum CommentGap {
+    LineComment,
+    Source(LineConstraint),
+}
+
+impl CommentGap {
+    pub(super) fn write<'a>(
+        self,
+        writer: &mut Writer<'a>,
+        flat: FlatSeparator,
+        default: impl FnOnce(&mut Writer<'a>),
+    ) {
+        match self {
+            Self::LineComment => writer.hard_line(),
+            Self::Source(constraint) => constraint.write(writer, flat, default),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -281,6 +314,39 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn prepare_comment_boundary(
+        &self,
+        comments: &'ast [Comment],
+        source_end: u32,
+        next_start: u32,
+    ) -> CommentBoundary<'ast> {
+        let last = comments.last();
+        let end = last.map_or(source_end, |comment| comment.span.end);
+        let gap = if last.is_some_and(|comment| comment.kind == CommentKind::Line) {
+            CommentGap::LineComment
+        } else {
+            CommentGap::Source(self.line_constraint(end, next_start))
+        };
+        CommentBoundary {
+            comments,
+            source_end,
+            gap,
+        }
+    }
+
+    pub(super) fn format_comment_boundary(
+        &mut self,
+        boundary: &CommentBoundary<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(boundary.comments)?;
+        self.format_comment_run(
+            boundary.comments,
+            CommentRunLayout::SourceAfter(boundary.source_end),
+            writer,
+        )
+    }
+
     pub(super) fn source_comment_gap_is_run(&self, previous: Comment, next: Comment) -> bool {
         self.source(Span::new(previous.span.end, next.span.start))
             .chars()
