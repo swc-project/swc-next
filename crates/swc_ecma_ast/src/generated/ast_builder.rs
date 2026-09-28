@@ -22,8 +22,8 @@ impl<'a> Ast<'a> {
             NodeKind::Program,
             NodePayload {
                 program: ProgramPayload {
-                    hashbang: hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     directives,
+                    hashbang: hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     extra_data_start: _f0,
                 },
             },
@@ -4300,9 +4300,9 @@ impl<'a> Ast<'a> {
             NodeKind::TemplateElement,
             NodePayload {
                 template_element: TemplateElementPayload {
+                    cooked,
                     tail,
                     is_cooked_undefined,
-                    cooked,
                     _pad0: [0; 2usize],
                     extra_data_start: _f0,
                 },
@@ -4968,12 +4968,12 @@ impl<'a> Ast<'a> {
             NodeKind::Class,
             NodePayload {
                 class: ClassPayload {
-                    class_type,
-                    r#abstract,
-                    declare,
                     id: id.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     type_parameters:
                         type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    class_type,
+                    r#abstract,
+                    declare,
                     _pad0: [0; 1usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5015,6 +5015,7 @@ impl<'a> Ast<'a> {
             NodeKind::MethodDefinition,
             NodePayload {
                 method_definition: MethodDefinitionPayload {
+                    key,
                     kind,
                     computed,
                     r#static,
@@ -5022,7 +5023,6 @@ impl<'a> Ast<'a> {
                     optional,
                     r#abstract,
                     accessibility,
-                    key,
                     _pad0: [0; 1usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5115,12 +5115,12 @@ impl<'a> Ast<'a> {
             NodeKind::Function,
             NodePayload {
                 function: FunctionPayload {
-                    function_type,
-                    generator,
-                    r#async,
                     id: id.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     type_parameters:
                         type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    function_type,
+                    generator,
+                    r#async,
                     _pad0: [0; 1usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5238,10 +5238,10 @@ impl<'a> Ast<'a> {
             NodeKind::FormalParameter,
             NodePayload {
                 formal_parameter: FormalParameterPayload {
-                    optional,
                     pattern,
                     type_annotation:
                         type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    optional,
                     _pad0: [0; 3usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5378,11 +5378,11 @@ impl<'a> Ast<'a> {
             NodeKind::ArrowFunctionExpression,
             NodePayload {
                 arrow_function_expression: ArrowFunctionExpressionPayload {
-                    expression,
-                    r#async,
                     type_parameters:
                         type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     params,
+                    expression,
+                    r#async,
                     _pad0: [0; 2usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5444,10 +5444,10 @@ impl<'a> Ast<'a> {
             NodeKind::CallExpression,
             NodePayload {
                 call_expression: CallExpressionPayload {
-                    optional,
                     callee,
                     type_arguments:
                         type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    optional,
                     _pad0: [0; 3usize],
                     extra_data_start: _f0,
                 },
@@ -5576,9 +5576,9 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression,
             NodePayload {
                 import_expression: ImportExpressionPayload {
-                    sync,
                     source,
                     options: options.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    sync,
                     _pad0: [0; 3usize],
                     extra_data_start: _f0,
                 },
@@ -5606,8 +5606,8 @@ impl<'a> Ast<'a> {
             NodeKind::ImportDeclaration,
             NodePayload {
                 import_declaration: ImportDeclarationPayload {
-                    import_kind,
                     source,
+                    import_kind,
                     _pad0: [0; 7usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5708,9 +5708,9 @@ impl<'a> Ast<'a> {
             NodeKind::ExportNamedDeclaration,
             NodePayload {
                 export_named_declaration: ExportNamedDeclarationPayload {
-                    export_kind,
                     declaration: declaration.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     source: source.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    export_kind,
                     _pad0: [0; 3usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -5749,9 +5749,9 @@ impl<'a> Ast<'a> {
             NodeKind::ExportAllDeclaration,
             NodePayload {
                 export_all_declaration: ExportAllDeclarationPayload {
-                    export_kind,
                     exported: exported.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     source,
+                    export_kind,
                     _pad0: [0; 3usize],
                     extra_data_start: _f0,
                 },
@@ -6810,12 +6810,12 @@ impl<'a> Ast<'a> {
             NodeKind::TsFunction,
             NodePayload {
                 ts_function: TsFunctionPayload {
-                    generator,
-                    r#async,
-                    declare,
                     id: id.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     type_parameters:
                         type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    generator,
+                    r#async,
+                    declare,
                     _pad0: [0; 1usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -6844,6 +6844,7 @@ impl<'a> Ast<'a> {
             NodeKind::TsMethodDefinition,
             NodePayload {
                 ts_method_definition: TsMethodDefinitionPayload {
+                    key,
                     kind,
                     computed,
                     r#static,
@@ -6851,7 +6852,6 @@ impl<'a> Ast<'a> {
                     optional,
                     r#abstract,
                     accessibility,
-                    key,
                     _pad0: [0; 1usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -7456,10 +7456,10 @@ impl<'a> Ast<'a> {
             NodeKind::TsMappedType,
             NodePayload {
                 ts_mapped_type: TsMappedTypePayload {
-                    optional,
-                    readonly,
                     key,
                     constraint,
+                    optional,
+                    readonly,
                     _pad0: [0; 2usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -7516,12 +7516,12 @@ impl<'a> Ast<'a> {
             NodeKind::TsMethodSignature,
             NodePayload {
                 ts_method_signature: TsMethodSignaturePayload {
-                    kind,
-                    computed,
-                    optional,
                     key,
                     type_parameters:
                         type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    kind,
+                    computed,
+                    optional,
                     _pad0: [0; 1usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -7637,10 +7637,10 @@ impl<'a> Ast<'a> {
             NodeKind::TsInterfaceDeclaration,
             NodePayload {
                 ts_interface_declaration: TsInterfaceDeclarationPayload {
-                    declare,
                     id,
                     type_parameters:
                         type_parameters.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    declare,
                     _pad0: [0; 3usize],
                     extra_data_start: _extra_data_start,
                 },
@@ -8731,10 +8731,10 @@ impl<'a> Ast<'a> {
             NodeKind::JsxOpeningElement,
             NodePayload {
                 jsx_opening_element: JsxOpeningElementPayload {
-                    self_closing,
                     name,
                     type_arguments:
                         type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    self_closing,
                     _pad0: [0; 3usize],
                     extra_data_start: _f0,
                 },

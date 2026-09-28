@@ -158,116 +158,116 @@ pub(crate) union NodePayload {
     pub(crate) jsx_text: JsxTextPayload,
     pub(crate) jsx_spread_child: JsxSpreadChildPayload,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ProgramPayload {
-    pub(crate) hashbang: u32,
     pub(crate) directives: SubRange<Directive>,
+    pub(crate) hashbang: u32,
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct StringLiteralPayload {
     pub(crate) value: AstWtf8,
     pub(crate) raw: AstUtf8,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct NumericLiteralPayload {
     pub(crate) value: f64,
     pub(crate) raw: u64,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BigIntLiteralPayload {
     pub(crate) raw: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BooleanLiteralPayload {
     pub(crate) value: bool,
     pub(crate) _pad0: [u8; 15usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct RegExpLiteralPayload {
     pub(crate) pattern: AstUtf8,
     pub(crate) flags: AstUtf8,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TemplateLiteralPayload {
     pub(crate) quasis: SubRange<TemplateElement>,
     pub(crate) expressions: SubRange<Expr>,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TemplateElementPayload {
+    pub(crate) cooked: AstWtf8,
     pub(crate) tail: bool,
     pub(crate) is_cooked_undefined: bool,
-    pub(crate) cooked: AstWtf8,
     pub(crate) _pad0: [u8; 2usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct IdentifierReferencePayload {
     pub(crate) name: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct PrivateIdentifierPayload {
     pub(crate) name: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BindingIdentifierPayload {
     pub(crate) name: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct IdentifierNamePayload {
     pub(crate) name: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct LabelIdentifierPayload {
     pub(crate) name: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct AssignmentPatternPayload {
     pub(crate) left: BindingPattern,
     pub(crate) right: Expr,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BindingRestElementPayload {
     pub(crate) argument: BindingPattern,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ArrayPatternPayload {
     pub(crate) elements: SubRange<Option<BindingPattern>>,
     pub(crate) rest: u32,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ObjectPatternPayload {
     pub(crate) properties: SubRange<BindingProperty>,
     pub(crate) rest: u32,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BindingPropertyPayload {
     pub(crate) key: PropertyKey,
@@ -276,7 +276,7 @@ pub(crate) struct BindingPropertyPayload {
     pub(crate) computed: bool,
     pub(crate) _pad0: [u8; 6usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BinaryExpressionPayload {
     pub(crate) left: Expr,
@@ -284,7 +284,7 @@ pub(crate) struct BinaryExpressionPayload {
     pub(crate) operator: BinaryOperator,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct LogicalExpressionPayload {
     pub(crate) left: Expr,
@@ -292,7 +292,7 @@ pub(crate) struct LogicalExpressionPayload {
     pub(crate) operator: LogicalOperator,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ConditionalExpressionPayload {
     pub(crate) test: Expr,
@@ -300,14 +300,14 @@ pub(crate) struct ConditionalExpressionPayload {
     pub(crate) alternate: Expr,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct UnaryExpressionPayload {
     pub(crate) argument: Expr,
     pub(crate) operator: UnaryOperator,
     pub(crate) _pad0: [u8; 11usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct UpdateExpressionPayload {
     pub(crate) argument: SimpleAssignmentTarget,
@@ -315,7 +315,7 @@ pub(crate) struct UpdateExpressionPayload {
     pub(crate) prefix: bool,
     pub(crate) _pad0: [u8; 10usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct AssignmentExpressionPayload {
     pub(crate) left: AssignmentTarget,
@@ -323,7 +323,7 @@ pub(crate) struct AssignmentExpressionPayload {
     pub(crate) operator: AssignmentOperator,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct VariableDeclarationPayload {
     pub(crate) declarators: SubRange<VariableDeclarator>,
@@ -331,7 +331,7 @@ pub(crate) struct VariableDeclarationPayload {
     pub(crate) declare: bool,
     pub(crate) _pad0: [u8; 6usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct VariableDeclaratorPayload {
     pub(crate) id: BindingPattern,
@@ -340,7 +340,7 @@ pub(crate) struct VariableDeclaratorPayload {
     pub(crate) definite: bool,
     pub(crate) _pad0: [u8; 3usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct IfStatementPayload {
     pub(crate) test: Expr,
@@ -348,21 +348,21 @@ pub(crate) struct IfStatementPayload {
     pub(crate) alternate: u32,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct SwitchStatementPayload {
     pub(crate) cases: SubRange<SwitchCase>,
     pub(crate) discriminant: Expr,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct SwitchCasePayload {
     pub(crate) consequent: SubRange<Stmt>,
     pub(crate) test: u32,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ForStatementPayload {
     pub(crate) init: u32,
@@ -370,7 +370,7 @@ pub(crate) struct ForStatementPayload {
     pub(crate) update: u32,
     pub(crate) body: Stmt,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ForInStatementPayload {
     pub(crate) left: ForStatementLeft,
@@ -378,7 +378,7 @@ pub(crate) struct ForInStatementPayload {
     pub(crate) body: Stmt,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ForOfStatementPayload {
     pub(crate) left: ForStatementLeft,
@@ -387,7 +387,7 @@ pub(crate) struct ForOfStatementPayload {
     pub(crate) r#await: bool,
     pub(crate) _pad0: [u8; 3usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TryStatementPayload {
     pub(crate) block: BlockStatement,
@@ -395,7 +395,7 @@ pub(crate) struct TryStatementPayload {
     pub(crate) finalizer: u32,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct CatchClausePayload {
     pub(crate) param: u32,
@@ -403,76 +403,77 @@ pub(crate) struct CatchClausePayload {
     pub(crate) body: BlockStatement,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BreakStatementPayload {
     pub(crate) label: u32,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ContinueStatementPayload {
     pub(crate) label: u32,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct LabeledStatementPayload {
     pub(crate) label: LabelIdentifier,
     pub(crate) body: Stmt,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ExpressionStatementPayload {
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ReturnStatementPayload {
     pub(crate) argument: u32,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ThrowStatementPayload {
     pub(crate) argument: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct DirectivePayload {
     pub(crate) value: AstUtf8,
     pub(crate) expression: StringLiteral,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct DecoratorPayload {
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ClassPayload {
+    pub(crate) id: u32,
+    pub(crate) type_parameters: u32,
     pub(crate) class_type: ClassType,
     pub(crate) r#abstract: bool,
     pub(crate) declare: bool,
-    pub(crate) id: u32,
-    pub(crate) type_parameters: u32,
     pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ClassBodyPayload {
     pub(crate) body: SubRange<ClassElement>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct MethodDefinitionPayload {
+    pub(crate) key: PropertyKey,
     pub(crate) kind: MethodDefinitionKind,
     pub(crate) computed: bool,
     pub(crate) r#static: bool,
@@ -480,11 +481,10 @@ pub(crate) struct MethodDefinitionPayload {
     pub(crate) optional: bool,
     pub(crate) r#abstract: bool,
     pub(crate) accessibility: Accessibility,
-    pub(crate) key: PropertyKey,
     pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct PropertyDefinitionPayload {
     pub(crate) computed: bool,
@@ -500,57 +500,57 @@ pub(crate) struct PropertyDefinitionPayload {
     pub(crate) _pad0: [u8; 2usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct StaticBlockPayload {
     pub(crate) body: SubRange<Stmt>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FunctionPayload {
+    pub(crate) id: u32,
+    pub(crate) type_parameters: u32,
     pub(crate) function_type: FunctionType,
     pub(crate) generator: bool,
     pub(crate) r#async: bool,
-    pub(crate) id: u32,
-    pub(crate) type_parameters: u32,
     pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FunctionBodyPayload {
     pub(crate) directives: SubRange<Directive>,
     pub(crate) body: SubRange<Stmt>,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BlockStatementPayload {
     pub(crate) body: SubRange<Stmt>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct WhileStatementPayload {
     pub(crate) test: Expr,
     pub(crate) body: Stmt,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct DoWhileStatementPayload {
     pub(crate) body: Stmt,
     pub(crate) test: Expr,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct WithStatementPayload {
     pub(crate) object: Expr,
     pub(crate) body: Stmt,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FormalParametersPayload {
     pub(crate) items: SubRange<FormalParameterItem>,
@@ -558,41 +558,41 @@ pub(crate) struct FormalParametersPayload {
     pub(crate) kind: FormalParameterKind,
     pub(crate) _pad0: [u8; 3usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FormalParameterPayload {
-    pub(crate) optional: bool,
     pub(crate) pattern: FormalParameterPattern,
     pub(crate) type_annotation: u32,
+    pub(crate) optional: bool,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FormalParameterRestPayload {
     pub(crate) decorators: SubRange<Decorator>,
     pub(crate) argument: FormalParameterPattern,
     pub(crate) type_annotation: u32,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ArrayExpressionPayload {
     pub(crate) elements: SubRange<Option<Argument>>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ObjectExpressionPayload {
     pub(crate) properties: SubRange<ObjectPropertyKind>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct SpreadElementPayload {
     pub(crate) argument: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ObjectPropertyPayload {
     pub(crate) key: PropertyKey,
@@ -603,29 +603,29 @@ pub(crate) struct ObjectPropertyPayload {
     pub(crate) computed: bool,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ParenthesizedExpressionPayload {
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ArrowFunctionExpressionPayload {
-    pub(crate) expression: bool,
-    pub(crate) r#async: bool,
     pub(crate) type_parameters: u32,
     pub(crate) params: FormalParameters,
+    pub(crate) expression: bool,
+    pub(crate) r#async: bool,
     pub(crate) _pad0: [u8; 2usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct SequenceExpressionPayload {
     pub(crate) expressions: SubRange<Expr>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct MemberExpressionPayload {
     pub(crate) object: Expr,
@@ -634,22 +634,22 @@ pub(crate) struct MemberExpressionPayload {
     pub(crate) optional: bool,
     pub(crate) _pad0: [u8; 6usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct CallExpressionPayload {
-    pub(crate) optional: bool,
     pub(crate) callee: Expr,
     pub(crate) type_arguments: u32,
+    pub(crate) optional: bool,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ChainExpressionPayload {
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TaggedTemplateExpressionPayload {
     pub(crate) tag: Expr,
@@ -657,51 +657,51 @@ pub(crate) struct TaggedTemplateExpressionPayload {
     pub(crate) quasi: TemplateLiteral,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct NewExpressionPayload {
     pub(crate) arguments: SubRange<Argument>,
     pub(crate) callee: Expr,
     pub(crate) type_arguments: u32,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct AwaitExpressionPayload {
     pub(crate) argument: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct YieldExpressionPayload {
     pub(crate) argument: u32,
     pub(crate) delegate: bool,
     pub(crate) _pad0: [u8; 11usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct MetaPropertyPayload {
     pub(crate) meta: IdentifierName,
     pub(crate) property: IdentifierName,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportExpressionPayload {
-    pub(crate) sync: bool,
     pub(crate) source: Expr,
     pub(crate) options: u32,
+    pub(crate) sync: bool,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportDeclarationPayload {
-    pub(crate) import_kind: ImportOrExportKind,
     pub(crate) source: StringLiteral,
+    pub(crate) import_kind: ImportOrExportKind,
     pub(crate) _pad0: [u8; 7usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportSpecifierPayload {
     pub(crate) imported: ModuleExportName,
@@ -709,50 +709,50 @@ pub(crate) struct ImportSpecifierPayload {
     pub(crate) import_kind: ImportOrExportKind,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportDefaultSpecifierPayload {
     pub(crate) local: BindingIdentifier,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportNamespaceSpecifierPayload {
     pub(crate) local: BindingIdentifier,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ImportAttributePayload {
     pub(crate) key: ModuleExportName,
     pub(crate) value: StringLiteral,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ExportNamedDeclarationPayload {
-    pub(crate) export_kind: ImportOrExportKind,
     pub(crate) declaration: u32,
     pub(crate) source: u32,
+    pub(crate) export_kind: ImportOrExportKind,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ExportDefaultDeclarationPayload {
     pub(crate) declaration: ExportDefaultDeclarationKind,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ExportAllDeclarationPayload {
-    pub(crate) export_kind: ImportOrExportKind,
     pub(crate) exported: u32,
     pub(crate) source: StringLiteral,
+    pub(crate) export_kind: ImportOrExportKind,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ExportSpecifierPayload {
     pub(crate) local: ModuleExportName,
@@ -760,26 +760,27 @@ pub(crate) struct ExportSpecifierPayload {
     pub(crate) export_kind: ImportOrExportKind,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct HashbangPayload {
     pub(crate) value: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsFunctionPayload {
+    pub(crate) id: u32,
+    pub(crate) type_parameters: u32,
     pub(crate) generator: bool,
     pub(crate) r#async: bool,
     pub(crate) declare: bool,
-    pub(crate) id: u32,
-    pub(crate) type_parameters: u32,
     pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsMethodDefinitionPayload {
+    pub(crate) key: PropertyKey,
     pub(crate) kind: MethodDefinitionKind,
     pub(crate) computed: bool,
     pub(crate) r#static: bool,
@@ -787,38 +788,37 @@ pub(crate) struct TsMethodDefinitionPayload {
     pub(crate) optional: bool,
     pub(crate) r#abstract: bool,
     pub(crate) accessibility: Accessibility,
-    pub(crate) key: PropertyKey,
     pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeAnnotationPayload {
     pub(crate) type_annotation: TsType,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeReferencePayload {
     pub(crate) type_name: TsTypeName,
     pub(crate) type_arguments: u32,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsQualifiedNamePayload {
     pub(crate) left: TsQualifiedNameLeft,
     pub(crate) right: IdentifierName,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeQueryPayload {
     pub(crate) expr_name: TsTypeQueryExprName,
     pub(crate) type_arguments: u32,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsImportTypePayload {
     pub(crate) source: StringLiteral,
@@ -826,7 +826,7 @@ pub(crate) struct TsImportTypePayload {
     pub(crate) qualifier: u32,
     pub(crate) type_arguments: u32,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeParameterPayload {
     pub(crate) name: BindingIdentifier,
@@ -837,50 +837,50 @@ pub(crate) struct TsTypeParameterPayload {
     pub(crate) r#const: bool,
     pub(crate) _pad0: [u8; 1usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeParameterDeclarationPayload {
     pub(crate) params: SubRange<TsTypeParameter>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeParameterInstantiationPayload {
     pub(crate) params: SubRange<TsType>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsLiteralTypePayload {
     pub(crate) literal: TsLiteral,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTemplateLiteralTypePayload {
     pub(crate) quasis: SubRange<TemplateElement>,
     pub(crate) types: SubRange<TsType>,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsArrayTypePayload {
     pub(crate) element_type: TsType,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsIndexedAccessTypePayload {
     pub(crate) object_type: TsType,
     pub(crate) index_type: TsType,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTupleTypePayload {
     pub(crate) element_types: SubRange<TsTupleElement>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsNamedTupleMemberPayload {
     pub(crate) label: IdentifierName,
@@ -888,45 +888,45 @@ pub(crate) struct TsNamedTupleMemberPayload {
     pub(crate) optional: bool,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsOptionalTypePayload {
     pub(crate) type_annotation: TsType,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsRestTypePayload {
     pub(crate) type_annotation: TsTupleElement,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsJsDocNullableTypePayload {
     pub(crate) type_annotation: TsType,
     pub(crate) postfix: bool,
     pub(crate) _pad0: [u8; 11usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsJsDocNonNullableTypePayload {
     pub(crate) type_annotation: TsType,
     pub(crate) postfix: bool,
     pub(crate) _pad0: [u8; 11usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsUnionTypePayload {
     pub(crate) types: SubRange<TsType>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsIntersectionTypePayload {
     pub(crate) types: SubRange<TsType>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsConditionalTypePayload {
     pub(crate) check_type: TsType,
@@ -934,26 +934,26 @@ pub(crate) struct TsConditionalTypePayload {
     pub(crate) true_type: TsType,
     pub(crate) false_type: TsType,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsInferTypePayload {
     pub(crate) type_parameter: TsTypeParameter,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeOperatorPayload {
     pub(crate) type_annotation: TsType,
     pub(crate) operator: TsTypeOperatorKind,
     pub(crate) _pad0: [u8; 11usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsParenthesizedTypePayload {
     pub(crate) type_annotation: TsType,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsFunctionTypePayload {
     pub(crate) type_parameters: u32,
@@ -961,7 +961,7 @@ pub(crate) struct TsFunctionTypePayload {
     pub(crate) params: FormalParameters,
     pub(crate) return_type: TsTypeAnnotation,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsConstructorTypePayload {
     pub(crate) type_parameters: u32,
@@ -970,7 +970,7 @@ pub(crate) struct TsConstructorTypePayload {
     pub(crate) r#abstract: bool,
     pub(crate) _pad0: [u8; 3usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypePredicatePayload {
     pub(crate) parameter_name: TsTypePredicateName,
@@ -978,23 +978,23 @@ pub(crate) struct TsTypePredicatePayload {
     pub(crate) asserts: bool,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeLiteralPayload {
     pub(crate) members: SubRange<TsTypeElement>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsMappedTypePayload {
-    pub(crate) optional: TsMappedTypeModifier,
-    pub(crate) readonly: TsMappedTypeModifier,
     pub(crate) key: BindingIdentifier,
     pub(crate) constraint: TsType,
+    pub(crate) optional: TsMappedTypeModifier,
+    pub(crate) readonly: TsMappedTypeModifier,
     pub(crate) _pad0: [u8; 2usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsPropertySignaturePayload {
     pub(crate) key: PropertyKey,
@@ -1004,18 +1004,18 @@ pub(crate) struct TsPropertySignaturePayload {
     pub(crate) readonly: bool,
     pub(crate) _pad0: [u8; 5usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsMethodSignaturePayload {
+    pub(crate) key: PropertyKey,
+    pub(crate) type_parameters: u32,
     pub(crate) kind: TsMethodSignatureKind,
     pub(crate) computed: bool,
     pub(crate) optional: bool,
-    pub(crate) key: PropertyKey,
-    pub(crate) type_parameters: u32,
     pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsCallSignatureDeclarationPayload {
     pub(crate) type_parameters: u32,
@@ -1023,7 +1023,7 @@ pub(crate) struct TsCallSignatureDeclarationPayload {
     pub(crate) params: FormalParameters,
     pub(crate) return_type: u32,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsConstructSignatureDeclarationPayload {
     pub(crate) type_parameters: u32,
@@ -1031,7 +1031,7 @@ pub(crate) struct TsConstructSignatureDeclarationPayload {
     pub(crate) return_type: u32,
     pub(crate) _pad0: [u8; 4usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsIndexSignaturePayload {
     pub(crate) parameters: SubRange<TsIndexSignatureParameter>,
@@ -1040,7 +1040,7 @@ pub(crate) struct TsIndexSignaturePayload {
     pub(crate) r#static: bool,
     pub(crate) _pad0: [u8; 2usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeAliasDeclarationPayload {
     pub(crate) id: BindingIdentifier,
@@ -1049,36 +1049,36 @@ pub(crate) struct TsTypeAliasDeclarationPayload {
     pub(crate) declare: bool,
     pub(crate) _pad0: [u8; 3usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsInterfaceDeclarationPayload {
-    pub(crate) declare: bool,
     pub(crate) id: BindingIdentifier,
     pub(crate) type_parameters: u32,
+    pub(crate) declare: bool,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsInterfaceBodyPayload {
     pub(crate) body: SubRange<TsTypeElement>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsInterfaceHeritagePayload {
     pub(crate) expression: Expr,
     pub(crate) type_arguments: u32,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsClassImplementsPayload {
     pub(crate) expression: Expr,
     pub(crate) type_arguments: u32,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsEnumDeclarationPayload {
     pub(crate) id: BindingIdentifier,
@@ -1087,13 +1087,13 @@ pub(crate) struct TsEnumDeclarationPayload {
     pub(crate) declare: bool,
     pub(crate) _pad0: [u8; 6usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsEnumBodyPayload {
     pub(crate) members: SubRange<TsEnumMember>,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsEnumMemberPayload {
     pub(crate) id: TsEnumMemberName,
@@ -1101,7 +1101,7 @@ pub(crate) struct TsEnumMemberPayload {
     pub(crate) computed: bool,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsModuleDeclarationPayload {
     pub(crate) id: TsModuleName,
@@ -1110,13 +1110,13 @@ pub(crate) struct TsModuleDeclarationPayload {
     pub(crate) declare: bool,
     pub(crate) _pad0: [u8; 6usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsModuleBlockPayload {
     pub(crate) directives: SubRange<Directive>,
     pub(crate) body: SubRange<Stmt>,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsGlobalDeclarationPayload {
     pub(crate) id: IdentifierName,
@@ -1124,7 +1124,7 @@ pub(crate) struct TsGlobalDeclarationPayload {
     pub(crate) declare: bool,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsParameterPropertyPayload {
     pub(crate) decorators: SubRange<Decorator>,
@@ -1134,59 +1134,59 @@ pub(crate) struct TsParameterPropertyPayload {
     pub(crate) accessibility: Accessibility,
     pub(crate) _pad0: [u8; 1usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsThisParameterPayload {
     pub(crate) type_annotation: u32,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsAsExpressionPayload {
     pub(crate) expression: Expr,
     pub(crate) type_annotation: TsType,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsSatisfiesExpressionPayload {
     pub(crate) expression: Expr,
     pub(crate) type_annotation: TsType,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsTypeAssertionPayload {
     pub(crate) type_annotation: TsType,
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsNonNullExpressionPayload {
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsInstantiationExpressionPayload {
     pub(crate) expression: Expr,
     pub(crate) type_arguments: TsTypeParameterInstantiation,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsExportAssignmentPayload {
     pub(crate) expression: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsNamespaceExportDeclarationPayload {
     pub(crate) id: IdentifierName,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsImportEqualsDeclarationPayload {
     pub(crate) id: BindingIdentifier,
@@ -1194,94 +1194,94 @@ pub(crate) struct TsImportEqualsDeclarationPayload {
     pub(crate) import_kind: ImportOrExportKind,
     pub(crate) _pad0: [u8; 7usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsExternalModuleReferencePayload {
     pub(crate) expression: StringLiteral,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct TsIndexSignatureParameterPayload {
     pub(crate) name: BindingIdentifier,
     pub(crate) type_annotation: TsTypeAnnotation,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxElementPayload {
     pub(crate) children: SubRange<JsxChild>,
     pub(crate) opening_element: JsxOpeningElement,
     pub(crate) closing_element: u32,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxOpeningElementPayload {
-    pub(crate) self_closing: bool,
     pub(crate) name: JsxElementName,
     pub(crate) type_arguments: u32,
+    pub(crate) self_closing: bool,
     pub(crate) _pad0: [u8; 3usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxClosingElementPayload {
     pub(crate) name: JsxElementName,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxFragmentPayload {
     pub(crate) children: SubRange<JsxChild>,
     pub(crate) opening_fragment: JsxOpeningFragment,
     pub(crate) closing_fragment: JsxClosingFragment,
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxIdentifierPayload {
     pub(crate) name: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxNamespacedNamePayload {
     pub(crate) namespace: JsxIdentifier,
     pub(crate) name: JsxIdentifier,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxMemberExpressionPayload {
     pub(crate) object: JsxMemberExpressionObject,
     pub(crate) property: JsxIdentifier,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxAttributePayload {
     pub(crate) name: JsxAttributeName,
     pub(crate) value: u32,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxSpreadAttributePayload {
     pub(crate) argument: Expr,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxExpressionContainerPayload {
     pub(crate) expression: JsxExpression,
     pub(crate) _pad0: [u8; 12usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxTextPayload {
     pub(crate) value: AstUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxSpreadChildPayload {
     pub(crate) expression: Expr,
@@ -1289,10 +1289,10 @@ pub(crate) struct JsxSpreadChildPayload {
 }
 const _: () = {
     assert!(std::mem::size_of::<ProgramPayload>() == 16);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ProgramPayload, hashbang) == 0usize);
     assert!(std::mem::size_of::<SubRange<Directive>>() == 8usize);
-    assert!(std::mem::offset_of!(ProgramPayload, directives) == 4usize);
+    assert!(std::mem::offset_of!(ProgramPayload, directives) == 0usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(ProgramPayload, hashbang) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ProgramPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<StringLiteralPayload>() == 16);
@@ -1322,12 +1322,12 @@ const _: () = {
     assert!(std::mem::size_of::<SubRange<Expr>>() == 8usize);
     assert!(std::mem::offset_of!(TemplateLiteralPayload, expressions) == 8usize);
     assert!(std::mem::size_of::<TemplateElementPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TemplateElementPayload, tail) == 0usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TemplateElementPayload, is_cooked_undefined) == 1usize);
     assert!(std::mem::size_of::<AstWtf8>() == 8usize);
-    assert!(std::mem::offset_of!(TemplateElementPayload, cooked) == 2usize);
+    assert!(std::mem::offset_of!(TemplateElementPayload, cooked) == 0usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TemplateElementPayload, tail) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TemplateElementPayload, is_cooked_undefined) == 9usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TemplateElementPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<IdentifierReferencePayload>() == 16);
@@ -1513,38 +1513,38 @@ const _: () = {
     assert!(std::mem::size_of::<Expr>() == 4usize);
     assert!(std::mem::offset_of!(DecoratorPayload, expression) == 0usize);
     assert!(std::mem::size_of::<ClassPayload>() == 16);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(ClassPayload, id) == 0usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(ClassPayload, type_parameters) == 4usize);
     assert!(std::mem::size_of::<ClassType>() == 1usize);
-    assert!(std::mem::offset_of!(ClassPayload, class_type) == 0usize);
+    assert!(std::mem::offset_of!(ClassPayload, class_type) == 8usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ClassPayload, r#abstract) == 1usize);
+    assert!(std::mem::offset_of!(ClassPayload, r#abstract) == 9usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ClassPayload, declare) == 2usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ClassPayload, id) == 3usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ClassPayload, type_parameters) == 7usize);
+    assert!(std::mem::offset_of!(ClassPayload, declare) == 10usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ClassPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ClassBodyPayload>() == 16);
     assert!(std::mem::size_of::<SubRange<ClassElement>>() == 8usize);
     assert!(std::mem::offset_of!(ClassBodyPayload, body) == 0usize);
     assert!(std::mem::size_of::<MethodDefinitionPayload>() == 16);
-    assert!(std::mem::size_of::<MethodDefinitionKind>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, kind) == 0usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, computed) == 1usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, r#static) == 2usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, r#override) == 3usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, optional) == 4usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, r#abstract) == 5usize);
-    assert!(std::mem::size_of::<Accessibility>() == 1usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, accessibility) == 6usize);
     assert!(std::mem::size_of::<PropertyKey>() == 4usize);
-    assert!(std::mem::offset_of!(MethodDefinitionPayload, key) == 7usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, key) == 0usize);
+    assert!(std::mem::size_of::<MethodDefinitionKind>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, kind) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, computed) == 5usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, r#static) == 6usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, r#override) == 7usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, optional) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, r#abstract) == 9usize);
+    assert!(std::mem::size_of::<Accessibility>() == 1usize);
+    assert!(std::mem::offset_of!(MethodDefinitionPayload, accessibility) == 10usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(MethodDefinitionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<PropertyDefinitionPayload>() == 16);
@@ -1574,16 +1574,16 @@ const _: () = {
     assert!(std::mem::size_of::<SubRange<Stmt>>() == 8usize);
     assert!(std::mem::offset_of!(StaticBlockPayload, body) == 0usize);
     assert!(std::mem::size_of::<FunctionPayload>() == 16);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(FunctionPayload, id) == 0usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(FunctionPayload, type_parameters) == 4usize);
     assert!(std::mem::size_of::<FunctionType>() == 1usize);
-    assert!(std::mem::offset_of!(FunctionPayload, function_type) == 0usize);
+    assert!(std::mem::offset_of!(FunctionPayload, function_type) == 8usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(FunctionPayload, generator) == 1usize);
+    assert!(std::mem::offset_of!(FunctionPayload, generator) == 9usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(FunctionPayload, r#async) == 2usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(FunctionPayload, id) == 3usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(FunctionPayload, type_parameters) == 7usize);
+    assert!(std::mem::offset_of!(FunctionPayload, r#async) == 10usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(FunctionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<FunctionBodyPayload>() == 16);
@@ -1617,12 +1617,12 @@ const _: () = {
     assert!(std::mem::size_of::<FormalParameterKind>() == 1usize);
     assert!(std::mem::offset_of!(FormalParametersPayload, kind) == 12usize);
     assert!(std::mem::size_of::<FormalParameterPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, optional) == 0usize);
     assert!(std::mem::size_of::<FormalParameterPattern>() == 4usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, pattern) == 1usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, pattern) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, type_annotation) == 5usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, type_annotation) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, optional) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(FormalParameterPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<FormalParameterRestPayload>() == 16);
@@ -1658,14 +1658,14 @@ const _: () = {
     assert!(std::mem::size_of::<Expr>() == 4usize);
     assert!(std::mem::offset_of!(ParenthesizedExpressionPayload, expression) == 0usize);
     assert!(std::mem::size_of::<ArrowFunctionExpressionPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, expression) == 0usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, r#async) == 1usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, type_parameters) == 2usize);
+    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, type_parameters) == 0usize);
     assert!(std::mem::size_of::<FormalParameters>() == 4usize);
-    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, params) == 6usize);
+    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, params) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, expression) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, r#async) == 9usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ArrowFunctionExpressionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<SequenceExpressionPayload>() == 16);
@@ -1681,12 +1681,12 @@ const _: () = {
     assert!(std::mem::size_of::<bool>() == 1usize);
     assert!(std::mem::offset_of!(MemberExpressionPayload, optional) == 9usize);
     assert!(std::mem::size_of::<CallExpressionPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(CallExpressionPayload, optional) == 0usize);
     assert!(std::mem::size_of::<Expr>() == 4usize);
-    assert!(std::mem::offset_of!(CallExpressionPayload, callee) == 1usize);
+    assert!(std::mem::offset_of!(CallExpressionPayload, callee) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(CallExpressionPayload, type_arguments) == 5usize);
+    assert!(std::mem::offset_of!(CallExpressionPayload, type_arguments) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(CallExpressionPayload, optional) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(CallExpressionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ChainExpressionPayload>() == 16);
@@ -1720,19 +1720,19 @@ const _: () = {
     assert!(std::mem::size_of::<IdentifierName>() == 4usize);
     assert!(std::mem::offset_of!(MetaPropertyPayload, property) == 4usize);
     assert!(std::mem::size_of::<ImportExpressionPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ImportExpressionPayload, sync) == 0usize);
     assert!(std::mem::size_of::<Expr>() == 4usize);
-    assert!(std::mem::offset_of!(ImportExpressionPayload, source) == 1usize);
+    assert!(std::mem::offset_of!(ImportExpressionPayload, source) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ImportExpressionPayload, options) == 5usize);
+    assert!(std::mem::offset_of!(ImportExpressionPayload, options) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(ImportExpressionPayload, sync) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ImportExpressionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ImportDeclarationPayload>() == 16);
-    assert!(std::mem::size_of::<ImportOrExportKind>() == 1usize);
-    assert!(std::mem::offset_of!(ImportDeclarationPayload, import_kind) == 0usize);
     assert!(std::mem::size_of::<StringLiteral>() == 4usize);
-    assert!(std::mem::offset_of!(ImportDeclarationPayload, source) == 1usize);
+    assert!(std::mem::offset_of!(ImportDeclarationPayload, source) == 0usize);
+    assert!(std::mem::size_of::<ImportOrExportKind>() == 1usize);
+    assert!(std::mem::offset_of!(ImportDeclarationPayload, import_kind) == 4usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ImportDeclarationPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ImportSpecifierPayload>() == 16);
@@ -1754,24 +1754,24 @@ const _: () = {
     assert!(std::mem::size_of::<StringLiteral>() == 4usize);
     assert!(std::mem::offset_of!(ImportAttributePayload, value) == 4usize);
     assert!(std::mem::size_of::<ExportNamedDeclarationPayload>() == 16);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, declaration) == 0usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, source) == 4usize);
     assert!(std::mem::size_of::<ImportOrExportKind>() == 1usize);
-    assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, export_kind) == 0usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, declaration) == 1usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, source) == 5usize);
+    assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, export_kind) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ExportNamedDeclarationPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ExportDefaultDeclarationPayload>() == 16);
     assert!(std::mem::size_of::<ExportDefaultDeclarationKind>() == 4usize);
     assert!(std::mem::offset_of!(ExportDefaultDeclarationPayload, declaration) == 0usize);
     assert!(std::mem::size_of::<ExportAllDeclarationPayload>() == 16);
-    assert!(std::mem::size_of::<ImportOrExportKind>() == 1usize);
-    assert!(std::mem::offset_of!(ExportAllDeclarationPayload, export_kind) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ExportAllDeclarationPayload, exported) == 1usize);
+    assert!(std::mem::offset_of!(ExportAllDeclarationPayload, exported) == 0usize);
     assert!(std::mem::size_of::<StringLiteral>() == 4usize);
-    assert!(std::mem::offset_of!(ExportAllDeclarationPayload, source) == 5usize);
+    assert!(std::mem::offset_of!(ExportAllDeclarationPayload, source) == 4usize);
+    assert!(std::mem::size_of::<ImportOrExportKind>() == 1usize);
+    assert!(std::mem::offset_of!(ExportAllDeclarationPayload, export_kind) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(ExportAllDeclarationPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<ExportSpecifierPayload>() == 16);
@@ -1785,35 +1785,35 @@ const _: () = {
     assert!(std::mem::size_of::<AstUtf8>() == 8usize);
     assert!(std::mem::offset_of!(HashbangPayload, value) == 0usize);
     assert!(std::mem::size_of::<TsFunctionPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsFunctionPayload, generator) == 0usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsFunctionPayload, r#async) == 1usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsFunctionPayload, declare) == 2usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(TsFunctionPayload, id) == 3usize);
+    assert!(std::mem::offset_of!(TsFunctionPayload, id) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(TsFunctionPayload, type_parameters) == 7usize);
+    assert!(std::mem::offset_of!(TsFunctionPayload, type_parameters) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsFunctionPayload, generator) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsFunctionPayload, r#async) == 9usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsFunctionPayload, declare) == 10usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TsFunctionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<TsMethodDefinitionPayload>() == 16);
-    assert!(std::mem::size_of::<MethodDefinitionKind>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, kind) == 0usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, computed) == 1usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, r#static) == 2usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, r#override) == 3usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, optional) == 4usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, r#abstract) == 5usize);
-    assert!(std::mem::size_of::<Accessibility>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, accessibility) == 6usize);
     assert!(std::mem::size_of::<PropertyKey>() == 4usize);
-    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, key) == 7usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, key) == 0usize);
+    assert!(std::mem::size_of::<MethodDefinitionKind>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, kind) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, computed) == 5usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, r#static) == 6usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, r#override) == 7usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, optional) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, r#abstract) == 9usize);
+    assert!(std::mem::size_of::<Accessibility>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodDefinitionPayload, accessibility) == 10usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TsMethodDefinitionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<TsTypeAnnotationPayload>() == 16);
@@ -1959,14 +1959,14 @@ const _: () = {
     assert!(std::mem::size_of::<SubRange<TsTypeElement>>() == 8usize);
     assert!(std::mem::offset_of!(TsTypeLiteralPayload, members) == 0usize);
     assert!(std::mem::size_of::<TsMappedTypePayload>() == 16);
-    assert!(std::mem::size_of::<TsMappedTypeModifier>() == 1usize);
-    assert!(std::mem::offset_of!(TsMappedTypePayload, optional) == 0usize);
-    assert!(std::mem::size_of::<TsMappedTypeModifier>() == 1usize);
-    assert!(std::mem::offset_of!(TsMappedTypePayload, readonly) == 1usize);
     assert!(std::mem::size_of::<BindingIdentifier>() == 4usize);
-    assert!(std::mem::offset_of!(TsMappedTypePayload, key) == 2usize);
+    assert!(std::mem::offset_of!(TsMappedTypePayload, key) == 0usize);
     assert!(std::mem::size_of::<TsType>() == 4usize);
-    assert!(std::mem::offset_of!(TsMappedTypePayload, constraint) == 6usize);
+    assert!(std::mem::offset_of!(TsMappedTypePayload, constraint) == 4usize);
+    assert!(std::mem::size_of::<TsMappedTypeModifier>() == 1usize);
+    assert!(std::mem::offset_of!(TsMappedTypePayload, optional) == 8usize);
+    assert!(std::mem::size_of::<TsMappedTypeModifier>() == 1usize);
+    assert!(std::mem::offset_of!(TsMappedTypePayload, readonly) == 9usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TsMappedTypePayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<TsPropertySignaturePayload>() == 16);
@@ -1981,16 +1981,16 @@ const _: () = {
     assert!(std::mem::size_of::<bool>() == 1usize);
     assert!(std::mem::offset_of!(TsPropertySignaturePayload, readonly) == 10usize);
     assert!(std::mem::size_of::<TsMethodSignaturePayload>() == 16);
-    assert!(std::mem::size_of::<TsMethodSignatureKind>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodSignaturePayload, kind) == 0usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodSignaturePayload, computed) == 1usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsMethodSignaturePayload, optional) == 2usize);
     assert!(std::mem::size_of::<PropertyKey>() == 4usize);
-    assert!(std::mem::offset_of!(TsMethodSignaturePayload, key) == 3usize);
+    assert!(std::mem::offset_of!(TsMethodSignaturePayload, key) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(TsMethodSignaturePayload, type_parameters) == 7usize);
+    assert!(std::mem::offset_of!(TsMethodSignaturePayload, type_parameters) == 4usize);
+    assert!(std::mem::size_of::<TsMethodSignatureKind>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodSignaturePayload, kind) == 8usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodSignaturePayload, computed) == 9usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsMethodSignaturePayload, optional) == 10usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TsMethodSignaturePayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<TsCallSignatureDeclarationPayload>() == 16);
@@ -2030,12 +2030,12 @@ const _: () = {
     assert!(std::mem::size_of::<bool>() == 1usize);
     assert!(std::mem::offset_of!(TsTypeAliasDeclarationPayload, declare) == 12usize);
     assert!(std::mem::size_of::<TsInterfaceDeclarationPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, declare) == 0usize);
     assert!(std::mem::size_of::<BindingIdentifier>() == 4usize);
-    assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, id) == 1usize);
+    assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, id) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, type_parameters) == 5usize);
+    assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, type_parameters) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, declare) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TsInterfaceDeclarationPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<TsInterfaceBodyPayload>() == 16);
@@ -2157,12 +2157,12 @@ const _: () = {
     assert!(std::mem::size_of::<u32>() == 4usize);
     assert!(std::mem::offset_of!(JsxElementPayload, closing_element) == 12usize);
     assert!(std::mem::size_of::<JsxOpeningElementPayload>() == 16);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(JsxOpeningElementPayload, self_closing) == 0usize);
     assert!(std::mem::size_of::<JsxElementName>() == 4usize);
-    assert!(std::mem::offset_of!(JsxOpeningElementPayload, name) == 1usize);
+    assert!(std::mem::offset_of!(JsxOpeningElementPayload, name) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(JsxOpeningElementPayload, type_arguments) == 5usize);
+    assert!(std::mem::offset_of!(JsxOpeningElementPayload, type_arguments) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(JsxOpeningElementPayload, self_closing) == 8usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(JsxOpeningElementPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<JsxClosingElementPayload>() == 16);
@@ -2243,8 +2243,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[12usize..16usize].reverse();
         }
         NodeKind::TemplateElement => {
-            bytes[2usize..6usize].reverse();
-            bytes[6usize..10usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::IdentifierReference => {
@@ -2389,8 +2389,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[0usize..4usize].reverse();
         }
         NodeKind::Class => {
-            bytes[3usize..7usize].reverse();
-            bytes[7usize..11usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ClassBody => {
@@ -2398,7 +2398,7 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::MethodDefinition => {
-            bytes[7usize..11usize].reverse();
+            bytes[0usize..4usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::PropertyDefinition => {
@@ -2409,8 +2409,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::Function => {
-            bytes[3usize..7usize].reverse();
-            bytes[7usize..11usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::FunctionBody => {
@@ -2441,8 +2441,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[8usize..12usize].reverse();
         }
         NodeKind::FormalParameter => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::FormalParameterRest => {
@@ -2470,8 +2470,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[0usize..4usize].reverse();
         }
         NodeKind::ArrowFunctionExpression => {
-            bytes[2usize..6usize].reverse();
-            bytes[6usize..10usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::SequenceExpression => {
@@ -2483,8 +2483,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::CallExpression => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ChainExpression => {
@@ -2512,12 +2512,12 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::ImportExpression => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ImportDeclaration => {
-            bytes[1usize..5usize].reverse();
+            bytes[0usize..4usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ImportSpecifier => {
@@ -2535,16 +2535,16 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::ExportNamedDeclaration => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ExportDefaultDeclaration => {
             bytes[0usize..4usize].reverse();
         }
         NodeKind::ExportAllDeclaration => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::ExportSpecifier => {
@@ -2556,12 +2556,12 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::TsFunction => {
-            bytes[3usize..7usize].reverse();
-            bytes[7usize..11usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::TsMethodDefinition => {
-            bytes[7usize..11usize].reverse();
+            bytes[0usize..4usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::TsTypeAnnotation => {
@@ -2677,8 +2677,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::TsMappedType => {
-            bytes[2usize..6usize].reverse();
-            bytes[6usize..10usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::TsPropertySignature => {
@@ -2686,8 +2686,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[4usize..8usize].reverse();
         }
         NodeKind::TsMethodSignature => {
-            bytes[3usize..7usize].reverse();
-            bytes[7usize..11usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::TsCallSignatureDeclaration => {
@@ -2712,8 +2712,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[8usize..12usize].reverse();
         }
         NodeKind::TsInterfaceDeclaration => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::TsInterfaceBody => {
@@ -2805,8 +2805,8 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
             bytes[12usize..16usize].reverse();
         }
         NodeKind::JsxOpeningElement => {
-            bytes[1usize..5usize].reverse();
-            bytes[5usize..9usize].reverse();
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::JsxClosingElement => {

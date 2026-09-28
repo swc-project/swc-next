@@ -255,8 +255,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
     switch (bytes[kinds + index]) {
       case 0: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_hashbang = optionalNode(_i32[(payload + 0) >> 2]);
-        const body = nodeArrayPair(_i32[(payload + 4) >> 2], _i32[(payload + 4 + 4) >> 2], _i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
+        const f_hashbang = optionalNode(_i32[(payload + 8) >> 2]);
+        const body = nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
         result = { type: "Program", start, end, sourceType, hashbang: f_hashbang, body };
         break;
       }
@@ -325,10 +325,10 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 10: {
-        const f_cooked = str(_dv.getInt32(payload + 2, true), _dv.getInt32(payload + 2 + 4, true));
+        const f_cooked = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         const f_raw = source.slice(start, end);
-        const f_tail = _dv.getUint8(payload + 0) !== 0;
-        const f_isCookedUndefined = _dv.getUint8(payload + 1) !== 0;
+        const f_tail = _dv.getUint8(payload + 8) !== 0;
+        const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
         result = { type: "TemplateElement", start, end, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };
         break;
       }
@@ -589,9 +589,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 47: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_classType = enumValue("ClassType", _dv.getUint8(payload + 0));
+        const f_classType = enumValue("ClassType", _dv.getUint8(payload + 8));
         const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
-        const f_id = optionalNode(_dv.getInt32(payload + 3, true));
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
         const f_superClass = optionalNode(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const f_body = node(_i32[(extra + (extraId + 4) * 8) >> 2]);
         result = {
@@ -612,11 +612,11 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 49: {
         const extraId = _i32[(payload + 12) >> 2];
         const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
-        const f_key = node(_dv.getInt32(payload + 7, true));
+        const f_key = node(_i32[(payload + 0) >> 2]);
         const f_value = node(_i32[(extra + (extraId + 1) * 8) >> 2]);
-        const f_kind = enumValue("MethodDefinitionKind", _dv.getUint8(payload + 0));
-        const f_computed = _dv.getUint8(payload + 1) !== 0;
-        const f_static = _dv.getUint8(payload + 2) !== 0;
+        const f_kind = enumValue("MethodDefinitionKind", _dv.getUint8(payload + 4));
+        const f_computed = _dv.getUint8(payload + 5) !== 0;
+        const f_static = _dv.getUint8(payload + 6) !== 0;
         result = {
           type: "MethodDefinition",
           start, end,
@@ -657,12 +657,12 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 52: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_functionType = enumValue("FunctionType", _dv.getUint8(payload + 0));
-        const f_id = optionalNode(_dv.getInt32(payload + 3, true));
+        const f_functionType = enumValue("FunctionType", _dv.getUint8(payload + 8));
+        const f_id = optionalNode(_i32[(payload + 0) >> 2]);
         const f_params = node(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const f_body = node(_i32[(extra + (extraId + 3) * 8) >> 2]);
-        const f_generator = _dv.getUint8(payload + 1) !== 0;
-        const f_async = _dv.getUint8(payload + 2) !== 0;
+        const f_generator = _dv.getUint8(payload + 9) !== 0;
+        const f_async = _dv.getUint8(payload + 10) !== 0;
         result = {
           type: f_functionType, start, end,
           id: f_id,
@@ -713,7 +713,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 59: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_pattern = node(_dv.getInt32(payload + 1, true));
+        const f_pattern = node(_i32[(payload + 0) >> 2]);
         const f_initializer = optionalNode(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const left = { ...f_pattern };
         if (f_initializer === null) {
@@ -766,9 +766,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 66: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_expression = _dv.getUint8(payload + 0) !== 0;
-        const f_async = _dv.getUint8(payload + 1) !== 0;
-        const f_params = node(_dv.getInt32(payload + 6, true));
+        const f_expression = _dv.getUint8(payload + 8) !== 0;
+        const f_async = _dv.getUint8(payload + 9) !== 0;
+        const f_params = node(_i32[(payload + 4) >> 2]);
         const f_body = node(_i32[(extra + (extraId + 1) * 8) >> 2]);
         result = {
           type: "ArrowFunctionExpression", start, end,
@@ -796,9 +796,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 69: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "CallExpression", start, end,
-          callee: node(_dv.getInt32(payload + 1, true)),
+          callee: node(_i32[(payload + 0) >> 2]),
           arguments: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-          optional: _dv.getUint8(payload + 0) !== 0,
+          optional: _dv.getUint8(payload + 8) !== 0,
         };
         break;
       }
@@ -845,8 +845,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 76: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ImportExpression", start, end,
-          source: node(_dv.getInt32(payload + 1, true)),
-          options: optionalNode(_dv.getInt32(payload + 5, true)),
+          source: node(_i32[(payload + 0) >> 2]),
+          options: optionalNode(_i32[(payload + 4) >> 2]),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 0) * 8)),
         };
         break;
@@ -855,7 +855,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ImportDeclaration", start, end,
           specifiers: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-          source: node(_dv.getInt32(payload + 1, true)),
+          source: node(_i32[(payload + 0) >> 2]),
           attributes: nodeArray(_i32[(extra + (extraId + 1) * 8) >> 2], _i32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 2) * 8)),
         };
@@ -890,9 +890,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 82: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ExportNamedDeclaration", start, end,
-          declaration: optionalNode(_dv.getInt32(payload + 1, true)),
+          declaration: optionalNode(_i32[(payload + 0) >> 2]),
           specifiers: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-          source: optionalNode(_dv.getInt32(payload + 5, true)),
+          source: optionalNode(_i32[(payload + 4) >> 2]),
           attributes: nodeArray(_i32[(extra + (extraId + 1) * 8) >> 2], _i32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
         };
         break;
@@ -906,8 +906,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 84: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ExportAllDeclaration", start, end,
-          exported: optionalNode(_dv.getInt32(payload + 1, true)),
-          source: node(_dv.getInt32(payload + 5, true)),
+          exported: optionalNode(_i32[(payload + 0) >> 2]),
+          source: node(_i32[(payload + 4) >> 2]),
           attributes: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
         };
         break;
@@ -936,9 +936,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 162: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "JSXOpeningElement", start, end,
-          name: node(_dv.getInt32(payload + 1, true)),
+          name: node(_i32[(payload + 0) >> 2]),
           attributes: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-          selfClosing: _dv.getUint8(payload + 0) !== 0,
+          selfClosing: _dv.getUint8(payload + 8) !== 0,
         };
         break;
       }

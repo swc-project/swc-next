@@ -316,11 +316,11 @@ function encode(program) {
     const extraId = allocExtra(1);
     const index = allocNode(0, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 4, v_0.start);
-    setPayloadU32(index, 8, v_0.end);
+    setPayloadU32(index, 0, v_0.start);
+    setPayloadU32(index, 4, v_0.end);
     setExtraU32(extraId + 0, 0, v_1.start);
     setExtraU32(extraId + 0, 4, v_1.end);
-    setPayloadU32(index, 0, v_2);
+    setPayloadU32(index, 8, v_2);
     return index;
   }
 
@@ -417,12 +417,12 @@ function encode(program) {
     const extraId = allocExtra(1);
     const index = allocNode(10, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 2, v_0.start);
-    setPayloadU32(index, 6, v_0.end);
+    setPayloadU32(index, 0, v_0.start);
+    setPayloadU32(index, 4, v_0.end);
     setExtraU32(extraId + 0, 0, v_1.start);
     setExtraU32(extraId + 0, 4, v_1.end);
-    setPayloadU8(index, 0, v_2);
-    setPayloadU8(index, 1, v_3);
+    setPayloadU8(index, 8, v_2);
+    setPayloadU8(index, 9, v_3);
     return index;
   }
 
@@ -801,18 +801,18 @@ function encode(program) {
     const extraId = allocExtra(5);
     const index = allocNode(47, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU8(index, 0, v_0);
+    setPayloadU8(index, 8, v_0);
     setExtraU32(extraId + 0, 0, v_1.start);
     setExtraU32(extraId + 0, 4, v_1.end);
-    setPayloadU32(index, 3, v_2);
-    setPayloadU32(index, 7, v_3);
+    setPayloadU32(index, 0, v_2);
+    setPayloadU32(index, 4, v_3);
     setExtraU32(extraId + 1, 0, v_4);
     setExtraU32(extraId + 2, 0, v_5);
     setExtraU32(extraId + 3, 0, v_6.start);
     setExtraU32(extraId + 3, 4, v_6.end);
     setExtraU32(extraId + 4, 0, v_7);
-    setPayloadU8(index, 1, v_8);
-    setPayloadU8(index, 2, v_9);
+    setPayloadU8(index, 9, v_8);
+    setPayloadU8(index, 10, v_9);
     return index;
   }
 
@@ -840,15 +840,15 @@ function encode(program) {
     setPayloadU32(index, 12, extraId);
     setExtraU32(extraId + 0, 0, v_0.start);
     setExtraU32(extraId + 0, 4, v_0.end);
-    setPayloadU32(index, 7, v_1);
+    setPayloadU32(index, 0, v_1);
     setExtraU32(extraId + 1, 0, v_2);
-    setPayloadU8(index, 0, v_3);
-    setPayloadU8(index, 1, v_4);
-    setPayloadU8(index, 2, v_5);
-    setPayloadU8(index, 3, v_6);
-    setPayloadU8(index, 4, v_7);
-    setPayloadU8(index, 5, v_8);
-    setPayloadU8(index, 6, v_9);
+    setPayloadU8(index, 4, v_3);
+    setPayloadU8(index, 5, v_4);
+    setPayloadU8(index, 6, v_5);
+    setPayloadU8(index, 7, v_6);
+    setPayloadU8(index, 8, v_7);
+    setPayloadU8(index, 9, v_8);
+    setPayloadU8(index, 10, v_9);
     return index;
   }
 
@@ -912,15 +912,15 @@ function encode(program) {
     const extraId = allocExtra(4);
     const index = allocNode(52, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU8(index, 0, v_0);
-    setPayloadU32(index, 3, v_1);
-    setPayloadU32(index, 7, v_2);
+    setPayloadU8(index, 8, v_0);
+    setPayloadU32(index, 0, v_1);
+    setPayloadU32(index, 4, v_2);
     setExtraU32(extraId + 0, 0, v_3);
     setExtraU32(extraId + 1, 0, v_4);
     setExtraU32(extraId + 2, 0, v_5);
     setExtraU32(extraId + 3, 0, v_6);
-    setPayloadU8(index, 1, v_7);
-    setPayloadU8(index, 2, v_8);
+    setPayloadU8(index, 9, v_7);
+    setPayloadU8(index, 10, v_8);
     return index;
   }
 
@@ -1016,10 +1016,10 @@ function encode(program) {
     setPayloadU32(index, 12, extraId);
     setExtraU32(extraId + 0, 0, v_0.start);
     setExtraU32(extraId + 0, 4, v_0.end);
-    setPayloadU32(index, 1, v_1);
-    setPayloadU32(index, 5, v_2);
+    setPayloadU32(index, 0, v_1);
+    setPayloadU32(index, 4, v_2);
     setExtraU32(extraId + 1, 0, v_3);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU8(index, 8, v_4);
     return index;
   }
 
@@ -1092,10 +1092,10 @@ function encode(program) {
     const extraId = allocExtra(2);
     const index = allocNode(66, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU8(index, 0, v_0);
-    setPayloadU8(index, 1, v_1);
-    setPayloadU32(index, 2, v_2);
-    setPayloadU32(index, 6, v_3);
+    setPayloadU8(index, 8, v_0);
+    setPayloadU8(index, 9, v_1);
+    setPayloadU32(index, 0, v_2);
+    setPayloadU32(index, 4, v_3);
     setExtraU32(extraId + 0, 0, v_4);
     setExtraU32(extraId + 1, 0, v_5);
     return index;
@@ -1130,11 +1130,11 @@ function encode(program) {
     const extraId = allocExtra(1);
     const index = allocNode(69, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 1, v_0);
-    setPayloadU32(index, 5, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2.start);
     setExtraU32(extraId + 0, 4, v_2.end);
-    setPayloadU8(index, 0, v_3);
+    setPayloadU8(index, 8, v_3);
     return index;
   }
 
@@ -1201,10 +1201,10 @@ function encode(program) {
     const extraId = allocExtra(1);
     const index = allocNode(76, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 1, v_0);
-    setPayloadU32(index, 5, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU8(extraId + 0, 0, v_2);
-    setPayloadU8(index, 0, v_3);
+    setPayloadU8(index, 8, v_3);
     return index;
   }
 
@@ -1219,11 +1219,11 @@ function encode(program) {
     setPayloadU32(index, 12, extraId);
     setExtraU32(extraId + 0, 0, v_0.start);
     setExtraU32(extraId + 0, 4, v_0.end);
-    setPayloadU32(index, 1, v_1);
+    setPayloadU32(index, 0, v_1);
     setExtraU32(extraId + 1, 0, v_2.start);
     setExtraU32(extraId + 1, 4, v_2.end);
     setExtraU8(extraId + 2, 0, v_3);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU8(index, 4, v_4);
     return index;
   }
 
@@ -1270,13 +1270,13 @@ function encode(program) {
     const extraId = allocExtra(2);
     const index = allocNode(82, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 1, v_0);
+    setPayloadU32(index, 0, v_0);
     setExtraU32(extraId + 0, 0, v_1.start);
     setExtraU32(extraId + 0, 4, v_1.end);
-    setPayloadU32(index, 5, v_2);
+    setPayloadU32(index, 4, v_2);
     setExtraU32(extraId + 1, 0, v_3.start);
     setExtraU32(extraId + 1, 4, v_3.end);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU8(index, 8, v_4);
     return index;
   }
 
@@ -1295,11 +1295,11 @@ function encode(program) {
     const extraId = allocExtra(1);
     const index = allocNode(84, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 1, v_0);
-    setPayloadU32(index, 5, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2.start);
     setExtraU32(extraId + 0, 4, v_2.end);
-    setPayloadU8(index, 0, v_3);
+    setPayloadU8(index, 8, v_3);
     return index;
   }
 
@@ -1338,14 +1338,14 @@ function encode(program) {
     const extraId = allocExtra(3);
     const index = allocNode(87, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 3, v_0);
-    setPayloadU32(index, 7, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2);
     setExtraU32(extraId + 1, 0, v_3);
     setExtraU32(extraId + 2, 0, v_4);
-    setPayloadU8(index, 0, v_5);
-    setPayloadU8(index, 1, v_6);
-    setPayloadU8(index, 2, v_7);
+    setPayloadU8(index, 8, v_5);
+    setPayloadU8(index, 9, v_6);
+    setPayloadU8(index, 10, v_7);
     return index;
   }
 
@@ -1366,15 +1366,15 @@ function encode(program) {
     setPayloadU32(index, 12, extraId);
     setExtraU32(extraId + 0, 0, v_0.start);
     setExtraU32(extraId + 0, 4, v_0.end);
-    setPayloadU32(index, 7, v_1);
+    setPayloadU32(index, 0, v_1);
     setExtraU32(extraId + 1, 0, v_2);
-    setPayloadU8(index, 0, v_3);
-    setPayloadU8(index, 1, v_4);
-    setPayloadU8(index, 2, v_5);
-    setPayloadU8(index, 3, v_6);
-    setPayloadU8(index, 4, v_7);
-    setPayloadU8(index, 5, v_8);
-    setPayloadU8(index, 6, v_9);
+    setPayloadU8(index, 4, v_3);
+    setPayloadU8(index, 5, v_4);
+    setPayloadU8(index, 6, v_5);
+    setPayloadU8(index, 7, v_6);
+    setPayloadU8(index, 8, v_7);
+    setPayloadU8(index, 9, v_8);
+    setPayloadU8(index, 10, v_9);
     return index;
   }
 
@@ -1772,12 +1772,12 @@ function encode(program) {
     const extraId = allocExtra(2);
     const index = allocNode(132, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 2, v_0);
-    setPayloadU32(index, 6, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2);
     setExtraU32(extraId + 1, 0, v_3);
-    setPayloadU8(index, 0, v_4);
-    setPayloadU8(index, 1, v_5);
+    setPayloadU8(index, 8, v_4);
+    setPayloadU8(index, 9, v_5);
     return index;
   }
 
@@ -1813,14 +1813,14 @@ function encode(program) {
     const extraId = allocExtra(3);
     const index = allocNode(134, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 3, v_0);
-    setPayloadU32(index, 7, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2);
     setExtraU32(extraId + 1, 0, v_3);
     setExtraU32(extraId + 2, 0, v_4);
-    setPayloadU8(index, 0, v_5);
-    setPayloadU8(index, 1, v_6);
-    setPayloadU8(index, 2, v_7);
+    setPayloadU8(index, 8, v_5);
+    setPayloadU8(index, 9, v_6);
+    setPayloadU8(index, 10, v_7);
     return index;
   }
 
@@ -1892,12 +1892,12 @@ function encode(program) {
     const extraId = allocExtra(2);
     const index = allocNode(139, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 1, v_0);
-    setPayloadU32(index, 5, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2.start);
     setExtraU32(extraId + 0, 4, v_2.end);
     setExtraU32(extraId + 1, 0, v_3);
-    setPayloadU8(index, 0, v_4);
+    setPayloadU8(index, 8, v_4);
     return index;
   }
 
@@ -2154,11 +2154,11 @@ function encode(program) {
     const extraId = allocExtra(1);
     const index = allocNode(162, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 1, v_0);
-    setPayloadU32(index, 5, v_1);
+    setPayloadU32(index, 0, v_0);
+    setPayloadU32(index, 4, v_1);
     setExtraU32(extraId + 0, 0, v_2.start);
     setExtraU32(extraId + 0, 4, v_2.end);
-    setPayloadU8(index, 0, v_3);
+    setPayloadU8(index, 8, v_3);
     return index;
   }
 

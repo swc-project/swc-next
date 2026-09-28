@@ -660,9 +660,9 @@ mod tests {
         assert_eq!(u32_at(&buffer, 28), 1); // root node ID
         assert_eq!(u32_at(&buffer, 36), 0); // no non-ASCII source bytes
 
-        assert_eq!(u32_at(&buffer, 76), u32::MAX); // no hashbang
-        assert_eq!(u32_at(&buffer, 80), 0); // inline directives start
-        assert_eq!(u32_at(&buffer, 84), 0); // inline directives end
+        assert_eq!(u32_at(&buffer, 76), 0); // inline directives start
+        assert_eq!(u32_at(&buffer, 80), 0); // inline directives end
+        assert_eq!(u32_at(&buffer, 84), u32::MAX); // no hashbang
         assert_eq!(u32_at(&buffer, 88), 1); // out-of-line body field
 
         assert_eq!(u32_at(&buffer, 92), 0); // body element node ID

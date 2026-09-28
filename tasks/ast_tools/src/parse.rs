@@ -516,7 +516,7 @@ impl Parser {
         let mut all_fields_inlinable = true;
         for (index, field) in fields.iter().enumerate() {
             if let Some(size) = self.field_byte_size(field.type_id) {
-                assert!(size <= 8);
+                assert!(matches!(size, 1 | 2 | 4 | 8));
                 eligible.push((index, size));
                 total_size += size;
             } else {
@@ -528,11 +528,20 @@ impl Parser {
             eligible.sort_by_key(|&(_, size)| std::cmp::Reverse(size));
             (LayoutMode::Full, Self::place_fields(eligible, PAYLOAD_SIZE))
         } else {
-            // Small fields first maximizes the number stored in the low 12 bytes.
+            // Select small fields first to maximize the number stored in the
+            // low 12 bytes, then place the selected fields largest first so
+            // each field starts at an offset aligned to its size.
             eligible.sort_by_key(|&(index, size)| (size, index));
-            let fields = Self::place_fields(eligible, EXTRA_START_OFFSET);
-            assert!(!fields.is_empty(), "partial layout needs an inline field");
-            (LayoutMode::Partial, fields)
+            let mut selected = Self::place_fields(eligible, EXTRA_START_OFFSET)
+                .into_iter()
+                .map(|(index, _, size)| (index, size))
+                .collect::<Vec<_>>();
+            assert!(!selected.is_empty(), "partial layout needs an inline field");
+            selected.sort_by_key(|&(index, size)| (std::cmp::Reverse(size), index));
+            (
+                LayoutMode::Partial,
+                Self::place_fields(selected, EXTRA_START_OFFSET),
+            )
         };
 
         let mut locations = vec![None; fields.len()];

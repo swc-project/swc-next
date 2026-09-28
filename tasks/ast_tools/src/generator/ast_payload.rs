@@ -130,7 +130,7 @@ pub fn ast_payload(schema: &Schema) -> RawOutput {
             definitions.extend(quote!(pub(crate) #pad: [u8; #len],));
         }
         layouts.extend(quote! {
-            #[repr(C, packed)]
+            #[repr(C)]
             #[derive(Clone, Copy)]
             pub(crate) struct #layout_name {
                 #definitions
