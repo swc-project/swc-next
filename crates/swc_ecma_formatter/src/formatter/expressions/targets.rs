@@ -1,9 +1,9 @@
-//! Assignment and update owners recover identifier delimiters from their grammar gaps.
+//! Assignment and update owners recover target delimiters from their grammar gaps.
 
 use super::parentheses::{ParenthesisInner, SourceParentheses};
-use super::{ExpressionContext, ExpressionPosition, ExpressionStart, Formatter};
+use super::{ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, MemberLayout};
 use crate::formatter::bindings::BindingGroup;
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail};
+use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, Semicolons, document::Writer};
@@ -89,9 +89,6 @@ impl SourceTarget {
             *prepared = Some(group);
         }
     }
-    pub(super) fn needs_asi_guard(&self) -> bool {
-        self.binding().is_some() || self.has_retained_parentheses()
-    }
     pub(super) fn left_end(&self) -> u32 {
         self.envelope.tail_end
     }
@@ -158,6 +155,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             SimpleAssignmentTargetData::IdentifierReference(identifier) => {
                 Ok(Expr::IdentifierReference(identifier))
             }
+            SimpleAssignmentTargetData::MemberExpression(member) => {
+                Ok(Expr::MemberExpression(member))
+            }
             _ => Err(self.unsupported("assignment target", target)),
         }
     }
@@ -169,6 +169,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_expression(self.simple_target_expression(target)?, context, writer)
+    }
+
+    pub(super) fn source_target_needs_asi_guard(
+        &self,
+        target: &SourceTarget,
+    ) -> Result<bool, FormatError> {
+        if target.has_retained_parentheses() {
+            return Ok(true);
+        }
+        let TargetNode::Simple(expression) = target.envelope.target else {
+            return Ok(true);
+        };
+        let mut context = ExpressionContext::at(ExpressionPosition::Statement);
+        context.position = match target.operator {
+            TargetOperator::Assignment(_) => {
+                context.member_layout = MemberLayout::Tight;
+                ExpressionPosition::AssignmentTarget
+            }
+            TargetOperator::Update(_) => ExpressionPosition::UpdateArgument,
+        };
+        self.expression_needs_asi_guard(expression, context)
     }
 
     pub(super) fn assignment_source_target(
@@ -205,7 +226,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(outer) = source.envelope.layers.first_mut()
             && outer.mode == TargetLayerMode::Remove
             && matches!(target, TargetNode::Simple(_))
-            && self.target_pair_is_semantic_boundary(assignment)
+            && self.target_pair_is_semantic_boundary(assignment, target)
         {
             outer.mode = TargetLayerMode::Retain;
         }
@@ -218,7 +239,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(source)
     }
 
-    fn target_pair_is_semantic_boundary(&self, assignment: AssignmentExpression) -> bool {
+    fn target_pair_is_semantic_boundary(
+        &self,
+        assignment: AssignmentExpression,
+        target: TargetNode,
+    ) -> bool {
         if !matches!(
             assignment.operator(self.ast),
             AssignmentOperator::Assign
@@ -227,6 +252,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | AssignmentOperator::NullishAssign
         ) {
             return false;
+        }
+        let TargetNode::Simple(target) = target else {
+            return false;
+        };
+        match self.ast.expr_data(target) {
+            ExprData::MemberExpression(_) => {
+                return !self.ast.lang().is_typescript()
+                    && assignment.operator(self.ast) == AssignmentOperator::Assign;
+            }
+            ExprData::IdentifierReference(_) => {}
+            _ => return false,
         }
         // Suppressed right operands can still observe anonymous identifier naming.
         let mut expression = assignment.right(self.ast);
@@ -395,7 +431,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         context.position = match target.operator {
-            TargetOperator::Assignment(_) => ExpressionPosition::AssignmentTarget,
+            TargetOperator::Assignment(_) => {
+                context.member_layout = MemberLayout::Tight;
+                ExpressionPosition::AssignmentTarget
+            }
             TargetOperator::Update(_) => ExpressionPosition::UpdateArgument,
         };
         if target.binding().is_some()
@@ -484,9 +523,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .comments
                         .between(Span::new(boundary.outer.start, boundary.inner.start))?;
                     self.comments.claim(leading)?;
-                    self.format_comment_run(
-                        leading,
-                        CommentRunLayout::FlatLeading(boundary.inner.start),
+                    context.expression_start = self.format_node_head(
+                        NodeHead {
+                            comments: leading,
+                            content_start: boundary.inner.start,
+                            layout: CommentRunLayout::FlatLeading(boundary.inner.start),
+                            gap_end: None,
+                        },
+                        context.expression_start,
                         writer,
                     )?;
                     layers = remaining;

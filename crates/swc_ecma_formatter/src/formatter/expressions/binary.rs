@@ -9,7 +9,8 @@ use super::parentheses::{
     ExpressionContent, GeneratedEnclosureOwner, PreparedGeneratedEnclosure, SourceParentheses,
 };
 use super::{
-    ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, HeadComments, TailOwner,
+    ExpressionContext, ExpressionHead, ExpressionPosition, ExpressionStart, Formatter,
+    HeadComments, TailOwner,
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -159,6 +160,7 @@ struct BinaryChain {
 #[derive(Clone, Copy)]
 struct BinaryHead {
     expression_start: ExpressionStart,
+    expression_head: ExpressionHead,
     protected_head_start: Option<u32>,
 }
 
@@ -166,6 +168,7 @@ impl BinaryHead {
     fn from_context(context: &ExpressionContext) -> Self {
         Self {
             expression_start: context.expression_start,
+            expression_head: context.expression_head,
             protected_head_start: context.protected_head_start,
         }
     }
@@ -618,6 +621,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         chain.first.left_scope = owner.scope;
         let context = ExpressionContext {
             expression_start: head.expression_start,
+            expression_head: head.expression_head,
             protected_head_start: head.protected_head_start,
             ..context
         };
@@ -640,6 +644,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .with_expression_start(head.expression_start)
             .with_content_mode(entry.left_mode());
+            context.expression_head = head.expression_head;
             context.head_comments = HeadComments::Claimed;
             context.protected_head_start = head.protected_head_start;
             self.format_binary_owned_operand(owner, context, writer)
