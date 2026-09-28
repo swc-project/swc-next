@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object[firstLongName ?? secondLongName ? yes : no];
+---------- Options ----------
+{}
+---------- Output ----------
+object[(firstLongName ?? secondLongName) ? yes : no];
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+object[
+  (firstLongName ??
+  secondLongName)
+    ? yes
+    : no
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+object[(firstLongName ?? secondLongName) ? yes : no]
+

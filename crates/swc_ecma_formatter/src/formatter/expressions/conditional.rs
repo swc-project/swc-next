@@ -5,11 +5,38 @@ use swc_next_ecma_ast::{Comment, ConditionalExpression, Expr, ExprData, GetSpan,
 use super::parentheses::{
     EmittedHeadAnnotation, ExpressionContent, PreparedGeneratedEnclosure, ResolvedExpressionHead,
 };
-use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent, TailOwner};
+use super::{
+    ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, OperandIndent, TailOwner,
+};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, IndentStyle, document::Writer};
+
+/// Continuation responsibility follows only an operation's actual head edge.
+/// A direct root has no extra enclosure; a head borrows that root's scope.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ConditionalEnvelope {
+    Local,
+    ContinuationRoot,
+    OperationHead,
+}
+
+impl ConditionalEnvelope {
+    pub(super) fn chain_head(self) -> Self {
+        match self {
+            Self::Local => Self::Local,
+            Self::ContinuationRoot | Self::OperationHead => Self::OperationHead,
+        }
+    }
+}
+
+/// The immediate suffix owns the closing pair's optional break.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ConditionalClosing {
+    Inline,
+    MemberLine,
+}
 
 #[derive(Clone, Copy)]
 enum ConditionalLayout {
@@ -82,6 +109,45 @@ struct ResolvedConditionalBoundary<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_conditional_enclosed(
+        &mut self,
+        conditional: ConditionalExpression,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let prepared = self.prepare_conditional(conditional)?;
+        let continuation = context.conditional_envelope == ConditionalEnvelope::OperationHead;
+        let closing_line =
+            continuation || context.conditional_closing == ConditionalClosing::MemberLine;
+        writer.group(false, |writer| {
+            writer.text("(");
+            let mut context = context.with_expression_start(ExpressionStart::None);
+            context.protected_head_start = None;
+            let write = |writer: &mut Writer<'ast>| {
+                let context = if continuation {
+                    context.with_operand_indent(OperandIndent::Parent)
+                } else {
+                    context
+                };
+                let tail = self.format_prepared_conditional(prepared, context, writer)?;
+                self.format_expression_tail(tail, writer)
+            };
+            if continuation {
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    write(writer)
+                })?;
+            } else {
+                write(writer)?;
+            }
+            if closing_line {
+                writer.soft_line();
+            }
+            writer.text(")");
+            Ok(None)
+        })
+    }
+
     pub(super) fn format_conditional(
         &mut self,
         conditional: ConditionalExpression,

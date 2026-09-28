@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 79/1070 (7.38%)
-Snapshot matched: 79/1070
-AST parity: 80/80
-AST mismatched: 0/80
+Passed: 82/1070 (7.66%)
+Snapshot matched: 82/1070
+AST parity: 83/83
+AST mismatched: 0/83
 AST format errors: 0/1070
 Mismatched: 1/1070
-Format errors: 989/1070
+Format errors: 986/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -139,7 +139,6 @@ Unsupported option sets: 19
 - js/binary-expressions/call.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/binary-expressions/chain-expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/binary-expressions/comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/binary-expressions/exp.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/binary-expressions/if.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/binary-expressions/inline-jsx.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/binary-expressions/inline-object-array.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -230,7 +229,6 @@ Unsupported option sets: 19
 - js/comments-closure-typecast/issue-4124.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/issue-8045.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/issue-9358.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/comments-closure-typecast/member.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/nested.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/no-semi/comments.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/no-semi/multiline.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -532,7 +530,6 @@ Unsupported option sets: 19
 - js/logical-expressions/issue-7024.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/member/conditional.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/member/expand.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/member/logical.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/13018.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/18171.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/array-and-object.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
