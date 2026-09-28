@@ -132,24 +132,24 @@ pub fn serialize_into(
     let diag_count = u32::try_from(diagnostics.len()).expect("diagnostic count exceeds u32");
 
     let mut pos = 0;
-    write_slice(buf, &mut pos, &node_count.to_le_bytes());
-    write_slice(buf, &mut pos, &extra_count.to_le_bytes());
-    write_slice(buf, &mut pos, &string_pool_len.to_le_bytes());
-    write_slice(buf, &mut pos, &source_len.to_le_bytes());
-    write_slice(buf, &mut pos, &comment_count.to_le_bytes());
-    write_slice(buf, &mut pos, &0u32.to_le_bytes()); // attached_comment_count
-    write_slice(buf, &mut pos, &diag_count.to_le_bytes());
-    write_slice(
+    write(buf, &mut pos, &node_count.to_le_bytes());
+    write(buf, &mut pos, &extra_count.to_le_bytes());
+    write(buf, &mut pos, &string_pool_len.to_le_bytes());
+    write(buf, &mut pos, &source_len.to_le_bytes());
+    write(buf, &mut pos, &comment_count.to_le_bytes());
+    write(buf, &mut pos, &0u32.to_le_bytes()); // attached_comment_count
+    write(buf, &mut pos, &diag_count.to_le_bytes());
+    write(
         buf,
         &mut pos,
         &(tree.root_node_id().index() as u32).to_le_bytes(),
     );
     let flags = (if tree.is_ts() { FLAG_TS } else { 0 })
         | ((tree.source_type() as u32) << FLAG_SOURCE_TYPE_SHIFT);
-    write_slice(buf, &mut pos, &flags.to_le_bytes());
+    write(buf, &mut pos, &flags.to_le_bytes());
     let first_non_ascii_pos =
         u32::try_from(first_non_ascii_pos).expect("AST source length exceeds u32");
-    write_slice(buf, &mut pos, &first_non_ascii_pos.to_le_bytes());
+    write(buf, &mut pos, &first_non_ascii_pos.to_le_bytes());
 
     // ==================== Spans =====================
     let spans = unsafe {
@@ -159,19 +159,13 @@ pub fn serialize_into(
         )
     };
     if positions.is_none() && cfg!(target_endian = "little") {
-        write_slice(buf, &mut pos, spans);
+        write(buf, &mut pos, spans);
     } else {
         for span in unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) } {
-            write_slice(
-                buf,
-                &mut pos,
-                &utf16_pos(span.start, positions.as_ref()).to_le_bytes(),
-            );
-            write_slice(
-                buf,
-                &mut pos,
-                &utf16_pos(span.end, positions.as_ref()).to_le_bytes(),
-            );
+            let start = utf16_pos(span.start, positions.as_ref());
+            write(buf, &mut pos, &start.to_le_bytes());
+            let end = utf16_pos(span.end, positions.as_ref());
+            write(buf, &mut pos, &end.to_le_bytes());
         }
     }
 
@@ -182,7 +176,7 @@ pub fn serialize_into(
             tree.node_count() * NODE_KIND_SIZE,
         )
     };
-    write_slice(buf, &mut pos, kinds);
+    write(buf, &mut pos, kinds);
     pad_to_four(buf, &mut pos);
 
     // =================== Payloads ====================
@@ -193,7 +187,7 @@ pub fn serialize_into(
         )
     };
     if cfg!(target_endian = "little") {
-        write_slice(buf, &mut pos, payloads);
+        write(buf, &mut pos, payloads);
     } else {
         for index in 0..tree.node_count() {
             let start = index * NODE_PAYLOAD_SIZE;
@@ -203,7 +197,7 @@ pub fn serialize_into(
             // SAFETY: The AST node table contains `node_count` initialized kinds.
             let kind = unsafe { *tree.nodes.kind.as_ptr().add(index) };
             crate::generated::ast_payload::swap_payload_endian(&mut payload, kind);
-            write_slice(buf, &mut pos, &payload);
+            write(buf, &mut pos, &payload);
         }
     }
 
@@ -215,10 +209,10 @@ pub fn serialize_into(
         )
     };
     if cfg!(target_endian = "little") {
-        write_slice(buf, &mut pos, extra_data);
+        write(buf, &mut pos, extra_data);
     } else {
         for data in tree.extra_data.as_slice() {
-            write_slice(buf, &mut pos, &data.raw().to_le_bytes());
+            write(buf, &mut pos, &data.raw().to_le_bytes());
         }
     }
 
@@ -232,32 +226,32 @@ pub fn serialize_into(
     for comment in tree.comments() {
         let start = utf16_pos(comment.span.start, positions.as_ref());
         let end = utf16_pos(comment.span.end, positions.as_ref());
-        write_slice(buf, &mut pos, &start.to_le_bytes());
-        write_slice(buf, &mut pos, &end.to_le_bytes());
-        write_slice(buf, &mut pos, &comment.span.start.to_le_bytes());
-        write_slice(buf, &mut pos, &comment.span.end.to_le_bytes());
+        write(buf, &mut pos, &start.to_le_bytes());
+        write(buf, &mut pos, &end.to_le_bytes());
+        write(buf, &mut pos, &comment.span.start.to_le_bytes());
+        write(buf, &mut pos, &comment.span.end.to_le_bytes());
     }
 
     // =================== Diagnostics ====================
     for diagnostic in diagnostics {
-        write_slice(buf, &mut pos, &[diagnostic.severity as u8]);
+        write(buf, &mut pos, &[diagnostic.severity as u8]);
         let start = utf16_pos(diagnostic.span.start, positions.as_ref());
         let end = utf16_pos(diagnostic.span.end, positions.as_ref());
-        write_slice(buf, &mut pos, &start.to_le_bytes());
-        write_slice(buf, &mut pos, &end.to_le_bytes());
+        write(buf, &mut pos, &start.to_le_bytes());
+        write(buf, &mut pos, &end.to_le_bytes());
         write_bytes_with_length(buf, &mut pos, diagnostic.message.as_bytes());
-        write_slice(buf, &mut pos, &[u8::from(diagnostic.help.is_some())]);
+        write(buf, &mut pos, &[u8::from(diagnostic.help.is_some())]);
         if let Some(help) = &diagnostic.help {
             write_bytes_with_length(buf, &mut pos, help.as_bytes());
         }
         let label_count =
             u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
-        write_slice(buf, &mut pos, &label_count.to_le_bytes());
+        write(buf, &mut pos, &label_count.to_le_bytes());
         for label in &diagnostic.labels {
             let start = utf16_pos(label.span.start, positions.as_ref());
             let end = utf16_pos(label.span.end, positions.as_ref());
-            write_slice(buf, &mut pos, &start.to_le_bytes());
-            write_slice(buf, &mut pos, &end.to_le_bytes());
+            write(buf, &mut pos, &start.to_le_bytes());
+            write(buf, &mut pos, &end.to_le_bytes());
             write_bytes_with_length(buf, &mut pos, label.message.as_bytes());
         }
     }
@@ -383,21 +377,18 @@ pub fn deserialize_from<'a>(
     // section has the checked byte length, and all bit patterns are valid for
     // `ExtraData`.
     unsafe {
-        if cfg!(target_endian = "little") {
-            ptr::copy_nonoverlapping(
-                buf.as_ptr().add(extra),
+        ptr::copy_nonoverlapping(
+            buf.as_ptr().add(extra),
+            tree.extra_data.as_mut_ptr().cast::<u8>(),
+            extra_count * EXTRA_DATA_SIZE,
+        );
+        if cfg!(target_endian = "big") {
+            let bytes = slice::from_raw_parts_mut(
                 tree.extra_data.as_mut_ptr().cast::<u8>(),
                 extra_count * EXTRA_DATA_SIZE,
             );
-        } else {
-            for index in 0..extra_count {
-                let start = extra + index * EXTRA_DATA_SIZE;
-                let raw =
-                    u64::from_le_bytes(buf[start..start + EXTRA_DATA_SIZE].try_into().unwrap());
-                tree.extra_data
-                    .as_mut_ptr()
-                    .add(index)
-                    .write(ExtraData::from_raw(raw));
+            for word in bytes.as_chunks_mut::<4>().0 {
+                word.reverse();
             }
         }
         tree.extra_data.set_len(extra_count);
@@ -623,7 +614,7 @@ fn pad_to_four(buf: &mut [u8], pos: &mut usize) {
 }
 
 #[inline]
-fn write_slice(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
+fn write(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
     buf[*pos..*pos + bytes.len()].copy_from_slice(bytes);
     *pos += bytes.len();
 }
@@ -636,8 +627,8 @@ fn read_u32(buf: &[u8], pos: usize) -> u32 {
 #[inline]
 fn write_bytes_with_length(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
     let len = u32::try_from(bytes.len()).expect("byte sequence length exceeds u32");
-    write_slice(buf, pos, &len.to_le_bytes());
-    write_slice(buf, pos, bytes);
+    write(buf, pos, &len.to_le_bytes());
+    write(buf, pos, bytes);
 }
 
 #[cfg(test)]
