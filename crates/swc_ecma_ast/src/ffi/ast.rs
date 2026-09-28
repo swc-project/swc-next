@@ -47,9 +47,15 @@ const EXTRA_DATA_SIZE: usize = 8;
 const COMMENT_SIZE: usize = 16;
 const FLAG_TS: u32 = 1 << 0;
 const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
+
+// Skip ASCII runs in 64-byte chunks instead of decoding each byte as a character.
 const ASCII_SCAN_CHUNK_SIZE: usize = 64;
+// Group source bytes into 256-byte blocks for the sparse position map.
 const POSITION_BLOCK_SIZE: usize = 256;
+// Use a dense map when there is more than one non-ASCII character per 128 bytes.
 const DENSE_POSITION_THRESHOLD: usize = 128;
+// Use a dense map when non-ASCII characters touch at least one quarter of the blocks.
+const DENSE_BLOCK_COVERAGE_THRESHOLD: usize = 4;
 
 const _: () = {
     assert!(size_of::<Span>() == SPAN_SIZE);
@@ -449,6 +455,12 @@ fn build_pos_map(source: &str, source_utf16_len: usize) -> (Option<PositionMap>,
     let mut byte = 0;
     let mut utf16 = 0u32;
     let dense_threshold = source.len() / DENSE_POSITION_THRESHOLD;
+    let dense_block_threshold = source
+        .len()
+        .div_ceil(POSITION_BLOCK_SIZE)
+        .div_ceil(DENSE_BLOCK_COVERAGE_THRESHOLD);
+    let mut covered_blocks = 0;
+    let mut last_covered_block = None;
     while byte < bytes.len() {
         let chunk_end = (byte + ASCII_SCAN_CHUNK_SIZE).min(bytes.len());
         if bytes[byte..chunk_end].is_ascii() {
@@ -467,14 +479,22 @@ fn build_pos_map(source: &str, source_utf16_len: usize) -> (Option<PositionMap>,
             };
             let utf16_len = if char_len == 4 { 2 } else { 1 };
             if char_len != 1 {
+                for block in
+                    byte / POSITION_BLOCK_SIZE..=(byte + char_len - 1) / POSITION_BLOCK_SIZE
+                {
+                    if last_covered_block != Some(block) {
+                        covered_blocks += 1;
+                        last_covered_block = Some(block);
+                    }
+                }
                 non_ascii.push(NonAsciiChar {
                     start: byte,
                     end: byte + char_len,
                     utf16_start: utf16,
                     utf16_end: utf16 + utf16_len,
                 });
-                // A dense source is cheaper to map directly than to index by blocks.
-                if non_ascii.len() > dense_threshold {
+                // A dense source or widely distributed Unicode is cheaper to map directly.
+                if non_ascii.len() > dense_threshold || covered_blocks >= dense_block_threshold {
                     let first_non_ascii_pos = non_ascii[0].start;
                     return (
                         Some(PositionMap::Dense(build_dense_pos_map(source))),
@@ -702,8 +722,14 @@ mod tests {
         assert!(ascii.is_none());
         assert_eq!(first_non_ascii, 3);
 
-        let source = format!("{}😀é{}🦀", "a".repeat(255), "b".repeat(255));
+        let source = format!(
+            "{}😀é{}🦀{}",
+            "a".repeat(255),
+            "b".repeat(255),
+            "c".repeat(4096)
+        );
         let (map, first_non_ascii) = build_pos_map(&source, source.encode_utf16().count());
+        assert!(matches!(map.as_ref(), Some(PositionMap::Sparse { .. })));
         let map = map.as_ref();
         assert_eq!(first_non_ascii, 255);
         assert_eq!(utf16_pos(254, map), 254);
@@ -716,7 +742,11 @@ mod tests {
         assert_eq!(utf16_pos(516, map), 513);
         assert_eq!(utf16_pos(519, map), 514);
         assert_eq!(utf16_pos(520, map), 515);
-        assert_eq!(utf16_pos(521, map), 521);
+        assert_eq!(utf16_pos(521, map), 516);
+        assert_eq!(
+            utf16_pos((source.len() + 1) as u32, map),
+            (source.len() + 1) as u32
+        );
 
         let dense_source = "é".repeat(256);
         let (dense, first_non_ascii) =
@@ -726,6 +756,17 @@ mod tests {
         assert_eq!(utf16_pos(1, dense.as_ref()), 0);
         assert_eq!(utf16_pos(255, dense.as_ref()), 127);
         assert_eq!(utf16_pos(512, dense.as_ref()), 256);
+
+        let distributed_source = format!("{}é", "a".repeat(254)).repeat(128);
+        let (distributed, first_non_ascii) = build_pos_map(
+            &distributed_source,
+            distributed_source.encode_utf16().count(),
+        );
+        assert!(matches!(distributed, Some(PositionMap::Dense(_))));
+        assert_eq!(first_non_ascii, 254);
+        assert_eq!(utf16_pos(255, distributed.as_ref()), 254);
+        assert_eq!(utf16_pos(256, distributed.as_ref()), 255);
+        assert_eq!(utf16_pos(512, distributed.as_ref()), 510);
     }
 
     #[test]
