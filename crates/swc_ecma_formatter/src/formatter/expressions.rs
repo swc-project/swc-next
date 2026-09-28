@@ -1,8 +1,8 @@
 //! Expression dispatch and immediate grammar and statement-start contexts.
 
-mod arguments;
+pub(super) mod arguments;
 mod arrays;
-mod assignment;
+pub(super) mod assignment;
 mod binary;
 mod conditional;
 pub(super) mod objects;
@@ -37,6 +37,7 @@ pub(super) enum ExpressionPosition {
     UpdateArgument,
     AssignmentTarget,
     AssignmentRight(AssignmentParent),
+    Initializer(AssignmentParent),
     ConditionalTest,
     ConditionalConsequent,
     ConditionalAlternate,
@@ -113,6 +114,11 @@ pub(super) struct ExpressionContext {
 }
 
 impl ExpressionContext {
+    pub(super) fn binding_initializer() -> Self {
+        Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
+            .with_source_tail_owner(SourceTailOwner::Enclosure)
+    }
+
     pub(super) fn at(position: ExpressionPosition) -> Self {
         Self {
             position,
@@ -258,9 +264,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(true);
             }
             if let ExprData::AssignmentExpression(assignment) = data {
-                return Ok(self
-                    .assignment_source_target(assignment)?
-                    .has_retained_parentheses());
+                return Ok(self.assignment_source_target(assignment)?.needs_asi_guard());
             }
             if let ExprData::UpdateExpression(update) = data
                 && !update.prefix(self.ast)
@@ -334,10 +338,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
             )),
-            ExprData::AssignmentExpression(_) => Some(!matches!(
-                position,
-                ExpressionPosition::Statement | ExpressionPosition::AssignmentRight(_)
-            )),
+            ExprData::AssignmentExpression(assignment) => {
+                Some(if matches!(position, ExpressionPosition::Statement) {
+                    matches!(
+                        self.ast.assignment_target_data(assignment.left(self.ast)),
+                        swc_next_ecma_ast::AssignmentTargetData::ObjectAssignmentTarget(_)
+                    )
+                } else {
+                    !matches!(position, ExpressionPosition::AssignmentRight(_))
+                })
+            }
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
                 ExpressionPosition::UnaryArgument(parent)

@@ -148,7 +148,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let target = self.assignment_source_target(assignment)?;
+        let mut target = self.assignment_source_target(assignment)?;
         let right = assignment.right(self.ast);
         let suppression = if self.has_suppression {
             self.prepare_assignment_suppression(
@@ -160,6 +160,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         if let Some(source) = suppression {
+            if source.left == ContentMode::Formatted
+                && let Some(pattern) = target.binding()
+            {
+                target.set_binding_group(self.bound_initializer_binding_group(pattern));
+            }
             return writer.group(false, |writer| {
                 let leading = self.comments.between(Span::new(
                     assignment.span(self.ast).start,
@@ -213,7 +218,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_content_mode(boundary.mode)
             .with_tail_owner(context.tail_owner);
-        let layout = self.assignment_layout(data, context.position, right_context, &boundary);
+        let mut layout = self.assignment_layout(data, context.position, right_context, &boundary);
+        let binding = target.binding();
+        if let Some(pattern) = binding {
+            let group = match layout {
+                AssignmentLayout::Ordinary(rhs_layout) => {
+                    let (group, rhs_layout) =
+                        self.binding_initializer_layout(pattern, data, &boundary, rhs_layout);
+                    layout = AssignmentLayout::Ordinary(rhs_layout);
+                    group
+                }
+                _ => self.declaration_binding_group(pattern),
+            };
+            target.set_binding_group(group);
+        }
         let write_left = |formatter: &mut Self, writer: &mut Writer<'ast>| {
             let leading = formatter.comments.between(Span::new(
                 assignment.span(formatter.ast).start,
@@ -335,6 +353,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(tail);
             }
             let tail = match layout {
+                AssignmentLayout::Ordinary(rhs_layout)
+                    if binding.is_some()
+                        && matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) =>
+                {
+                    writer.group(false, |writer| {
+                        rhs_layout.write(writer, separator, write_right)
+                    })
+                }
                 AssignmentLayout::Ordinary(rhs_layout) => {
                     rhs_layout.write(writer, separator, write_right)
                 }
@@ -650,7 +676,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &AssignmentBoundary<'ast>,
     ) -> AssignmentLayout {
         let tail = !matches!(data, ExprData::AssignmentExpression(_));
-        if let ExpressionPosition::AssignmentRight(parent) = position
+        if let ExpressionPosition::AssignmentRight(parent) | ExpressionPosition::Initializer(parent) =
+            position
             && (!tail || matches!(parent, AssignmentParent::Nested))
         {
             return if tail {

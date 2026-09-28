@@ -2,13 +2,15 @@
 
 use super::parentheses::{ParenthesisInner, SourceParentheses};
 use super::{ExpressionContext, ExpressionPosition, ExpressionStart, Formatter};
+use crate::formatter::bindings::BindingGroup;
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, Semicolons, document::Writer};
 use swc_next_ecma_ast::{
-    AssignmentExpression, AssignmentOperator, AssignmentTargetData, Comment, Expr, ExprData,
-    GetSpan, SimpleAssignmentTargetData, Span, UpdateExpression, UpdateOperator,
+    AssignmentExpression, AssignmentOperator, AssignmentTargetData, Ast, BindingPattern, Comment,
+    Expr, ExprData, GetSpan, SimpleAssignmentTarget, SimpleAssignmentTargetData, Span,
+    UpdateExpression, UpdateOperator,
 };
 
 #[derive(Clone, Copy)]
@@ -25,8 +27,25 @@ impl TargetOperator {
     }
 }
 
+#[derive(Clone, Copy)]
+enum TargetNode {
+    Simple(Expr),
+    Pattern {
+        pattern: BindingPattern,
+        group: Option<BindingGroup>,
+    },
+}
+impl TargetNode {
+    fn span(self, ast: &Ast<'_>) -> Span {
+        match self {
+            Self::Simple(expression) => expression.span(ast),
+            Self::Pattern { pattern, .. } => pattern.span(ast),
+        }
+    }
+}
+
 struct PreparedTarget {
-    target: Expr,
+    target: TargetNode,
     span: Span,
     layers: Vec<TargetLayer>,
     tail_end: u32,
@@ -55,6 +74,23 @@ impl SourceTarget {
     }
     pub(super) fn span(&self) -> Span {
         self.envelope.span
+    }
+    pub(super) fn binding(&self) -> Option<BindingPattern> {
+        match self.envelope.target {
+            TargetNode::Pattern { pattern, .. } => Some(pattern),
+            TargetNode::Simple(_) => None,
+        }
+    }
+    pub(super) fn set_binding_group(&mut self, group: BindingGroup) {
+        if let TargetNode::Pattern {
+            group: prepared, ..
+        } = &mut self.envelope.target
+        {
+            *prepared = Some(group);
+        }
+    }
+    pub(super) fn needs_asi_guard(&self) -> bool {
+        self.binding().is_some() || self.has_retained_parentheses()
     }
     pub(super) fn left_end(&self) -> u32 {
         self.envelope.tail_end
@@ -114,6 +150,27 @@ impl TargetGap<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(in crate::formatter) fn simple_target_expression(
+        &self,
+        target: SimpleAssignmentTarget,
+    ) -> Result<Expr, FormatError> {
+        match self.ast.simple_assignment_target_data(target) {
+            SimpleAssignmentTargetData::IdentifierReference(identifier) => {
+                Ok(Expr::IdentifierReference(identifier))
+            }
+            _ => Err(self.unsupported("assignment target", target)),
+        }
+    }
+
+    pub(in crate::formatter) fn format_simple_assignment_target(
+        &mut self,
+        target: SimpleAssignmentTarget,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_expression(self.simple_target_expression(target)?, context, writer)
+    }
+
     pub(super) fn assignment_source_target(
         &self,
         assignment: AssignmentExpression,
@@ -121,15 +178,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let left = assignment.left(self.ast);
         let target = match self.ast.assignment_target_data(left) {
             AssignmentTargetData::SimpleAssignmentTarget(node) => {
-                match self.ast.simple_assignment_target_data(node) {
-                    SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                        Expr::IdentifierReference(identifier)
-                    }
-                    _ => return Err(self.unsupported("assignment target", left)),
-                }
+                TargetNode::Simple(self.simple_target_expression(node)?)
             }
-            _ => return Err(self.unsupported("assignment target", left)),
+            AssignmentTargetData::ArrayAssignmentTarget(node) => TargetNode::Pattern {
+                pattern: BindingPattern::ArrayPattern(node),
+                group: None,
+            },
+            AssignmentTargetData::ObjectAssignmentTarget(node) => TargetNode::Pattern {
+                pattern: BindingPattern::ObjectPattern(node),
+                group: None,
+            },
         };
+        if matches!(target, TargetNode::Pattern { .. })
+            && assignment.operator(self.ast) != AssignmentOperator::Assign
+        {
+            return Err(self.unsupported("destructuring compound assignment", assignment));
+        }
         let span = target.span(self.ast);
         let mut source = self.prepare_source_target(
             target,
@@ -140,6 +204,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         if let Some(outer) = source.envelope.layers.first_mut()
             && outer.mode == TargetLayerMode::Remove
+            && matches!(target, TargetNode::Simple(_))
             && self.target_pair_is_semantic_boundary(assignment)
         {
             outer.mode = TargetLayerMode::Retain;
@@ -181,12 +246,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         update: UpdateExpression,
     ) -> Result<SourceTarget, FormatError> {
         let argument = update.argument(self.ast);
-        let target = match self.ast.simple_assignment_target_data(argument) {
-            SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                Expr::IdentifierReference(identifier)
-            }
-            _ => return Err(self.unsupported("update target", argument)),
-        };
+        let target = TargetNode::Simple(self.simple_target_expression(argument)?);
         let span = update.span(self.ast);
         let target_span = target.span(self.ast);
         let operator = update.operator(self.ast);
@@ -215,7 +275,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn prepare_source_target(
         &self,
-        target: Expr,
+        target: TargetNode,
         operator: TargetOperator,
         prefix: Span,
         suffix: Span,
@@ -254,7 +314,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn prepare_target_envelope(
         &self,
-        target: Expr,
+        target: TargetNode,
         prefix: Span,
         trailing: &mut TargetGap<'_>,
     ) -> Result<PreparedTarget, FormatError> {
@@ -267,7 +327,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 parentheses: SourceParentheses {
                     outer: opening,
                     inner: target.span(self.ast),
-                    inner_target: ParenthesisInner::Expression(target),
+                    inner_target: ParenthesisInner::Unresolved,
                 },
                 mode: TargetLayerMode::Remove,
             });
@@ -276,7 +336,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Err(invalid());
         }
         let mut inner = target.span(self.ast);
-        let mut inner_target = ParenthesisInner::Expression(target);
+        let mut inner_target = match target {
+            TargetNode::Simple(expression) => ParenthesisInner::Expression(expression),
+            TargetNode::Pattern { .. } => ParenthesisInner::Unresolved,
+        };
         for layer in layers.iter_mut().rev() {
             let closing = trailing.consume(")").ok_or_else(invalid)?;
             layer.parentheses.outer.end = closing.end;
@@ -285,6 +348,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layer.mode = self.target_layer_mode(layer.parentheses);
             inner = layer.parentheses.outer;
             inner_target = ParenthesisInner::SourcePair;
+        }
+        if let Some(outer) = layers.first_mut()
+            && outer.mode == TargetLayerMode::Remove
+            && matches!(target, TargetNode::Pattern { .. })
+        {
+            outer.mode = TargetLayerMode::Retain;
         }
         Ok(PreparedTarget {
             target,
@@ -329,6 +398,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TargetOperator::Assignment(_) => ExpressionPosition::AssignmentTarget,
             TargetOperator::Update(_) => ExpressionPosition::UpdateArgument,
         };
+        if target.binding().is_some()
+            && context.expression_start.needs_asi_guard()
+            && self.options.semicolons == Semicolons::AsNeeded
+        {
+            writer.text(";");
+            context.expression_start = ExpressionStart::None;
+        }
         if context.content_mode == ContentMode::Verbatim && !target.envelope.layers.is_empty() {
             if context.expression_start.needs_asi_guard()
                 && self.options.semicolons == Semicolons::AsNeeded
@@ -349,7 +425,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_target_layers(
         &mut self,
-        target: Expr,
+        target: TargetNode,
         mut layers: &[TargetLayer],
         tail_end: u32,
         mut context: ExpressionContext,
@@ -358,7 +434,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let target_end = target.span(self.ast).end;
         let (content_end, tail) = loop {
             let Some((layer, remaining)) = layers.split_first() else {
-                break (target_end, self.format_expression(target, context, writer)?);
+                break (
+                    target_end,
+                    match target {
+                        TargetNode::Simple(expression) => {
+                            self.format_expression(expression, context, writer)?
+                        }
+                        TargetNode::Pattern { pattern, group } => self.format_binding_with_group(
+                            pattern,
+                            group.unwrap_or(BindingGroup::Auto),
+                            context.content_mode,
+                            writer,
+                        )?,
+                    },
+                );
             };
             let boundary = layer.parentheses;
             if layer.mode != TargetLayerMode::Remove
