@@ -2206,79 +2206,647 @@ const _: () = {
     assert!(std::mem::size_of::<Expr>() == 4usize);
     assert!(std::mem::offset_of!(JsxSpreadChildPayload, expression) == 0usize);
 };
-/// Check bool bytes before typed payload fields can be read.
-pub(crate) fn valid_bool_fields(bytes: &[u8; 16], kind: NodeKind) -> bool {
+/// Convert each numeric field between native and little-endian bytes.
+/// Swapping twice restores the original representation.
+pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
     match kind {
-        NodeKind::BooleanLiteral => bytes[0usize] <= 1 && true,
-        NodeKind::TemplateElement => bytes[0usize] <= 1 && bytes[1usize] <= 1 && true,
-        NodeKind::BindingProperty => bytes[8usize] <= 1 && bytes[9usize] <= 1 && true,
-        NodeKind::UpdateExpression => bytes[5usize] <= 1 && true,
-        NodeKind::VariableDeclaration => bytes[9usize] <= 1 && true,
-        NodeKind::VariableDeclarator => bytes[12usize] <= 1 && true,
-        NodeKind::ForOfStatement => bytes[12usize] <= 1 && true,
-        NodeKind::Class => bytes[1usize] <= 1 && bytes[2usize] <= 1 && true,
+        NodeKind::Program => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::StringLiteral => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::NumericLiteral => {
+            bytes[0usize..8usize].reverse();
+            bytes[8usize..16usize].reverse();
+        }
+        NodeKind::BigIntLiteral => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::RegExpLiteral => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TemplateLiteral => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TemplateElement => {
+            bytes[2usize..6usize].reverse();
+            bytes[6usize..10usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::IdentifierReference => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::PrivateIdentifier => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::BindingIdentifier => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::IdentifierName => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::LabelIdentifier => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::AssignmentPattern => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::BindingRestElement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ArrayPattern => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::ObjectPattern => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::BindingProperty => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::BinaryExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::LogicalExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::ConditionalExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::UnaryExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::UpdateExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::AssignmentExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::VariableDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::VariableDeclarator => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::IfStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::SwitchStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::SwitchCase => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::ForStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ForInStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::ForOfStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::TryStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::CatchClause => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::BreakStatement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ContinueStatement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::LabeledStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::ExpressionStatement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ReturnStatement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ThrowStatement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::Directive => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::Decorator => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::Class => {
+            bytes[3usize..7usize].reverse();
+            bytes[7usize..11usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ClassBody => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
         NodeKind::MethodDefinition => {
-            bytes[1usize] <= 1
-                && bytes[2usize] <= 1
-                && bytes[3usize] <= 1
-                && bytes[4usize] <= 1
-                && bytes[5usize] <= 1
-                && true
+            bytes[7usize..11usize].reverse();
+            bytes[12usize..16usize].reverse();
         }
         NodeKind::PropertyDefinition => {
-            bytes[0usize] <= 1
-                && bytes[1usize] <= 1
-                && bytes[2usize] <= 1
-                && bytes[3usize] <= 1
-                && bytes[4usize] <= 1
-                && bytes[5usize] <= 1
-                && bytes[6usize] <= 1
-                && bytes[7usize] <= 1
-                && bytes[8usize] <= 1
-                && true
+            bytes[12usize..16usize].reverse();
         }
-        NodeKind::Function => bytes[1usize] <= 1 && bytes[2usize] <= 1 && true,
-        NodeKind::FormalParameter => bytes[0usize] <= 1 && true,
+        NodeKind::StaticBlock => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::Function => {
+            bytes[3usize..7usize].reverse();
+            bytes[7usize..11usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::FunctionBody => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::BlockStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::WhileStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::DoWhileStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::WithStatement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::FormalParameters => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::FormalParameter => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::FormalParameterRest => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ArrayExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::ObjectExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::SpreadElement => {
+            bytes[0usize..4usize].reverse();
+        }
         NodeKind::ObjectProperty => {
-            bytes[9usize] <= 1 && bytes[10usize] <= 1 && bytes[11usize] <= 1 && true
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
         }
-        NodeKind::ArrowFunctionExpression => bytes[0usize] <= 1 && bytes[1usize] <= 1 && true,
-        NodeKind::MemberExpression => bytes[8usize] <= 1 && bytes[9usize] <= 1 && true,
-        NodeKind::CallExpression => bytes[0usize] <= 1 && true,
-        NodeKind::YieldExpression => bytes[4usize] <= 1 && true,
-        NodeKind::ImportExpression => bytes[0usize] <= 1 && true,
+        NodeKind::ParenthesizedExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ArrowFunctionExpression => {
+            bytes[2usize..6usize].reverse();
+            bytes[6usize..10usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::SequenceExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::MemberExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::CallExpression => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ChainExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TaggedTemplateExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::NewExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::AwaitExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::YieldExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::MetaProperty => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::ImportExpression => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ImportDeclaration => {
+            bytes[1usize..5usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ImportSpecifier => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::ImportDefaultSpecifier => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ImportNamespaceSpecifier => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ImportAttribute => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::ExportNamedDeclaration => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ExportDefaultDeclaration => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::ExportAllDeclaration => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::ExportSpecifier => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::Hashbang => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
         NodeKind::TsFunction => {
-            bytes[0usize] <= 1 && bytes[1usize] <= 1 && bytes[2usize] <= 1 && true
+            bytes[3usize..7usize].reverse();
+            bytes[7usize..11usize].reverse();
+            bytes[12usize..16usize].reverse();
         }
         NodeKind::TsMethodDefinition => {
-            bytes[1usize] <= 1
-                && bytes[2usize] <= 1
-                && bytes[3usize] <= 1
-                && bytes[4usize] <= 1
-                && bytes[5usize] <= 1
-                && true
+            bytes[7usize..11usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsTypeAnnotation => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsTypeReference => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsQualifiedName => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsTypeQuery => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsImportType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
         }
         NodeKind::TsTypeParameter => {
-            bytes[12usize] <= 1 && bytes[13usize] <= 1 && bytes[14usize] <= 1 && true
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
         }
-        NodeKind::TsNamedTupleMember => bytes[8usize] <= 1 && true,
-        NodeKind::TsJsDocNullableType => bytes[4usize] <= 1 && true,
-        NodeKind::TsJsDocNonNullableType => bytes[4usize] <= 1 && true,
-        NodeKind::TsConstructorType => bytes[12usize] <= 1 && true,
-        NodeKind::TsTypePredicate => bytes[8usize] <= 1 && true,
+        NodeKind::TsTypeParameterDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsTypeParameterInstantiation => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsLiteralType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsTemplateLiteralType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsArrayType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsIndexedAccessType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsTupleType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsNamedTupleMember => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsOptionalType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsRestType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsJsDocNullableType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsJsDocNonNullableType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsUnionType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsIntersectionType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsConditionalType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsInferType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsTypeOperator => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsParenthesizedType => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsFunctionType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsConstructorType => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::TsTypePredicate => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsTypeLiteral => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsMappedType => {
+            bytes[2usize..6usize].reverse();
+            bytes[6usize..10usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
         NodeKind::TsPropertySignature => {
-            bytes[8usize] <= 1 && bytes[9usize] <= 1 && bytes[10usize] <= 1 && true
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
         }
-        NodeKind::TsMethodSignature => bytes[1usize] <= 1 && bytes[2usize] <= 1 && true,
-        NodeKind::TsIndexSignature => bytes[12usize] <= 1 && bytes[13usize] <= 1 && true,
-        NodeKind::TsTypeAliasDeclaration => bytes[12usize] <= 1 && true,
-        NodeKind::TsInterfaceDeclaration => bytes[0usize] <= 1 && true,
-        NodeKind::TsEnumDeclaration => bytes[8usize] <= 1 && bytes[9usize] <= 1 && true,
-        NodeKind::TsEnumMember => bytes[8usize] <= 1 && true,
-        NodeKind::TsModuleDeclaration => bytes[9usize] <= 1 && true,
-        NodeKind::TsGlobalDeclaration => bytes[8usize] <= 1 && true,
-        NodeKind::TsParameterProperty => bytes[12usize] <= 1 && bytes[13usize] <= 1 && true,
-        NodeKind::JsxOpeningElement => bytes[0usize] <= 1 && true,
-        _ => true,
+        NodeKind::TsMethodSignature => {
+            bytes[3usize..7usize].reverse();
+            bytes[7usize..11usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsCallSignatureDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsConstructSignatureDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::TsIndexSignature => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::TsTypeAliasDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::TsInterfaceDeclaration => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsInterfaceBody => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsInterfaceHeritage => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsClassImplements => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsEnumDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsEnumBody => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsEnumMember => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsModuleDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsModuleBlock => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::TsGlobalDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsParameterProperty => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+        }
+        NodeKind::TsThisParameter => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsAsExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsSatisfiesExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsTypeAssertion => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsNonNullExpression => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsInstantiationExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsExportAssignment => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsNamespaceExportDeclaration => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsImportEqualsDeclaration => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::TsExternalModuleReference => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::TsIndexSignatureParameter => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::JsxElement => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::JsxOpeningElement => {
+            bytes[1usize..5usize].reverse();
+            bytes[5usize..9usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::JsxClosingElement => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::JsxFragment => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
+            bytes[12usize..16usize].reverse();
+        }
+        NodeKind::JsxIdentifier => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::JsxNamespacedName => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::JsxMemberExpression => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::JsxAttribute => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::JsxSpreadAttribute => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::JsxExpressionContainer => {
+            bytes[0usize..4usize].reverse();
+        }
+        NodeKind::JsxText => {
+            bytes[0usize..4usize].reverse();
+            bytes[4usize..8usize].reverse();
+        }
+        NodeKind::JsxSpreadChild => {
+            bytes[0usize..4usize].reverse();
+        }
+        _ => {}
     }
 }

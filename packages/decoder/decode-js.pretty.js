@@ -90,10 +90,10 @@ function decodePool(bytes) {
   return result;
 }
 
-function copyNativeI32(view) {
+function copyLittleEndianI32(view) {
   const i32 = new Int32Array(view.byteLength >> 2);
   for (let offset = 0; offset + 4 <= view.byteLength; offset += 4) {
-    i32[offset >> 2] = view.getInt32(offset, NATIVE_LITTLE_ENDIAN);
+    i32[offset >> 2] = view.getInt32(offset, true);
   }
   return i32;
 }
@@ -107,13 +107,13 @@ export function decodeJs(buffer, source, sourceBuffer) {
   }
   const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
   const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
-  const _i32 = (byteOffset & 3) === 0
+  const _i32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
     ? new Int32Array(arrayBuffer, byteOffset, byteLength >> 2)
-    : copyNativeI32(_dv);
+    : copyLittleEndianI32(_dv);
   const nodeCount = _i32[0];
   const extraCount = _i32[1];
-  const stringPoolLength = _dv.getUint32(8, NATIVE_LITTLE_ENDIAN);
-  const sourceLength = _dv.getUint32(12, NATIVE_LITTLE_ENDIAN);
+  const stringPoolLength = _dv.getUint32(8, true);
+  const sourceLength = _dv.getUint32(12, true);
   if (sourceLength + stringPoolLength > 0x7fffffff) {
     throw new RangeError("AST string offsets exceed signed 32-bit range");
   }
@@ -210,7 +210,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
     let offset = diagnostics;
     const readU8 = () => bytes[offset++];
     const readU32 = () => {
-      const value = _dv.getUint32(offset, NATIVE_LITTLE_ENDIAN);
+      const value = _dv.getUint32(offset, true);
       offset += 4;
       return value;
     };
@@ -277,7 +277,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 4: {
-        const f_value = _dv.getFloat64(payload + 0, NATIVE_LITTLE_ENDIAN);
+        const f_value = _dv.getFloat64(payload + 0, true);
         const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : source.slice(start, end);
         const value = f_value;
         const raw = f_raw ?? String(value);
@@ -325,7 +325,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 10: {
-        const f_cooked = str(_dv.getInt32(payload + 2, NATIVE_LITTLE_ENDIAN), _dv.getInt32(payload + 2 + 4, NATIVE_LITTLE_ENDIAN));
+        const f_cooked = str(_dv.getInt32(payload + 2, true), _dv.getInt32(payload + 2 + 4, true));
         const f_raw = source.slice(start, end);
         const f_tail = _dv.getUint8(payload + 0) !== 0;
         const f_isCookedUndefined = _dv.getUint8(payload + 1) !== 0;
@@ -591,7 +591,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         const extraId = _i32[(payload + 12) >> 2];
         const f_classType = enumValue("ClassType", _dv.getUint8(payload + 0));
         const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
-        const f_id = optionalNode(_dv.getInt32(payload + 3, NATIVE_LITTLE_ENDIAN));
+        const f_id = optionalNode(_dv.getInt32(payload + 3, true));
         const f_superClass = optionalNode(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const f_body = node(_i32[(extra + (extraId + 4) * 8) >> 2]);
         result = {
@@ -612,7 +612,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 49: {
         const extraId = _i32[(payload + 12) >> 2];
         const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false);
-        const f_key = node(_dv.getInt32(payload + 7, NATIVE_LITTLE_ENDIAN));
+        const f_key = node(_dv.getInt32(payload + 7, true));
         const f_value = node(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const f_kind = enumValue("MethodDefinitionKind", _dv.getUint8(payload + 0));
         const f_computed = _dv.getUint8(payload + 1) !== 0;
@@ -658,7 +658,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 52: {
         const extraId = _i32[(payload + 12) >> 2];
         const f_functionType = enumValue("FunctionType", _dv.getUint8(payload + 0));
-        const f_id = optionalNode(_dv.getInt32(payload + 3, NATIVE_LITTLE_ENDIAN));
+        const f_id = optionalNode(_dv.getInt32(payload + 3, true));
         const f_params = node(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const f_body = node(_i32[(extra + (extraId + 3) * 8) >> 2]);
         const f_generator = _dv.getUint8(payload + 1) !== 0;
@@ -713,7 +713,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 59: {
         const extraId = _i32[(payload + 12) >> 2];
-        const f_pattern = node(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN));
+        const f_pattern = node(_dv.getInt32(payload + 1, true));
         const f_initializer = optionalNode(_i32[(extra + (extraId + 1) * 8) >> 2]);
         const left = { ...f_pattern };
         if (f_initializer === null) {
@@ -768,7 +768,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         const extraId = _i32[(payload + 12) >> 2];
         const f_expression = _dv.getUint8(payload + 0) !== 0;
         const f_async = _dv.getUint8(payload + 1) !== 0;
-        const f_params = node(_dv.getInt32(payload + 6, NATIVE_LITTLE_ENDIAN));
+        const f_params = node(_dv.getInt32(payload + 6, true));
         const f_body = node(_i32[(extra + (extraId + 1) * 8) >> 2]);
         result = {
           type: "ArrowFunctionExpression", start, end,
@@ -796,7 +796,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 69: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "CallExpression", start, end,
-          callee: node(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN)),
+          callee: node(_dv.getInt32(payload + 1, true)),
           arguments: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           optional: _dv.getUint8(payload + 0) !== 0,
         };
@@ -845,8 +845,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 76: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ImportExpression", start, end,
-          source: node(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN)),
-          options: optionalNode(_dv.getInt32(payload + 5, NATIVE_LITTLE_ENDIAN)),
+          source: node(_dv.getInt32(payload + 1, true)),
+          options: optionalNode(_dv.getInt32(payload + 5, true)),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 0) * 8)),
         };
         break;
@@ -855,7 +855,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ImportDeclaration", start, end,
           specifiers: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-          source: node(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN)),
+          source: node(_dv.getInt32(payload + 1, true)),
           attributes: nodeArray(_i32[(extra + (extraId + 1) * 8) >> 2], _i32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 2) * 8)),
         };
@@ -890,9 +890,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 82: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ExportNamedDeclaration", start, end,
-          declaration: optionalNode(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN)),
+          declaration: optionalNode(_dv.getInt32(payload + 1, true)),
           specifiers: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
-          source: optionalNode(_dv.getInt32(payload + 5, NATIVE_LITTLE_ENDIAN)),
+          source: optionalNode(_dv.getInt32(payload + 5, true)),
           attributes: nodeArray(_i32[(extra + (extraId + 1) * 8) >> 2], _i32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
         };
         break;
@@ -906,8 +906,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 84: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "ExportAllDeclaration", start, end,
-          exported: optionalNode(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN)),
-          source: node(_dv.getInt32(payload + 5, NATIVE_LITTLE_ENDIAN)),
+          exported: optionalNode(_dv.getInt32(payload + 1, true)),
+          source: node(_dv.getInt32(payload + 5, true)),
           attributes: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
         };
         break;
@@ -936,7 +936,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 162: {
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "JSXOpeningElement", start, end,
-          name: node(_dv.getInt32(payload + 1, NATIVE_LITTLE_ENDIAN)),
+          name: node(_dv.getInt32(payload + 1, true)),
           attributes: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           selfClosing: _dv.getUint8(payload + 0) !== 0,
         };
