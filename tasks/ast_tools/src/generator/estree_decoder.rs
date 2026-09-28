@@ -193,11 +193,11 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: b
             "bool" => format!("_dv.getUint8({location}) !== 0"),
             "u8" => format!("_dv.getUint8({location})"),
             "i8" => format!("_dv.getInt8({location})"),
-            "u16" => format!("_dv.getUint16({location}, true)"),
-            "i16" => format!("_dv.getInt16({location}, true)"),
+            "u16" => format!("_dv.getUint16({location}, NATIVE_LITTLE_ENDIAN)"),
+            "i16" => format!("_dv.getInt16({location}, NATIVE_LITTLE_ENDIAN)"),
             "u32" => read_u32(location, aligned_i32),
-            "i32" => format!("_dv.getInt32({location}, true)"),
-            "f64" => format!("_dv.getFloat64({location}, true)"),
+            "i32" => format!("_dv.getInt32({location}, NATIVE_LITTLE_ENDIAN)"),
+            "f64" => format!("_dv.getFloat64({location}, NATIVE_LITTLE_ENDIAN)"),
             "Span" => {
                 let start = read_i32(location, aligned_i32);
                 let end = read_i32(&format!("{location} + 4"), aligned_i32);
@@ -239,7 +239,7 @@ fn read_i32(location: &str, aligned: bool) -> String {
     if aligned {
         format!("_i32[({location}) >> 2]")
     } else {
-        format!("_dv.getInt32({location}, true)")
+        format!("_dv.getInt32({location}, NATIVE_LITTLE_ENDIAN)")
     }
 }
 
@@ -247,7 +247,7 @@ fn read_u32(location: &str, aligned: bool) -> String {
     if aligned {
         format!("({} >>> 0)", read_i32(location, true))
     } else {
-        format!("_dv.getUint32({location}, true)")
+        format!("_dv.getUint32({location}, NATIVE_LITTLE_ENDIAN)")
     }
 }
 
@@ -950,10 +950,10 @@ function decodePool(bytes) {
   return result;
 }
 
-function copyLittleEndianI32(view) {
+function copyNativeI32(view) {
   const i32 = new Int32Array(view.byteLength >> 2);
   for (let offset = 0; offset + 4 <= view.byteLength; offset += 4) {
-    i32[offset >> 2] = view.getInt32(offset, true);
+    i32[offset >> 2] = view.getInt32(offset, NATIVE_LITTLE_ENDIAN);
   }
   return i32;
 }
@@ -968,13 +968,13 @@ const DECODE_PREAMBLE: &str = r#"
   }
   const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
   const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
-  const _i32 = NATIVE_LITTLE_ENDIAN && (byteOffset & 3) === 0
+  const _i32 = (byteOffset & 3) === 0
     ? new Int32Array(arrayBuffer, byteOffset, byteLength >> 2)
-    : copyLittleEndianI32(_dv);
+    : copyNativeI32(_dv);
   const nodeCount = _i32[0];
   const extraCount = _i32[1];
-  const stringPoolLength = _dv.getUint32(8, true);
-  const sourceLength = _dv.getUint32(12, true);
+  const stringPoolLength = _dv.getUint32(8, NATIVE_LITTLE_ENDIAN);
+  const sourceLength = _dv.getUint32(12, NATIVE_LITTLE_ENDIAN);
   if (sourceLength + stringPoolLength > 0x7fffffff) {
     throw new RangeError("AST string offsets exceed signed 32-bit range");
   }
@@ -1071,7 +1071,7 @@ const DECODE_PREAMBLE: &str = r#"
     let offset = diagnostics;
     const readU8 = () => bytes[offset++];
     const readU32 = () => {
-      const value = _dv.getUint32(offset, true);
+      const value = _dv.getUint32(offset, NATIVE_LITTLE_ENDIAN);
       offset += 4;
       return value;
     };

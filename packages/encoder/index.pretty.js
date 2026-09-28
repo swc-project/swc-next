@@ -108,18 +108,18 @@ function encode(program) {
   }
   function setPayloadU8(i, o, v) { payload.setUint8(i * 16 + o, v); }
   function setPayloadI8(i, o, v) { payload.setInt8(i * 16 + o, v); }
-  function setPayloadU16(i, o, v) { payload.setUint16(i * 16 + o, v, true); }
-  function setPayloadI16(i, o, v) { payload.setInt16(i * 16 + o, v, true); }
-  function setPayloadU32(i, o, v) { payload.setUint32(i * 16 + o, v, true); }
-  function setPayloadI32(i, o, v) { payload.setInt32(i * 16 + o, v, true); }
-  function setPayloadF64(i, o, v) { payload.setFloat64(i * 16 + o, v, true); }
+  function setPayloadU16(i, o, v) { payload.setUint16(i * 16 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setPayloadI16(i, o, v) { payload.setInt16(i * 16 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setPayloadU32(i, o, v) { payload.setUint32(i * 16 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setPayloadI32(i, o, v) { payload.setInt32(i * 16 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setPayloadF64(i, o, v) { payload.setFloat64(i * 16 + o, v, NATIVE_LITTLE_ENDIAN); }
   function setExtraU8(i, o, v) { extra.setUint8(i * 8 + o, v); }
   function setExtraI8(i, o, v) { extra.setInt8(i * 8 + o, v); }
-  function setExtraU16(i, o, v) { extra.setUint16(i * 8 + o, v, true); }
-  function setExtraI16(i, o, v) { extra.setInt16(i * 8 + o, v, true); }
-  function setExtraU32(i, o, v) { extra.setUint32(i * 8 + o, v, true); }
-  function setExtraI32(i, o, v) { extra.setInt32(i * 8 + o, v, true); }
-  function setExtraF64(i, o, v) { extra.setFloat64(i * 8 + o, v, true); }
+  function setExtraU16(i, o, v) { extra.setUint16(i * 8 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setExtraI16(i, o, v) { extra.setInt16(i * 8 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setExtraU32(i, o, v) { extra.setUint32(i * 8 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setExtraI32(i, o, v) { extra.setInt32(i * 8 + o, v, NATIVE_LITTLE_ENDIAN); }
+  function setExtraF64(i, o, v) { extra.setFloat64(i * 8 + o, v, NATIVE_LITTLE_ENDIAN); }
 
   function encArray(values, encoder, holes) {
     if (!values?.length) return { start: 0, end: 0 };
@@ -2695,25 +2695,19 @@ function encode(program) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
 
-  view.setUint32(0, nodeCount, true);
-  view.setUint32(4, extraCount, true);
-  view.setUint32(8, poolLength, true);
-  view.setUint32(12, 0, true);
-  view.setUint32(16, 0, true);
-  view.setUint32(20, 0, true);
-  view.setUint32(24, 0, true);
-  view.setUint32(28, root, true);
+  view.setUint32(0, nodeCount, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(4, extraCount, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(8, poolLength, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(12, 0, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(16, 0, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(20, 0, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(24, 0, NATIVE_LITTLE_ENDIAN);
+  view.setUint32(28, root, NATIVE_LITTLE_ENDIAN);
   const sourceType = enumValue("SourceType", program.sourceType);
-  view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), true);
-  view.setUint32(36, 0, true);
+  view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), NATIVE_LITTLE_ENDIAN);
+  view.setUint32(36, 0, NATIVE_LITTLE_ENDIAN);
 
-  if (NATIVE_LITTLE_ENDIAN) {
-    bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
-  } else {
-    for (let index = 0; index < nodeCount * 2; index++) {
-      view.setUint32(spansOffset + index * 4, spans[index], true);
-    }
-  }
+  bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
   bytes.set(kinds.subarray(0, nodeCount), kindsOffset);
   bytes.set(new Uint8Array(payloadBuffer, 0, nodeCount * 16), payloadOffset);
   bytes.set(new Uint8Array(extraBuffer, 0, extraCount * 8), extraOffset);

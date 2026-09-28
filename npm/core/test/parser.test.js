@@ -4,13 +4,15 @@ import test from "node:test";
 import { decode } from "@swc-next/decoder";
 import { CommentMode, Lang, parseSync, SourceType } from "../src-js/index.js";
 
-test("decoder reads little-endian words from unaligned buffers", () => {
+const NATIVE_LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+
+test("decoder reads native-endian words from unaligned buffers", () => {
   const backing = new ArrayBuffer(77);
   const buffer = new Uint8Array(backing, 1, 76);
   const view = new DataView(backing, 1, 76);
-  view.setUint32(0, 1, true); // node count
-  view.setUint32(4, 1, true); // extra-data count
-  view.setUint32(52, 0xffffffff, true); // no hashbang
+  view.setUint32(0, 1, NATIVE_LITTLE_ENDIAN); // node count
+  view.setUint32(4, 1, NATIVE_LITTLE_ENDIAN); // extra-data count
+  view.setUint32(52, 0xffffffff, NATIVE_LITTLE_ENDIAN); // no hashbang
 
   const result = decode(buffer, "", new Uint8Array());
   assert.deepEqual(result.program, {
@@ -27,8 +29,8 @@ test("decoder reads little-endian words from unaligned buffers", () => {
 test("decoder rejects unknown diagnostic severities", () => {
   const buffer = new Uint8Array(69);
   const view = new DataView(buffer.buffer);
-  view.setUint32(0, 1, true); // node count
-  view.setUint32(24, 1, true); // diagnostic count
+  view.setUint32(0, 1, NATIVE_LITTLE_ENDIAN); // node count
+  view.setUint32(24, 1, NATIVE_LITTLE_ENDIAN); // diagnostic count
   buffer[68] = 0xff; // diagnostic severity
 
   const result = decode(buffer, "", new Uint8Array());
