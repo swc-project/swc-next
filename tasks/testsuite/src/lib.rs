@@ -1,3 +1,4 @@
+mod ast_compare;
 pub mod cases;
 pub mod runner;
 pub mod suite;

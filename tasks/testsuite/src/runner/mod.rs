@@ -32,7 +32,7 @@ fn parse<'a>(
     source_type: SourceType,
     lang: Lang,
 ) -> Result<Ast<'a>, String> {
-    let result = Parser::init(
+    parse_with_options(
         allocator,
         source,
         Options {
@@ -40,9 +40,15 @@ fn parse<'a>(
             lang,
             ..Options::default()
         },
-        NoTokenParserConfig,
     )
-    .parse();
+}
+
+fn parse_with_options<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    options: Options,
+) -> Result<Ast<'a>, String> {
+    let result = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
     if let Some(diagnostic) = result.diagnostics.first() {
         return Err(format!(
             "parser: {} at {}..{}",

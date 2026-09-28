@@ -2,10 +2,12 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_parser::Options as ParserOptions;
 
 use crate::{
+    ast_compare,
     cases::Case,
-    runner::{Runner, parse, parse_case},
+    runner::{Runner, parse_with_options},
     suite::TestResult,
 };
 
@@ -41,19 +43,34 @@ impl<C: Case> Runner<C> for CodegenRunner {
 
 fn run_case<C: Case>(case: &C) -> Result<(), String> {
     let allocator = Allocator::new();
+    let mut errors = Vec::new();
 
-    let ast = parse_case(&allocator, case)?;
-    let codegen1 = print(&allocator, &ast, CodegenOptions::default()).code;
-
-    let ast = parse(&allocator, codegen1, case.source_type(), case.lang())?;
-    let codegen2 = print(&allocator, &ast, CodegenOptions::default()).code;
-
-    if codegen1 == codegen2 {
-        return Ok(());
+    for preserve_parens in [false, true] {
+        let options = ParserOptions {
+            source_type: case.source_type(),
+            lang: case.lang(),
+            preserve_parens,
+            ..ParserOptions::default()
+        };
+        let ast = parse_with_options(&allocator, case.code(), options)
+            .map_err(|error| format!("preserve_parens={preserve_parens}: input {error}"))?;
+        let output = print(&allocator, &ast, CodegenOptions::default()).code;
+        let reparsed = parse_with_options(&allocator, output, options)
+            .map_err(|error| format!("preserve_parens={preserve_parens}: output {error}"))?;
+        if let Err(error) = ast_compare::compare(&ast, &reparsed) {
+            errors.push(format!("preserve_parens={preserve_parens}: {error}"));
+        }
+        let output2 = print(&allocator, &reparsed, CodegenOptions::default()).code;
+        if output != output2 {
+            errors.push(format!(
+                "preserve_parens={preserve_parens}: codegen output changed after reparse"
+            ));
+        }
     }
 
-    Err(format!(
-        "{}: codegen output changed after reparse ",
-        case.name(),
-    ))
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
 }

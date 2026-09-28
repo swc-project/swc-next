@@ -52,7 +52,7 @@ cases are reported separately in `{parser,codegen}_local.snap`, not Test262 tota
 | Runner    | Suites                     | Check                                                | Command                                                          |
 | --------- | -------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
 | Parser    | Test262, TypeScript, Babel, local | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance --profile conformance` |
-| Codegen   | Test262, TypeScript, Babel, local | `parse -> print` is idempotent                       | Same as above                                                    |
+| Codegen   | Test262, TypeScript, Babel, local | AST round trip and print idempotence in both parenthesis modes | Same as above                                                    |
 | Resolver  | SWC resolver fixtures      | Name resolution text matches `swc-conformance`       | Same as above                                                    |
 | Transform | Babel                      | Normalized output matches Babel fixtures             | `cargo run -p testsuite --bin babel_transform`                   |
 | ESTree    | Test262, TypeScript        | N-API AST matches `estree-conformance`               | `pnpm test:conformance`                                          |

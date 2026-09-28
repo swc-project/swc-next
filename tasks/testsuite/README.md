@@ -47,9 +47,9 @@ with two runners:
 
 - `parser` parses each case and then performs semantic analysis. A case passes
   when success or failure agrees with the fixture expectation.
-- `codegen` ignores cases that expect an error, then checks that
-  parse → print → parse → print reaches the same byte output after the first
-  print.
+- `codegen` ignores cases that expect an error. With `preserve_parens` set to
+  both `false` and `true`, it compares the AST before and after
+  parse → print → parse, then prints again and checks that the output is unchanged.
 
 The eight summaries are written to
 `tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel,local}.snap`.
