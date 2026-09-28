@@ -2439,18 +2439,20 @@ impl<'a> Printer<'a> {
             self.print("(");
         }
         let callee = e.callee(self.ast);
-        let callee_level = if matches!(self.ast.expr_data(callee), ExprData::NewExpression(_)) {
-            Precedence::New
-        } else {
-            Precedence::Call
+        let optional = e.optional(self.ast);
+        let callee_level = match self.ast.expr_data(callee) {
+            ExprData::NewExpression(_) => Precedence::New,
+            // `?.` separates the callee's type arguments from the call's own.
+            ExprData::TsInstantiationExpression(_) if optional => Precedence::Prefix,
+            _ => Precedence::Call,
         };
         let type_arguments = e.type_arguments(self.ast);
-        if type_arguments.is_some() {
+        if type_arguments.is_some() && !optional {
             self.print_expr_before_type_arguments(callee, callee_level, false);
         } else {
             self.print_expr(callee, callee_level);
         }
-        if e.optional(self.ast) {
+        if optional {
             self.print("?.");
         }
         if let Some(args) = type_arguments {

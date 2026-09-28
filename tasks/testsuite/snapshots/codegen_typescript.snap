@@ -1,7 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 13143/13145 (99.98%)
+Positive Passed: 13144/13145 (99.99%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/13145 (0.00%)
-Failed: fixtures/typescript/tests/cases/compiler/optionalChainWithInstantiationExpression2.ts - preserve_parens=true: Program.body.[4].ExpressionStatement.expression.ChainExpression.expression.CallExpression.callee.node kind: TsInstantiationExpression != ParenthesizedExpression
 Failed: fixtures/typescript/tests/cases/compiler/parenthesizedExpressionInternalComments.ts - preserve_parens=false: codegen output changed after reparse
