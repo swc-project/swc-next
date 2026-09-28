@@ -383,18 +383,21 @@ pub fn deserialize_from<'a>(
     // section has the checked byte length, and all bit patterns are valid for
     // `ExtraData`.
     unsafe {
-        ptr::copy_nonoverlapping(
-            buf.as_ptr().add(extra),
-            tree.extra_data.as_mut_ptr().cast::<u8>(),
-            extra_count * EXTRA_DATA_SIZE,
-        );
-        if cfg!(target_endian = "big") {
-            let bytes = slice::from_raw_parts_mut(
+        if cfg!(target_endian = "little") {
+            ptr::copy_nonoverlapping(
+                buf.as_ptr().add(extra),
                 tree.extra_data.as_mut_ptr().cast::<u8>(),
                 extra_count * EXTRA_DATA_SIZE,
             );
-            for word in bytes.as_chunks_mut::<4>().0 {
-                word.reverse();
+        } else {
+            for index in 0..extra_count {
+                let start = extra + index * EXTRA_DATA_SIZE;
+                let raw =
+                    u64::from_le_bytes(buf[start..start + EXTRA_DATA_SIZE].try_into().unwrap());
+                tree.extra_data
+                    .as_mut_ptr()
+                    .add(index)
+                    .write(ExtraData::from_raw(raw));
             }
         }
         tree.extra_data.set_len(extra_count);
