@@ -7,7 +7,8 @@ use swc_next_ecma_ast::{
 
 use super::parentheses::ResolvedExpressionHead;
 use super::{
-    ConditionalClosing, ExpressionContext, ExpressionPosition, Formatter, OperandIndent, TailOwner,
+    ConditionalClosing, ExpressionContext, ExpressionPosition, Formatter, MemberLayout,
+    OperandIndent, TailOwner,
 };
 use crate::formatter::comments::{
     CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -78,17 +79,26 @@ fn member_receiver_context(
     computed: bool,
     object: Expr,
 ) -> ExpressionContext {
-    let mut receiver = ExpressionContext::at(ExpressionPosition::MemberObject)
+    let position = if matches!(
+        context.position,
+        ExpressionPosition::AssignmentTarget | ExpressionPosition::MemberAssignmentObject
+    ) {
+        ExpressionPosition::MemberAssignmentObject
+    } else {
+        ExpressionPosition::MemberObject
+    };
+    let mut receiver = ExpressionContext::at(position)
         .with_parent_head(context)
         .with_tail_owner(TailOwner::ParentOperation)
         .with_content_mode(mode);
+    receiver.member_layout = context.member_layout;
     receiver.conditional_envelope = context.conditional_envelope.chain_head();
     receiver.conditional_closing = if computed {
         ConditionalClosing::Inline
     } else {
         ConditionalClosing::MemberLine
     };
-    if computed && context.expression_start.is_statement() {
+    if computed && context.expression_head == super::ExpressionHead::Statement {
         receiver.computed_receiver = Some(object);
     }
     receiver
@@ -116,12 +126,17 @@ impl MemberBoundary<'_> {
 
 #[derive(Clone, Copy)]
 pub(super) enum MemberLookupOwner {
+    InlineContext,
     Receiver,
     Expression,
 }
 impl MemberLookupOwner {
     fn from_context(context: ExpressionContext) -> Self {
-        if matches!(context.position, ExpressionPosition::MemberObject) {
+        if matches!(context.position, ExpressionPosition::MemberAssignmentObject)
+            || context.member_layout == MemberLayout::Tight
+        {
+            Self::InlineContext
+        } else if matches!(context.position, ExpressionPosition::MemberObject) {
             Self::Receiver
         } else {
             Self::Expression
@@ -260,7 +275,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if boundary.owns_lookup_comments {
             return MemberLookupLayout::Grouped;
         }
-        if member.is_computed() {
+        if matches!(owner, MemberLookupOwner::InlineContext) || member.is_computed() {
             return MemberLookupLayout::Inline;
         }
         if matches!(owner, MemberLookupOwner::Receiver) {

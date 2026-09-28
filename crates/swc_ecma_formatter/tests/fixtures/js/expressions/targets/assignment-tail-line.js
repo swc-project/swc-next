@@ -1,0 +1,3 @@
+((object.property)
+// c
+) = value;
