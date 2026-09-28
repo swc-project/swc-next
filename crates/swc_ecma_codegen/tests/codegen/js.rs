@@ -6,8 +6,8 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 
 use crate::{
-    expect_printed, expect_printed_minify, expect_printed_script, expect_printed_with_options,
-    expect_stable,
+    expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
+    expect_printed_script, expect_printed_with_options, expect_stable,
 };
 
 #[test]
@@ -275,6 +275,72 @@ fn test_computed_key_comments() {
     expect_printed_minify(
         "({ [/* @__PURE__ */ 1n]: make() })",
         "({[ /* @__PURE__ */ 1n]:make()});",
+    );
+}
+
+#[test]
+fn test_jsx_container_comments() {
+    expect_printed_jsx(
+        "<C value={x /* keep */} />;",
+        "<C value={x /* keep */ } />;\n",
+    );
+
+    expect_printed_jsx("<C>{x /* keep */}</C>;", "<C>{x /* keep */ }</C>;\n");
+
+    expect_printed_jsx("<C {...x /* keep */} />;", "<C {...x /* keep */ } />;\n");
+
+    expect_printed_jsx("<C>{...x /* keep */}</C>;", "<C>{...x /* keep */ }</C>;\n");
+
+    expect_printed_jsx(
+        "<C /* tag */ value={x // keep\n} />;",
+        "<C value={x // keep\n} />;\n",
+    );
+
+    expect_printed_jsx_minify("<C value={x /* keep */} />;", "<C value={x/* keep */}/>;");
+
+    expect_printed_jsx_minify("<C>{/* keep */}</C>;", "<C>{/* keep */}</C>;");
+}
+
+#[test]
+fn test_container_comments() {
+    expect_stable("let x /*! license */;", "let x /*! license */ ;\n");
+
+    expect_stable("const x = [1 /* keep */];", "const x = [1 /* keep */ ];\n");
+
+    expect_stable("[1 /* keep */]; next();", "[1 /* keep */ ];\nnext();\n");
+
+    expect_stable("[/* keep */];", "[ /* keep */ ];\n");
+
+    expect_stable("[1 // keep\n];", "[1 // keep\n];\n");
+
+    expect_stable("({ /* keep */ });", "({ /* keep */ });\n");
+
+    expect_stable("f(/* keep */);", "f( /* keep */ );\n");
+
+    expect_stable("/* only */", "/* only */\n");
+
+    expect_printed_minify("[1 /* keep */];", "[1/* keep */];");
+}
+
+#[test]
+fn test_parenthesized_comments() {
+    expect_stable(
+        "function f() { (/* first */ /* second */ value); }",
+        "function f() {\n  /* first */\n  /* second */\n  value;\n}\n",
+    );
+
+    expect_stable(
+        "(/* before */ value /* after */); /* end */",
+        "/* before */\nvalue /* after */ ;\n/* end */\n",
+    );
+
+    expect_printed_minify(
+        "function f() { (/* before */ value /* after */); }",
+        "function f(){/* before */value/* after */}",
+    );
+    expect_printed_minify(
+        "function f(){/* before */value/* after */}",
+        "function f(){/* before */value/* after */}",
     );
 }
 

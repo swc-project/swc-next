@@ -239,5 +239,17 @@ fn test_signed_numeric_literal_type_comments() {
     let expected = "type T = /* note */ -1;\n";
     expect_printed_ts(source, expected);
     expect_printed_ts(expected, expected);
-    expect_printed_ts_minify(source, "type T= /* note */ -1;");
+    expect_printed_ts_minify(source, "type T=/* note */-1;");
+}
+
+#[test]
+fn test_legal_comments() {
+    expect_printed_ts(
+        "type X = number /*! license */;",
+        "type X = number;\n/*! license */\n",
+    );
+    expect_printed_ts_minify(
+        "type X = number /*! license */;",
+        "type X=number;/*! license */",
+    );
 }

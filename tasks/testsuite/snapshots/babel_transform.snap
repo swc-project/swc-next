@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 453/4069 (11.13%)
-Failed: 50/4069 (1.23%)
+Passed: 449/4069 (11.03%)
+Failed: 54/4069 (1.33%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -15,10 +15,15 @@ Packages
 babel-core
 ----------
 Cases: 21
-Passed: 9/21 (42.86%)
-Failed: 0/21 (0.00%)
+Passed: 5/21 (23.81%)
+Failed: 4/21 (19.05%)
 Panicked: 0/21 (0.00%)
 Skipped: 12/21 (57.14%)
+Messages:
+Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/inline/input.js - babel-core/test/fixtures/transformation/source-maps/inline: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-external/input.js - babel-core/test/fixtures/transformation/source-maps/input-source-map-external: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location/input.js - babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map/input.js - babel-core/test/fixtures/transformation/source-maps/input-source-map: transformed output differs from output.js
 
 babel-generator
 ---------------
