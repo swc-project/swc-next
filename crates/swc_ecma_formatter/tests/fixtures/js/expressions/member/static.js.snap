@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+longObjectName.longFirstProperty.longSecondProperty;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+longObjectName
+  .longFirstProperty
+  .longSecondProperty;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+longObjectName.longFirstProperty
+  .longSecondProperty;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+longObjectName.longFirstProperty.longSecondProperty;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+longObjectName
+  .longFirstProperty
+  .longSecondProperty

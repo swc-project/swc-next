@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object. // reason
+property;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object // reason
+.property;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+object // reason
+.property;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+object // reason
+.property;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+object // reason
+.property

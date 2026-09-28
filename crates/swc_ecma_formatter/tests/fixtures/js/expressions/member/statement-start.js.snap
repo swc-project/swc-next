@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+previous;
+[1].property;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+previous;
+[1].property;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+previous;
+[1].property;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+previous;
+[1].property;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+previous
+;[1].property
