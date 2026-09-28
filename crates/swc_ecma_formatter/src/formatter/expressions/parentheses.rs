@@ -25,6 +25,7 @@ pub(in crate::formatter) struct SourceParentheses {
 pub(in crate::formatter) enum ParenthesisInner {
     Expression(Expr),
     SourcePair,
+    Unresolved,
 }
 
 pub(in crate::formatter) struct ExpressionContent {
@@ -372,6 +373,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut expression = match boundary.inner_target {
                     ParenthesisInner::Expression(expression) => expression,
                     ParenthesisInner::SourcePair => return CommentBinding::BoundTo(boundary.inner),
+                    ParenthesisInner::Unresolved => return CommentBinding::SourceBound,
                 };
                 loop {
                     if expression.span(self.ast).start != boundary.inner.start {
@@ -1485,7 +1487,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn format_prepared_expression_with_leading_comments(
+    pub(in crate::formatter) fn format_prepared_expression_with_leading_comments(
         &mut self,
         expression: Expr,
         content: ExpressionContent,
