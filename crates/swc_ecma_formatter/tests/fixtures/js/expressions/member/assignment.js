@@ -1,0 +1,1 @@
+longObjectName.longFirstProperty.longSecondProperty = value;

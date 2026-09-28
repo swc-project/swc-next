@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {number} */ (/* prettier-ignore */ (object  .  property)) = value;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @type {number} */ (/* prettier-ignore */ (object  .  property)) =
+  value;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** @type {number} */ (/* prettier-ignore */ (object  .  property)) =
+  value;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/** @type {number} */ (/* prettier-ignore */ (object  .  property)) = value;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;/** @type {number} */ (/* prettier-ignore */ (object  .  property)) =
+  value

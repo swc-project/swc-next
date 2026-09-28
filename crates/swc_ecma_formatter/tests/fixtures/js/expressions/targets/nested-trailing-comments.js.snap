@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(((object.property /* a */) /* b */) /* c */) = value;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  object.property /* a */ /* b */ /* c */
+) = value;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(
+  object.property /* a */ /* b */ /* c */
+) = value;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(object.property /* a */ /* b */ /* c */) = value;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(
+  object.property /* a */ /* b */ /* c */
+) = value

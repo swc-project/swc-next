@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {number} */ (object.missing) = unknown;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @type {number} */ (
+  object.missing
+) = unknown;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** @type {number} */ (object.missing) =
+  unknown;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/** @type {number} */ (object.missing) = unknown;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;/** @type {number} */ (
+  object.missing
+) = unknown
