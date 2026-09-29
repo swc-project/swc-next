@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+#!/usr/bin/env node
+/* #__PURE__ */
+// @ts-nocheck
+(() => missing())();
+---------- Options ----------
+{"printWidth":24,"semi":true}
+---------- Output ----------
+#!/usr/bin/env node
+/* #__PURE__ */
+// @ts-nocheck
+(() => missing())();
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+#!/usr/bin/env node
+/* #__PURE__ */
+// @ts-nocheck
+(() => missing())()
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+#!/usr/bin/env node
+/* #__PURE__ */
+// @ts-nocheck
+(() => missing())();
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+#!/usr/bin/env node
+/* #__PURE__ */
+// @ts-nocheck
+(() => missing())()

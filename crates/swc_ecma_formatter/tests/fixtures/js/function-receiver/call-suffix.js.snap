@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+  (/* head */ (first, second) => first + second /* tail */)(firstArgument, secondArgument),
+];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+[
+  (
+    /* head */ (first, second) => first + second /* tail */
+  )(firstArgument, secondArgument),
+];
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+[
+  (
+    /* head */ (first, second) =>
+      first + second /* tail */
+  )(firstArgument, secondArgument),
+];
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+;[
+  (
+    /* head */ (first, second) =>
+      first + second /* tail */
+  )(firstArgument, secondArgument),
+]

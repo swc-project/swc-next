@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({
+ a: {b}
+}) => b;
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+({ a: { b } }) => b;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":24,"semi":false}
+---------- Output ----------
+;({ a: { b } }) => b
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ a: { b } }) => b;
