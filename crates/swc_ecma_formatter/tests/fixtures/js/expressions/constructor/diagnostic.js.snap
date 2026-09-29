@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new // @ts-expect-error
+Ctor("bad");
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+new // @ts-expect-error
+Ctor("bad");
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new // @ts-expect-error
+Ctor("bad");
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+new // @ts-expect-error
+Ctor("bad")

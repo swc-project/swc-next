@@ -1,0 +1,205 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!(firstLong ? secondLong : thirdLong) + fourthLong;
+
+assignedResult = (conditionLong ? consequentLong : alternateLong).property;
+assignedResult = (conditionLong ? consequentLong : alternateLong)[keyLong];
+assignedResult = (conditionLong ? consequentLong : alternateLong)(argumentLong);
+assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(argumentLong);
+---------- Options ----------
+{}
+---------- Output ----------
+!(firstLong ? secondLong : thirdLong) + fourthLong;
+
+assignedResult = (conditionLong ? consequentLong : alternateLong).property;
+assignedResult = (conditionLong ? consequentLong : alternateLong)[keyLong];
+assignedResult = (conditionLong ? consequentLong : alternateLong)(argumentLong);
+assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(
+  argumentLong,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+!(firstLong ? secondLong : thirdLong) + fourthLong
+
+assignedResult = (conditionLong ? consequentLong : alternateLong).property
+assignedResult = (conditionLong ? consequentLong : alternateLong)[keyLong]
+assignedResult = (conditionLong ? consequentLong : alternateLong)(argumentLong)
+assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(
+  argumentLong,
+)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+!(firstLong
+  ? secondLong
+  : thirdLong) +
+  fourthLong;
+
+assignedResult = (
+  conditionLong
+    ? consequentLong
+    : alternateLong
+).property;
+assignedResult = (
+  conditionLong
+    ? consequentLong
+    : alternateLong
+)[keyLong];
+assignedResult = (
+  conditionLong
+    ? consequentLong
+    : alternateLong
+)(argumentLong);
+assignedResult =
+  new (
+    conditionLong
+      ? ConstructorLong
+      : AnotherConstructorLong
+  )(argumentLong);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+!(firstLong
+  ? secondLong
+  : thirdLong) +
+  fourthLong;
+
+assignedResult =
+  (
+    conditionLong
+      ? consequentLong
+      : alternateLong
+  )
+    .property;
+assignedResult =
+  (
+    conditionLong
+      ? consequentLong
+      : alternateLong
+  )[
+    keyLong
+  ];
+assignedResult =
+  (
+    conditionLong
+      ? consequentLong
+      : alternateLong
+  )(
+    argumentLong,
+  );
+assignedResult =
+  new (
+    conditionLong
+      ? ConstructorLong
+      : AnotherConstructorLong
+  )(
+    argumentLong,
+  );
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+!(firstLong
+    ? secondLong
+    : thirdLong) +
+    fourthLong;
+
+assignedResult = (
+    conditionLong
+        ? consequentLong
+        : alternateLong
+).property;
+assignedResult = (
+    conditionLong
+        ? consequentLong
+        : alternateLong
+)[keyLong];
+assignedResult = (
+    conditionLong
+        ? consequentLong
+        : alternateLong
+)(argumentLong);
+assignedResult =
+    new (
+        conditionLong
+            ? ConstructorLong
+            : AnotherConstructorLong
+    )(argumentLong);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+!(firstLong
+	? secondLong
+	: thirdLong) +
+	fourthLong;
+
+assignedResult = (
+	conditionLong
+		? consequentLong
+		: alternateLong
+).property;
+assignedResult = (
+	conditionLong
+		? consequentLong
+		: alternateLong
+)[keyLong];
+assignedResult = (
+	conditionLong
+		? consequentLong
+		: alternateLong
+)(argumentLong);
+assignedResult =
+	new (
+		conditionLong
+			? ConstructorLong
+			: AnotherConstructorLong
+	)(argumentLong);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+!(firstLong
+ ? secondLong
+ : thirdLong) +
+ fourthLong;
+
+assignedResult = (
+ conditionLong
+  ? consequentLong
+  : alternateLong
+).property;
+assignedResult = (
+ conditionLong
+  ? consequentLong
+  : alternateLong
+)[keyLong];
+assignedResult = (
+ conditionLong
+  ? consequentLong
+  : alternateLong
+)(argumentLong);
+assignedResult =
+ new (
+  conditionLong
+   ? ConstructorLong
+   : AnotherConstructorLong
+ )(argumentLong);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+!(firstLong ? secondLong : thirdLong) + fourthLong;
+
+assignedResult = (conditionLong ? consequentLong : alternateLong).property;
+assignedResult = (conditionLong ? consequentLong : alternateLong)[keyLong];
+assignedResult = (conditionLong ? consequentLong : alternateLong)(argumentLong);
+assignedResult = new (conditionLong ? ConstructorLong : AnotherConstructorLong)(
+  argumentLong,
+);
