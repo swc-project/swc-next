@@ -1537,7 +1537,7 @@ const SIMPLE_PUNCT_TAG: [TokenTag; 256] = {
     table
 };
 
-const IDENTIFIER_BATCH_SIZE: usize = 32;
+const IDENTIFIER_BATCH_SIZE: usize = 16;
 
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     let mut table = [true; 256];
@@ -1561,6 +1561,43 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     table
 };
 
+#[inline(always)]
+fn not_ascii_identifier_continue_batch(batch: &[u8]) -> usize {
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    unsafe {
+        use std::arch::x86_64::*;
+
+        // The caller passes a full 16-byte batch before loading it.
+        let chunk = _mm_loadu_si128(batch.as_ptr().cast());
+        let lower = _mm_or_si128(chunk, _mm_set1_epi8(0x20));
+
+        let alpha = _mm_and_si128(
+            _mm_cmpgt_epi8(lower, _mm_set1_epi8((b'a' - 1) as i8)),
+            _mm_cmpgt_epi8(_mm_set1_epi8((b'z' + 1) as i8), lower),
+        );
+        let digit = _mm_and_si128(
+            _mm_cmpgt_epi8(chunk, _mm_set1_epi8((b'0' - 1) as i8)),
+            _mm_cmpgt_epi8(_mm_set1_epi8((b'9' + 1) as i8), chunk),
+        );
+        let underscore = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'_' as i8));
+        let dollar = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'$' as i8));
+        let valid = _mm_or_si128(_mm_or_si128(alpha, digit), _mm_or_si128(underscore, dollar));
+
+        let mask = _mm_movemask_epi8(valid) as u32;
+
+        mask.trailing_ones() as usize
+    }
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+    {
+        for (offset, byte) in batch.iter().enumerate() {
+            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
+                return offset;
+            }
+        }
+        IDENTIFIER_BATCH_SIZE
+    }
+}
+
 // This is a very hot path. Inline this loop too
 // to avoid losing the single-call-site bonus and
 // introducing a new helper call.
@@ -1571,13 +1608,13 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     let mut position = start as usize;
 
     while source.len() - position >= IDENTIFIER_BATCH_SIZE {
-        let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
-        for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
-                return (position + offset) as u32;
-            }
+        let offset = not_ascii_identifier_continue_batch(
+            &source[position..position + IDENTIFIER_BATCH_SIZE],
+        );
+        position += offset;
+        if offset < IDENTIFIER_BATCH_SIZE {
+            return position as u32;
         }
-        position += IDENTIFIER_BATCH_SIZE;
     }
     while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
         position += 1;
