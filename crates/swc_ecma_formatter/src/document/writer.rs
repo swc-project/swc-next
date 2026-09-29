@@ -107,7 +107,6 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::SoftLine);
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn soft_line_if_break(&mut self, group: GroupId) {
         self.conditional_lines = true;
         self.elements.push(FormatElement::SoftLineIfBreak(group));
@@ -407,7 +406,6 @@ impl<'a> Writer<'a> {
         Ok((fragment, value))
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn record_group_with_value<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,

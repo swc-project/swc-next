@@ -96,6 +96,7 @@ enum RetainedParentheses {
     Cast,
     Annotation,
     Operand,
+    FunctionReceiver,
 }
 
 struct RetainedSourceParentheses {
@@ -379,11 +380,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: SourceParentheses,
         mut cast: impl FnMut() -> Option<Comment>,
     ) -> CommentBinding {
+        let function_target = match boundary.inner_target {
+            ParenthesisInner::Expression(expression)
+                if matches!(
+                    self.ast.expr_data(expression),
+                    ExprData::ArrowFunctionExpression(_)
+                ) =>
+            {
+                Some(expression.span(self.ast))
+            }
+            _ => None,
+        };
+        let function_binding = |comment: Comment| {
+            function_target
+                .filter(|_| {
+                    let raw = self.source(comment.span);
+                    raw.starts_with("/**") && !raw.starts_with("/***")
+                })
+                .map_or(CommentBinding::Unbound, CommentBinding::BoundTo)
+        };
         let mut cast_binding = None;
-        self.comment_run_binding(comments.iter().copied(), |comment| {
+        let resolve = |comment| {
             let semantics = self.comment_semantics(comment);
             if semantics.is_ordinary() {
-                return CommentBinding::Unbound;
+                return function_binding(comment);
             }
             if !semantics.type_cast
                 || semantics.suppression
@@ -393,7 +413,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 return CommentBinding::SourceBound;
             }
-            *cast_binding.get_or_insert_with(|| {
+            let binding = *cast_binding.get_or_insert_with(|| {
                 if cast().is_none() {
                     return CommentBinding::Unbound;
                 }
@@ -434,8 +454,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         None => return CommentBinding::Unbound,
                     }
                 }
-            })
-        })
+            });
+            match binding {
+                CommentBinding::Unbound => function_binding(comment),
+                _ => binding,
+            }
+        };
+        if function_target.is_none() {
+            return self.comment_run_binding(comments.iter().copied(), resolve);
+        }
+        CommentBinding::combine_all(comments.iter().copied().map(resolve))
     }
 
     pub(super) fn property_rhs_content(
@@ -614,6 +642,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode,
             };
         }
+        if context.parentheses_owner == ParenthesesOwner::Expression
+            && matches!(context.position, ExpressionPosition::CallCallee)
+        {
+            let receiver = if mode == ContentMode::Formatted {
+                self.expression_content(child).expression
+            } else {
+                child
+            };
+            if matches!(
+                self.ast.expr_data(receiver),
+                ExprData::ArrowFunctionExpression(_)
+            ) {
+                let packet = self.source_parentheses_comments(SourceParentheses {
+                    outer: span,
+                    inner: receiver.span(self.ast),
+                    inner_target: ParenthesisInner::Expression(receiver),
+                });
+                if !packet.head.is_empty() || !packet.tail.is_empty() {
+                    return SourceParenthesesChoice::Retained {
+                        kind: RetainedParentheses::FunctionReceiver,
+                        mode,
+                    };
+                }
+            }
+        }
         if matches!(context.position, ExpressionPosition::ConditionalTest)
             && matches!(
                 self.ast.expr_data(child),
@@ -634,6 +687,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context.position,
                     ExpressionPosition::UnaryArgument(_)
                         | ExpressionPosition::ConditionalTest
+                        | ExpressionPosition::ArrowBody
                         | ExpressionPosition::MemberObject
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee
@@ -711,6 +765,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ResolvedExpressionHead { head, binding } = resolved;
+        if !head.comments.is_empty() {
+            context.arrow_layout = context.arrow_layout.with_leading_comments();
+        }
         // Added readability pairs have their own placement proof; the source
         // binding still owns ASI and diagnostic line constraints.
         let pair_binding = self.optional_nullish_head_binding(
@@ -783,16 +840,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(owner) = generated {
             return self.format_generated_enclosure(owner, prepared, context, writer);
         }
-        let span = expression.span(self.ast);
-        if self.diagnostic_line_is_sensitive(span.start)
-            && self.line_breaks(span.start, span.end) == 0
-        {
-            writer.flat(|writer| {
-                self.format_expression_content_prepared(expression, prepared, context, writer)
-            })
-        } else {
+        self.expression_layout(expression).write(writer, |writer| {
             self.format_expression_content_prepared(expression, prepared, context, writer)
-        }
+        })
     }
 
     fn format_expression_content_prepared(
@@ -1258,7 +1308,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::Unbound
             ))
         .then_some(inner_span.start);
-        let opening = if leading_mode.is_some() || matches!(binding, CommentBinding::SourceBound) {
+        let opening = if !matches!(kind, RetainedParentheses::FunctionReceiver)
+            && (leading_mode.is_some() || matches!(binding, CommentBinding::SourceBound))
+        {
             self.source_line_constraint(span.start + 1, first)
         } else {
             self.line_constraint(span.start + 1, first)
@@ -1307,10 +1359,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     ExpressionPosition::Nested
                 };
-            let mut inner_context = ExpressionContext::at(position)
-                .with_content_mode(mode)
-                .with_operand_indent(operand_indent)
-                .with_tail_owner(context.tail_owner);
+            let mut inner_context = if matches!(kind, RetainedParentheses::FunctionReceiver) {
+                context.inside_parentheses()
+            } else {
+                ExpressionContext::at(position)
+            }
+            .with_content_mode(mode)
+            .with_operand_indent(operand_indent)
+            .with_tail_owner(context.tail_owner);
             if !matches!(
                 (mode, context.position),
                 (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(_))
@@ -1329,7 +1385,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let tail = self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)?;
             self.format_expression_tail(tail, writer)
         };
-        writer.group(expand, |writer| {
+        let write = |writer: &mut Writer<'ast>| {
             writer.text("(");
             if hug {
                 write_contents(writer, OperandIndent::Expression)?;
@@ -1349,7 +1405,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             writer.text(")");
             Ok(None)
-        })
+        };
+        if matches!(kind, RetainedParentheses::FunctionReceiver) {
+            write(writer)
+        } else {
+            writer.group(expand, write)
+        }
     }
     pub(super) fn generated_enclosure_owner(
         &self,
@@ -1445,7 +1506,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     head_start = content.expression.span(self.ast).start;
                     content.expression
                 }
-                ExprData::CallExpression(_) | ExprData::NewExpression(_) => {
+                ExprData::CallExpression(_)
+                | ExprData::NewExpression(_)
+                | ExprData::ArrowFunctionExpression(_) => {
                     return removed_binding
                         .combine(CommentBinding::BoundTo(expression.span(self.ast)));
                 }

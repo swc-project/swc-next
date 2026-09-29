@@ -80,7 +80,6 @@ enum FormatElement<'a> {
     Text(Text<'a>),
     Space(SpaceKind),
     SoftLine,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     SoftLineIfBreak(GroupId),
     Line,
     HardLine,
@@ -141,7 +140,6 @@ pub(crate) struct Fragment<'a> {
 
 /// Both views retain the same complete scope; only the anonymous outer group differs.
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct RecordedGroup<'a> {
     grouped: Fragment<'a>,
 }
@@ -152,7 +150,6 @@ impl<'a> RecordedGroup<'a> {
         self.grouped
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn contents(self) -> Fragment<'a> {
         // Construction retains one complete anonymous Auto group. Its wrapper
         // inherits the contents' effects and capabilities without adding any.

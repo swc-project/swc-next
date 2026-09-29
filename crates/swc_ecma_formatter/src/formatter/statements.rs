@@ -3,8 +3,8 @@
 mod tails;
 
 use swc_next_ecma_ast::{
-    Ast, BlockStatement, Comment, CommentKind, Directive, EmptyStatement, ExprData, GetSpan, Span,
-    Stmt, StmtData,
+    Ast, BlockStatement, Comment, CommentKind, Directive, EmptyStatement, ExprData, FunctionBody,
+    GetSpan, Span, Stmt, StmtData,
 };
 
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
@@ -18,9 +18,59 @@ use super::suppression::{ContentMode, is_suppression_comment};
 use crate::{FormatError, Semicolons, document::Writer};
 
 #[derive(Clone, Copy)]
-pub(super) enum StatementSequenceKind {
+pub(super) enum StatementSequenceKind<'ast> {
     Program,
     Block,
+    Function {
+        incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
+    },
+}
+
+/// A claimed ordinary packet transferred to its actual statement body.
+#[derive(Clone, Copy)]
+pub(super) struct StatementBodyLeading<'ast> {
+    comments: &'ast [Comment],
+    target: Option<Stmt>,
+}
+
+impl<'ast> StatementBodyLeading<'ast> {
+    pub(super) fn new(comments: &'ast [Comment], target: Option<Stmt>) -> Self {
+        Self { comments, target }
+    }
+
+    pub(super) fn empty() -> Self {
+        Self {
+            comments: &[],
+            target: None,
+        }
+    }
+
+    pub(super) fn comments(&self) -> &'ast [Comment] {
+        self.comments
+    }
+
+    pub(super) fn take_for(&mut self, statement: Stmt) -> &'ast [Comment] {
+        if self.target == Some(statement) {
+            std::mem::take(&mut self.comments)
+        } else {
+            &[]
+        }
+    }
+
+    pub(super) fn take_dangling(&mut self) -> &'ast [Comment] {
+        if self.target.is_none() {
+            std::mem::take(&mut self.comments)
+        } else {
+            &[]
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct IncomingStatement {
+    pub(super) span: Span,
+    pub(super) mode: ContentMode,
 }
 
 #[derive(Clone, Copy)]
@@ -138,23 +188,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut statements: std::iter::Peekable<impl Iterator<Item = StatementItem>>,
         span: Span,
         previous_end: Option<u32>,
-        kind: StatementSequenceKind,
+        kind: StatementSequenceKind<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<StatementSequence, FormatError> {
         let ast = self.ast;
+        let (incoming, mut body_leading) = match kind {
+            StatementSequenceKind::Function { incoming, leading } => (incoming, leading),
+            _ => (None, StatementBodyLeading::empty()),
+        };
+        let mut first_statement = true;
         let mut previous = previous_end.map(|end| StatementBoundary::SourceEnd {
             end,
             has_terminator: false,
         });
         let mut previous_span_end = previous_end.unwrap_or(span.start);
         let mut previous_omitted: Option<Span> = None;
-        let mut pending = statements
-            .next()
-            .map(|item| self.prepare_sequence_statement(item, statements.peek().copied()));
+        let mut pending = statements.next().map(|item| {
+            self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
+        });
         while let Some(prepared) = pending {
-            pending = statements
-                .next()
-                .map(|item| self.prepare_sequence_statement(item, statements.peek().copied()));
+            pending = statements.next().map(|item| {
+                self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
+            });
             let PreparedStatement {
                 item: statement,
                 span: statement_span,
@@ -184,9 +239,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     omitted.map_or(empty.start, |span| span.start),
                     empty.end,
                 ));
-                pending = statements
-                    .next()
-                    .map(|item| self.prepare_sequence_statement(item, statements.peek().copied()));
+                pending = statements.next().map(|item| {
+                    self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
+                });
             }
             let following = pending.as_ref().map(|next| next.span.start);
             let omitted = omitted.map(|empty| {
@@ -239,6 +294,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let leading = self.comments.take(leading.len());
             let mut guarded = previous.is_some_and(StatementBoundary::guards_expression);
+            if first_statement
+                && matches!(kind, StatementSequenceKind::Program)
+                && self.has_file_directives
+                && leading
+                    .iter()
+                    .any(|&comment| self.comment_is_file_directive(comment))
+                && leading
+                    .iter()
+                    .any(|&comment| self.comment_has_target_annotation(comment))
+            {
+                guarded = true;
+            }
             if let Some(boundary) = previous {
                 let end = boundary.end();
                 let next_start = leading
@@ -314,6 +381,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let layout = StatementLayout { guarded };
             let expression_head = expression.is_some() && mode == ContentMode::Formatted;
+            let transferred = match statement {
+                StatementItem::Statement(node) => body_leading.take_for(node),
+                StatementItem::Directive(_) => &[],
+            };
+            if !transferred.is_empty() {
+                self.format_comment_run(
+                    transferred,
+                    CommentRunLayout::Leading(statement_span.start),
+                    writer,
+                )?;
+            }
             let head = NodeHead {
                 comments: if expression_head { leading } else { &[] },
                 content_start: statement_span.start,
@@ -393,15 +471,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?
             };
+            first_statement = false;
             previous = Some(boundary.with_end(end));
             previous_span_end = statement_span.end;
             previous_omitted = omitted.map(|(_, gap)| gap);
+        }
+        let transferred = body_leading.take_dangling();
+        if !transferred.is_empty() {
+            if previous.is_some() {
+                writer.hard_line();
+            }
+            self.format_comment_run(transferred, CommentRunLayout::Lines, writer)?;
         }
         let dangling = self.comments.between(Span::new(
             previous.map_or(span.start, StatementBoundary::end),
             span.end,
         ))?;
         let dangling = self.comments.take(dangling.len());
+        if !transferred.is_empty() && !dangling.is_empty() {
+            writer.hard_line();
+        }
         if let Some(first) = dangling.first()
             && let Some(boundary) = previous
         {
@@ -409,7 +498,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         self.format_comment_run(
             dangling,
-            if previous.is_none() && matches!(kind, StatementSequenceKind::Block) {
+            if previous.is_none()
+                && matches!(
+                    kind,
+                    StatementSequenceKind::Block | StatementSequenceKind::Function { .. }
+                )
+            {
                 CommentRunLayout::CanonicalDangling
             } else {
                 CommentRunLayout::Source
@@ -417,7 +511,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
         )?;
         Ok(StatementSequence {
-            has_content: previous.is_some() || !dangling.is_empty(),
+            has_content: previous.is_some() || !dangling.is_empty() || !transferred.is_empty(),
             end: dangling.last().map_or_else(
                 || previous.map_or(span.start, StatementBoundary::end),
                 |comment| comment.span.end,
@@ -496,6 +590,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         item: StatementItem,
         following: Option<StatementItem>,
+        incoming: Option<IncomingStatement>,
     ) -> PreparedStatement<'ast> {
         let span = item.span(self.ast);
         let annotation_tail = if (self.has_target_annotations || self.has_suppression)
@@ -508,7 +603,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         PreparedStatement {
             item,
             span,
-            mode: ContentMode::Formatted,
+            mode: incoming
+                .filter(|target| target.span == span)
+                .map_or(ContentMode::Formatted, |target| target.mode),
             source_gap: None,
             annotation_tail,
         }
@@ -758,6 +855,71 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             ExpressionContext::at(ExpressionPosition::Statement).with_content_mode(mode),
         )
+    }
+
+    pub(in crate::formatter) fn function_body_requires_break(&self, body: FunctionBody) -> bool {
+        !body.directives(self.ast).is_empty()
+            || body.body(self.ast).iter().any(|id| {
+                StatementItem::Statement(self.ast.get_node_in_sub_range(id)).is_nonempty(self.ast)
+            })
+    }
+    pub(super) fn format_function_body(
+        &mut self,
+        body: FunctionBody,
+        mode: ContentMode,
+        incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(leading.comments())?;
+        let ast = self.ast;
+        let span = body.span(ast);
+        if mode == ContentMode::Verbatim {
+            return self.format_verbatim(span, writer);
+        }
+        let content = Span::new(span.start + 1, span.end - 1);
+        let has_items = self.function_body_requires_break(body);
+        let source_empty = if has_items {
+            false
+        } else {
+            let dangling = self.comments.in_range(content);
+            if self.content_mode(dangling) == ContentMode::Verbatim {
+                return self.format_verbatim(span, writer);
+            }
+            dangling.is_empty()
+        };
+        let empty = source_empty && leading.comments().is_empty();
+        let opening = self.opening_line_constraint(content);
+        writer.text("{");
+        if empty {
+            opening.write(writer, FlatSeparator::Empty, |_| {});
+        } else {
+            let sequence = writer.indent(|writer| {
+                opening.write(writer, FlatSeparator::Space, Writer::hard_line);
+                self.format_statement_sequence(
+                    body.directives(ast)
+                        .iter()
+                        .map(|id| StatementItem::Directive(ast.get_node_in_sub_range(id)))
+                        .chain(
+                            body.body(ast)
+                                .iter()
+                                .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id))),
+                        )
+                        .peekable(),
+                    content,
+                    None,
+                    StatementSequenceKind::Function { incoming, leading },
+                    writer,
+                )
+            })?;
+            self.line_constraint(sequence.end, content.end).write(
+                writer,
+                FlatSeparator::Space,
+                Writer::hard_line,
+            );
+        }
+        writer.text("}");
+        Ok(())
     }
 
     fn format_block(

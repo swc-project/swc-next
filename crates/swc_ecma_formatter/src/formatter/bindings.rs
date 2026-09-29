@@ -10,7 +10,8 @@ use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     ArrayPattern, Ast, BindingPattern, BindingPatternData, BindingProperty, Comment, CommentKind,
-    Expr, ExprData, GetSpan, ObjectPattern, Span,
+    Expr, ExprData, FormalParameterPattern, FormalParameterPatternData, GetSpan, ObjectPattern,
+    Span,
 };
 
 pub(super) enum DefaultOwner<'ast> {
@@ -91,6 +92,12 @@ pub(super) struct PreparedBindingDefault<'ast> {
     owner: DefaultOwner<'ast>,
 }
 
+impl PreparedBindingDefault<'_> {
+    pub(super) fn is_verbatim(&self) -> bool {
+        matches!(self.owner, DefaultOwner::Whole)
+    }
+}
+
 struct ObjectBindingShape {
     group: BindingGroup,
     complex: bool,
@@ -135,6 +142,35 @@ fn binding_separator(separator: Separator, constraint: LineConstraint, writer: &
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_parameter_binding(
+        &mut self,
+        pattern: FormalParameterPattern,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let pattern = self.parameter_binding(pattern);
+        self.format_parameter_pattern(pattern, mode, writer)
+    }
+
+    pub(super) fn format_parameter_pattern(
+        &mut self,
+        pattern: BindingPattern,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_binding_with_group(pattern, BindingGroup::Auto, mode, writer)
+    }
+
+    pub(super) fn parameter_binding(&self, pattern: FormalParameterPattern) -> BindingPattern {
+        match self.ast.formal_parameter_pattern_data(pattern) {
+            FormalParameterPatternData::BindingIdentifier(node) => {
+                BindingPattern::BindingIdentifier(node)
+            }
+            FormalParameterPatternData::ArrayPattern(node) => BindingPattern::ArrayPattern(node),
+            FormalParameterPatternData::ObjectPattern(node) => BindingPattern::ObjectPattern(node),
+        }
+    }
+
     pub(super) fn format_declaration_binding(
         &mut self,
         pattern: BindingPattern,
@@ -848,6 +884,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("]");
             Ok(())
         })
+    }
+
+    pub(super) fn format_object_binding_contents(
+        &mut self,
+        object: ObjectPattern,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_object_binding_with_group(object, BindingGroup::Parent, writer)
     }
 
     fn format_object_binding_with_group(
