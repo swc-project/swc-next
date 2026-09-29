@@ -482,7 +482,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self.comments.between(Span::new(start, end))?;
         let comments = self.comments.take(comments.len());
         if self
-            .comment_binding(comments, Span::new(start, end))
+            .comment_binding(comments, Span::new(start, end), None)
             .allows_relocation(None)
         {
             self.format_trailing_comment_run(comments, writer)?;

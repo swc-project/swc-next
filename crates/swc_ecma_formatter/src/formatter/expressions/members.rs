@@ -325,6 +325,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    /// Callers have proved the enclosing immutable comment and diagnostic span.
+    /// Actual source lines or suppression retain the complete punctuation owner.
+    pub(super) fn source_clear_member_has_chain_barrier(
+        &self,
+        head: &MemberHead,
+    ) -> Result<bool, FormatError> {
+        if !self.has_suppression && self.line_breaks(head.gap.start, head.gap.end) == 0 {
+            return Ok(false);
+        }
+        let PreparedMember::Formatted(source) = self.prepare_source_member(head)? else {
+            return Ok(true);
+        };
+        Ok(source.receiver_mode != ContentMode::Formatted
+            || self.next_line_is_empty(head.gap.start, source.operator_span().start))
+    }
+
     pub(super) fn source_member(
         &self,
         member: MemberExpression,
@@ -423,7 +439,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && comments[split..]
                 .iter()
                 .any(|comment| comment.kind == CommentKind::Line)
-            && self.comment_binding(comments, gap).allows_relocation(None);
+            && self
+                .comment_binding(comments, gap, None)
+                .allows_relocation(None);
         &comments[..if move_lines { comments.len() } else { split }]
     }
 

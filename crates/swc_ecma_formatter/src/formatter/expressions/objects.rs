@@ -869,7 +869,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let first = comments.partition_point(|comment| comment.span.start < content.start);
             let last = comments.partition_point(|comment| comment.span.end <= content.end);
             if self
-                .comment_binding(&comments[first..last], content)
+                .comment_binding(&comments[first..last], content, None)
                 .allows_relocation(None)
             {
                 self.computed_key_scope(expression)

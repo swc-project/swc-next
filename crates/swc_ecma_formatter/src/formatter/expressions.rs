@@ -4,6 +4,7 @@ pub(super) mod arguments;
 mod arrays;
 pub(super) mod assignment;
 mod binary;
+mod calls;
 mod conditional;
 mod members;
 pub(super) mod objects;
@@ -34,6 +35,7 @@ pub(super) enum ExpressionPosition {
     PropertyValue,
     SpreadArgument,
     MemberObject,
+    CallCallee,
     MemberAssignmentObject,
     SequenceMember,
     UnaryArgument(UnaryOperator),
@@ -274,6 +276,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         matches!(
             position,
             ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::CallCallee
                 | ExpressionPosition::MemberObject
                 | ExpressionPosition::MemberAssignmentObject
         )
@@ -321,6 +324,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     operator: binary.operator,
                     side: OperandSide::Left,
                 };
+                continue;
+            }
+            if let ExprData::CallExpression(call) = data {
+                let callee = self.source_call_callee(call)?;
+                expression = callee.expression;
+                context = callee.context(context);
                 continue;
             }
             if let ExprData::MemberExpression(member) = data {
@@ -383,6 +392,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Some(match position {
                 ExpressionPosition::UnaryArgument(_)
                 | ExpressionPosition::SpreadArgument
+                | ExpressionPosition::CallCallee
                 | ExpressionPosition::MemberObject
                 | ExpressionPosition::MemberAssignmentObject => true,
                 ExpressionPosition::BinaryOperand { operator, side } => {
@@ -404,6 +414,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::SpreadArgument
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
+                    | ExpressionPosition::CallCallee
                     | ExpressionPosition::MemberObject
                     | ExpressionPosition::MemberAssignmentObject
             )),
@@ -419,9 +430,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
             ExprData::UnaryExpression(unary) => Some(match position {
-                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject => {
-                    true
-                }
+                ExpressionPosition::MemberObject
+                | ExpressionPosition::MemberAssignmentObject
+                | ExpressionPosition::CallCallee => true,
                 ExpressionPosition::UnaryArgument(parent)
                 | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
                     matches!(parent, UnaryOperator::Positive | UnaryOperator::Negate)
@@ -441,9 +452,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => false,
             }),
             ExprData::UpdateExpression(update) => Some(match position {
-                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject => {
-                    true
-                }
+                ExpressionPosition::MemberObject
+                | ExpressionPosition::MemberAssignmentObject
+                | ExpressionPosition::CallCallee => true,
                 ExpressionPosition::UnaryArgument(parent)
                 | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
                     update.prefix(self.ast)
@@ -473,7 +484,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             | ExprData::RegExpLiteral(_)
             | ExprData::ThisExpression(_)
             | ExprData::ParenthesizedExpression(_)
-            | ExprData::MemberExpression(_) => Some(false),
+            | ExprData::MemberExpression(_)
+            | ExprData::CallExpression(_) => Some(false),
             _ => None,
         }
     }
@@ -527,6 +539,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
             ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
+            ExprData::CallExpression(call) => return self.format_call(call, context, writer),
             ExprData::MemberExpression(member) => {
                 return self.format_member(member, context, writer);
             }

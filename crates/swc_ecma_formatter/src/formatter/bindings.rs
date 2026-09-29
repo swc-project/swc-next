@@ -418,8 +418,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.expression_head_binding(comments, right),
                     CommentBinding::Unbound
                 )
-                && matches!(self.comment_binding(comments, gap), CommentBinding::Unbound)
-            {
+                && matches!(
+                    self.comment_binding(comments, gap, None),
+                    CommentBinding::Unbound
+                ) {
                 boundary.moved = &[];
                 boundary.leading = &[];
                 boundary.own_line = false;

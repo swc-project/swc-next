@@ -308,6 +308,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.source_type_cast(start).is_some()
     }
 
+    pub(super) fn source_cast_head(&self, mut expression: Expr) -> Option<ParenthesizedExpression> {
+        if !self.has_type_casts {
+            return None;
+        }
+        loop {
+            expression = match self.ast.expr_data(expression) {
+                ExprData::ParenthesizedExpression(parenthesized) => {
+                    if self.parenthesis_has_type_cast(parenthesized.span(self.ast).start) {
+                        return Some(parenthesized);
+                    }
+                    parenthesized.expression(self.ast)
+                }
+                ExprData::MemberExpression(member) => member.object(self.ast),
+                ExprData::CallExpression(call) => call.callee(self.ast),
+                _ => return None,
+            };
+        }
+    }
+
     fn source_type_cast(&self, start: u32) -> Option<Comment> {
         if !self.has_type_casts || !self.ast.source()[start as usize..].starts_with('(') {
             return None;
@@ -382,6 +401,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let data = self.ast.expr_data(expression);
                     if let ExprData::ParenthesizedExpression(node) = data {
                         return CommentBinding::BoundTo(node.span(self.ast));
+                    }
+                    if let ExprData::CallExpression(node) = data {
+                        expression = node.callee(self.ast);
+                        continue;
                     }
                     if let ExprData::MemberExpression(node) = data {
                         expression = node.object(self.ast);
@@ -841,7 +864,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && parenthesize
             && matches!(
                 context.position,
-                ExpressionPosition::MemberObject | ExpressionPosition::MemberAssignmentObject
+                ExpressionPosition::CallCallee
+                    | ExpressionPosition::MemberObject
+                    | ExpressionPosition::MemberAssignmentObject
             )
         {
             return self.format_conditional_enclosed(conditional, context, writer);
@@ -1390,6 +1415,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     head_start = content.expression.span(self.ast).start;
                     content.expression
                 }
+                ExprData::CallExpression(_) => {
+                    return removed_binding
+                        .combine(CommentBinding::BoundTo(expression.span(self.ast)));
+                }
                 ExprData::MemberExpression(node) => node.object(self.ast),
                 ExprData::ConditionalExpression(node) => node.test(self.ast),
                 ExprData::SequenceExpression(node) => {
@@ -1435,20 +1464,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             || self.source_type_cast(span.start),
         )
-    }
-
-    pub(super) fn source_cast_head(&self, mut expression: Expr) -> Option<ParenthesizedExpression> {
-        if !self.has_type_casts {
-            return None;
-        }
-        while let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression)
-        {
-            if self.parenthesis_has_type_cast(parenthesized.span(self.ast).start) {
-                return Some(parenthesized);
-            }
-            expression = parenthesized.expression(self.ast);
-        }
-        None
     }
 
     pub(super) fn emitted_head_annotation(
