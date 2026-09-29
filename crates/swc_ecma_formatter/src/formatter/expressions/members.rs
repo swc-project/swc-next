@@ -92,6 +92,7 @@ fn member_receiver_context(
         .with_tail_owner(TailOwner::ParentOperation)
         .with_content_mode(mode);
     receiver.member_layout = context.member_layout;
+    receiver.member_chain_layout = context.member_chain_layout;
     receiver.conditional_envelope = context.conditional_envelope.chain_head();
     receiver.conditional_closing = if computed {
         ConditionalClosing::Inline
