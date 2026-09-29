@@ -132,7 +132,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let child = parenthesized.expression(self.ast);
             if self
-                .expression_needs_parentheses(self.ast.expr_data(child), ExpressionPosition::Nested)
+                .expression_needs_parentheses(
+                    self.ast.expr_data(child),
+                    ExpressionPosition::Nested,
+                    ContentMode::Formatted,
+                )
                 .is_none()
             {
                 break data;
@@ -186,7 +190,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             outer: parenthesized.span(self.ast),
             inner: child.span(self.ast),
             inner_target: ParenthesisInner::Expression(child),
-        }) && self.expression_needs_parentheses(self.ast.expr_data(child), position) == Some(false)
+        }) && self.expression_needs_parentheses(
+            self.ast.expr_data(child),
+            position,
+            ContentMode::Verbatim,
+        ) == Some(false)
     }
 
     pub(in crate::formatter) fn parentheses_are_removable(
@@ -586,8 +594,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if matches!(trailing_suppression, Some(TrailingSuppression::Inline))
             && (matches!(context.position, ExpressionPosition::Statement)
                 || context.tail_owner == TailOwner::ParentOperation
-                || self.expression_needs_parentheses(self.ast.expr_data(child), context.position)
-                    == Some(true))
+                || self.expression_needs_parentheses(
+                    self.ast.expr_data(child),
+                    context.position,
+                    ContentMode::Verbatim,
+                ) == Some(true))
         {
             return SourceParenthesesChoice::Verbatim;
         }
@@ -621,11 +632,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(context.position, ExpressionPosition::BinaryOperand { operator, side: super::binary::OperandSide::Left } if super::binary::BinaryLike::from_data(self.ast.expr_data(child), self.ast).is_none_or(|binary| !operator.flattens(binary.operator)))
                 || matches!(
                     context.position,
-                    ExpressionPosition::UnaryArgument(_) | ExpressionPosition::ConditionalTest
+                    ExpressionPosition::UnaryArgument(_)
+                        | ExpressionPosition::ConditionalTest
+                        | ExpressionPosition::MemberObject
+                        | ExpressionPosition::MemberAssignmentObject
+                        | ExpressionPosition::CallCallee
+                        | ExpressionPosition::NewCallee
                 )
                 || self.parentheses_separate_diagnostic_lines(boundary)
                 || self
-                    .expression_needs_parentheses(self.ast.expr_data(child), context.position)
+                    .expression_needs_parentheses(
+                        self.ast.expr_data(child),
+                        context.position,
+                        ContentMode::Verbatim,
+                    )
                     .is_none())
         {
             return SourceParenthesesChoice::Retained {
@@ -738,6 +758,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .get_or_insert_with(|| self.expression_content(expression))
                     .data,
                 context.position,
+                ContentMode::Formatted,
             ) == Some(true);
         if parenthesize_head {
             return self
@@ -823,6 +844,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         operator: binary.operator,
                         side: super::binary::OperandSide::Left,
                     },
+                    ContentMode::Formatted,
                 ) == Some(true);
             }
             if asi_guard {
@@ -865,6 +887,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && matches!(
                 context.position,
                 ExpressionPosition::CallCallee
+                    | ExpressionPosition::NewCallee
                     | ExpressionPosition::MemberObject
                     | ExpressionPosition::MemberAssignmentObject
             )
@@ -1294,7 +1317,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) {
                 inner_context = inner_context.inside_parentheses();
             }
-            inner_context.member_layout = context.member_layout;
+            inner_context.member_chain_layout = context.member_chain_layout;
+            if context.member_chain_layout == super::MemberChainLayout::Local {
+                inner_context.member_layout = context.member_layout;
+            }
             inner_context.protected_head_start = protected_head_start;
             if let Some((sequence, _)) = sequence_head {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(sequence);
@@ -1338,7 +1364,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || !matches!(binding, CommentBinding::Unbound)
             || context.content_mode != ContentMode::Formatted
             || context.parentheses_owner != ParenthesesOwner::Expression
-            || self.expression_needs_parentheses(content.data, context.position) != Some(true)
+            || self.expression_needs_parentheses(
+                content.data,
+                context.position,
+                context.content_mode,
+            ) != Some(true)
         {
             return None;
         }
@@ -1415,7 +1445,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     head_start = content.expression.span(self.ast).start;
                     content.expression
                 }
-                ExprData::CallExpression(_) => {
+                ExprData::CallExpression(_) | ExprData::NewExpression(_) => {
                     return removed_binding
                         .combine(CommentBinding::BoundTo(expression.span(self.ast)));
                 }
@@ -1493,7 +1523,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !matches!(binding, CommentBinding::Unbound)
             || context.content_mode != ContentMode::Formatted
             || context.parentheses_owner != ParenthesesOwner::Expression
-            || self.expression_needs_parentheses(content.data, context.position) != Some(true)
+            || self.expression_needs_parentheses(
+                content.data,
+                context.position,
+                context.content_mode,
+            ) != Some(true)
             || self.diagnostic_range_is_sensitive(Span::new(
                 annotation.comment.span.start,
                 expression.span(self.ast).end,

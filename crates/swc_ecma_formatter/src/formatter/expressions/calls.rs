@@ -15,6 +15,7 @@ impl CallCallee {
             .with_parent_head(context)
             .with_tail_owner(TailOwner::ParentOperation)
             .with_content_mode(self.mode);
+        callee.member_chain_layout = context.member_chain_layout;
         callee.conditional_envelope = context.conditional_envelope.chain_head();
         callee
     }
@@ -94,10 +95,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.expression_needs_parentheses(
                 self.ast.expr_data(arguments.callee),
                 callee_context.position,
+                arguments.callee_mode,
             ) != Some(true)
             && !arguments.has_outside_prefix();
         if member_callee && self.call_member_callee_is_compact(arguments.callee) {
             callee_context.member_layout = MemberLayout::Tight;
+            callee_context.member_chain_layout = super::MemberChainLayout::Local;
         }
         let write = |writer: &mut Writer<'ast>| {
             let tail = self.format_expression(arguments.callee, callee_context, writer)?;

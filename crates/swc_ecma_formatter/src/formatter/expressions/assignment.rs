@@ -553,7 +553,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(child) =
                 self.ignored_parentheses_child(parenthesized, ContentMode::Formatted)
             && self
-                .expression_needs_parentheses(self.ast.expr_data(child), ExpressionPosition::Nested)
+                .expression_needs_parentheses(
+                    self.ast.expr_data(child),
+                    ExpressionPosition::Nested,
+                    ContentMode::Verbatim,
+                )
                 .is_some()
         {
             let start = parenthesized.span(self.ast).start;

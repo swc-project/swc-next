@@ -23,6 +23,12 @@ pub(super) enum ConditionalEnvelope {
 }
 
 impl ConditionalEnvelope {
+    pub(super) fn terminal_head(self) -> Self {
+        match self {
+            Self::ContinuationRoot => Self::OperationHead,
+            Self::Local | Self::OperationHead => Self::Local,
+        }
+    }
     pub(super) fn chain_head(self) -> Self {
         match self {
             Self::Local => Self::Local,
