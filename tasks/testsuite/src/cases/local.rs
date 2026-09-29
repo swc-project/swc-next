@@ -20,8 +20,10 @@ impl Case for LocalCase {
             .filter_map(|entry| {
                 let entry = entry.unwrap();
                 let path = entry.path();
-                (entry.file_type().is_file() && path.extension().is_some_and(|ext| ext == "js"))
-                    .then_some(path)
+                let supported = path
+                    .extension()
+                    .is_some_and(|ext| ext == "js" || ext == "ts");
+                (entry.file_type().is_file() && supported).then_some(path)
             })
             .collect::<Vec<_>>()
             .into_par_iter()
@@ -47,7 +49,7 @@ impl Case for LocalCase {
     }
 
     fn lang(&self) -> Lang {
-        self.0.lang()
+        Lang::from_path(&self.path().to_string_lossy())
     }
 
     fn expects_error(&self) -> bool {

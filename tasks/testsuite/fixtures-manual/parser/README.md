@@ -10,5 +10,8 @@ Keep one scenario per file. Use `flags: [module]` for Module mode; without it,
 the runner checks sloppy and strict Script modes. Negative syntax fixtures use
 `negative: { phase: parse, type: SyntaxError }` and skip codegen.
 
+Use `.js` for JavaScript and `.ts` for TypeScript. The local runner selects the
+parser language from the file extension; both use the same metadata and modes.
+
 The runners check diagnostics and printing stability, not expected AST shapes.
 Keep general AST relationship checks in the existing Rust feature tests.

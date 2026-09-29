@@ -4918,21 +4918,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             current = next;
             has_abstract = true;
         }
-        if current.tag() == TokenTag::Const {
-            let next = peek.next()?;
-            if is_const_enum_head(next) {
-                current = next;
-            } else if has_declare {
-                let result = !next.has_line_terminator_before() && can_start_binding(next.tag());
-                peek.end();
-                return Some(result);
-            } else {
-                peek.end();
-                return Some(false);
-            }
-        }
-
         let result = match current.tag() {
+            TokenTag::Const => has_declare || is_const_enum_head(peek.next()?),
             TokenTag::Enum => {
                 let name = peek.next()?;
                 name.tag().is_identifier_like() && !name.tag().is_unconditionally_reserved()
@@ -4947,20 +4934,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             TokenTag::Global => {
                 let next = peek.next()?;
-                next.tag() == TokenTag::LeftBrace && !next.has_line_terminator_before()
+                next.tag() == TokenTag::LeftBrace
             }
-            TokenTag::Var | TokenTag::Let | TokenTag::Function | TokenTag::Class => {
-                if !has_declare && !has_abstract {
-                    false
-                } else {
-                    let name = peek.next()?;
-                    !name.has_line_terminator_before()
-                        && match current.tag() {
-                            TokenTag::Var | TokenTag::Let => can_start_binding(name.tag()),
-                            _ => is_declaration_name(name),
-                        }
-                }
-            }
+            TokenTag::Class => has_declare || has_abstract,
+            TokenTag::Function => has_declare,
+            TokenTag::Var | TokenTag::Let => has_declare,
             TokenTag::Async => {
                 if !has_declare {
                     false
@@ -12850,11 +12828,6 @@ fn can_follow_readonly_modifier(tag: TokenTag) -> bool {
 }
 
 #[inline]
-fn can_start_binding(tag: TokenTag) -> bool {
-    tag.is_identifier_like() || matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace)
-}
-
-#[inline]
 fn can_start_binding_identifier(tag: TokenTag) -> bool {
     tag.is_identifier_like() && !tag.is_unconditionally_reserved()
 }
@@ -12913,7 +12886,7 @@ fn requires_same_line(tag: TokenTag) -> bool {
 
 #[inline]
 fn is_const_enum_head(after_const: Token) -> bool {
-    after_const.tag() == TokenTag::Enum && !after_const.has_line_terminator_before()
+    after_const.tag() == TokenTag::Enum
 }
 
 #[inline]
