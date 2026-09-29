@@ -271,6 +271,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
             let mut right_context = right_context;
+            if matches!(layout, AssignmentLayout::ChainTail) {
+                right_context.arrow_layout = super::arrows::ArrowLayout::AssignmentContinuation;
+            }
             if right_context.is_formatted_conditional_rhs(data) {
                 let operand_indent = match layout {
                     AssignmentLayout::Ordinary(rhs_layout) => rhs_layout.operand_indent(),

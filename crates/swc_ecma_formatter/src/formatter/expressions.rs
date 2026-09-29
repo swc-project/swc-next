@@ -2,6 +2,7 @@
 
 pub(super) mod arguments;
 mod arrays;
+pub(super) mod arrows;
 pub(super) mod assignment;
 mod binary;
 mod calls;
@@ -33,6 +34,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 pub(super) enum ExpressionPosition {
     Statement,
     Nested,
+    ArrowBody,
     PropertyValue,
     SpreadArgument,
     MemberObject,
@@ -61,6 +63,7 @@ pub(super) enum ExpressionStart {
     StatementPending,
     StatementGuard,
     StatementGuarded,
+    ArrowBody,
 }
 
 impl ExpressionStart {
@@ -125,6 +128,26 @@ pub(super) enum OperandIndent {
     Parent,
 }
 
+/// Optional breaks for a complete expression belong to its actual source line.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ExpressionLayout {
+    Normal,
+    Flat,
+}
+
+impl ExpressionLayout {
+    pub(super) fn write<'a, T>(
+        self,
+        writer: &mut Writer<'a>,
+        write: impl FnOnce(&mut Writer<'a>) -> T,
+    ) -> T {
+        match self {
+            Self::Normal => write(writer),
+            Self::Flat => writer.flat(write),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct ExpressionContext {
     position: ExpressionPosition,
@@ -141,6 +164,7 @@ pub(super) struct ExpressionContext {
     conditional_envelope: ConditionalEnvelope,
     member_layout: MemberLayout,
     member_chain_layout: MemberChainLayout,
+    arrow_layout: arrows::ArrowLayout,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
 }
@@ -150,14 +174,26 @@ impl ExpressionContext {
         let mut context = Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
             .with_source_tail_owner(SourceTailOwner::Enclosure);
         context.conditional_envelope = ConditionalEnvelope::Local;
+        context.arrow_layout = arrows::ArrowLayout::Ordinary;
         context
     }
 
     pub(super) fn at(position: ExpressionPosition) -> Self {
         Self {
             position,
+            arrow_layout: match position {
+                ExpressionPosition::CallCallee | ExpressionPosition::NewCallee => {
+                    arrows::ArrowLayout::Callee
+                }
+                ExpressionPosition::AssignmentRight(_) | ExpressionPosition::Initializer(_) => {
+                    arrows::ArrowLayout::Assignment(arrows::ArrowHeadGap::Expression)
+                }
+                ExpressionPosition::BinaryOperand { .. } => arrows::ArrowLayout::Argument,
+                _ => arrows::ArrowLayout::Ordinary,
+            },
             expression_start: match position {
                 ExpressionPosition::Statement => ExpressionStart::StatementPending,
+                ExpressionPosition::ArrowBody => ExpressionStart::ArrowBody,
                 _ => ExpressionStart::None,
             },
             content_mode: ContentMode::Formatted,
@@ -223,6 +259,11 @@ impl ExpressionContext {
 
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
         self.operand_indent = owner;
+        self
+    }
+
+    fn with_arrow_layout(mut self, layout: arrows::ArrowLayout) -> Self {
+        self.arrow_layout = layout;
         self
     }
 
@@ -320,6 +361,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 return Ok(true);
             }
+            if let ExprData::ArrowFunctionExpression(arrow) = data {
+                return self.arrow_needs_asi_guard(arrow);
+            }
             if let ExprData::AssignmentExpression(assignment) = data {
                 return self
                     .source_target_needs_asi_guard(&self.assignment_source_target(assignment)?);
@@ -362,7 +406,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 == Some(true)
                 || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
-                    && context.expression_start.is_statement())
+                    && (context.expression_start.is_statement()
+                        || context.expression_start == ExpressionStart::ArrowBody))
     }
 
     /// The actual computed receiver owns the lexical pair, not its whole member.
@@ -439,6 +484,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 Some(constructor.span(self.ast).end == suffix_end)
             }
+            ExprData::ArrowFunctionExpression(_) => Some(matches!(
+                position,
+                ExpressionPosition::UnaryArgument(_)
+                    | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                    | ExpressionPosition::BinaryOperand { .. }
+                    | ExpressionPosition::MemberObject
+                    | ExpressionPosition::MemberAssignmentObject
+                    | ExpressionPosition::CallCallee
+                    | ExpressionPosition::NewCallee
+                    | ExpressionPosition::ConditionalTest
+            )),
             ExprData::ArrayExpression(_) => Some(false),
             ExprData::ObjectExpression(_) => {
                 Some(matches!(position, ExpressionPosition::Statement))
@@ -530,6 +586,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn expression_layout(&self, expression: Expr) -> ExpressionLayout {
+        if self.diagnostic_lines.is_empty() {
+            return ExpressionLayout::Normal;
+        }
+        let span = expression.span(self.ast);
+        if self.diagnostic_line_is_sensitive(span.start)
+            && self.line_breaks(span.start, span.end) == 0
+        {
+            ExpressionLayout::Flat
+        } else {
+            ExpressionLayout::Normal
+        }
+    }
+
     fn format_verbatim_expression(
         &mut self,
         expression: Expr,
@@ -577,6 +647,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
+            ExprData::ArrowFunctionExpression(arrow) => {
+                return self.format_arrow(arrow, context, writer);
+            }
             ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
             ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
             ExprData::CallExpression(call) => return self.format_call(call, context, writer),
@@ -640,7 +713,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match argument {
             ArgumentData::Expr(expression) => self.format_expression(
                 expression,
-                ExpressionContext::at(ExpressionPosition::Nested).with_content_mode(mode),
+                ExpressionContext::at(ExpressionPosition::Nested)
+                    .with_content_mode(mode)
+                    .with_arrow_layout(arrows::ArrowLayout::Argument),
                 writer,
             ),
             ArgumentData::SpreadElement(spread) => {

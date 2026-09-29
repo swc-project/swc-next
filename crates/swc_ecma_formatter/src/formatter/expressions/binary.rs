@@ -532,7 +532,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let parent_indents = matches!(
             context.position,
-            ExpressionPosition::AssignmentRight(_) | ExpressionPosition::PropertyValue
+            ExpressionPosition::AssignmentRight(_)
+                | ExpressionPosition::PropertyValue
+                | ExpressionPosition::ArrowBody
         ) && (!self.inline_logical_operand(binary.operator, binary.right)
             || !BinaryLike::from_data(self.expression_content(binary.left).data, self.ast)
                 .is_some_and(|left| binary.operator.flattens(left.operator)));
