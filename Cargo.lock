@@ -2925,6 +2925,7 @@ dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
+ "swc_next_simd",
  "zmij_ecma",
 ]
 
@@ -2953,6 +2954,7 @@ dependencies = [
  "rustc-hash",
  "swc_next_allocator",
  "swc_next_ecma_ast",
+ "swc_next_simd",
 ]
 
 [[package]]
@@ -3002,12 +3004,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_simd"
+version = "0.2.3"
+
+[[package]]
 name = "swc_next_type_strip"
 version = "0.2.3"
 dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
+ "swc_next_simd",
 ]
 
 [[package]]

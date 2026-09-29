@@ -1,0 +1,10 @@
+[package]
+description          = "A stable Rust implementation of a subset of std::simd"
+edition              = "2024"
+license.workspace    = true
+name                 = "swc_next_simd"
+repository.workspace = true
+version              = "0.2.3"
+
+[features]
+memchr = []

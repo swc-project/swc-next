@@ -1,42 +1,38 @@
-//! Temporary portable-SIMD compatibility layer for `swc_next_type_strip`.
+//! A stable Rust implementation of the `std::simd` subset used by this workspace.
 //!
-//! This crate strips erasable TypeScript syntax while preserving UTF-16 source
-//! positions. The types and traits in this module provide the `std::simd`-shaped
-//! subset used to accelerate that blanking on supported targets without exposing
-//! architecture-specific intrinsics to the rest of the crate.
+//! This crate follows the standard library's API and semantics so that, once
+//! portable SIMD is stabilized, `std::simd` can serve as a drop-in replacement.
 //!
-//! Once portable SIMD is stable in the Rust standard library, this module is
-//! intended to be removed and its imports replaced with `std::simd`, leaving the
-//! blanking algorithm unchanged.
+//! The optional `memchr` module extends the `memchr` crate with searches for any
+//! of four bytes.
 
-use std::marker::PhantomData;
-use std::ops::{BitAnd, BitOr};
+pub mod cmp;
 
-pub(crate) const AVAILABLE: bool = cfg!(any(
-    target_arch = "x86_64",
-    target_arch = "aarch64",
-    all(target_arch = "wasm32", target_feature = "simd128")
-));
+#[cfg(feature = "memchr")]
+pub mod memchr;
+
+use cmp::{SimdPartialEq, SimdPartialOrd};
+use std::ops::{BitAnd, BitOr, Not, Sub};
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub(crate) struct Simd<T, const N: usize>([T; N]);
+pub struct Simd<T, const N: usize>([T; N]);
 
 impl<T: Copy, const N: usize> Simd<T, N> {
-    pub(crate) const LEN: usize = N;
+    pub const LEN: usize = N;
 
     #[inline]
-    pub(crate) const fn splat(value: T) -> Self {
+    pub const fn splat(value: T) -> Self {
         Self([value; N])
     }
 
     #[inline]
-    pub(crate) const fn from_array(array: [T; N]) -> Self {
+    pub const fn from_array(array: [T; N]) -> Self {
         Self(array)
     }
 
     #[inline]
-    pub(crate) fn from_slice(slice: &[T]) -> Self {
+    pub fn from_slice(slice: &[T]) -> Self {
         let array = slice
             .first_chunk::<N>()
             .expect("source slice is shorter than the SIMD vector");
@@ -44,78 +40,149 @@ impl<T: Copy, const N: usize> Simd<T, N> {
     }
 
     #[inline]
-    pub(crate) const fn to_array(self) -> [T; N] {
+    pub const fn to_array(self) -> [T; N] {
         self.0
     }
 }
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub(crate) struct Mask<T, const N: usize> {
-    lanes: [u8; N],
-    element: PhantomData<T>,
+pub struct Mask<T, const N: usize>(Simd<T, N>);
+
+impl<const N: usize> Mask<i8, N> {
+    #[inline]
+    pub const fn splat(value: bool) -> Self {
+        Self(Simd::splat(if value { -1 } else { 0 }))
+    }
+
+    #[inline]
+    pub fn from_array(array: [bool; N]) -> Self {
+        let lanes = array.map(|value| if value { -1 } else { 0 });
+        Self(Simd::from_array(lanes))
+    }
+
+    #[inline]
+    pub fn to_array(self) -> [bool; N] {
+        self.0.to_array().map(|lane| lane != 0)
+    }
+
+    /// Converts an integer vector to a mask: 0 is false and -1 is true.
+    ///
+    /// # Panics
+    /// Panics if any element is neither 0 nor -1.
+    #[inline]
+    #[track_caller]
+    #[must_use]
+    pub fn from_simd(value: Simd<i8, N>) -> Self {
+        assert!(
+            value.0.iter().all(|&lane| lane == 0 || lane == -1),
+            "all mask values must be either 0 or -1"
+        );
+        // SAFETY: Every lane was checked above.
+        unsafe { Self::from_simd_unchecked(value) }
+    }
+
+    /// Converts an integer vector to a mask without checking its elements.
+    ///
+    /// # Safety
+    /// Every element must be either 0 or -1.
+    #[inline]
+    #[must_use]
+    pub unsafe fn from_simd_unchecked(value: Simd<i8, N>) -> Self {
+        Self(value)
+    }
+
+    /// Returns the integer vector, with 0 for false and -1 for true.
+    #[inline]
+    pub fn to_simd(self) -> Simd<i8, N> {
+        self.0
+    }
 }
 
-impl<T, const N: usize> Mask<T, N> {
+/// Choose elements from two vectors using a mask.
+pub trait Select<T> {
+    fn select(self, true_values: T, false_values: T) -> T;
+}
+
+impl Select<Simd<u8, 16>> for Mask<i8, 16> {
     #[inline]
-    fn from_array(lanes: [u8; N]) -> Self {
-        Self {
-            lanes,
-            element: PhantomData,
-        }
+    fn select(self, true_values: Simd<u8, 16>, false_values: Simd<u8, 16>) -> Simd<u8, 16> {
+        let mask = self.to_simd().to_array().map(|lane| lane as u8);
+        Simd::from_array(backend::select(mask, true_values.0, false_values.0))
     }
 }
 
 impl Mask<i8, 16> {
     #[inline]
-    pub(crate) fn select(
-        self,
-        true_values: Simd<u8, 16>,
-        false_values: Simd<u8, 16>,
-    ) -> Simd<u8, 16> {
-        Simd::from_array(backend::select(self.lanes, true_values.0, false_values.0))
+    pub fn any(self) -> bool {
+        let lanes = self.to_simd().to_array().map(|lane| lane as u8);
+        backend::any(lanes)
     }
-}
 
-impl<T> Mask<T, 16> {
+    /// The first true lane, or `None` when every lane is false.
     #[inline]
-    pub(crate) fn any(self) -> bool {
-        backend::any(self.lanes)
+    pub fn first_set(self) -> Option<usize> {
+        let lanes = self.to_simd().to_array().map(|lane| lane as u8);
+        let lane = backend::first_set(lanes);
+        (lane < 16).then_some(lane)
     }
 }
 
-impl<T> BitAnd for Mask<T, 16> {
+impl Not for Mask<i8, 16> {
+    type Output = Self;
+
+    #[inline]
+    fn not(self) -> Self {
+        let lanes = self.to_simd().to_array().map(|lane| lane as u8);
+        let result = backend::eq(lanes, [0; 16]).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Self::from_simd_unchecked(Simd::from_array(result)) }
+    }
+}
+
+impl BitOr for Simd<u8, 16> {
+    type Output = Self;
+
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        Self(backend::or(self.0, other.0))
+    }
+}
+
+impl Sub for Simd<u8, 16> {
+    type Output = Self;
+
+    /// Lane-wise wrapping subtraction, matching portable SIMD arithmetic.
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        Self(backend::sub(self.0, other.0))
+    }
+}
+
+impl BitAnd for Mask<i8, 16> {
     type Output = Self;
 
     #[inline]
     fn bitand(self, other: Self) -> Self::Output {
-        Self::from_array(backend::and(self.lanes, other.lanes))
+        let left = self.to_simd().to_array().map(|lane| lane as u8);
+        let right = other.to_simd().to_array().map(|lane| lane as u8);
+        let result = backend::and(left, right).map(|lane| lane as i8);
+        // SAFETY: Bitwise operations preserve the 0/-1 mask invariant.
+        unsafe { Self::from_simd_unchecked(Simd::from_array(result)) }
     }
 }
 
-impl<T> BitOr for Mask<T, 16> {
+impl BitOr for Mask<i8, 16> {
     type Output = Self;
 
     #[inline]
     fn bitor(self, other: Self) -> Self::Output {
-        Self::from_array(backend::or(self.lanes, other.lanes))
+        let left = self.to_simd().to_array().map(|lane| lane as u8);
+        let right = other.to_simd().to_array().map(|lane| lane as u8);
+        let result = backend::or(left, right).map(|lane| lane as i8);
+        // SAFETY: Bitwise operations preserve the 0/-1 mask invariant.
+        unsafe { Self::from_simd_unchecked(Simd::from_array(result)) }
     }
-}
-
-#[allow(dead_code)]
-pub(crate) trait SimdPartialEq {
-    type Mask;
-
-    fn simd_eq(self, other: Self) -> Self::Mask;
-    fn simd_ne(self, other: Self) -> Self::Mask;
-}
-
-#[allow(dead_code)]
-pub(crate) trait SimdPartialOrd: SimdPartialEq {
-    fn simd_lt(self, other: Self) -> Self::Mask;
-    fn simd_le(self, other: Self) -> Self::Mask;
-    fn simd_gt(self, other: Self) -> Self::Mask;
-    fn simd_ge(self, other: Self) -> Self::Mask;
 }
 
 impl SimdPartialEq for Simd<u8, 16> {
@@ -123,46 +190,58 @@ impl SimdPartialEq for Simd<u8, 16> {
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {
-        Mask::from_array(backend::eq(self.0, other.0))
+        let lanes = backend::eq(self.0, other.0).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
     #[inline]
     fn simd_ne(self, other: Self) -> Self::Mask {
-        Mask::from_array(backend::ne(self.0, other.0))
+        let lanes = backend::ne(self.0, other.0).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 }
 
 impl SimdPartialOrd for Simd<u8, 16> {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
-        Mask::from_array(backend::lt(self.0, other.0))
+        let lanes = backend::lt(self.0, other.0).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
     #[inline]
     fn simd_le(self, other: Self) -> Self::Mask {
-        Mask::from_array(backend::le(self.0, other.0))
+        let lanes = backend::le(self.0, other.0).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
     #[inline]
     fn simd_gt(self, other: Self) -> Self::Mask {
-        Mask::from_array(backend::gt(self.0, other.0))
+        let lanes = backend::gt(self.0, other.0).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
     #[inline]
     fn simd_ge(self, other: Self) -> Self::Mask {
-        Mask::from_array(backend::ge(self.0, other.0))
+        let lanes = backend::ge(self.0, other.0).map(|lane| lane as i8);
+        // SAFETY: Byte comparisons produce only 0 or -1 lanes.
+        unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 }
 
 #[allow(non_camel_case_types)]
-pub(crate) type u8x16 = Simd<u8, 16>;
+pub type u8x16 = Simd<u8, 16>;
 
 #[allow(non_camel_case_types)]
-pub(crate) type mask8x16 = Mask<i8, 16>;
+pub type mask8x16 = Mask<i8, 16>;
 
-pub(crate) mod prelude {
-    #[allow(unused_imports)]
-    pub(crate) use super::{SimdPartialEq, SimdPartialOrd};
+pub mod prelude {
+    pub use super::cmp::{SimdPartialEq, SimdPartialOrd};
+    pub use super::{Mask, Select, Simd, mask8x16, u8x16};
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -199,6 +278,20 @@ mod backend {
     #[inline(always)]
     fn not(value: __m128i) -> __m128i {
         sse2!(_mm_xor_si128(value, _mm_set1_epi8(-1)))
+    }
+
+    #[inline(always)]
+    pub(super) fn first_set(mask: [u8; 16]) -> usize {
+        let bits = sse2!(_mm_movemask_epi8(vector(mask))) as u16;
+        bits.trailing_zeros() as usize
+    }
+
+    #[inline(always)]
+    pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        array(sse2!(std::arch::x86_64::_mm_sub_epi8(
+            vector(left),
+            vector(right)
+        )))
     }
 
     #[inline(always)]
@@ -294,6 +387,29 @@ mod backend {
     }
 
     #[inline(always)]
+    pub(super) fn first_set(mask: [u8; 16]) -> usize {
+        use std::arch::aarch64::{vreinterpretq_u16_u8, vshrn_n_u16};
+        // Pack four bits per lane with SHRN: AArch64 has no byte movemask.
+        // SAFETY: NEON is mandatory on AArch64; the shift is in range.
+        let nibbles = unsafe { vshrn_n_u16::<4>(vreinterpretq_u16_u8(vector(mask))) };
+        // SAFETY: both representations are eight bytes. Reading in native
+        // byte order below preserves lane order on big-endian targets too.
+        let bytes: [u8; 8] = unsafe { std::mem::transmute(nibbles) };
+        let bits = u64::from_ne_bytes(bytes);
+        if cfg!(target_endian = "little") {
+            bits.trailing_zeros() as usize / 4
+        } else {
+            bits.leading_zeros() as usize / 4
+        }
+    }
+
+    #[inline(always)]
+    pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        // SAFETY: NEON is mandatory on AArch64.
+        array(unsafe { std::arch::aarch64::vsubq_u8(vector(left), vector(right)) })
+    }
+
+    #[inline(always)]
     pub(super) fn eq(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         // SAFETY: NEON is mandatory on AArch64.
         array(unsafe { vceqq_u8(vector(left), vector(right)) })
@@ -378,6 +494,17 @@ mod backend {
     }
 
     #[inline(always)]
+    pub(super) fn first_set(mask: [u8; 16]) -> usize {
+        let bits = std::arch::wasm32::i8x16_bitmask(vector(mask)) as u16;
+        bits.trailing_zeros() as usize
+    }
+
+    #[inline(always)]
+    pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        array(std::arch::wasm32::i8x16_sub(vector(left), vector(right)))
+    }
+
+    #[inline(always)]
     pub(super) fn eq(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         array(u8x16_eq(vector(left), vector(right)))
     }
@@ -443,6 +570,16 @@ mod backend {
 )))]
 mod backend {
     #[inline(always)]
+    pub(super) fn first_set(mask: [u8; 16]) -> usize {
+        mask.iter().position(|&lane| lane != 0).unwrap_or(16)
+    }
+
+    #[inline(always)]
+    pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
+        std::array::from_fn(|index| left[index].wrapping_sub(right[index]))
+    }
+
+    #[inline(always)]
     pub(super) fn eq(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
         std::array::from_fn(|index| u8::from(left[index] == right[index]).wrapping_neg())
     }
@@ -504,20 +641,4 @@ mod backend {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::prelude::SimdPartialOrd;
-    use super::{mask8x16, u8x16};
-
-    #[test]
-    fn comparisons_and_masks_select_bytes() {
-        let values = u8x16::from_array(*b"abcdefghijklmno\n");
-        let control_whitespace: mask8x16 =
-            values.simd_ge(u8x16::splat(b'\t')) & values.simd_le(u8x16::splat(b'\r'));
-        let selected = control_whitespace
-            .select(values, u8x16::splat(b' '))
-            .to_array();
-
-        assert!(control_whitespace.any());
-        assert_eq!(selected, *b"               \n");
-    }
-}
+mod tests;

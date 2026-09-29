@@ -1,4 +1,5 @@
 use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8};
+use swc_next_simd::prelude::*;
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
@@ -27,78 +28,85 @@ pub(crate) fn quote_into(
 ) {
     let value = value.as_bytes();
     out.push(quote);
+    let quote_escape = [b'\\', quote];
+    let mut start = 0;
     let mut i = 0;
     while i < value.len() {
+        while let Some(chunk) = value[i..].first_chunk::<16>() {
+            let bytes = u8x16::from_array(*chunk);
+            let mut special = bytes.simd_lt(u8x16::splat(0x20))
+                | bytes.simd_ge(u8x16::splat(0x7f))
+                | bytes.simd_eq(u8x16::splat(b'\\'))
+                | bytes.simd_eq(u8x16::splat(quote));
+            if inline_script {
+                special = special | bytes.simd_eq(u8x16::splat(b'/'));
+            }
+            if quote == b'`' {
+                special = special | bytes.simd_eq(u8x16::splat(b'$'));
+            }
+            let run = special.first_set().unwrap_or(16);
+            i += run;
+            if run < 16 {
+                break;
+            }
+        }
+        if i == value.len() {
+            break;
+        }
+
+        let position = i;
         let (cp, size) = next_wtf8_code_point(value, i);
         i += size;
-        match cp {
-            0 => {
-                // Use "\x00" before a digit so the escape cannot consume the
-                // digit as part of a legacy octal escape.
-                if i < value.len() && value[i].is_ascii_digit() {
-                    out.extend_from_slice(b"\\x00")
-                } else {
-                    out.extend_from_slice(b"\\0")
-                }
-            }
-            7 => out.extend_from_slice(b"\\x07"),
-            8 => out.extend_from_slice(b"\\b"),
-            9 => out.push(b'\t'),
-            12 => out.extend_from_slice(b"\\f"),
-            10 => {
-                if quote == b'`' {
-                    out.push(b'\n')
-                } else {
-                    out.extend_from_slice(b"\\n")
-                }
-            }
-            13 => out.extend_from_slice(b"\\r"),
-            11 => out.extend_from_slice(b"\\v"),
-            27 => out.extend_from_slice(b"\\x1B"),
-            92 => out.extend_from_slice(b"\\\\"),
+        let escape: Option<&[u8]> = match cp {
+            // Avoid consuming a following digit as part of a legacy octal escape.
+            0 if i < value.len() && value[i].is_ascii_digit() => Some(b"\\x00"),
+            0 => Some(b"\\0"),
+            7 => Some(b"\\x07"),
+            8 => Some(b"\\b"),
+            10 if quote != b'`' => Some(b"\\n"),
+            11 => Some(b"\\v"),
+            12 => Some(b"\\f"),
+            13 => Some(b"\\r"),
+            27 => Some(b"\\x1B"),
+            92 => Some(b"\\\\"),
             47 if inline_script
-                && out.last() == Some(&b'<')
+                && value[..position].last() == Some(&b'<')
                 && value
                     .get(i..i.saturating_add(6))
                     .is_some_and(|tail| tail.eq_ignore_ascii_case(b"script")) =>
             {
-                // Avoid generating the sequence "</script" inside an inline
-                // script.
-                out.extend_from_slice(b"\\/")
+                Some(b"\\/")
             }
-            // U+2028 and U+2029 are JavaScript line terminators and must be
-            // escaped inside string literals. Escape the BOM as well.
-            0x2028 => out.extend_from_slice(b"\\u2028"),
-            0x2029 => out.extend_from_slice(b"\\u2029"),
-            0xfeff => out.extend_from_slice(b"\\uFEFF"),
-            36 if quote == b'`' && i < value.len() && value[i] == b'{' => {
-                // Avoid starting a template substitution.
-                out.extend_from_slice(b"\\$")
-            }
-            x if x == quote as u32 => {
-                out.push(b'\\');
-                out.push(quote)
-            }
-            x if x <= 0x7e => out.push(x as u8),
-            x if (0xd800..=0xdfff).contains(&x) => push_u16_escape(out, x as u16),
-            x if ascii_only && x <= 0xff => {
-                out.extend_from_slice(b"\\x");
-                out.push(HEX[(x >> 4) as usize]);
-                out.push(HEX[(x & 15) as usize]);
-            }
-            x if ascii_only && x <= 0xffff => push_u16_escape(out, x as u16),
-            x if ascii_only => push_code_point_escape(out, x),
-            x => {
-                let mut buf = [0; 4];
-                out.extend_from_slice(
-                    char::from_u32(x)
-                        .unwrap_or('\u{fffd}')
-                        .encode_utf8(&mut buf)
-                        .as_bytes(),
-                );
-            }
+            // Escape JavaScript line separators and the BOM.
+            0x2028 => Some(b"\\u2028"),
+            0x2029 => Some(b"\\u2029"),
+            0xfeff => Some(b"\\uFEFF"),
+            36 if quote == b'`' && i < value.len() && value[i] == b'{' => Some(b"\\$"),
+            x if x == quote as u32 => Some(&quote_escape),
+            _ => None,
+        };
+        let surrogate = (0xd800..=0xdfff).contains(&cp);
+        if escape.is_none() && !surrogate && !(ascii_only && cp > 0x7e) {
+            continue;
         }
+
+        out.extend_from_slice_copy(&value[start..position]);
+        if let Some(escape) = escape {
+            out.extend_from_slice_copy(escape);
+        } else if surrogate {
+            push_u16_escape(out, cp as u16);
+        } else if cp <= 0xff {
+            out.extend_from_slice(b"\\x");
+            out.push(HEX[(cp >> 4) as usize]);
+            out.push(HEX[(cp & 15) as usize]);
+        } else if cp <= 0xffff {
+            push_u16_escape(out, cp as u16);
+        } else {
+            push_code_point_escape(out, cp);
+        }
+        start = i;
     }
+    out.extend_from_slice_copy(&value[start..]);
     out.push(quote);
 }
 

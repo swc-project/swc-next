@@ -13,6 +13,7 @@ arrayvec           = { workspace = true }
 memchr             = { workspace = true }
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
+swc_next_simd      = { workspace = true }
 zmij_ecma          = { workspace = true }
 
 [dev-dependencies]

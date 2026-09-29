@@ -1,4 +1,5 @@
 use swc_next_allocator::{Allocator, hash_map::HashMap, vec::Vec as ArenaVec};
+use swc_next_simd::prelude::*;
 
 use crate::util::next_code_point;
 
@@ -138,10 +139,28 @@ pub(crate) fn generate_line_offset_tables<'a>(
 
     let mut index = 0;
     while index < contents.len() {
-        let (code_point, width) = next_code_point(contents, index);
         if column == 0 {
             line_byte_offset = index;
         }
+        // Before the first non-ASCII byte, byte and UTF-16 columns coincide.
+        if columns_for_non_ascii.is_none() {
+            while let Some(chunk) = contents[index..].first_chunk::<16>() {
+                let bytes = u8x16::from_array(*chunk);
+                let special = bytes.simd_ge(u8x16::splat(0x80))
+                    | bytes.simd_eq(u8x16::splat(b'\n'))
+                    | bytes.simd_eq(u8x16::splat(b'\r'));
+                let run = special.first_set().unwrap_or(16);
+                index += run;
+                column += run as i32;
+                if run < 16 {
+                    break;
+                }
+            }
+            if index == contents.len() {
+                break;
+            }
+        }
+        let (code_point, width) = next_code_point(contents, index);
 
         if code_point > 0x7f && columns_for_non_ascii.is_none() {
             column_byte_offset = index - line_byte_offset;
@@ -322,6 +341,21 @@ impl<'a> ChunkBuilder<'a> {
     fn update_generated_line_and_column(&mut self, output: &[u8]) {
         let mut index = self.last_generated_update;
         while index < output.len() {
+            while let Some(chunk) = output[index..].first_chunk::<16>() {
+                let bytes = u8x16::from_array(*chunk);
+                let special = bytes.simd_ge(u8x16::splat(0x80))
+                    | bytes.simd_eq(u8x16::splat(b'\n'))
+                    | bytes.simd_eq(u8x16::splat(b'\r'));
+                let run = special.first_set().unwrap_or(16);
+                index += run;
+                self.generated_column += run as i32;
+                if run < 16 {
+                    break;
+                }
+            }
+            if index == output.len() {
+                break;
+            }
             let (code_point, width) = next_code_point(output, index);
             match code_point {
                 0x0d | 0x0a | 0x2028 | 0x2029 => {

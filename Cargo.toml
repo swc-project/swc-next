@@ -66,6 +66,7 @@ swc_next_ecma_parser        = { version = "0.2.0", path = "crates/swc_ecma_parse
 swc_next_ecma_semantic      = { version = "0.2.0", path = "crates/swc_ecma_semantic" }
 swc_next_ecma_transformer   = { version = "0.2.0", path = "crates/swc_ecma_transformer" }
 swc_next_regular_expression = { version = "0.2.0", path = "crates/swc_regular_expression" }
+swc_next_simd               = { version = "0.2.0", path = "crates/swc_simd" }
 swc_next_type_strip         = { version = "0.2.0", path = "crates/swc_type_strip" }
 
 # Dev

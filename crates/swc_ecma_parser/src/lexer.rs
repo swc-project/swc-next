@@ -1,11 +1,14 @@
 use std::hint::cold_path;
 
-use memchr::{memchr, memchr3};
+use memchr::{memchr, memchr2, memchr3};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     Comment, CommentKind, CommentPosition, Span, is_ident_continue_ascii, is_ident_start_ascii,
 };
+
+use swc_next_simd::memchr::memchr4;
+use swc_next_simd::prelude::*;
 
 use super::config::{NoTokenParserConfig, ParserConfig};
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
@@ -399,38 +402,26 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let mut pos = self.cursor + 1;
 
         if self.mode == LexerMode::Normal {
-            'scan: while (pos as usize) < self.source.len() {
-                // Bound the short prefix once, keeping one loop limit per byte.
-                let short_end = (pos as usize).saturating_add(32).min(self.source.len());
-                while (pos as usize) < short_end {
-                    let c = self.source[pos as usize];
-                    if c == quote {
-                        pos += 1;
-                        self.cursor = pos;
-                        return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                    }
-                    if c == b'\\' {
-                        self.cursor = pos;
-                        self.consume_escape(EscapeContext::String)?;
-                        pos = self.cursor;
-                        continue 'scan;
-                    }
-                    if c == b'\n' || c == b'\r' {
-                        self.cursor = pos;
-                        return Err(LexicalError::UnterminatedString);
-                    }
-                    pos += 1;
-                }
-
+            while (pos as usize) < self.source.len() {
                 let rest = &self.source[pos as usize..];
-                let end = memchr3(quote, b'\\', b'\n', rest).unwrap_or(rest.len());
-                // Report the first line terminator, even when it precedes a
-                // quote, escape, or LF found by the bulk search.
-                if let Some(offset) = memchr(b'\r', &rest[..end]) {
-                    self.cursor = pos + offset as u32;
+                let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', rest) else {
+                    pos = self.source.len() as u32;
+                    break;
+                };
+                pos += offset as u32;
+                let byte = self.source[pos as usize];
+                if byte == quote {
+                    pos += 1;
+                    self.cursor = pos;
+                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
+                }
+                self.cursor = pos;
+                if byte == b'\\' {
+                    self.consume_escape(EscapeContext::String)?;
+                    pos = self.cursor;
+                } else {
                     return Err(LexicalError::UnterminatedString);
                 }
-                pos += end as u32;
             }
         } else {
             if let Some(offset) = memchr(quote, &self.source[pos as usize..]) {
@@ -1124,11 +1115,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
             Some(_) => {
                 self.cursor += 1;
-                while (self.cursor as usize) < self.source.len() {
-                    match self.source[self.cursor as usize] {
-                        b'<' | b'{' => break,
-                        _ => self.cursor += 1,
-                    }
+                let rest = &self.source[self.cursor as usize..];
+                if let Some(offset) = memchr2(b'<', b'{', rest) {
+                    self.cursor += offset as u32;
+                } else {
+                    self.cursor = self.source.len() as u32;
                 }
                 self.create_token(TokenTag::JsxText, start, self.cursor)
             }
@@ -1424,12 +1415,21 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let src = self.source;
         let mut pos = start as usize + 2;
         while pos < src.len() {
-            let rest = &src[pos..];
-            let ascii_offset = memchr3(b'*', b'\n', b'\r', rest).unwrap_or(rest.len());
-            let unicode_offset = memchr(0xE2, &rest[..ascii_offset]).unwrap_or(ascii_offset);
-            pos += ascii_offset.min(unicode_offset);
-            if pos == src.len() {
-                break;
+            // Preserve line-terminator bookkeeping while searching for */.
+            // The overlapping load also catches a terminator across chunks.
+            while src.len() - pos > 16 {
+                let bytes = u8x16::from_slice(&src[pos..]);
+                let next = u8x16::from_slice(&src[pos + 1..]);
+                let end = bytes.simd_eq(u8x16::splat(b'*')) & next.simd_eq(u8x16::splat(b'/'));
+                let special = end
+                    | bytes.simd_eq(u8x16::splat(b'\n'))
+                    | bytes.simd_eq(u8x16::splat(b'\r'))
+                    | bytes.simd_eq(u8x16::splat(0xE2));
+                if let Some(offset) = special.first_set() {
+                    pos += offset;
+                    break;
+                }
+                pos += 16;
             }
 
             match src[pos] {
