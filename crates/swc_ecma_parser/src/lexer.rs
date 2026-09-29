@@ -223,6 +223,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 return false;
             };
             byte = next;
+        } else if byte == b'\n' {
+            return self.try_next_token_on_new_line(target);
         }
 
         let token = match FAST_CLASS[byte as usize] {
@@ -252,6 +254,54 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.punc_token(1, TokenTag::Dot, start)
             }
             FastClass::Slow => return false,
+        };
+        *target = token;
+        self.handle_token(token, HandleTokenMode::Append);
+        true
+    }
+
+    /// Reads a token after LF and ASCII indentation without entering trivia scanning.
+    /// A miss leaves the lexer unchanged for the regular scanner.
+    #[inline]
+    fn try_next_token_on_new_line(&mut self, target: &mut Token) -> bool {
+        let line_feed = self.cursor;
+        let source = self.source;
+        debug_assert_eq!(source[line_feed as usize], b'\n');
+
+        let mut pos = line_feed as usize + 1;
+        while source.len() - pos >= IDENTIFIER_BATCH_SIZE {
+            let run = ascii_space_prefix_len(&source[pos..pos + IDENTIFIER_BATCH_SIZE]);
+            pos += run;
+            if run < IDENTIFIER_BATCH_SIZE {
+                break;
+            }
+        }
+        while pos < source.len() && source[pos] == b' ' {
+            pos += 1;
+        }
+
+        let Some(class) = source.get(pos).map(|byte| FAST_CLASS[*byte as usize]) else {
+            return false;
+        };
+        if !matches!(class, FastClass::Ident | FastClass::Punct) {
+            return false;
+        }
+
+        let previous_state = self.state;
+        self.cursor = pos as u32;
+        self.clear_token_flags();
+        self.set_token_flag(TokenFlag::LineTerminatorBefore);
+        self.state.had_line_break = true;
+
+        let token = if matches!(class, FastClass::Ident) {
+            let Some(token) = self.scan_ascii_identifier(self.cursor) else {
+                self.cursor = line_feed;
+                self.state = previous_state;
+                return false;
+            };
+            token
+        } else {
+            self.punc_token(1, SIMPLE_PUNCT_TAG[source[pos] as usize], self.cursor)
         };
         *target = token;
         self.handle_token(token, HandleTokenMode::Append);
@@ -1565,6 +1615,23 @@ const FAST_CLASS: [FastClass; 256] = {
 
 const IDENTIFIER_BATCH_SIZE: usize = 16;
 
+#[inline(always)]
+fn ascii_space_prefix_len(batch: &[u8]) -> usize {
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    unsafe {
+        use std::arch::x86_64::*;
+
+        // The caller passes a full 16-byte batch before loading it.
+        let chunk = _mm_loadu_si128(batch.as_ptr().cast());
+        let spaces = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b' ' as i8));
+        (_mm_movemask_epi8(spaces) as u32).trailing_ones() as usize
+    }
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+    {
+        batch.iter().take_while(|byte| **byte == b' ').count()
+    }
+}
+
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     let mut table = [true; 256];
     let mut byte = b'0' as usize;
@@ -1955,6 +2022,22 @@ mod tests {
         token
     }
 
+    fn token_after_first(source: &str) -> (bool, Token) {
+        let allocator = Allocator::new();
+        let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
+        let mut token = Token::eof(0);
+        lexer.next_token(&mut token).unwrap();
+        let cursor = lexer.cursor;
+        let state = lexer.state;
+        let fast = lexer.try_next_token(&mut token);
+        if !fast {
+            assert_eq!(lexer.cursor, cursor);
+            assert_eq!(lexer.state, state);
+            lexer.next_token(&mut token).unwrap();
+        }
+        (fast, token)
+    }
+
     #[test]
     fn initialization() {
         let allocator = Allocator::new();
@@ -2008,6 +2091,44 @@ mod tests {
         let token = next_after_trivia(" \t--> comment\nname", true);
         assert_eq!(token.span(), Span::new(14, 18));
         assert!(token.has_line_terminator_before());
+    }
+
+    #[test]
+    fn newline_fast_path() {
+        let (fast, token) = token_after_first("a\n    name");
+        assert!(fast);
+        assert_eq!(token.span(), Span::new(6, 10));
+        assert!(token.has_line_terminator_before());
+
+        let (fast, token) = token_after_first("a\n                                (");
+        assert!(fast);
+        assert_eq!(token.tag(), TokenTag::LeftParen);
+        assert_eq!(token.span(), Span::new(34, 35));
+        assert!(token.has_line_terminator_before());
+
+        let (fast, token) = token_after_first("a\n  café");
+        assert!(!fast);
+        assert_eq!(token.span(), Span::new(4, 9));
+        assert!(token.has_line_terminator_before());
+
+        let (fast, token) = token_after_first("a\n  /* comment */ b");
+        assert!(!fast);
+        assert_eq!(token.span(), Span::new(18, 19));
+        assert!(token.has_line_terminator_before());
+
+        let (fast, token) = token_after_first("a\n  .");
+        assert!(!fast);
+        assert_eq!(token.tag(), TokenTag::Dot);
+        assert!(token.has_line_terminator_before());
+
+        let (fast, token) = token_after_first("a\n  \tb");
+        assert!(!fast);
+        assert_eq!(token.span(), Span::new(5, 6));
+        assert!(token.has_line_terminator_before());
+
+        let (fast, token) = token_after_first("a\n  ");
+        assert!(!fast);
+        assert_eq!(token.tag(), TokenTag::Eof);
     }
 
     #[test]
