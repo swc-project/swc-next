@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+([{ a   : value } = /* prettier-ignore */
+ factory(  )]) => value;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+([
+  { a   : value } = /* prettier-ignore */
+ factory(),
+]) => value;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"semi":false}
+---------- Output ----------
+;([
+  { a   : value } = /* prettier-ignore */
+ factory(),
+]) => value
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+([
+  { a   : value } = /* prettier-ignore */
+ factory(),
+]) => value;
