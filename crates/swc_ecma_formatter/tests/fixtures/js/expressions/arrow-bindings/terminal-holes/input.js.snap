@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+([value,,]) => value;
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+([value, ,]) => value;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":24,"semi":false}
+---------- Output ----------
+;([value, ,]) => value
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+([value, ,]) => value;

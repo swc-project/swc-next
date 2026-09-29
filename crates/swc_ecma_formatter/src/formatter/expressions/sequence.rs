@@ -30,6 +30,9 @@ struct SequenceItem<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn sequence_grammar_pair_is_enclosed(position: ExpressionPosition) -> bool {
+        matches!(position, ExpressionPosition::ArrowBody)
+    }
     fn sequence_member_pair_is_enclosed(
         &self,
         content: &ExpressionContent,
@@ -181,8 +184,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if parenthesize {
             writer.text("(");
         }
+        let arrow_body = parenthesize && Self::sequence_grammar_pair_is_enclosed(context.position);
         let tail = writer.group(false, |writer| {
             let mut write_items = |writer: &mut Writer<'ast>| {
+                if arrow_body {
+                    writer.soft_line();
+                }
                 let boundary = expressions
                     .next()
                     .map(|next| self.sequence_boundary(first, next, item_position))
@@ -243,12 +250,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     write_rest(writer)
                 }
             };
-            let tail = write_items(writer)?;
+            let tail = if arrow_body {
+                writer.indent(write_items)?
+            } else {
+                write_items(writer)?
+            };
             let tail = if parenthesize {
                 self.format_parentheses_tail(context.source_parentheses_tail, tail, writer)?
             } else {
                 tail
             };
+            if arrow_body {
+                writer.soft_line();
+            }
             Ok(tail)
         })?;
         if parenthesize {
