@@ -453,6 +453,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(target.envelope.span, writer)?;
             return Ok(None);
         }
+        context.member_chain_layout = super::MemberChainLayout::Local;
         self.format_target_layers(
             target.envelope.target,
             &target.envelope.layers,

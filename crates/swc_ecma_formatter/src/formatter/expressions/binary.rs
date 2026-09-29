@@ -942,6 +942,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 operator: entry.binary.operator,
                                 side,
                             },
+                            ContentMode::Formatted,
                         ) == Some(true)
             });
             if source_opening {

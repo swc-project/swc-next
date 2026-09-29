@@ -129,7 +129,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .inside_parentheses();
                     // A distinct operand pair remains owned by that expression;
                     // otherwise this physical unary pair supplies its frame.
-                    if self.expression_needs_parentheses(content.data, position) == Some(true) {
+                    if self.expression_needs_parentheses(
+                        content.data,
+                        position,
+                        ContentMode::Formatted,
+                    ) == Some(true)
+                    {
                         context.parentheses_owner = ParenthesesOwner::Expression;
                     }
                     let tail = self.format_expression_with_leading_comments(
