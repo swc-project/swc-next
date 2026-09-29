@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key: (/* prettier-ignore */ (0, eval)("probe")) });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key: /* prettier-ignore */ (0, eval)("probe"),
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ key: /* prettier-ignore */ (0, eval)("probe") });
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  key: /* prettier-ignore */ (0, eval)("probe"),
+})
