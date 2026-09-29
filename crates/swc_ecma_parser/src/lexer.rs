@@ -225,32 +225,33 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             byte = next;
         }
 
-        let token = if is_ident_start_ascii(byte) {
-            self.clear_token_flags();
-            let Some(token) = self.scan_ascii_identifier(start) else {
-                return false;
-            };
-            token
-        } else {
-            let punctuation = SIMPLE_PUNCT_TAG[byte as usize];
-            if punctuation != TokenTag::Eof {
+        let token = match FAST_CLASS[byte as usize] {
+            FastClass::Ident => {
+                self.clear_token_flags();
+                let Some(token) = self.scan_ascii_identifier(start) else {
+                    return false;
+                };
+                token
+            }
+            FastClass::Punct => {
                 self.clear_token_flags();
                 self.cursor = start;
-                self.punc_token(1, punctuation, start)
-            } else {
-                match byte {
-                    b'.' if !self
-                        .source
-                        .get(start as usize + 1)
-                        .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit()) =>
-                    {
-                        self.clear_token_flags();
-                        self.cursor = start;
-                        self.punc_token(1, TokenTag::Dot, self.cursor)
-                    }
-                    _ => return false,
-                }
+                self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start)
             }
+            FastClass::Dot => {
+                if self
+                    .source
+                    .get(start as usize + 1)
+                    .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
+                {
+                    return false;
+                }
+
+                self.clear_token_flags();
+                self.cursor = start;
+                self.punc_token(1, TokenTag::Dot, start)
+            }
+            FastClass::Slow => return false,
         };
         *target = token;
         self.handle_token(token, HandleTokenMode::Append);
@@ -1534,6 +1535,31 @@ const SIMPLE_PUNCT_TAG: [TokenTag; 256] = {
     table[b',' as usize] = TokenTag::Comma;
     table[b':' as usize] = TokenTag::Colon;
     table[b'@' as usize] = TokenTag::At;
+    table
+};
+
+#[repr(u8)]
+#[derive(Clone, Copy)]
+enum FastClass {
+    Slow,
+    Ident,
+    Punct,
+    Dot,
+}
+
+const FAST_CLASS: [FastClass; 256] = {
+    let mut table = [FastClass::Slow; 256];
+    let mut index = 0;
+    while index < table.len() {
+        let byte = index as u8;
+        if byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$' {
+            table[index] = FastClass::Ident;
+        } else if SIMPLE_PUNCT_TAG[index] as u32 != TokenTag::Eof as u32 {
+            table[index] = FastClass::Punct;
+        }
+        index += 1;
+    }
+    table[b'.' as usize] = FastClass::Dot;
     table
 };
 
