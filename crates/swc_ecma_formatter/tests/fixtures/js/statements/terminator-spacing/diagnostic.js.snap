@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+missing()
+/* tail */
+;
+
+next();
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+missing();
+/* tail */
+next();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-expect-error
+missing()
+/* tail */
+next()
+
+---------- Options ----------
+{"printWidth":28,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+missing()
+/* tail */
+next()

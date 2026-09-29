@@ -1,0 +1,114 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer ? (test ? first( 3,  4 ) : (value( 1,  2 )
+// prettier-ignore
+)) /* outside */ : third( 5,  6 );
+---------- Options ----------
+{}
+---------- Output ----------
+outer
+  ? test
+    ? first(3, 4)
+    : (
+        value( 1,  2 )
+        // prettier-ignore
+      ) /* outside */
+  : third(5, 6);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+outer
+  ? test
+    ? first(3, 4)
+    : (
+        value( 1,  2 )
+        // prettier-ignore
+      ) /* outside */
+  : third(5, 6)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer
+  ? test
+    ? first(3, 4)
+    : (
+        value( 1,  2 )
+        // prettier-ignore
+      ) /* outside */
+  : third(5, 6);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+outer
+  ? test
+    ? first(
+        3,
+        4,
+      )
+    : (
+        value( 1,  2 )
+        // prettier-ignore
+      ) /* outside */
+  : third(
+      5,
+      6,
+    );
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+outer
+    ? test
+        ? first(
+              3,
+              4,
+          )
+        : (
+              value( 1,  2 )
+              // prettier-ignore
+          ) /* outside */
+    : third(5, 6);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+outer
+	? test
+		? first(
+				3,
+				4,
+			)
+		: (
+				value( 1,  2 )
+				// prettier-ignore
+			) /* outside */
+	: third(5, 6);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+outer
+ ? test
+   ? first(3, 4)
+   : (
+      value( 1,  2 )
+      // prettier-ignore
+     ) /* outside */
+ : third(5, 6);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+outer
+  ? test
+    ? first(3, 4)
+    : (
+        value( 1,  2 )
+        // prettier-ignore
+      ) /* outside */
+  : third(5, 6);

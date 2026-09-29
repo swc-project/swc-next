@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(left + right)(argument);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(left + right)(
+  argument,
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(left + right)(argument);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(left + right)(
+  argument,
+)
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"es5"}
+---------- Output ----------
+(left + right)(
+  argument
+);

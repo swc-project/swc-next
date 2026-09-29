@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ removed() ?? 0 ? yes : no);
+---------- Options ----------
+{}
+---------- Output ----------
+(/*#__PURE__*/ removed() ?? 0 ? yes : no);
+

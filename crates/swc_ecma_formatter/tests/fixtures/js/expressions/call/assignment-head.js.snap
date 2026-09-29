@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = (
+// first
+/* second */
+[entry]
+).method();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result =
+  // first
+  /* second */
+  [entry].method();
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result =
+  // first
+  /* second */
+  [entry].method();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+result =
+  // first
+  /* second */
+  [entry].method()
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"es5"}
+---------- Output ----------
+result =
+  // first
+  /* second */
+  [entry].method();

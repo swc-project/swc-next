@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f({a:1} /* block */ );---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+f(
+  {
+    a: 1,
+  } /* block */,
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+f(
+  {
+    a: 1,
+  } /* block */,
+)

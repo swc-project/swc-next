@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a, /* first */ /* second */);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+f(a /* first */ /* second */);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+f(a /* first */ /* second */);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+f(a /* first */ /* second */)

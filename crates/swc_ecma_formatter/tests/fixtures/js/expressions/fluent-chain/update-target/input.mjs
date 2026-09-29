@@ -1,0 +1,1 @@
+source.prepare().configure().extremelyLongPropertyName++;

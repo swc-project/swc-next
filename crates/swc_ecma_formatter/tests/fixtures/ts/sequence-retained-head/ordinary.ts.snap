@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+invoke((
+  /* outer */
+  (
+    /* inner */
+    first
+  ), last
+  // @ts-ignore
+));
+
+invoke((
+  (
+    /* inner */
+    first
+  ), last
+  // @ts-ignore
+));
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+invoke(
+  (
+    /* outer */ /* inner */ first, last
+    // @ts-ignore
+  ),);
+
+invoke(
+  (
+    /* inner */ first, last
+    // @ts-ignore
+  ),);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+invoke(
+  (
+    /* outer */ /* inner */ first, last
+    // @ts-ignore
+  ),);
+
+invoke(
+  (
+    /* inner */ first, last
+    // @ts-ignore
+  ),);
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+invoke(
+  (
+    /* outer */ /* inner */ first, last
+    // @ts-ignore
+  ),)
+
+invoke(
+  (
+    /* inner */ first, last
+    // @ts-ignore
+  ),)

@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::SourceType;
-use swc_next_ecma_formatter::{FormatError, FormatOptions, IndentWidth, format};
+use swc_next_ecma_formatter::{FormatError, FormatOptions, IndentWidth, Semicolons, format};
 use swc_next_ecma_parser::Options as ParserOptions;
 
 #[test]
@@ -32,4 +32,53 @@ fn parser_options() {
         identifier,
         Ok(_) | Err(FormatError::Unsupported { .. })
     ));
+}
+
+fn assert_stable(input: &str, options: FormatOptions) {
+    let first = format(input, ParserOptions::default(), options).unwrap();
+    let second = format(&first, ParserOptions::default(), options).unwrap();
+    assert_eq!(first, second);
+}
+
+#[test]
+fn comment_layout_stability() {
+    let options = FormatOptions {
+        line_width: 20,
+        semicolons: Semicolons::AsNeeded,
+        ..FormatOptions::prettier()
+    };
+
+    assert_stable(
+        "(/** @type {number} */ first || second || third) + fourth;",
+        options,
+    );
+
+    assert_stable(
+        "fourth + (/** @type {number} */ first || second || third);",
+        options,
+    );
+
+    assert_stable(
+        "(/** @satisfies {number} */ [first, second, third]) + fourth;",
+        options,
+    );
+
+    assert_stable(
+        "result = (/** @type {number} */ left ? middle : right)(arg);",
+        options,
+    );
+
+    assert_stable("call() /* #__PURE__ */;\nnext();", options);
+
+    assert_stable(
+        "call() /* #__PURE__ */;\nnext();",
+        FormatOptions::prettier(),
+    );
+
+    assert_stable("call() /** @type {number} */;\n(value);", options);
+
+    assert_stable(
+        "call() /** @type {number} */;\n(value);",
+        FormatOptions::prettier(),
+    );
 }

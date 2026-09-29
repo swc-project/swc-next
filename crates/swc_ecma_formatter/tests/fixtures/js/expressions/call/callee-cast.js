@@ -1,0 +1,1 @@
+(/** @type {Function} */ (unknown))(argument);
