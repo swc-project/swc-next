@@ -1,0 +1,1 @@
+(/** @type {any} */ (aFunction.b).c()).c.d();

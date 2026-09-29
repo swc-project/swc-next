@@ -1,0 +1,2 @@
+run();
+/** @type {number} */ (value)++;

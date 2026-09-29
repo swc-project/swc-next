@@ -1,0 +1,70 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+void [call(), /* first */, /* second */,];
+---------- Options ----------
+{}
+---------- Output ----------
+void [call(), /* first */ , /* second */ ,];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+void [call(), /* first */ , /* second */ ,]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+void [
+	call(), /* first */ , /* second */ ,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+void [
+  call(), /* first */ , /* second */ ,
+];

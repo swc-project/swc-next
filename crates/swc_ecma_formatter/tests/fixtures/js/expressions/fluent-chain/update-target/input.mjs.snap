@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+source.prepare().configure().extremelyLongPropertyName++;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+source.prepare().configure()
+  .extremelyLongPropertyName++;

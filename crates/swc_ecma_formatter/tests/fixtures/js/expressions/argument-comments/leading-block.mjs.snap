@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f("first-long-module-name"
+ /* block */
+ , "second-long-module-name");
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+f(
+  "first-long-module-name",
+  /* block */
+  "second-long-module-name",
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+f(
+  "first-long-module-name",
+  /* block */
+  "second-long-module-name",
+);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+f(
+  "first-long-module-name",
+  /* block */
+  "second-long-module-name"
+)

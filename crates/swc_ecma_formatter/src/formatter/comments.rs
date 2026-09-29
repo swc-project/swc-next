@@ -566,11 +566,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(self.prepare_comment(comment)?.is_alignable())
     }
 
-    pub(super) fn comment_binding(&self, comments: &[Comment], boundary: Span) -> CommentBinding {
+    pub(super) fn comment_binding(
+        &self,
+        comments: &[Comment],
+        boundary: Span,
+        target: Option<Span>,
+    ) -> CommentBinding {
         let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);
             if semantics.is_ordinary() {
                 CommentBinding::Unbound
+            } else if semantics.suppression {
+                target.map_or(CommentBinding::SourceBound, CommentBinding::BoundTo)
             } else {
                 CommentBinding::SourceBound
             }
@@ -890,7 +897,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
             } else {
                 if self
-                    .comment_binding(comments, Span::new(span.start, last.span.end))
+                    .comment_binding(comments, Span::new(span.start, last.span.end), None)
                     .allows_relocation(None)
                 {
                     self.format_trailing_comment_run(comments, writer)?;
