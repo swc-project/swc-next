@@ -204,9 +204,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content = self.expression_content(right);
         let data = content.data;
         let operator = target.operator();
+        let head = self.assignment_expression_head(&content);
         let boundary = self.assignment_boundary(
             target.left_end(),
-            &content,
+            head.as_ref().unwrap_or(&content),
             target.operator_span,
             right.span(self.ast).end,
         )?;
@@ -491,6 +492,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .then_some(source)
     }
 
+    fn assignment_expression_head(&self, content: &ExpressionContent) -> Option<ExpressionContent> {
+        let mut expression = match content.data {
+            ExprData::MemberExpression(member) => member.object(self.ast),
+            ExprData::CallExpression(call) => call.callee(self.ast),
+            _ => return None,
+        };
+        loop {
+            let mut head = self.expression_content(expression);
+            if head
+                .parentheses
+                .is_some_and(|removed| matches!(removed.head.binding, CommentBinding::BoundTo(_)))
+            {
+                // This run belongs to the enclosed head, not the complete RHS.
+                // Its source owner prints any required pair with that target.
+                head.expression = expression;
+                head.data = self.ast.expr_data(expression);
+                head.parentheses = None;
+                return Some(head);
+            }
+            expression = match head.data {
+                ExprData::MemberExpression(member) => member.object(self.ast),
+                ExprData::CallExpression(call) => call.callee(self.ast),
+                _ => return Some(head),
+            };
+        }
+    }
+
     pub(in crate::formatter) fn assignment_boundary(
         &self,
         left_end: u32,
@@ -554,7 +582,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .last()
             .is_some_and(|last| last.kind == CommentKind::Line);
         let promoted = !sensitive
-            && matches!(self.comment_binding(before, span), CommentBinding::Unbound)
+            && matches!(
+                self.comment_binding(before, span, None),
+                CommentBinding::Unbound
+            )
             && before.first().is_some_and(|first| {
                 hugs_comments && before_line
                     || self.line_breaks(left_end, first.span.start) != 0
@@ -595,7 +626,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
             )
             && matches!(
-                self.comment_binding(operator_line, span),
+                self.comment_binding(operator_line, span, None),
                 CommentBinding::Unbound
             )
             && content

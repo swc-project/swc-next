@@ -178,7 +178,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.line_breaks(argument_span.start, right.start) == 0
             || self.line_breaks(right.start, last.span.end) != 0
             || !matches!(
-                self.comment_binding(comments, Span::new(argument_span.end, unary_end)),
+                self.comment_binding(comments, Span::new(argument_span.end, unary_end), None),
                 CommentBinding::Unbound
             )
         {
