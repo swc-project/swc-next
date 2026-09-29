@@ -223,56 +223,87 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 return false;
             };
             byte = next;
+        } else if byte == b'\n' {
+            return self.try_next_token_on_new_line(target);
         }
 
-        let token = if is_ident_start_ascii(byte) {
-            self.clear_token_flags();
-            let Some(token) = self.scan_ascii_identifier(start) else {
-                return false;
-            };
-            token
-        } else {
-            let punctuation = SIMPLE_PUNCT_TAG[byte as usize];
-            if punctuation != TokenTag::Eof {
+        match FAST_CLASS[byte as usize] {
+            FastClass::Identifier => {
                 self.clear_token_flags();
-                self.cursor = start;
-                self.punc_token(1, punctuation, start)
-            } else {
-                match byte {
-                    b'.' if !self
-                        .source
-                        .get(start as usize + 1)
-                        .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit()) =>
-                    {
-                        self.clear_token_flags();
-                        self.cursor = start;
-                        self.punc_token(1, TokenTag::Dot, self.cursor)
-                    }
-                    _ => return false,
+                if !self.scan_ascii_identifier(start, target) {
+                    return false;
                 }
             }
-        };
-        *target = token;
-        self.handle_token(token, HandleTokenMode::Append);
+            FastClass::Punctuation => {
+                self.clear_token_flags();
+                self.cursor = start;
+                *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
+            }
+            FastClass::Dot => {
+                if self
+                    .source
+                    .get(start as usize + 1)
+                    .is_some_and(|byte| *byte == b'.' || byte.is_ascii_digit())
+                {
+                    return false;
+                }
+                self.clear_token_flags();
+                self.cursor = start;
+                *target = self.punc_token(1, TokenTag::Dot, start);
+            }
+            FastClass::Slow => return false,
+        }
+        self.handle_token(*target, HandleTokenMode::Append);
         true
     }
 
-    // INLINE: Keep scanning and token construction in the caller to eliminate the
-    // Option<Token> stack return and fold the already-cleared token flags.
+    /// Scan a line feed and its indentation without entering the trivia scanner.
+    /// Leave the cursor at the line feed when the following token needs the slow path.
+    #[inline]
+    fn try_next_token_on_new_line(&mut self, target: &mut Token) -> bool {
+        let line_feed = self.cursor;
+        let mut start = line_feed as usize + 1;
+        while self.source.get(start) == Some(&b' ') {
+            start += 1;
+        }
+        let Some(&byte) = self.source.get(start) else {
+            return false;
+        };
+        let class = FAST_CLASS[byte as usize];
+        if !matches!(class, FastClass::Identifier | FastClass::Punctuation) {
+            return false;
+        }
+
+        self.clear_token_flags();
+        self.set_token_flag(TokenFlag::LineTerminatorBefore);
+        if class == FastClass::Identifier {
+            if !self.scan_ascii_identifier(start as u32, target) {
+                self.cursor = line_feed;
+                return false;
+            }
+        } else {
+            self.cursor = start as u32;
+            *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start as u32);
+        }
+        self.handle_token(*target, HandleTokenMode::Append);
+        true
+    }
+
     #[inline(always)]
-    fn scan_ascii_identifier(&mut self, start: u32) -> Option<Token> {
+    fn scan_ascii_identifier(&mut self, start: u32, target: &mut Token) -> bool {
         let pos = scan_ascii_identifier_continue(self.source, start + 1);
         if (pos as usize) < self.source.len()
             && (self.source[pos as usize] == b'\\' || self.source[pos as usize] >= 0x80)
         {
-            return None;
+            return false;
         }
         self.cursor = pos;
-        Some(self.create_token(
+        *target = self.create_token(
             get_keyword_type(&self.source[start as usize..pos as usize]),
             start,
             pos,
-        ))
+        );
+        true
     }
 
     #[inline]
@@ -288,10 +319,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let current_char = self.source[self.cursor as usize];
         if is_ident_start_ascii(current_char) && self.mode == LexerMode::Normal {
-            *target = match self.scan_ascii_identifier(self.cursor) {
-                Some(token) => token,
-                None => self.scan_identifier_or_keyword()?,
-            };
+            if !self.scan_ascii_identifier(self.cursor, target) {
+                *target = self.scan_identifier_or_keyword()?;
+            }
             return Ok(());
         }
 
@@ -1534,6 +1564,33 @@ const SIMPLE_PUNCT_TAG: [TokenTag; 256] = {
     table[b',' as usize] = TokenTag::Comma;
     table[b':' as usize] = TokenTag::Colon;
     table[b'@' as usize] = TokenTag::At;
+    table
+};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FastClass {
+    Slow,
+    Identifier,
+    Punctuation,
+    Dot,
+}
+
+const FAST_CLASS: [FastClass; 256] = {
+    let mut table = [FastClass::Slow; 256];
+    let mut byte = 0;
+    while byte < 256 {
+        if (byte >= b'a' as usize && byte <= b'z' as usize)
+            || (byte >= b'A' as usize && byte <= b'Z' as usize)
+            || byte == b'_' as usize
+            || byte == b'$' as usize
+        {
+            table[byte] = FastClass::Identifier;
+        } else if !matches!(SIMPLE_PUNCT_TAG[byte], TokenTag::Eof) {
+            table[byte] = FastClass::Punctuation;
+        }
+        byte += 1;
+    }
+    table[b'.' as usize] = FastClass::Dot;
     table
 };
 
