@@ -347,11 +347,12 @@ impl<'ast> Transformer<'_, 'ast> {
             return;
         };
         let readonly = property.readonly(ast);
-        let normalized_value = self.normalize_literal_initializer(value, ast);
-        if readonly && self.is_literal_initializer(normalized_value, ast) {
-            let value = normalized_value;
-            property.set_value(ast, Some(value));
-            return;
+        if readonly {
+            let normalized_value = self.normalize_literal_initializer(value, ast);
+            if self.is_literal_initializer(normalized_value, ast) {
+                property.set_value(ast, Some(normalized_value));
+                return;
+            }
         }
         let value = crate::surface::unparenthesized(value, ast);
         let inferred = match ast.expr_data(value) {

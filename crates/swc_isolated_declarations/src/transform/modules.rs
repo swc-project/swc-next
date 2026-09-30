@@ -87,18 +87,16 @@ impl<'ast> Transformer<'_, 'ast> {
             return statements;
         }
 
-        let has_private_declaration = statements
-            .iter()
-            .any(|statement| matches!(ast.stmt_data(*statement), StmtData::Declaration(_)));
-        let has_exported_declaration = statements.iter().any(|statement| {
-            matches!(
-                ast.stmt_data(*statement),
-                StmtData::ExportNamedDeclaration(export) if export.declaration(ast).is_some()
-            )
-        });
         let needs_scope_marker = scope == ModuleScopeKind::Namespace
-            && has_private_declaration
-            && has_exported_declaration;
+            && statements
+                .iter()
+                .any(|statement| matches!(ast.stmt_data(*statement), StmtData::Declaration(_)))
+            && statements.iter().any(|statement| {
+                matches!(
+                    ast.stmt_data(*statement),
+                    StmtData::ExportNamedDeclaration(export) if export.declaration(ast).is_some()
+                )
+            });
         if needs_scope_marker {
             statements.push(self.empty_export_marker(ast));
             return statements;
@@ -131,15 +129,29 @@ impl<'ast> Transformer<'_, 'ast> {
         if specifiers.is_empty() {
             return true;
         }
-        let specifiers = specifiers
-            .iter()
-            .map(|specifier| ast.get_node_in_sub_range(specifier))
-            .filter(|specifier| self.import_specifier_is_used(*specifier, ast))
-            .collect::<Vec<_>>();
-        if specifiers.is_empty() {
+        let mut remaining = specifiers.iter();
+        let Some(first_unused) = remaining.position(|specifier| {
+            !self.import_specifier_is_used(ast.get_node_in_sub_range(specifier), ast)
+        }) else {
+            return true;
+        };
+        let mut prefix = specifiers;
+        let _ = prefix.split_off(first_unused);
+        let mut retained = Vec::with_capacity(specifiers.len() - 1);
+        retained.extend(
+            prefix
+                .iter()
+                .map(|specifier| ast.get_node_in_sub_range(specifier)),
+        );
+        retained.extend(
+            remaining
+                .map(|specifier| ast.get_node_in_sub_range(specifier))
+                .filter(|specifier| self.import_specifier_is_used(*specifier, ast)),
+        );
+        if retained.is_empty() {
             return false;
         }
-        let specifiers = ast.add_sub_range(specifiers);
+        let specifiers = ast.add_sub_range(retained);
         import.set_specifiers(ast, specifiers);
         true
     }
@@ -177,6 +189,9 @@ impl<'ast> Transformer<'_, 'ast> {
                 | StmtData::TsExportAssignment(_) => true,
                 _ => false,
             });
+        if has_scope_marker {
+            return body;
+        }
         let has_plain_declaration = body
             .iter()
             .any(|statement| match ast.stmt_data(*statement) {
@@ -190,6 +205,10 @@ impl<'ast> Transformer<'_, 'ast> {
                 },
                 _ => false,
             });
+        if has_plain_declaration {
+            body.push(self.empty_export_marker(ast));
+            return body;
+        }
         let has_module_indicator = body.iter().any(|statement| {
             matches!(
                 ast.stmt_data(*statement),
@@ -200,7 +219,7 @@ impl<'ast> Transformer<'_, 'ast> {
                     | StmtData::TsExportAssignment(_)
             )
         });
-        if !has_module_indicator || (has_plain_declaration && !has_scope_marker) {
+        if !has_module_indicator {
             body.push(self.empty_export_marker(ast));
         }
         body
