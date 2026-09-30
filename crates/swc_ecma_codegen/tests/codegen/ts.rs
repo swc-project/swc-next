@@ -1,5 +1,91 @@
 use crate::{expect_printed_ts, expect_printed_ts_minify};
 
+#[track_caller]
+fn expect_token_boundary(source: &str, expected: &str) {
+    use swc_next_allocator::Allocator;
+    use swc_next_ecma_ast::Lang;
+    use swc_next_ecma_codegen::{Options as PrintOptions, print};
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(original.diagnostics.is_empty());
+    let print_options = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+    let compact = print(&allocator, &original.ast, print_options.clone());
+    assert_eq!(compact.code, expected);
+
+    let reparsed =
+        Parser::init(&allocator, compact.code, parse_options, NoTokenParserConfig).parse();
+    assert!(reparsed.diagnostics.is_empty());
+    let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
+    let reparsed_pretty = print(&allocator, &reparsed.ast, PrintOptions::default());
+    assert_eq!(reparsed_pretty.code, original_pretty.code);
+    let repeated = print(&allocator, &reparsed.ast, print_options);
+    assert_eq!(repeated.code, compact.code);
+}
+
+#[test]
+fn test_non_null_token_boundaries() {
+    expect_token_boundary("x! == y", "x! ==y;");
+
+    expect_token_boundary("x! === y", "x! ===y;");
+
+    expect_token_boundary("x! = y", "x! =y;");
+
+    expect_token_boundary("x!! == y", "x!! ==y;");
+
+    expect_token_boundary("x!! = y", "x!! =y;");
+
+    expect_token_boundary("x! != y", "x!!=y;");
+
+    expect_token_boundary("x! += y", "x!+=y;");
+}
+
+#[test]
+fn test_type_assertion_token_boundaries() {
+    expect_token_boundary("x < <T>y", "x< <T>y;");
+
+    expect_token_boundary("x < <T><U>y", "x< <T><U>y;");
+
+    expect_token_boundary("x << <T>y", "x<<<T>y;");
+
+    expect_token_boundary(
+        "const f = < <T>(value: T) => T > identity",
+        "const f=< <T>(value:T) => T>identity;",
+    );
+}
+
+#[test]
+fn test_type_argument_token_boundaries() {
+    expect_token_boundary("f<T> == x", "f<T> ==x;");
+
+    expect_token_boundary("f<T> === x", "f<T> ===x;");
+
+    expect_token_boundary("f<T> >= x", "f<T> >=x;");
+
+    expect_token_boundary("f<T> >> x", "f<T> >>x;");
+
+    expect_token_boundary("f<T> >>> x", "f<T> >>>x;");
+
+    expect_token_boundary("f<Foo<T>> == x", "f<Foo<T>> ==x;");
+
+    expect_token_boundary("f<T> * x", "f<T>*x;");
+
+    expect_token_boundary("f<T> != x", "f<T>!=x;");
+
+    expect_token_boundary("f<T>() == x", "f<T>()==x;");
+
+    expect_token_boundary("f< <T>() => T>()", "f< <T>() => T>();");
+}
+
 #[test]
 fn test_new_expression() {
     expect_printed_ts(
