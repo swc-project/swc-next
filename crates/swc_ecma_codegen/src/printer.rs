@@ -4410,10 +4410,14 @@ impl<'a> Printer<'a> {
             self.print_newline();
         }
         self.indent += 1;
-        for id in m.iter() {
+        for (index, id) in m.iter().enumerate() {
             self.print_indent();
             self.print_ts_type_element(self.ast.get_node_in_sub_range(id));
-            self.print_semicolon_after_statement();
+            // Type member separators must not affect deferred statement semicolons.
+            if !self.options.minify || index + 1 < m.len() {
+                self.print(";");
+            }
+            self.print_newline();
         }
         self.indent -= 1;
         self.print_indent();

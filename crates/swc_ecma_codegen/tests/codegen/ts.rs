@@ -33,6 +33,100 @@ fn expect_token_boundary(source: &str, expected: &str) {
 }
 
 #[test]
+fn test_type_members() {
+    expect_token_boundary(
+        "interface A { x: string; y: number; }",
+        "interface A{x:string;y:number}",
+    );
+
+    expect_token_boundary(
+        "type A = { x: string; y: number; };",
+        "type A={x:string;y:number};",
+    );
+
+    expect_token_boundary(
+        "type A = { (): string; (): number; };",
+        "type A={():string;():number};",
+    );
+
+    expect_token_boundary(
+        "type A = { x(): string; y(): number; };",
+        "type A={x():string;y():number};",
+    );
+
+    expect_token_boundary(
+        "type A = { get x(): number; set x(value: number); };",
+        "type A={get x():number;set x(value:number)};",
+    );
+
+    expect_token_boundary(
+        "type A = { new(): A; new(x: number): A; };",
+        "type A={new ():A;new (x:number):A};",
+    );
+
+    expect_token_boundary(
+        "type A = { [x: string]: number; [x: number]: number; };",
+        "type A={[x:string]:number;[x:number]:number};",
+    );
+
+    expect_token_boundary(
+        "type A = { a: { b: string }; c: number };",
+        "type A={a:{b:string};c:number};",
+    );
+
+    expect_token_boundary("interface A {}", "interface A{}");
+
+    expect_token_boundary("interface A { x: string }", "interface A{x:string}");
+
+    expect_token_boundary("type A = {};", "type A={};");
+
+    expect_token_boundary("type A = { x: string };", "type A={x:string};");
+}
+
+#[test]
+fn test_type_members_directives() {
+    expect_token_boundary(
+        "function f(x: { a: number }) { \"use strict\"; return this; }",
+        "function f(x:{a:number}){\"use strict\";return this}",
+    );
+
+    expect_token_boundary(
+        "function f(): { a: number } { \"use strict\"; return { a: 1 }; }",
+        "function f():{a:number}{\"use strict\";return {a:1}}",
+    );
+
+    expect_token_boundary(
+        "const f = (x: { a: number }) => { \"use strict\"; return this; };",
+        "const f=(x:{a:number})=>{\"use strict\";return this};",
+    );
+
+    expect_token_boundary(
+        "const f = (): { a: number } => { \"use strict\"; return { a: 1 }; };",
+        "const f=():{a:number}=>{\"use strict\";return {a:1}};",
+    );
+
+    expect_token_boundary(
+        "function f(x: { a: { b: number } }) { \"use strict\"; return this; }",
+        "function f(x:{a:{b:number}}){\"use strict\";return this}",
+    );
+}
+
+#[test]
+fn test_type_members_pretty() {
+    expect_printed_ts(
+        "interface A { x: string; y: number; }",
+        "interface A {\n  x: string;\n  y: number;\n}\n",
+    );
+
+    expect_printed_ts(
+        "type A = { a: { b: string }; c: number };",
+        "type A = {\n  a: {\n    b: string;\n  };\n  c: number;\n};\n",
+    );
+
+    expect_printed_ts("interface A {}", "interface A {}\n");
+}
+
+#[test]
 fn test_non_null_token_boundaries() {
     expect_token_boundary("x! == y", "x! ==y;");
 
