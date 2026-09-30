@@ -1901,10 +1901,12 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::ThisExpression(_) => {
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("this");
             }
             ExprData::Super(_) => {
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("super");
             }
@@ -1923,14 +1925,17 @@ impl<'a> Printer<'a> {
                 self.print_number_expr(e, level)
             }
             ExprData::BigIntLiteral(e) => {
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print_bigint_literal(e);
             }
             ExprData::BooleanLiteral(e) => {
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print(if e.value(self.ast) { "true" } else { "false" });
             }
             ExprData::NullLiteral(_) => {
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("null");
             }
@@ -2089,6 +2094,7 @@ impl<'a> Printer<'a> {
                 }
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 if e.sync(self.ast) {
                     self.print("import.sync(");
@@ -2151,6 +2157,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("await");
                 self.print_space();
@@ -2531,6 +2538,7 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
+        self.print_space_before_identifier();
         self.add_source_mapping(e.span(self.ast).start);
         self.print("new");
         self.print_space();

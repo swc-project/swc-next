@@ -10,6 +10,146 @@ use crate::{
     expect_printed_script, expect_printed_with_options, expect_stable,
 };
 
+#[track_caller]
+fn expect_token_boundary(source: &str, expected: &str) {
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+    let print_options = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+    for preserve_parens in [false, true] {
+        let allocator = Allocator::new();
+        let parse_options = ParseOptions {
+            preserve_parens,
+            ..ParseOptions::default()
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+        let compact = print(&allocator, &original.ast, print_options.clone());
+        assert_eq!(compact.code, expected);
+
+        let reparsed =
+            Parser::init(&allocator, compact.code, parse_options, NoTokenParserConfig).parse();
+        assert!(reparsed.diagnostics.is_empty());
+        let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
+        let reparsed_pretty = print(&allocator, &reparsed.ast, PrintOptions::default());
+        assert_eq!(reparsed_pretty.code, original_pretty.code);
+        let repeated = print(&allocator, &reparsed.ast, print_options.clone());
+        assert_eq!(repeated.code, compact.code);
+    }
+}
+
+#[track_caller]
+fn expect_token_boundary_mapping(source: &str, expected: &[u8]) {
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+    let allocator = Allocator::new();
+    let parsed = Parser::init(
+        &allocator,
+        source,
+        ParseOptions::default(),
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty());
+    let print_options = PrintOptions {
+        minify: true,
+        source_map_path: Some("input.js".into()),
+        ..PrintOptions::default()
+    };
+    let printed = print(&allocator, &parsed.ast, print_options);
+    assert_eq!(printed.map.unwrap().mappings(), expected);
+}
+
+#[test]
+fn test_expression_token_boundaries() {
+    expect_token_boundary("await true", "await true;");
+
+    expect_token_boundary("await false", "await false;");
+
+    expect_token_boundary("await null", "await null;");
+
+    expect_token_boundary("await this", "await this;");
+
+    expect_token_boundary("await 1_000n", "await 1000n;");
+
+    expect_token_boundary("await await true", "await await true;");
+
+    expect_token_boundary("await new C", "await new C;");
+
+    expect_token_boundary(
+        "await import('data:text/javascript,export default 42')",
+        "await import(\"data:text/javascript,export default 42\");",
+    );
+
+    expect_token_boundary("new this", "new this;");
+
+    expect_token_boundary("new new C", "new new C();");
+
+    expect_token_boundary("throw true", "throw true;");
+
+    expect_token_boundary("throw null", "throw null;");
+
+    expect_token_boundary("throw 1n", "throw 1n;");
+
+    expect_token_boundary("throw await x", "throw await x;");
+
+    expect_token_boundary("throw new C", "throw new C;");
+
+    expect_token_boundary("throw import('x')", "throw import(\"x\");");
+
+    expect_token_boundary(
+        "switch (x) { case true: break; }",
+        "switch(x){case true:break}",
+    );
+
+    expect_token_boundary(
+        "switch (x) { case null: break; }",
+        "switch(x){case null:break}",
+    );
+
+    expect_token_boundary(
+        "class C extends B { async f() { await super.x; } }",
+        "class C extends B{async f(){await super.x}}",
+    );
+}
+
+#[test]
+fn test_expression_token_boundary_controls() {
+    expect_token_boundary("await x", "await x;");
+
+    expect_token_boundary("await 42", "await 42;");
+
+    expect_token_boundary("await 'x'", "await\"x\";");
+
+    expect_token_boundary("await []", "await[];");
+
+    expect_token_boundary("await (x + 1)", "await(x+1);");
+
+    expect_token_boundary("await /x/", "await/x/;");
+
+    expect_printed("await true", "await true;\n");
+
+    expect_printed("await 1_000n", "await 1000n;\n");
+
+    expect_printed("new this", "new this();\n");
+}
+
+#[test]
+fn test_expression_token_boundary_mappings() {
+    // VLQ segments map each token after its inserted separator.
+    expect_token_boundary_mapping("await true", b"AAAA,MAAM");
+
+    expect_token_boundary_mapping("throw await null", b"AAAA,MAAM,MAAM");
+
+    expect_token_boundary_mapping("await await 1n", b"AAAA,MAAM,MAAM");
+
+    expect_token_boundary_mapping("await new this", b"AAAA,MAAM,IAAI");
+
+    expect_token_boundary_mapping("await import('x')", b"AAAA,MAAM,OAAO");
+}
+
 #[test]
 fn test_number_format() {
     expect_printed_with_options(
