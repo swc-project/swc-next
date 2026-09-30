@@ -31,7 +31,10 @@ struct SequenceItem<'ast> {
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn sequence_grammar_pair_is_enclosed(position: ExpressionPosition) -> bool {
-        matches!(position, ExpressionPosition::ArrowBody)
+        matches!(
+            position,
+            ExpressionPosition::ArrowBody | ExpressionPosition::RestrictedArgument
+        )
     }
     fn sequence_member_pair_is_enclosed(
         &self,

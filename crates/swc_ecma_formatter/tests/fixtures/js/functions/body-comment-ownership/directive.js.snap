@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() // note
+{ "use strict"; return this; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  "use strict";
+  // note
+  return this;
+}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f() {
+  "use strict";
+  // note
+  return this;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  "use strict"
+  // note
+  return this
+}

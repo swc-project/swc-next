@@ -228,7 +228,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
         } = prepared;
         let operand_indent = match context.position {
-            ExpressionPosition::Nested => context.operand_indent,
+            ExpressionPosition::Nested | ExpressionPosition::RestrictedArgument => {
+                context.operand_indent
+            }
             _ => OperandIndent::Parent,
         };
         let write_test = |writer: &mut Writer<'ast>| {
