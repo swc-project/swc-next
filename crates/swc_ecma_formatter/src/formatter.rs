@@ -7,6 +7,7 @@ mod expressions;
 mod functions;
 mod literals;
 mod parameters;
+mod restricted;
 mod source;
 mod statements;
 mod suppression;

@@ -983,3 +983,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &comments[..count]
     }
 }
+
+impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_source_token_gap(
+        &mut self,
+        start: u32,
+        end: u32,
+        space: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let comments = self.comments.between(Span::new(start, end))?;
+        self.comments.claim(comments)?;
+        if space {
+            let first = comments.first().map_or(end, |comment| comment.span.start);
+            self.line_constraint(start, first)
+                .write(writer, FlatSeparator::Space, Writer::space);
+            self.format_comment_run(comments, CommentRunLayout::FlatLeading(end), writer)
+        } else {
+            self.format_comment_run(comments, CommentRunLayout::SourceAfter(start), writer)?;
+            let last = comments.last().map_or(start, |comment| comment.span.end);
+            self.line_constraint(last, end)
+                .write(writer, FlatSeparator::Empty, |writer| {
+                    if comments
+                        .last()
+                        .is_some_and(|comment| comment.kind == swc_next_ecma_ast::CommentKind::Line)
+                    {
+                        writer.hard_line();
+                    }
+                });
+            Ok(())
+        }
+    }
+}

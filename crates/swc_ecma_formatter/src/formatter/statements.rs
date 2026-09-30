@@ -3,8 +3,8 @@
 mod tails;
 
 use swc_next_ecma_ast::{
-    Ast, BlockStatement, Comment, CommentKind, Directive, EmptyStatement, ExprData, FunctionBody,
-    GetSpan, Span, Stmt, StmtData,
+    Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, ExprData,
+    FunctionBody, GetSpan, Span, Stmt, StmtData,
 };
 
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
@@ -723,6 +723,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StmtData::ExpressionStatement(_)
                     | StmtData::DebuggerStatement(_)
                     | StmtData::BlockStatement(_)
+                    | StmtData::ReturnStatement(_)
+                    | StmtData::ThrowStatement(_)
+                    | StmtData::Declaration(_)
             ) {
                 return Err(self.unsupported("statement", statement));
             }
@@ -770,6 +773,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StmtData::DebuggerStatement(node) => {
                 writer.text("debugger");
                 node.span(self.ast).start + "debugger".len() as u32
+            }
+            StmtData::ReturnStatement(node) => {
+                let end = node.span(self.ast).start + 6;
+                if let Some(argument) = node.argument(self.ast) {
+                    tail = self.format_restricted_argument(
+                        end,
+                        argument,
+                        |writer| writer.text("return"),
+                        writer,
+                    )?;
+                    argument.span(self.ast).end
+                } else {
+                    writer.text("return");
+                    end
+                }
+            }
+            StmtData::ThrowStatement(node) => {
+                let argument = node.argument(self.ast);
+                tail = self.format_restricted_argument(
+                    node.span(self.ast).start + 5,
+                    argument,
+                    |writer| writer.text("throw"),
+                    writer,
+                )?;
+                argument.span(self.ast).end
+            }
+            StmtData::Declaration(declaration) => {
+                let DeclData::Function(function) = self.ast.decl_data(declaration) else {
+                    return Err(self.unsupported("declaration", declaration));
+                };
+                self.format_function(function, writer)?;
+                return Ok((
+                    StatementBoundary::SourceEnd {
+                        end: function.span(self.ast).end,
+                        has_terminator: false,
+                    },
+                    None,
+                ));
             }
             StmtData::BlockStatement(block) => {
                 self.format_block(block, writer)?;

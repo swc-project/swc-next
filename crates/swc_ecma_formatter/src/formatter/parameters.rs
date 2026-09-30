@@ -1,4 +1,4 @@
-//! Runtime arrow parameters with source-owned bindings and delimiters.
+//! Runtime function and arrow parameters with source-owned bindings and delimiters.
 use super::Formatter;
 use super::comments::{CommentRunLayout, ExpressionTail};
 use super::diagnostics::FlatSeparator;
@@ -13,6 +13,10 @@ use swc_next_ecma_ast::{
 pub(super) enum ArrowParameterParentheses {
     Optional,
     Required,
+}
+enum ParameterRole {
+    Arrow(ArrowParameterParentheses),
+    Function,
 }
 enum ParameterSource {
     Parenthesized,
@@ -54,8 +58,30 @@ pub(super) struct SourceParameters {
     omit_parentheses: bool,
     hug: Option<ParameterHug>,
     enclosing_mode: ContentMode,
+    leading_mode: ContentMode,
+    suppressed_tail: Option<RuntimeParameter>,
 }
 impl SourceParameters {
+    pub(super) fn set_leading_mode(&mut self, mode: ContentMode) {
+        self.leading_mode = mode;
+        if mode == ContentMode::Verbatim {
+            self.hug = None;
+        }
+    }
+    pub(super) fn suppress_last(&mut self, ast: &Ast<'_>) -> Result<(), FormatError> {
+        self.hug = None;
+        self.suppressed_tail = if let Some(rest) = self.rest {
+            Some(RuntimeParameter::Rest(rest))
+        } else {
+            self.node
+                .items(ast)
+                .last()
+                .map(|id| RuntimeParameter::from_formal(ast.get_node_in_sub_range(id), ast))
+                .transpose()?
+        };
+        Ok(())
+    }
+
     pub(super) fn enclosing_mode(&self) -> ContentMode {
         self.enclosing_mode
     }
@@ -72,6 +98,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: FormalParameters,
         parentheses: ArrowParameterParentheses,
     ) -> Result<SourceParameters, FormatError> {
+        self.source_parameters(node, ParameterRole::Arrow(parentheses))
+    }
+    pub(super) fn source_function_parameters(
+        &self,
+        node: FormalParameters,
+    ) -> Result<SourceParameters, FormatError> {
+        self.source_parameters(node, ParameterRole::Function)
+    }
+    fn source_parameters(
+        &self,
+        node: FormalParameters,
+        role: ParameterRole,
+    ) -> Result<SourceParameters, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let items = node.items(ast);
@@ -83,7 +122,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .transpose()?;
         let source = if self.source(span).starts_with('(') && self.source(span).ends_with(')') {
             ParameterSource::Parenthesized
-        } else if let Some(RuntimeParameter::Formal(parameter)) = first
+        } else if matches!(role, ParameterRole::Arrow(_))
+            && let Some(RuntimeParameter::Formal(parameter)) = first
             && items.len() == 1
             && rest.is_none()
             && parameter.span(ast) == span
@@ -106,8 +146,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(RuntimeParameter::Formal(p)) if count == 1 => Some(p),
             _ => None,
         };
-        let omit_parentheses = parentheses == ArrowParameterParentheses::Optional
-            && self.options.arrow_parentheses == ArrowParentheses::AsNeeded
+        let omit_parentheses = matches!(
+            role,
+            ParameterRole::Arrow(ArrowParameterParentheses::Optional)
+        ) && self.options.arrow_parentheses == ArrowParentheses::AsNeeded
             && single.is_some_and(|p| {
                 matches!(
                     ast.formal_parameter_pattern_data(p.pattern(ast)),
@@ -128,6 +170,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             omit_parentheses,
             hug,
             enclosing_mode,
+            leading_mode: ContentMode::Formatted,
+            suppressed_tail: None,
         })
     }
     fn parameter_hug(&self, node: FormalParameter, envelope: Span) -> Option<ParameterHug> {
@@ -181,6 +225,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             omit_parentheses,
             hug,
             enclosing_mode: _,
+            leading_mode,
+            suppressed_tail,
         } = parameters;
         let hugged_parameter = hug;
         let hug = hug.is_some();
@@ -226,7 +272,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut end = content.start;
                 let mut separator = Separator::Line;
                 let mut has_previous = false;
-                let mut following_mode = None;
+                let mut following_mode =
+                    (leading_mode == ContentMode::Verbatim).then_some(leading_mode);
                 while let Some(parameter) = next {
                     next = parameters.next().transpose()?;
                     let span = parameter.span(ast);
@@ -256,6 +303,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     if let Some(mode) = following_mode {
                         item.set_leading_mode(mode);
+                    }
+                    if suppressed_tail == Some(parameter) {
+                        item.set_leading_mode(ContentMode::Verbatim);
                     }
                     let hug = if has_previous { None } else { hugged_parameter };
                     let tail = self.format_runtime_parameter(parameter, item.mode, hug, writer)?;

@@ -177,6 +177,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StmtData::ExpressionStatement(node) => {
                     Semicolon(node.expression(self.ast).span(self.ast).end)
                 }
+                StmtData::ReturnStatement(node) => Semicolon(
+                    node.argument(self.ast)
+                        .map_or(node.span(self.ast).start + 6, |argument| {
+                            argument.span(self.ast).end
+                        }),
+                ),
+                StmtData::ThrowStatement(node) => {
+                    Semicolon(node.argument(self.ast).span(self.ast).end)
+                }
                 StmtData::DebuggerStatement(node) => {
                     Semicolon(node.span(self.ast).start + "debugger".len() as u32)
                 }

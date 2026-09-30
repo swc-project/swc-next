@@ -162,7 +162,6 @@ impl<'a> Writer<'a> {
 
     /// Prepares a flat-width rejection from this completed group's own Doc.
     /// Unsupported instructions keep the ordinary Auto group unchanged.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
         let result = self.group(false, write);

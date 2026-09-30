@@ -35,6 +35,7 @@ pub(super) enum ExpressionPosition {
     Statement,
     Nested,
     ArrowBody,
+    RestrictedArgument,
     PropertyValue,
     SpreadArgument,
     MemberObject,
@@ -170,6 +171,10 @@ pub(super) struct ExpressionContext {
 }
 
 impl ExpressionContext {
+    pub(super) fn is_verbatim(self) -> bool {
+        self.content_mode == ContentMode::Verbatim
+    }
+
     pub(super) fn binding_initializer() -> Self {
         let mut context = Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
             .with_source_tail_owner(SourceTailOwner::Enclosure);
@@ -214,7 +219,8 @@ impl ExpressionContext {
             conditional_envelope: match position {
                 ExpressionPosition::AssignmentRight(_)
                 | ExpressionPosition::Initializer(_)
-                | ExpressionPosition::UnaryArgument(_) => ConditionalEnvelope::ContinuationRoot,
+                | ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::RestrictedArgument => ConditionalEnvelope::ContinuationRoot,
                 _ => ConditionalEnvelope::Local,
             },
             source_parentheses_tail: None,
@@ -373,41 +379,61 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 return self.source_target_needs_asi_guard(&self.update_source_target(update)?);
             }
-            if let Some(binary) = BinaryLike::from_data(data, self.ast) {
-                expression = binary.left;
-                context.position = ExpressionPosition::BinaryOperand {
-                    operator: binary.operator,
-                    side: OperandSide::Left,
-                };
-                continue;
-            }
-            if let ExprData::CallExpression(call) = data {
-                let callee = self.source_call_callee(call)?;
-                expression = callee.expression;
-                context = callee.context(context);
-                continue;
-            }
-            if let ExprData::MemberExpression(member) = data {
-                (expression, context) = self.source_member_receiver(member, context)?;
-                continue;
-            }
-            if let ExprData::ConditionalExpression(conditional) = data {
-                expression = conditional.test(self.ast);
-                context.position = ExpressionPosition::ConditionalTest;
+            if let Some((child, child_context)) = self.expression_head_operand(data, context)? {
+                expression = child;
+                context = child_context;
                 continue;
             }
             return Ok(false);
         }
     }
 
-    fn expression_is_parenthesized(&self, data: ExprData, context: ExpressionContext) -> bool {
+    /// One printed-head edge shared by ASI and restricted lexical envelopes.
+    pub(in crate::formatter) fn expression_head_operand(
+        &self,
+        data: ExprData,
+        context: ExpressionContext,
+    ) -> Result<Option<(Expr, ExpressionContext)>, FormatError> {
+        let operand = if let Some(binary) = BinaryLike::from_data(data, self.ast) {
+            let mut child_context = context;
+            child_context.position = ExpressionPosition::BinaryOperand {
+                operator: binary.operator,
+                side: OperandSide::Left,
+            };
+            (binary.left, child_context)
+        } else {
+            match data {
+                ExprData::CallExpression(call) => {
+                    let callee = self.source_call_callee(call)?;
+                    (callee.expression, callee.context(context))
+                }
+                ExprData::MemberExpression(member) => {
+                    self.source_member_receiver(member, context)?
+                }
+                ExprData::ConditionalExpression(conditional) => {
+                    let mut child_context = context;
+                    child_context.position = ExpressionPosition::ConditionalTest;
+                    (conditional.test(self.ast), child_context)
+                }
+                _ => return Ok(None),
+            }
+        };
+        Ok(Some(operand))
+    }
+
+    pub(in crate::formatter) fn expression_is_parenthesized(
+        &self,
+        data: ExprData,
+        context: ExpressionContext,
+    ) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
             && (self.expression_needs_parentheses(data, context.position, context.content_mode)
                 == Some(true)
                 || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
                     && (context.expression_start.is_statement()
-                        || context.expression_start == ExpressionStart::ArrowBody))
+                        || context.expression_start == ExpressionStart::ArrowBody)
+                || matches!(data, ExprData::Function(_)) && context.expression_start.is_statement())
     }
 
     /// The actual computed receiver owns the lexical pair, not its whole member.
@@ -494,6 +520,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::CallCallee
                     | ExpressionPosition::NewCallee
                     | ExpressionPosition::ConditionalTest
+            )),
+            ExprData::Function(_) => Some(matches!(
+                position,
+                ExpressionPosition::CallCallee | ExpressionPosition::NewCallee
             )),
             ExprData::ArrayExpression(_) => Some(false),
             ExprData::ObjectExpression(_) => {
@@ -647,6 +677,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
+            ExprData::Function(function) => {
+                self.format_function(function, writer)?;
+            }
             ExprData::ArrowFunctionExpression(arrow) => {
                 return self.format_arrow(arrow, context, writer);
             }
