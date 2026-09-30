@@ -144,7 +144,6 @@ pub(crate) struct RecordedGroup<'a> {
 }
 
 impl<'a> RecordedGroup<'a> {
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn grouped(self) -> Fragment<'a> {
         self.grouped
     }
@@ -361,7 +360,6 @@ impl<'a> Fragment<'a> {
         false
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn preferred_breaks(self) -> bool {
         self.effect.preferred_breaks()
     }

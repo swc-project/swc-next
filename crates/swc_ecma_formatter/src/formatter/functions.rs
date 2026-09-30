@@ -2,7 +2,7 @@
 use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::parameters::SourceParameters;
+use super::parameters::{CallbackParameterShape, SourceParameters};
 use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{FormatError, document::Writer};
@@ -33,6 +33,13 @@ pub(super) struct SignatureBodyModes {
 }
 
 impl SourceFunctionSignature<'_> {
+    pub(super) fn enclosing_mode(&self) -> ContentMode {
+        self.parameters.enclosing_mode()
+    }
+    pub(super) fn has_parameters(&self) -> bool {
+        self.parameters.has_parameters()
+    }
+
     fn set_leading_mode(&mut self, mode: ContentMode) {
         if self.parameters.has_parameters() {
             self.parameters.set_leading_mode(mode);
@@ -100,7 +107,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_function_head(
         &mut self,
         function: Function,
+        signature: SourceFunctionSignature<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedFunctionBody<'ast>, FormatError> {
+        self.format_function_head_with_shape(function, signature, None, writer)
+    }
+    pub(super) fn format_function_head_with_shape(
+        &mut self,
+        function: Function,
         mut signature: SourceFunctionSignature<'ast>,
+        callback_shape: Option<&mut CallbackParameterShape>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedFunctionBody<'ast>, FormatError> {
         let ast = self.ast;
@@ -177,7 +193,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_source_token_gap(span.end, header_start, false, writer)?;
         }
         writer.group(false, |writer| {
-            self.format_source_parameters(signature.parameters, writer)
+            self.format_source_parameters_with_shape(signature.parameters, callback_shape, writer)
         })?;
         Ok(signature.body)
     }
@@ -201,7 +217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         modes
     }
 
-    fn source_function_signature(
+    pub(super) fn source_function_signature(
         &self,
         function: Function,
     ) -> Result<SourceFunctionSignature<'ast>, FormatError> {

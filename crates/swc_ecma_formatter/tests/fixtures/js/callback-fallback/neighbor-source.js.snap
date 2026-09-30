@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+receiver.start().finish({
+  value: 1
+}, () => {});
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+receiver.start().finish(
+  {
+    value: 1,
+  },
+  () => {},
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+receiver.start().finish(
+  {
+    value: 1,
+  },
+  () => {},
+);

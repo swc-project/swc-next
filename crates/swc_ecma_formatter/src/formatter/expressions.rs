@@ -5,6 +5,7 @@ mod arrays;
 pub(super) mod arrows;
 pub(super) mod assignment;
 mod binary;
+mod callbacks;
 mod calls;
 mod conditional;
 mod constructors;
