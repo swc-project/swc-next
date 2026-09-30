@@ -353,6 +353,136 @@ fn test_multiline_block_comment_is_stable() {
     );
 }
 
+#[track_caller]
+fn expect_statement_body(source: &str, expected: &str) {
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(original.diagnostics.is_empty());
+    let print_options = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+    let compact = print(&allocator, &original.ast, print_options.clone());
+    assert_eq!(compact.code, expected);
+
+    let reparsed =
+        Parser::init(&allocator, compact.code, parse_options, NoTokenParserConfig).parse();
+    assert!(reparsed.diagnostics.is_empty());
+    let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
+    let reparsed_pretty = print(&allocator, &reparsed.ast, PrintOptions::default());
+    assert_eq!(reparsed_pretty.code, original_pretty.code);
+    let repeated = print(&allocator, &reparsed.ast, print_options);
+    assert_eq!(repeated.code, compact.code);
+}
+
+#[test]
+fn test_do_while_statement_bodies() {
+    expect_statement_body("do debugger; while(false);", "do debugger;while(false);");
+
+    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b);");
+
+    expect_statement_body(
+        "function f(){ do return 1; while(false); }",
+        "function f(){do return 1;while(false);}",
+    );
+
+    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b);");
+
+    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b);");
+
+    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b);");
+
+    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b);");
+
+    expect_statement_body("do break; while(false);", "do break;while(false);");
+
+    expect_statement_body("do continue; while(false);", "do continue;while(false);");
+}
+
+#[test]
+fn test_else_statement_bodies() {
+    expect_statement_body("if(a) x(); else debugger;", "if(a)x();else debugger;");
+
+    expect_statement_body(
+        "if(a) x(); else while(b) y();",
+        "if(a)x();else while(b)y();",
+    );
+
+    expect_statement_body(
+        "if(a) x(); else do y(); while(b);",
+        "if(a)x();else do y();while(b);",
+    );
+
+    expect_statement_body(
+        "function f(){ if(a) x(); else return 1; }",
+        "function f(){if(a)x();else return 1}",
+    );
+
+    expect_statement_body(
+        "function f(){ if(a) x(); else throw 1; }",
+        "function f(){if(a)x();else throw 1}",
+    );
+
+    expect_statement_body(
+        "if(a) x(); else for(;b;) y();",
+        "if(a)x();else for(;b;)y();",
+    );
+
+    expect_statement_body("if(a) x(); else switch(b){}", "if(a)x();else switch(b){}");
+
+    expect_statement_body(
+        "if(a) x(); else try{} finally{}",
+        "if(a)x();else try{}finally{}",
+    );
+}
+
+#[test]
+fn test_statement_body_formatting() {
+    expect_statement_body("do x(); while(false);", "do x();while(false);");
+
+    expect_statement_body("if(a) x(); else y();", "if(a)x();else y();");
+
+    expect_statement_body("do { x(); } while(false);", "do{x()}while(false);");
+
+    expect_statement_body("if(a) { x(); } else { y(); }", "if(a){x()}else{y()}");
+
+    expect_statement_body(
+        "if(a) x(); else if(b) y(); else z();",
+        "if(a)x();else if(b)y();else z();",
+    );
+
+    expect_stable(
+        "do debugger; while(false);",
+        "do\n  debugger;\nwhile (false);\n",
+    );
+
+    expect_stable(
+        "if(a) x(); else while(b) y();",
+        "if (a) x();\nelse while (b) y();\n",
+    );
+
+    expect_stable(
+        "do { x(); } while(false);",
+        "do {\n  x();\n} while (false);\n",
+    );
+
+    expect_stable(
+        "if(a) { x(); } else { y(); }",
+        "if (a) {\n  x();\n} else {\n  y();\n}\n",
+    );
+
+    expect_stable(
+        "if(a) x(); else if(b) y(); else z();",
+        "if (a) x();\nelse if (b) y();\nelse z();\n",
+    );
+}
+
 #[test]
 fn test_for_destructuring_default_initializer() {
     expect_printed(

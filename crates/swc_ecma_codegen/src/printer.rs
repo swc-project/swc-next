@@ -879,6 +879,9 @@ impl<'a> Printer<'a> {
                     self.print_block(block);
                     self.print_space();
                 } else {
+                    if self.options.minify {
+                        self.print(" ");
+                    }
                     self.print_newline();
                     self.indent += 1;
                     self.print_stmt(body);
@@ -1300,6 +1303,9 @@ impl<'a> Printer<'a> {
                 self.print_block(block);
                 self.print_newline();
             } else {
+                if self.options.minify {
+                    self.print(" ");
+                }
                 self.print_body(alternate);
             }
         } else {
