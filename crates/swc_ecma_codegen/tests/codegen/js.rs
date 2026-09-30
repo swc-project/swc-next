@@ -344,6 +344,145 @@ fn test_parenthesized_comments() {
     );
 }
 
+#[track_caller]
+fn expect_export_default_expression(
+    source: &str,
+    expected: &str,
+    print_options: PrintOptions,
+    preserve_parens: bool,
+) {
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        preserve_parens,
+        ..ParseOptions::default()
+    };
+    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(original.diagnostics.is_empty());
+    let printed = print(&allocator, &original.ast, print_options.clone());
+    assert_eq!(printed.code, expected);
+
+    let reparsed =
+        Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+    assert!(reparsed.diagnostics.is_empty());
+    let body = reparsed.ast.root_program().body(&reparsed.ast);
+    assert_eq!(body.len(), 1);
+    let export = body
+        .get_node(&reparsed.ast, 0)
+        .unwrap()
+        .as_export_default_declaration(&reparsed.ast)
+        .unwrap();
+    assert!(
+        export
+            .declaration(&reparsed.ast)
+            .as_expr(&reparsed.ast)
+            .is_some()
+    );
+    let repeated = print(&allocator, &reparsed.ast, print_options);
+    assert_eq!(repeated.code, printed.code);
+}
+
+#[test]
+fn test_export_default_comments() {
+    let pretty = PrintOptions::default();
+    let minified = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+
+    expect_export_default_expression(
+        "export default (/* a */ function(){} + 1) + 2;",
+        "export default /* a */ (function() {\n}) + 1 + 2;\n",
+        pretty.clone(),
+        false,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ class {} + 1) + 2;",
+        "export default /* a */ (class {\n}) + 1 + 2;\n",
+        pretty.clone(),
+        false,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ function(){} && 1) && 2;",
+        "export default /* a */ (function() {\n}) && 1 && 2;\n",
+        pretty.clone(),
+        false,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ function(){} + 1) + 2;",
+        "export default /* a */(function(){})+1+2;",
+        minified.clone(),
+        false,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ class {} + 1) + 2;",
+        "export default /* a */(class{})+1+2;",
+        minified.clone(),
+        false,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ function(){} && 1) && 2;",
+        "export default /* a */(function(){})&&1&&2;",
+        minified.clone(),
+        false,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ function(){} + 1) + 2;",
+        "export default ( /* a */ function() {\n} + 1) + 2;\n",
+        pretty,
+        true,
+    );
+
+    expect_export_default_expression(
+        "export default (/* a */ function(){} + 1) + 2;",
+        "export default (/* a */function(){}+1)+2;",
+        minified,
+        true,
+    );
+
+    expect_printed_minify(
+        "export default (function(){} + 1) + 2;",
+        "export default (function(){})+1+2;",
+    );
+
+    expect_printed_minify(
+        "export default /* a */ (function(){} + 1) + 2;",
+        "export default /* a */(function(){})+1+2;",
+    );
+
+    expect_printed_minify(
+        "export default (/* a */ function(){} + 1) * 2;",
+        "export default /* a */(function(){}+1)*2;",
+    );
+
+    expect_stable(
+        "(/* a */ function(){} + 1) + 2;",
+        "/* a */\n(function() {\n}) + 1 + 2;\n",
+    );
+
+    expect_printed_minify(
+        "(/* a */ function(){} + 1) + 2;",
+        "/* a */(function(){})+1+2;",
+    );
+
+    expect_stable(
+        "/* a */ export default function(){}",
+        "/* a */\nexport default function() {\n}\n",
+    );
+
+    expect_stable(
+        "/* a */ export default class {}",
+        "/* a */\nexport default class {\n}\n",
+    );
+}
+
 #[test]
 fn test_multiline_block_comment_is_stable() {
     // The newline inside the comment triggers ASI before the apparent label.
