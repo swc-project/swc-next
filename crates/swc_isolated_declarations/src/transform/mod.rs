@@ -78,13 +78,10 @@ impl<'semantic> Transformer<'semantic> {
         context: DeclContext,
         ast: &mut Ast<'ast>,
     ) -> Vec<Stmt> {
-        let statements = statements
-            .iter()
-            .map(|statement| ast.get_node_in_sub_range(statement))
-            .collect::<Vec<_>>();
-        self.report_expando_assignments(&statements, context, ast);
+        self.report_expando_assignments(statements, context, ast);
         let mut transformed = Vec::with_capacity(statements.len());
-        for statement in statements {
+        for statement in statements.iter() {
+            let statement = ast.get_node_in_sub_range(statement);
             if self
                 .surface
                 .hidden_implementations
