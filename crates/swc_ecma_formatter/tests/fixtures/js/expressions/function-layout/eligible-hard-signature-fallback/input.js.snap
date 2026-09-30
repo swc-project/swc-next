@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("long description", (firstParameter,
+// required parameter line
+secondParameter) => { return firstParameter + secondParameter; }); third();
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+consume(
+  "long description",
+  (
+    firstParameter,
+    // required parameter line
+    secondParameter,
+  ) => {
+    return (
+      firstParameter +
+      secondParameter
+    );
+  },
+);
+third();

@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { return (
+// receiver
+{ value: first() }
+).value; }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f() {
+  return (
+    // receiver
+    {
+      value:
+        first(),
+    }.value
+  );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    // receiver
+    {
+      value:
+        first(),
+    }.value
+  )
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f() {
+  return (
+    // receiver
+    { value: first() }.value
+  );
+}

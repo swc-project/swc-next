@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(){ // first
+
+/* second */
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  // first
+  /* second */
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  // first
+  /* second */
+}
+
+---------- Options ----------
+{"printWidth":28,"semi":false}
+---------- Output ----------
+function f() {
+  // first
+  /* second */
+}

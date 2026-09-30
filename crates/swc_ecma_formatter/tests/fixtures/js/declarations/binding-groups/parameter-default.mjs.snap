@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function unpack({ profile: { first, last } } = user) {}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function unpack({
+  profile: { first, last },
+} = user) {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function unpack({ profile: { first, last } } = user) {}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function unpack({
+  profile: {first, last}
+} = user) {}

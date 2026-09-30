@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? /*#__PURE__*/ (/** @param {number} value */ function(value) { return value; }) ?? fallback : fallback;
+---------- Options ----------
+{}
+---------- Output ----------
+condition
+  ? (
+      /*#__PURE__*/ /** @param {number} value */ function (value) {
+        return value;
+      } ?? fallback
+    )
+  : fallback;
+

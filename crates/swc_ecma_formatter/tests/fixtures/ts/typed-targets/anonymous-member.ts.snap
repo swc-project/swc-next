@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(cell.value) = function () {};
+---------- Options ----------
+{}
+---------- Output ----------
+cell.value = function () {};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+cell.value =
+  function () {};
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+cell.value =
+  function () {}

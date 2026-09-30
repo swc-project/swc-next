@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("raw", (/* prettier-ignore */ value = first(
+  )) => { return second(value); }); third();
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+consume(
+  "raw",
+  (
+    /* prettier-ignore */ value = first(
+  ),
+  ) => {
+    return second(value);
+  },
+);
+third();

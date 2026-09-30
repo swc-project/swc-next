@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { return true && (1 & 1 // @ts-expect-error
+); missingCovered(); }
+missingUncovered();
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return (
+    true &&
+    (
+      1 & 1 // @ts-expect-error
+    )); missingCovered(); }
+missingUncovered();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    true &&
+    (
+      1 & 1 // @ts-expect-error
+    )); missingCovered() }
+missingUncovered()
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f() {
+  return (
+    true &&
+    (
+      1 & 1 // @ts-expect-error
+    )); missingCovered(); }
+missingUncovered();
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+function f() {
+  return (
+    true &&
+    (
+      1 & 1 // @ts-expect-error
+    )); missingCovered(); }
+missingUncovered();
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    true &&
+    (
+      1 & 1 // @ts-expect-error
+    )); missingCovered() }
+missingUncovered()

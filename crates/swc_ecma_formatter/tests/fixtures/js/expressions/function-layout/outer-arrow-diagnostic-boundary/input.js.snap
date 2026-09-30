@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("diagnostic",
+// @ts-expect-error
+(value) => { return missing(value); }); second();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+consume(
+  "diagnostic",
+  // @ts-expect-error
+  (value) => { return missing(value); },); second();
