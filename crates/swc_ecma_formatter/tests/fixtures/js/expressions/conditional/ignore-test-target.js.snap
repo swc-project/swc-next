@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f() {
+  return (/* prettier-ignore */ value( 1,  2 )
+  )
+    ? 1
+    : 2;
+}
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+function f() {
+  return (/* prettier-ignore */ value( 1,  2 )
+  )
+    ? 1
+    : 2;
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+function f() {
+    return (/* prettier-ignore */ value( 1,  2 )
+    )
+        ? 1
+        : 2;
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+function f() {
+	return (/* prettier-ignore */ value( 1,  2 )
+	)
+		? 1
+		: 2;
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+function f() {
+ return (/* prettier-ignore */ value( 1,  2 )
+ )
+  ? 1
+  : 2;
+}
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+function f() {
+  return (/* prettier-ignore */ value( 1,  2 )) ? 1 : 2;
+}

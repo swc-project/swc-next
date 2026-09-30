@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() // outer
+{ // inner
+return 42; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  // outer
+  // inner
+  return 42;
+}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f() {
+  // outer
+  // inner
+  return 42;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  // outer
+  // inner
+  return 42
+}
