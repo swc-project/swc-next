@@ -378,6 +378,43 @@ fn test_instantiation_expression_boundaries() {
         "class C extends (f<T>)<U> {\n}\n",
     );
 
+    expect_printed_ts(
+        "class C extends (f?.x<T>) {}",
+        "class C extends (f?.x<T>) {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.x<T>)<U> {}",
+        "class C extends (f?.x<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.x!<T>)<U> {}",
+        "class C extends (f?.x!<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.[x]<T>)<U> {}",
+        "class C extends (f?.[x]<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.()<T>)<U> {}",
+        "class C extends (f?.()<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends f?.x<T> {}",
+        "class C extends f?.x<T> {\n}\n",
+    );
+
+    expect_printed_ts("class C extends f?.x {}", "class C extends f?.x {\n}\n");
+
+    expect_printed_ts_minify(
+        "class C extends (f?.x<T>)<U> {}",
+        "class C extends (f?.x<T>)<U>{}",
+    );
+
     expect_printed_ts("f<T>?.<U>();", "f<T>?.<U>();\n");
 
     expect_printed_ts("(f<T>)?.x;", "(f<T>)?.x;\n");

@@ -2041,7 +2041,16 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                self.print_expr(e.expression(self.ast), Precedence::Lowest);
+                let chain_context = if wrap {
+                    ExprContext::empty()
+                } else {
+                    context & ExprContext::NO_INSTANTIATION
+                };
+                self.print_expr_with_context(
+                    e.expression(self.ast),
+                    Precedence::Lowest,
+                    chain_context,
+                );
                 if wrap {
                     self.print(")");
                 }
