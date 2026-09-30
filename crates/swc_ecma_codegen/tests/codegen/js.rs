@@ -1,14 +1,147 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind,
-    SubRange,
+    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
+    StmtData, SubRange,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
 use crate::{
     expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
     expect_printed_script, expect_printed_with_options, expect_stable,
 };
+
+#[track_caller]
+fn expect_empty_statement(source: &str, expected_minified: &str) {
+    for preserve_parens in [false, true] {
+        let allocator = Allocator::new();
+        let parse_options = ParseOptions {
+            preserve_parens,
+            ..ParseOptions::default()
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+        let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
+
+        for minify in [false, true] {
+            let print_options = PrintOptions {
+                minify,
+                ..PrintOptions::default()
+            };
+            let printed = print(&allocator, &original.ast, print_options.clone());
+            if minify {
+                assert_eq!(printed.code, expected_minified);
+            }
+
+            let reparsed =
+                Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+            assert!(reparsed.diagnostics.is_empty());
+            let ast = &reparsed.ast;
+            let statement =
+                ast.get_node_in_sub_range(ast.root_program().body(ast).first().unwrap());
+            assert_empty_statement_body(ast, statement);
+            let reparsed_pretty = print(&allocator, ast, PrintOptions::default());
+            assert_eq!(reparsed_pretty.code, original_pretty.code);
+            let repeated = print(&allocator, ast, print_options);
+            assert_eq!(repeated.code, printed.code);
+        }
+    }
+}
+
+fn assert_empty_statement_body(ast: &Ast<'_>, statement: Stmt) {
+    let body = match ast.stmt_data(statement) {
+        StmtData::BlockStatement(block) => {
+            ast.get_node_in_sub_range(block.body(ast).first().unwrap())
+        }
+        StmtData::Declaration(declaration) => {
+            let function = declaration.as_function(ast).unwrap();
+            let body = function.body(ast);
+            ast.get_node_in_sub_range(body.body(ast).first().unwrap())
+        }
+        StmtData::SwitchStatement(switch) => {
+            let case = ast.get_node_in_sub_range(switch.cases(ast).last().unwrap());
+            ast.get_node_in_sub_range(case.consequent(ast).first().unwrap())
+        }
+        StmtData::WhileStatement(statement) => statement.body(ast),
+        StmtData::ForStatement(statement) => statement.body(ast),
+        StmtData::ForInStatement(statement) => statement.body(ast),
+        StmtData::ForOfStatement(statement) => statement.body(ast),
+        StmtData::IfStatement(statement) => statement.consequent(ast),
+        StmtData::LabeledStatement(statement) => statement.body(ast),
+        StmtData::DoWhileStatement(statement) => statement.body(ast),
+        _ => {
+            assert!(statement.is_empty_statement(ast));
+            return;
+        }
+    };
+    assert_empty_statement_body(ast, body);
+}
+
+#[test]
+fn test_empty_statement_bodies() {
+    expect_empty_statement("function f(){while(a);}", "function f(){while(a);}");
+
+    expect_empty_statement("function f(){if(a);}", "function f(){if(a);}");
+
+    expect_empty_statement("function f(){for(;;);}", "function f(){for(;;);}");
+
+    expect_empty_statement("function f(){label:;}", "function f(){label:;}");
+
+    expect_empty_statement("function f(){for(a in b);}", "function f(){for(a in b);}");
+
+    expect_empty_statement("function f(){for(a of b);}", "function f(){for(a of b);}");
+
+    expect_empty_statement("{while(a);}", "{while(a);}");
+
+    expect_empty_statement("{if(a);}", "{if(a);}");
+
+    expect_empty_statement("{for(;;);}", "{for(;;);}");
+
+    expect_empty_statement("{label:;}", "{label:;}");
+
+    expect_empty_statement(
+        "switch(a){default:while(b);}",
+        "switch(a){default:while(b);}",
+    );
+
+    expect_empty_statement("switch(a){default:if(b);}", "switch(a){default:if(b);}");
+
+    expect_empty_statement("switch(a){default:for(;;);}", "switch(a){default:for(;;);}");
+
+    expect_empty_statement("switch(a){default:label:;}", "switch(a){default:label:;}");
+}
+
+#[test]
+fn test_empty_statement_delimiters() {
+    expect_empty_statement("function f(){while(a);x();}", "function f(){while(a);x()}");
+
+    expect_empty_statement("function f(){if(a);x();}", "function f(){if(a);x()}");
+
+    expect_empty_statement("function f(){for(;;);x();}", "function f(){for(;;);x()}");
+
+    expect_empty_statement("function f(){label:;x();}", "function f(){label:;x()}");
+
+    expect_empty_statement(";", ";");
+
+    expect_empty_statement(";;", ";;");
+
+    expect_empty_statement("{;}", "{;}");
+
+    expect_empty_statement("function f(){;x();}", "function f(){;x()}");
+
+    expect_empty_statement(
+        "function f(){do ; while(false);}",
+        "function f(){do;while(false);}",
+    );
+
+    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else;}");
+
+    expect_printed_minify("function f(){x();}", "function f(){x()}");
+
+    expect_printed_minify("{x();}", "{x()}");
+
+    expect_printed_minify("switch(a){default:x();}", "switch(a){default:x()}");
+}
 
 #[test]
 fn test_number_format() {

@@ -897,7 +897,10 @@ impl<'a> Printer<'a> {
             StmtData::EmptyStatement(_) => {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
-                self.print_semicolon_after_statement();
+                // The semicolon is the statement itself, not an optional terminator.
+                self.print(";");
+                self.needs_semicolon = false;
+                self.print_newline();
             }
             StmtData::ExpressionStatement(s) => {
                 let expression = s.expression(self.ast);
