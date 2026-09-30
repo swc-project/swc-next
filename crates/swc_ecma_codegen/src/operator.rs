@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{
-    AssignmentOperator, Ast, BinaryExpression, BinaryOperator, Expr, LogicalExpression,
-    LogicalOperator, Precedence, UnaryOperator, UpdateOperator,
+    Ast, BinaryExpression, BinaryOperator, Expr, LogicalExpression, LogicalOperator, Precedence,
+    UnaryOperator, UpdateOperator,
 };
 
 #[derive(Clone, Copy)]
@@ -79,26 +79,12 @@ impl BinaryishOperator {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OperatorCode {
     Binary(BinaryOperator),
-    Assignment(AssignmentOperator),
+    Assignment,
     Unary(UnaryOperator),
     Update(UpdateOperator, bool),
     TsNonNull,
     TsTypeOpen,
     TsTypeClose,
-}
-
-impl OperatorCode {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::Binary(op) => op.as_str(),
-            Self::Assignment(op) => op.as_str(),
-            Self::Unary(op) => op.as_str(),
-            Self::Update(op, _) => op.as_str(),
-            Self::TsNonNull => "!",
-            Self::TsTypeOpen => "<",
-            Self::TsTypeClose => ">",
-        }
-    }
 }
 
 // Binary and logical expressions share this visitor because either kind can

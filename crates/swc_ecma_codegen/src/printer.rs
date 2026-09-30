@@ -275,7 +275,7 @@ impl BinaryExprVisitor {
             match self.operator {
                 BinaryishOperator::Binary(operator) => {
                     let operator_code = OperatorCode::Binary(operator);
-                    p.print_operator(operator_code, None);
+                    p.print_operator(operator_code, operator.as_str());
                 }
                 BinaryishOperator::Logical(_) => p.print(self.operator.as_str()),
             }
@@ -666,18 +666,31 @@ impl<'a> Printer<'a> {
     }
 
     #[inline]
-    fn print_operator(&mut self, next: OperatorCode, source_offset: Option<u32>) {
-        self.print_space_before_operator(next);
-        if let Some(offset) = source_offset {
-            self.add_source_mapping(offset);
-        }
-        self.print(next.as_str());
-        self.prev_op = Some(next);
-        self.prev_op_end = self.js.len();
+    fn print_operator(&mut self, next: OperatorCode, text: &str) {
+        self.print_space_before_operator(next, text);
+        self.print_operator_token(next, text);
     }
 
     #[inline]
-    fn print_space_before_operator(&mut self, next: OperatorCode) {
+    fn print_mapped_operator(&mut self, next: OperatorCode, text: &str, source_offset: u32) {
+        self.print_space_before_operator(next, text);
+        self.add_source_mapping(source_offset);
+        self.print_operator_token(next, text);
+    }
+
+    #[inline]
+    fn print_operator_token(&mut self, next: OperatorCode, text: &str) {
+        self.print(text);
+        // Assignment operators end in `=` and cannot fuse with the next
+        // expression token. Their leading edge still needs separation.
+        if !matches!(next, OperatorCode::Assignment) {
+            self.prev_op = Some(next);
+            self.prev_op_end = self.js.len();
+        }
+    }
+
+    #[inline]
+    fn print_space_before_operator(&mut self, next: OperatorCode, text: &str) {
         if self.prev_op_end != self.js.len() {
             return;
         }
@@ -710,7 +723,7 @@ impl<'a> Printer<'a> {
                     && self.js[self.js.len() - 2] == b'<'
             }
             // A non-null assertion must not fuse into `!=` or `!==`.
-            OperatorCode::TsNonNull => next.as_str().starts_with('='),
+            OperatorCode::TsNonNull => text.starts_with('='),
             // A comparison followed by a type assertion must not become `<<`.
             // The same boundary occurs before a generic function type.
             OperatorCode::Binary(BinaryOperator::LessThan) | OperatorCode::TsTypeOpen => {
@@ -719,8 +732,8 @@ impl<'a> Printer<'a> {
             // Keep type closers separate from expression operators, while
             // allowing nested type argument lists to close with `>>`.
             OperatorCode::TsTypeClose => {
-                matches!(next, OperatorCode::Binary(_) | OperatorCode::Assignment(_))
-                    && matches!(next.as_str().as_bytes()[0], b'>' | b'=')
+                matches!(next, OperatorCode::Binary(_) | OperatorCode::Assignment)
+                    && matches!(text.as_bytes()[0], b'>' | b'=')
             }
             _ => false,
         };
@@ -1741,7 +1754,7 @@ impl<'a> Printer<'a> {
             }
             SimpleAssignmentTargetData::TsNonNullExpression(e) => {
                 self.print_expr(e.expression(self.ast), Precedence::Postfix);
-                self.print_operator(OperatorCode::TsNonNull, None);
+                self.print_operator(OperatorCode::TsNonNull, "!");
             }
         }
     }
@@ -1970,7 +1983,8 @@ impl<'a> Printer<'a> {
                 }
                 self.print_assignment_target(e.left(self.ast));
                 self.print_space();
-                self.print_operator(OperatorCode::Assignment(e.operator(self.ast)), None);
+                let operator = e.operator(self.ast);
+                self.print_operator(OperatorCode::Assignment, operator.as_str());
                 self.print_space();
                 self.print_expr(e.right(self.ast), Precedence::Assignment);
                 if wrap {
@@ -2225,7 +2239,7 @@ impl<'a> Printer<'a> {
                         },
                     );
                 }
-                self.print_operator(OperatorCode::TsNonNull, None);
+                self.print_operator(OperatorCode::TsNonNull, "!");
             }
             ExprData::TsInstantiationExpression(e) => {
                 let wrap = level >= Precedence::Postfix;
@@ -2317,15 +2331,16 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let op = e.operator(self.ast).as_str();
+        let operator = e.operator(self.ast);
+        let op = operator.as_str();
         if op.as_bytes()[0].is_ascii_alphabetic() {
             self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
             self.print(" ");
         } else {
-            let operator_code = OperatorCode::Unary(e.operator(self.ast));
-            self.print_operator(operator_code, Some(e.span(self.ast).start));
+            let operator_code = OperatorCode::Unary(operator);
+            self.print_mapped_operator(operator_code, op, e.span(self.ast).start);
         }
         self.print_expr(e.argument(self.ast), Precedence::Prefix);
         if wrap {
@@ -2338,13 +2353,15 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let operator_code = OperatorCode::Update(e.operator(self.ast), e.prefix(self.ast));
+        let operator = e.operator(self.ast);
+        let op = operator.as_str();
+        let operator_code = OperatorCode::Update(operator, e.prefix(self.ast));
         if e.prefix(self.ast) {
-            self.print_operator(operator_code, Some(e.span(self.ast).start));
+            self.print_mapped_operator(operator_code, op, e.span(self.ast).start);
             self.print_simple_assignment_target(e.argument(self.ast));
         } else {
             self.print_simple_assignment_target(e.argument(self.ast));
-            self.print_operator(operator_code, Some(e.span(self.ast).end.saturating_sub(2)));
+            self.print_mapped_operator(operator_code, op, e.span(self.ast).end.saturating_sub(2));
         }
         if wrap {
             self.print(")");
@@ -3892,7 +3909,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_ts_type_params(&mut self, d: TsTypeParameterDeclaration) {
-        self.print_operator(OperatorCode::TsTypeOpen, None);
+        self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
                 self.print(",");
@@ -3920,11 +3937,11 @@ impl<'a> Printer<'a> {
                 self.print_ts_type(t, TsTypePrecedence::Lowest);
             }
         }
-        self.print_operator(OperatorCode::TsTypeClose, None);
+        self.print_operator(OperatorCode::TsTypeClose, ">");
     }
 
     fn print_ts_type_args(&mut self, d: TsTypeParameterInstantiation) {
-        self.print_operator(OperatorCode::TsTypeOpen, None);
+        self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
                 self.print(",");
@@ -3932,13 +3949,13 @@ impl<'a> Printer<'a> {
             }
             self.print_ts_type(self.ast.get_node_in_sub_range(id), TsTypePrecedence::Lowest);
         }
-        self.print_operator(OperatorCode::TsTypeClose, None);
+        self.print_operator(OperatorCode::TsTypeClose, ">");
     }
 
     fn print_ts_type_assertion_prefix(&mut self, ty: TsType, source_offset: u32) {
-        self.print_operator(OperatorCode::TsTypeOpen, Some(source_offset));
+        self.print_mapped_operator(OperatorCode::TsTypeOpen, "<", source_offset);
         self.print_ts_type(ty, TsTypePrecedence::Lowest);
-        self.print_operator(OperatorCode::TsTypeClose, None);
+        self.print_operator(OperatorCode::TsTypeClose, ">");
     }
 
     fn print_ts_type(&mut self, ty: TsType, level: TsTypePrecedence) {
@@ -4361,7 +4378,11 @@ impl<'a> Printer<'a> {
 
         self.print_comments_before(argument.span(self.ast).start, false, true);
         let operator_code = OperatorCode::Unary(operator);
-        self.print_operator(operator_code, Some(expression.span(self.ast).start));
+        self.print_mapped_operator(
+            operator_code,
+            operator.as_str(),
+            expression.span(self.ast).start,
+        );
 
         self.add_source_mapping(argument.span(self.ast).start);
         self.print_number_literal(number, Precedence::Prefix);
