@@ -3397,10 +3397,9 @@ impl<'a> Printer<'a> {
 
         let wrap = level >= Precedence::Prefix;
         if wrap {
-            self.print("(-");
-        } else {
-            self.print("-");
+            self.print("(");
         }
+        self.print_operator(OperatorCode::Unary(UnaryOperator::Negate), "-");
         print_absolute_value(self);
         if wrap {
             self.print(")");
@@ -3432,7 +3431,7 @@ impl<'a> Printer<'a> {
                 self.print("0");
             } else {
                 if value.is_sign_negative() {
-                    self.print("-");
+                    self.print_operator(OperatorCode::Unary(UnaryOperator::Negate), "-");
                 } else {
                     self.print_space_before_identifier();
                 }

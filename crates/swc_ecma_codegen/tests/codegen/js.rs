@@ -110,6 +110,96 @@ fn numeric_literal_value_compares_float_bits() {
 }
 
 #[test]
+fn synthesized_number_subtraction() {
+    let minified = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+
+    let code = print_synthesized_number_subtraction(-1.0, minified.clone());
+    assert_eq!(code, "x- -1;");
+
+    let code = print_synthesized_number_subtraction(-0.0, minified.clone());
+    assert_eq!(code, "x- -0;");
+
+    let code = print_synthesized_number_subtraction(f64::NEG_INFINITY, minified.clone());
+    assert_eq!(code, "x- -1/0;");
+
+    let code = print_synthesized_number_subtraction(1.0, minified);
+    assert_eq!(code, "x-1;");
+
+    let pretty = PrintOptions::default();
+
+    let code = print_synthesized_number_subtraction(-1.0, pretty.clone());
+    assert_eq!(code, "x - -1;\n");
+
+    let code = print_synthesized_number_subtraction(-0.0, pretty.clone());
+    assert_eq!(code, "x - -0;\n");
+
+    let code = print_synthesized_number_subtraction(f64::NEG_INFINITY, pretty.clone());
+    assert_eq!(code, "x - -1 / 0;\n");
+
+    let code = print_synthesized_number_subtraction(1.0, pretty);
+    assert_eq!(code, "x - 1;\n");
+}
+
+#[test]
+fn synthesized_number_formats() {
+    let print = |value, number_format| {
+        print_synthesized_number_subtraction(
+            value,
+            PrintOptions {
+                minify: true,
+                number_format,
+                ..PrintOptions::default()
+            },
+        )
+    };
+
+    let code = print(-42.0, NumberFormat::Preserve);
+    assert_eq!(code, "x- -42;");
+
+    let code = print(-42.0, NumberFormat::Decimal);
+    assert_eq!(code, "x- -42;");
+
+    let code = print(-42.0, NumberFormat::Binary);
+    assert_eq!(code, "x- -0b101010;");
+
+    let code = print(-42.0, NumberFormat::Octal);
+    assert_eq!(code, "x- -0o52;");
+
+    let code = print(-42.0, NumberFormat::Hexadecimal { lowercase: true });
+    assert_eq!(code, "x- -0x2a;");
+
+    let code = print(-42.0, NumberFormat::Hexadecimal { lowercase: false });
+    assert_eq!(code, "x- -0x2A;");
+
+    let code = print(-0.5, NumberFormat::Binary);
+    assert_eq!(code, "x- -.5;");
+
+    let code = print(-0.0, NumberFormat::Hexadecimal { lowercase: true });
+    assert_eq!(code, "x- -0x0;");
+
+    let code = print(f64::NEG_INFINITY, NumberFormat::Decimal);
+    assert_eq!(code, "x- -1/0;");
+}
+
+fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> String {
+    let allocator = Allocator::new();
+    let mut ast = Ast::new("", &allocator);
+    let name = ast.add_utf8("x");
+    let left = ast.expr_identifier_reference(DUMMY_SP, name);
+    let right = ast.expr_numeric_literal(DUMMY_SP, value, None);
+    let expression = ast.expr_binary_expression(DUMMY_SP, left, right, BinaryOperator::Subtract);
+    let statement = ast.stmt_expression_statement(DUMMY_SP, expression);
+    let body = ast.add_sub_range([statement]);
+    let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
+    ast.set_root_program(program);
+
+    print(&allocator, &ast, options).code.to_owned()
+}
+
+#[test]
 fn synthesized_number_property_keys() {
     assert_eq!(
         print_synthesized_number_property_key(f64::NAN, false, false),
