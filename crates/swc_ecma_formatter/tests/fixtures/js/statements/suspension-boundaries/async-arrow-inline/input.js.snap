@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async /* head */ value /* arrow */ => await value;
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20}
+---------- Output ----------
+async /* head */ (
+  value,
+) /* arrow */ =>
+  await value;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false}
+---------- Output ----------
+async /* head */ (
+  value,
+) /* arrow */ =>
+  await value
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":80}
+---------- Output ----------
+async /* head */ (value) /* arrow */ => await value;

@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* f() { yield (
+// value
+first()
+); }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function* f() {
+  yield (
+    // value
+    first()
+  );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function* f() {
+  yield (
+    // value
+    first()
+  )
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function* f() {
+  yield (
+    // value
+    first()
+  );
+}

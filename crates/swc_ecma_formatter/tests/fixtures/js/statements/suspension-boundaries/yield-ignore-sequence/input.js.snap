@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* f() { yield (/* prettier-ignore */ first(  ), second(  )); }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function* f() {
+  yield (/* prettier-ignore */ first(  ), second(  )
+  );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function* f() {
+  yield (/* prettier-ignore */ first(  ), second(  )
+  )
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function* f() {
+  yield (/* prettier-ignore */ first(  ), second(  ));
+}
