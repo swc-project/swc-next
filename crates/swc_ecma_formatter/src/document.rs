@@ -97,7 +97,6 @@ enum FormatElement<'a> {
         id: Option<GroupId>,
     },
     /// An anonymous Auto group with a lower bound for its own flat contents.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartGroupWithFlatWidth {
         width: usize,
     },
@@ -278,7 +277,6 @@ fn append_clean_text(
 /// Measures only direct instructions whose flat mode cannot change before the
 /// scope ends. Leading and trailing gaps are excluded so the result remains a
 /// lower bound regardless of the caller's pending gap.
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 fn flat_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     let mut width = 0usize;
     let mut has_text = false;

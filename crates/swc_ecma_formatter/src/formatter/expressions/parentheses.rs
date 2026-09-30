@@ -384,7 +384,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ParenthesisInner::Expression(expression)
                 if matches!(
                     self.ast.expr_data(expression),
-                    ExprData::ArrowFunctionExpression(_)
+                    ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
                 ) =>
             {
                 Some(expression.span(self.ast))
@@ -652,7 +652,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             if matches!(
                 self.ast.expr_data(receiver),
-                ExprData::ArrowFunctionExpression(_)
+                ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
             ) {
                 let packet = self.source_parentheses_comments(SourceParentheses {
                     outer: span,
@@ -688,6 +688,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionPosition::UnaryArgument(_)
                         | ExpressionPosition::ConditionalTest
                         | ExpressionPosition::ArrowBody
+                        | ExpressionPosition::RestrictedArgument
                         | ExpressionPosition::MemberObject
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee
@@ -1508,6 +1509,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::CallExpression(_)
                 | ExprData::NewExpression(_)
+                | ExprData::Function(_)
                 | ExprData::ArrowFunctionExpression(_) => {
                     return removed_binding
                         .combine(CommentBinding::BoundTo(expression.span(self.ast)));

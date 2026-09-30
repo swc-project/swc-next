@@ -5,6 +5,7 @@ use super::{
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::functions::{FunctionBodyAttachment, SignatureBoundaryRole};
 use crate::formatter::parameters::{ArrowParameterParentheses, SourceParameters};
 use crate::formatter::statements::{IncomingStatement, StatementBodyLeading};
 use crate::formatter::suppression::ContentMode;
@@ -261,12 +262,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let body = self.prepare_arrow_body(body);
         let (mode, first_statement, trailing_constraint) = match &body {
             PreparedArrowBody::FunctionBody(body) if self.has_suppression => {
-                let modes = self.arrow_signature_body_modes(
+                let modes = self.signature_body_modes(
                     *body,
                     leading,
                     body_span.start,
                     operator + 2,
-                    parameters.has_parameters(),
+                    SignatureBoundaryRole::Arrow {
+                        has_parameters: parameters.has_parameters(),
+                    },
                 );
                 (modes.body, modes.first_statement, modes.constraint)
             }
@@ -292,7 +295,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_binding(leading, Span::new(operator + 2, body_span.start), None),
                 CommentBinding::Unbound
             ) {
-            self.prepare_arrow_block_leading(leading, function_body)
+            self.prepare_function_body_leading(
+                leading,
+                function_body,
+                FunctionBodyAttachment::Arrow,
+            )
         } else {
             (leading, StatementBodyLeading::empty())
         };
