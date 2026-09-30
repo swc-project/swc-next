@@ -112,8 +112,11 @@ pub(crate) struct BinaryExprVisitor {
     pub(crate) right_context: ExprContext,
 }
 
-#[derive(Clone, Copy, Default)]
-pub(crate) struct ExprContext {
-    pub(crate) in_new_callee: bool,
-    pub(crate) followed_by_type_operator: bool,
+bitflags::bitflags! {
+    // Keep recursive printing context in one scalar instead of packing separate booleans.
+    #[derive(Clone, Copy, Default)]
+    pub(crate) struct ExprContext: u8 {
+        const IN_NEW_CALLEE = 1 << 0;
+        const FOLLOWED_BY_TYPE_OPERATOR = 1 << 1;
+    }
 }
