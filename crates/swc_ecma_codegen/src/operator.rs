@@ -118,5 +118,6 @@ bitflags::bitflags! {
     pub(crate) struct ExprContext: u8 {
         const IN_NEW_CALLEE = 1 << 0;
         const FOLLOWED_BY_TYPE_OPERATOR = 1 << 1;
+        const NO_INSTANTIATION = 1 << 2;
     }
 }

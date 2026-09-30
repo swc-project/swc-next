@@ -50,6 +50,21 @@ fn test_non_null_token_boundaries() {
 }
 
 #[test]
+fn test_non_null_optional_chains() {
+    expect_printed_ts("(value?.prop)!;", "(value?.prop)!;\n");
+
+    expect_printed_ts("(value?.[x])!;", "(value?.[x])!;\n");
+
+    expect_printed_ts("(value?.())!;", "(value?.())!;\n");
+
+    expect_printed_ts("(value?.prop)!.x;", "(value?.prop)!.x;\n");
+
+    expect_printed_ts("((value?.prop)!)!;", "(value?.prop)!!;\n");
+
+    expect_printed_ts_minify("(value?.prop)!;", "(value?.prop)!;");
+}
+
+#[test]
 fn test_type_assertion_token_boundaries() {
     expect_token_boundary("x < <T>y", "x< <T>y;");
 
@@ -338,4 +353,42 @@ fn test_legal_comments() {
         "type X = number /*! license */;",
         "type X=number;/*! license */",
     );
+}
+
+#[test]
+fn test_instantiation_expression_boundaries() {
+    expect_printed_ts("(f<T>)<U>();", "(f<T>)<U>();\n");
+
+    expect_printed_ts("(f<T>)!;", "(f<T>)!;\n");
+
+    expect_printed_ts("((f<T>)!)<U>();", "(f<T>)!<U>();\n");
+
+    expect_printed_ts("((f<T>)!)!;", "(f<T>)!!;\n");
+
+    expect_printed_ts("(f<T>)();", "(f<T>)();\n");
+
+    expect_printed_ts("(f<T>).x;", "(f<T>).x;\n");
+
+    expect_printed_ts("new (f<T>)<U>();", "new (f<T>)<U>();\n");
+
+    expect_printed_ts("(f<T>)<U>`x`;", "(f<T>)<U>`x`;\n");
+
+    expect_printed_ts(
+        "class C extends (f<T>)<U> {}",
+        "class C extends (f<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts("f<T>?.<U>();", "f<T>?.<U>();\n");
+
+    expect_printed_ts("(f<T>)?.x;", "(f<T>)?.x;\n");
+
+    expect_printed_ts("f<T>?.[x];", "f<T>?.[x];\n");
+
+    expect_printed_ts("(f<T>)?.[x];", "f<T>?.[x];\n");
+
+    expect_printed_ts_minify("(f<T>)?.x;", "(f<T>)?.x;");
+
+    expect_printed_ts_minify("((f<T>)!)<U>();", "(f<T>)!<U>();");
+
+    expect_printed_ts_minify("((f<T>)!)!;", "(f<T>)!!;");
 }
