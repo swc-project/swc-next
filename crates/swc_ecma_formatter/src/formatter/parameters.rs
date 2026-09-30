@@ -62,6 +62,10 @@ pub(super) struct SourceParameters {
     suppressed_tail: Option<RuntimeParameter>,
 }
 impl SourceParameters {
+    pub(super) fn span(&self, ast: &Ast<'_>) -> Span {
+        self.node.span(ast)
+    }
+
     pub(super) fn set_leading_mode(&mut self, mode: ContentMode) {
         self.leading_mode = mode;
         if mode == ContentMode::Verbatim {

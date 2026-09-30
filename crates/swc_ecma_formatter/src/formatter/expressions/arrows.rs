@@ -87,6 +87,7 @@ struct ArrowChainChild<'a> {
 
 pub(super) struct VerbatimArrow {
     span: Span,
+    is_async: bool,
 }
 pub(super) struct FormattedArrowHead<'a> {
     arrow: ArrowFunctionExpression,
@@ -180,11 +181,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         arrow: ArrowFunctionExpression,
     ) -> Result<ArrowBoundary<'ast>, FormatError> {
-        if arrow.r#async(self.ast)
-            || arrow.return_type(self.ast).is_some()
-            || arrow.type_parameters(self.ast).is_some()
-        {
-            return Err(self.unsupported("async or typed arrow", arrow));
+        if arrow.return_type(self.ast).is_some() || arrow.type_parameters(self.ast).is_some() {
+            return Err(self.unsupported("typed arrow", arrow));
         }
         let params = arrow.params(self.ast);
         let parameter_span = params.span(self.ast);
@@ -221,6 +219,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if parameters.enclosing_mode() == ContentMode::Verbatim {
             return Ok(SourceArrow::Verbatim(VerbatimArrow {
                 span: arrow.span(self.ast),
+                is_async: arrow.r#async(self.ast),
             }));
         }
         Ok(SourceArrow::Formatted(FormattedArrowHead {
@@ -404,6 +403,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
+            && !source.is_async
         {
             writer.text(";");
         }
@@ -670,6 +670,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && parameters.starts_with_parenthesis()
         {
             writer.text(";");
+        }
+        if arrow.r#async(self.ast) {
+            writer.text("async");
+            self.format_source_token_gap(
+                arrow.span(self.ast).start + 5,
+                parameters.span(self.ast).start,
+                true,
+                writer,
+            )?;
         }
         writer.group(false, |writer| {
             self.format_source_parameters(parameters, writer)
