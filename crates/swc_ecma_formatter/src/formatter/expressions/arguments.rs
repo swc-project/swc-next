@@ -59,6 +59,7 @@ pub(in crate::formatter) struct PreparedItem {
     following: FollowingItem,
     span: Span,
     pub(in crate::formatter) mode: ContentMode,
+    has_leading_comments: bool,
     trailing_comma: TrailingCommaPolicy,
     suppression: Option<DelimitedSuppression>,
 }
@@ -297,6 +298,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TrailingCommaPolicy::Forbidden
             },
             suppression,
+            has_leading_comments: !leading.is_empty(),
         })
     }
 
@@ -538,6 +540,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 }
 
+pub(super) struct ArgumentHead {
+    pub(super) first_mode: ContentMode,
+}
 pub(super) struct SourceArguments<'ast> {
     arguments: SubRange<Argument>,
     first: Option<SourceFirstArgument>,
@@ -846,6 +851,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(empty)
             })
             .any(|empty| empty);
+        if !expand && let Some(selected) = self.select_argument_layout(arguments) {
+            return self.format_selected_arguments(
+                arguments,
+                content,
+                ArgumentHead { first_mode },
+                selected,
+                writer,
+            );
+        }
         writer.group(expand, |writer| {
             writer.text("(");
             let mut write_items = |writer: &mut Writer<'ast>| {
@@ -895,7 +909,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok(None)
         })
     }
-    fn prepare_argument_slot(
+    pub(super) fn prepare_argument_slot(
         &mut self,
         node: Argument,
         following: Option<Argument>,
@@ -932,6 +946,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         Ok(item)
     }
+    /// Reads the unconsumed outside boundary of this actual argument slot.
+    /// Object-internal comments remain owned by the value formatter.
+    pub(super) fn argument_has_boundary_comments(&self, item: &PreparedItem) -> bool {
+        if item.has_leading_comments {
+            return true;
+        }
+        let end = item
+            .following
+            .node()
+            .map_or(item.span.end, |span| span.start);
+        !self
+            .comments
+            .in_range(Span::new(item.item_span.end, end))
+            .is_empty()
+    }
+
     pub(super) fn format_argument_dangling(
         &mut self,
         span: Span,

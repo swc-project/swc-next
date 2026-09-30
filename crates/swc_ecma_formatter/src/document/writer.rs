@@ -639,7 +639,6 @@ impl<'a> Writer<'a> {
             .push(FormatElement::FlatFragment(FlatFragment(fragment)));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_alternatives(
         &mut self,
         normal: Fragment<'a>,
