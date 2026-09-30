@@ -11,12 +11,12 @@ use super::diagnostics::{
 };
 use super::{DeclContext, Transformer};
 
-impl<'semantic> Transformer<'semantic> {
+impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn transform_class(
         &mut self,
         class: Class,
         context: DeclContext,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         class.set_declare(ast, context.declare);
         class.set_decorators(ast, swc_next_ecma_ast::SubRange::empty());
@@ -306,7 +306,7 @@ impl<'semantic> Transformer<'semantic> {
         body.set_body(ast, elements);
     }
 
-    fn is_heritage_expression(&self, expression: Expr, ast: &Ast<'_>) -> bool {
+    fn is_heritage_expression(&self, expression: Expr, ast: &Ast<'ast>) -> bool {
         match ast.expr_data(expression) {
             ExprData::IdentifierReference(_) => true,
             ExprData::MemberExpression(member) => {
@@ -322,7 +322,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn transform_property(&mut self, property: PropertyDefinition, ast: &mut Ast<'_>) {
+    fn transform_property(&mut self, property: PropertyDefinition, ast: &mut Ast<'ast>) {
         property.set_decorators(ast, swc_next_ecma_ast::SubRange::empty());
         property.set_declare(ast, false);
         property.set_definite(ast, false);
@@ -380,7 +380,7 @@ impl<'semantic> Transformer<'semantic> {
         span: Span,
         computed: bool,
         is_static: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> ClassElement {
         let property = ast.property_definition(
             span,
@@ -402,7 +402,7 @@ impl<'semantic> Transformer<'semantic> {
         ClassElement::PropertyDefinition(property)
     }
 
-    fn private_key_marker(&self, ast: &mut Ast<'_>) -> ClassElement {
+    fn private_key_marker(&self, ast: &mut Ast<'ast>) -> ClassElement {
         let span = Span::new(0, 0);
         let name = ast.add_utf8("private");
         let key = ast.property_key_expr_private_identifier(span, name);
@@ -430,7 +430,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         params: FormalParameters,
         omit_signature: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Vec<ClassElement> {
         let items = params.items(ast);
         // Infer the shared annotation before defaults change the call signature.
@@ -518,7 +518,7 @@ impl<'semantic> Transformer<'semantic> {
         property: TsParameterProperty,
         optional: bool,
         original_type: Option<swc_next_ecma_ast::TsTypeAnnotation>,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<ClassElement> {
         let parameter = property.parameter(ast);
         let binding = parameter.pattern(ast).as_binding_identifier(ast)?;
@@ -561,7 +561,7 @@ impl<'semantic> Transformer<'semantic> {
         &self,
         params: FormalParameters,
         kind: MethodDefinitionKind,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         params.set_rest(ast, None);
         if kind == MethodDefinitionKind::Get {

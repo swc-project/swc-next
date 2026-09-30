@@ -9,12 +9,12 @@ use swc_next_ecma_ast::{
 use super::Transformer;
 use super::diagnostics::COMPUTED_SIGNATURE_NOT_SUPPORTED;
 
-impl<'semantic> Transformer<'semantic> {
-    pub(super) fn is_supported_computed_key(&self, key: PropertyKey, ast: &Ast<'_>) -> bool {
+impl<'ast> Transformer<'_, 'ast> {
+    pub(super) fn is_supported_computed_key(&self, key: PropertyKey, ast: &Ast<'ast>) -> bool {
         crate::surface::supported_computed_key(key, ast, self.semantic)
     }
 
-    pub(super) fn property_key_is_private(key: PropertyKey, ast: &Ast<'_>) -> bool {
+    pub(super) fn property_key_is_private(key: PropertyKey, ast: &Ast<'ast>) -> bool {
         matches!(
             ast.property_key_data(key),
             PropertyKeyData::Expr(expression)
@@ -25,7 +25,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn validate_computed_type_elements(
         &mut self,
         elements: swc_next_ecma_ast::SubRange<TsTypeElement>,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) {
         for element in elements.iter() {
             let element = ast.get_node_in_sub_range(element);
@@ -58,7 +58,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    pub(super) fn property_key_name<'ast>(
+    pub(super) fn property_key_name(
         &self,
         key: PropertyKey,
         ast: &Ast<'ast>,
@@ -71,7 +71,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn property_expression_name<'ast>(
+    fn property_expression_name(
         &self,
         expression: Expr,
         ast: &Ast<'ast>,
@@ -110,7 +110,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn declaration_property_key(
         &self,
         key: PropertyKey,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> PropertyKey {
         let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
             return key;
@@ -131,7 +131,7 @@ impl<'semantic> Transformer<'semantic> {
         key: PropertyKey,
         computed: bool,
         preserve_syntax: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> (PropertyKey, bool) {
         let key = self.declaration_property_key(key, ast);
         if preserve_syntax {
@@ -218,7 +218,7 @@ impl<'semantic> Transformer<'semantic> {
         (PropertyKey::Expr(expression), true)
     }
 
-    fn normalize_plain_property_key(&self, key: PropertyKey, ast: &mut Ast<'_>) -> PropertyKey {
+    fn normalize_plain_property_key(&self, key: PropertyKey, ast: &mut Ast<'ast>) -> PropertyKey {
         let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
             return key;
         };

@@ -6,8 +6,8 @@ use swc_next_ecma_ast::{
 
 use super::Transformer;
 
-impl<'semantic> Transformer<'semantic> {
-    pub(super) fn transform_type_surfaces(&mut self, program: Program, ast: &mut Ast<'_>) {
+impl<'ast> Transformer<'_, 'ast> {
+    pub(super) fn transform_type_surfaces(&mut self, program: Program, ast: &mut Ast<'ast>) {
         let mut visitor = TypeSurfaceVisitor {
             transformer: self,
             ast,
@@ -17,7 +17,7 @@ impl<'semantic> Transformer<'semantic> {
 }
 
 struct TypeSurfaceVisitor<'transform, 'ast, 'semantic> {
-    transformer: &'transform mut Transformer<'semantic>,
+    transformer: &'transform mut Transformer<'semantic, 'ast>,
     ast: &'transform mut Ast<'ast>,
 }
 

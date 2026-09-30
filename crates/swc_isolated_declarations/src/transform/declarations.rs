@@ -36,8 +36,8 @@ impl ExportExpressionBinding {
     }
 }
 
-impl<'semantic> Transformer<'semantic> {
-    pub(super) fn transform_decl<'ast>(
+impl<'ast> Transformer<'_, 'ast> {
+    pub(super) fn transform_decl(
         &mut self,
         declaration: Decl,
         context: DeclContext,
@@ -151,7 +151,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn transform_variable_declaration<'ast>(
+    fn transform_variable_declaration(
         &mut self,
         declaration: VariableDeclaration,
         context: DeclContext,
@@ -194,7 +194,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         pattern: BindingPattern,
         context: DeclContext,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) {
         let mut collector = BindingCollector::new(ast);
         pattern.visit_with(&mut collector);
@@ -225,7 +225,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         declarator: VariableDeclarator,
         kind: VariableKind,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         declarator.set_definite(ast, false);
         if declarator.type_annotation(ast).is_some() {
@@ -265,7 +265,7 @@ impl<'semantic> Transformer<'semantic> {
         declarator.set_init(ast, None);
     }
 
-    pub(super) fn transform_default_declaration<'ast>(
+    pub(super) fn transform_default_declaration(
         &mut self,
         declaration: ExportDefaultDeclarationKind,
         context: DeclContext,
@@ -314,7 +314,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         expression: Expr,
         context: DeclContext,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> ExportExpressionBinding {
         let expression = crate::surface::unparenthesized(expression, ast);
         let span = expression.span(ast);
@@ -375,34 +375,32 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn fresh_default_name(&mut self, ast: &mut Ast<'_>) -> swc_next_ecma_ast::AstUtf8 {
+    fn fresh_default_name(&mut self, ast: &mut Ast<'ast>) -> swc_next_ecma_ast::AstUtf8 {
         let names = self.reserved_names.get_or_insert_with(|| {
             let symbols = self
                 .semantic
                 .iter_symbols()
-                .map(|entry| ast.get_wtf8(entry.symbol.name).to_string_lossy());
+                .map(|entry| ast.get_wtf8(entry.symbol.name).as_bytes());
             let references = self
                 .semantic
                 .iter_references()
-                .map(|entry| std::borrow::Cow::Borrowed(ast.get_utf8(entry.reference.name)));
+                .map(|entry| ast.get_utf8(entry.reference.name).as_bytes());
             symbols
                 .chain(references)
-                .filter(|name| name.starts_with("_default"))
-                .map(std::borrow::Cow::into_owned)
+                .filter(|name| name.starts_with(b"_default"))
                 .collect()
         });
         loop {
             let suffix = self.next_default_id;
             self.next_default_id += 1;
             let candidate = if suffix == 0 {
-                "_default".to_owned()
+                std::borrow::Cow::Borrowed("_default")
             } else {
-                format!("_default_{suffix}")
+                std::borrow::Cow::Owned(format!("_default_{suffix}"))
             };
-            if !names.contains(&candidate) {
-                let name = ast.add_utf8(&candidate);
-                names.insert(candidate);
-                return name;
+            if !names.contains(candidate.as_bytes()) {
+                // The increasing suffix already keeps generated names distinct.
+                return ast.add_utf8(&candidate);
             }
         }
     }

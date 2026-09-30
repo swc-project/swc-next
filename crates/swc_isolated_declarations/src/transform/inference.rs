@@ -11,11 +11,11 @@ use super::diagnostics::{
     EXPRESSION_TYPE_REQUIRED, FUNCTION_RETURN_TYPE_REQUIRED,
 };
 
-impl<'semantic> Transformer<'semantic> {
+impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn infer_type_from_expr(
         &mut self,
         expression: Expr,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<TsType> {
         self.emit_inferred_type(expression, false, ast)
     }
@@ -23,7 +23,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn infer_const_type(
         &mut self,
         expression: Expr,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<TsType> {
         self.emit_inferred_type(expression, true, ast)
     }
@@ -32,7 +32,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         expression: Expr,
         is_const: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<TsType> {
         use crate::surface::{InferredType, inferred_type};
         let span = expression.span(ast);
@@ -112,7 +112,7 @@ impl<'semantic> Transformer<'semantic> {
     fn infer_const_array_type(
         &mut self,
         array: swc_next_ecma_ast::ArrayExpression,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> TsType {
         let span = array.span(ast);
         let elements = array.elements(ast);
@@ -151,7 +151,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn infer_function_return_type(
         &mut self,
         function: Function,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
         let body = function.body(ast);
         let expression = crate::surface::return_expression(body, ast)?;
@@ -162,7 +162,7 @@ impl<'semantic> Transformer<'semantic> {
     fn infer_arrow_return_type(
         &mut self,
         function: ArrowFunctionExpression,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
         if let Some(return_type) = function.return_type(ast) {
             return Some(return_type);
@@ -183,7 +183,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    pub(super) fn is_literal_initializer(&self, expression: Expr, ast: &Ast<'_>) -> bool {
+    pub(super) fn is_literal_initializer(&self, expression: Expr, ast: &Ast<'ast>) -> bool {
         let expression = crate::surface::unparenthesized(expression, ast);
         match ast.expr_data(expression) {
             ExprData::StringLiteral(_)
@@ -207,7 +207,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn normalize_literal_initializer(
         &self,
         expression: Expr,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Expr {
         let expression = crate::surface::unparenthesized(expression, ast);
         match ast.expr_data(expression) {

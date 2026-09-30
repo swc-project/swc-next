@@ -45,18 +45,18 @@ pub fn transform<'ast>(ast: &mut Ast<'ast>, semantic: &Semantic<'ast>) -> Vec<Di
     transformer.diagnostics
 }
 
-struct Transformer<'semantic> {
-    semantic: &'semantic Semantic<'semantic>,
+struct Transformer<'semantic, 'ast> {
+    semantic: &'semantic Semantic<'ast>,
     used: UsedSymbols,
     surface: crate::surface::DeclarationSurface,
     diagnostics: Vec<Diagnostic<'static>>,
     next_default_id: u32,
-    reserved_names: Option<rustc_hash::FxHashSet<String>>,
+    reserved_names: Option<rustc_hash::FxHashSet<&'ast [u8]>>,
     validated_type_methods: rustc_hash::FxHashSet<NodeId>,
 }
 
-impl<'semantic> Transformer<'semantic> {
-    fn transform_program(&mut self, ast: &mut Ast<'_>) {
+impl<'ast> Transformer<'_, 'ast> {
+    fn transform_program(&mut self, ast: &mut Ast<'ast>) {
         let program = ast.root_program();
         let context = DeclContext::for_program(ast.source_type());
         let body = self.transform_statements(program.body(ast), context, ast);
@@ -72,7 +72,7 @@ impl<'semantic> Transformer<'semantic> {
         self.transform_type_surfaces(program, ast);
     }
 
-    fn transform_statements<'ast>(
+    fn transform_statements(
         &mut self,
         statements: swc_next_ecma_ast::SubRange<Stmt>,
         context: DeclContext,

@@ -11,11 +11,11 @@ use super::diagnostics::{
     FUNCTION_RETURN_TYPE_REQUIRED, METHOD_RETURN_TYPE_REQUIRED, PARAMETER_TYPE_REQUIRED,
 };
 
-impl<'semantic> Transformer<'semantic> {
+impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn transform_ts_function_signature(
         &mut self,
         function: TsFunction,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         if function.r#async(ast) {
             function.set_async(ast, false);
@@ -33,7 +33,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn validate_type_method_signature(
         &mut self,
         signature: TsMethodSignature,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         self.report_untyped_this_parameter(signature.this_param(ast), ast);
         self.transform_formal_parameters_with_diagnostics(signature.params(ast), true, ast);
@@ -48,7 +48,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn transform_function_signature(
         &mut self,
         function: Function,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
         let mut return_type = function.return_type(ast);
         if return_type.is_none() && !function.r#async(ast) && !function.generator(ast) {
@@ -69,7 +69,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         function: Function,
         diagnostic_span: Span,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
         let mut return_type = function.return_type(ast);
         if return_type.is_none() && !function.r#async(ast) && !function.generator(ast) {
@@ -89,7 +89,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn report_untyped_this_parameter(
         &mut self,
         this_parameter: Option<TsThisParameter>,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) {
         if let Some(this_parameter) = this_parameter
             && this_parameter.type_annotation(ast).is_none()
@@ -104,7 +104,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn transform_formal_parameters(
         &mut self,
         params: FormalParameters,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         self.transform_formal_parameters_with_diagnostics(params, true, ast);
     }
@@ -113,7 +113,7 @@ impl<'semantic> Transformer<'semantic> {
         &mut self,
         params: FormalParameters,
         report_missing_types: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let items = params.items(ast);
         let mut transformed = Vec::with_capacity(items.len());
@@ -157,7 +157,7 @@ impl<'semantic> Transformer<'semantic> {
         parameter: FormalParameter,
         required_after: bool,
         report_missing_type: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> bool {
         let pattern = parameter.pattern(ast);
         let initializer = parameter.initializer(ast);
@@ -208,7 +208,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn formal_parameter_is_required(
         &self,
         parameter: FormalParameter,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) -> bool {
         !parameter.optional(ast) && parameter.initializer(ast).is_none()
     }
@@ -216,7 +216,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn first_parameter_annotation(
         &self,
         function: Function,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
         self.first_parameter_annotation_in_params(function.params(ast), ast)
     }
@@ -224,7 +224,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn first_parameter_annotation_in_params(
         &self,
         params: FormalParameters,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
         let item = ast.get_node_in_sub_range(params.items(ast).first()?);
         match ast.formal_parameter_item_data(item) {
@@ -239,7 +239,7 @@ impl<'semantic> Transformer<'semantic> {
         &self,
         function: Function,
         annotation: &swc_next_ecma_ast::TsTypeAnnotation,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         self.set_first_parameter_annotation_in_params(function.params(ast), annotation, ast);
     }
@@ -248,7 +248,7 @@ impl<'semantic> Transformer<'semantic> {
         &self,
         params: FormalParameters,
         annotation: &swc_next_ecma_ast::TsTypeAnnotation,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let Some(item) = params.items(ast).first() else {
             return;
@@ -262,7 +262,7 @@ impl<'semantic> Transformer<'semantic> {
         parameter.set_type_annotation(ast, Some(annotation));
     }
 
-    fn add_undefined_to_parameter(&mut self, parameter: FormalParameter, ast: &mut Ast<'_>) {
+    fn add_undefined_to_parameter(&mut self, parameter: FormalParameter, ast: &mut Ast<'ast>) {
         let Some(annotation) = parameter.type_annotation(ast) else {
             return;
         };
@@ -287,7 +287,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn add_explicit_undefined_to_parameter(
         &self,
         parameter: FormalParameter,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let Some(annotation) = parameter.type_annotation(ast) else {
             return;
@@ -304,7 +304,7 @@ impl<'semantic> Transformer<'semantic> {
         parameter.set_type_annotation(ast, Some(annotation));
     }
 
-    fn type_maybe_undefined(&self, ty: TsType, ast: &Ast<'_>) -> bool {
+    fn type_maybe_undefined(&self, ty: TsType, ast: &Ast<'ast>) -> bool {
         match ast.ts_type_data(ty) {
             TsTypeData::TsAnyKeyword(_)
             | TsTypeData::TsUnknownKeyword(_)
@@ -318,7 +318,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn undefined_presence(&self, ty: TsType, ast: &Ast<'_>) -> UndefinedPresence {
+    fn undefined_presence(&self, ty: TsType, ast: &Ast<'ast>) -> UndefinedPresence {
         match ast.ts_type_data(ty) {
             TsTypeData::TsUndefinedKeyword(_) => UndefinedPresence::Present,
             TsTypeData::TsAnyKeyword(_) => UndefinedPresence::Any,
@@ -374,7 +374,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn has_explicit_undefined_union_member(&self, ty: TsType, ast: &Ast<'_>) -> bool {
+    fn has_explicit_undefined_union_member(&self, ty: TsType, ast: &Ast<'ast>) -> bool {
         match ast.ts_type_data(ty) {
             TsTypeData::TsUndefinedKeyword(_) => true,
             TsTypeData::TsParenthesizedType(parenthesized) => {
@@ -389,7 +389,11 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    fn strip_binding_defaults(&self, pattern: BindingPattern, ast: &mut Ast<'_>) -> BindingPattern {
+    fn strip_binding_defaults(
+        &self,
+        pattern: BindingPattern,
+        ast: &mut Ast<'ast>,
+    ) -> BindingPattern {
         match ast.binding_pattern_data(pattern) {
             BindingPatternData::AssignmentPattern(assignment) => {
                 self.strip_binding_defaults(assignment.left(ast), ast)

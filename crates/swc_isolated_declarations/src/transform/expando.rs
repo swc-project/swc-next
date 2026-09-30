@@ -18,8 +18,8 @@ struct ExpandoFunction<'ast> {
     properties: FxHashSet<&'ast str>,
 }
 
-impl<'semantic> Transformer<'semantic> {
-    pub(super) fn report_expando_assignments<'ast>(
+impl<'ast> Transformer<'_, 'ast> {
+    pub(super) fn report_expando_assignments(
         &mut self,
         statements: SubRange<Stmt>,
         context: DeclContext,

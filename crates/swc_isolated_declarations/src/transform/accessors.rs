@@ -32,8 +32,8 @@ struct AccessorSignatureAnnotations {
     setter: Option<swc_next_ecma_ast::TsTypeAnnotation>,
 }
 
-impl<'semantic> Transformer<'semantic> {
-    pub(super) fn collect_accessor_annotations<'ast>(
+impl<'ast> Transformer<'_, 'ast> {
+    pub(super) fn collect_accessor_annotations(
         &mut self,
         elements: swc_next_ecma_ast::SubRange<ClassElement>,
         ast: &mut Ast<'ast>,
@@ -64,7 +64,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn resolve_accessor_pair(
         &mut self,
         pair: crate::surface::AccessorPair,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> AccessorAnnotations {
         let getter_explicit = pair.getter_annotation(ast);
         let setter_explicit = pair.setter_annotation(ast);
@@ -84,7 +84,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    pub(super) fn accessor_annotation<'map, 'ast>(
+    pub(super) fn accessor_annotation<'map>(
         &self,
         property: PropertyKey,
         is_static: bool,
@@ -115,7 +115,7 @@ impl<'semantic> Transformer<'semantic> {
     pub(super) fn transform_type_accessor_elements(
         &self,
         elements: swc_next_ecma_ast::SubRange<TsTypeElement>,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let mut annotations = FxHashMap::default();
 
@@ -192,7 +192,7 @@ impl<'semantic> Transformer<'semantic> {
         }
     }
 
-    pub(super) fn accessor_key<'ast>(
+    pub(super) fn accessor_key(
         &self,
         key: PropertyKey,
         r#static: bool,

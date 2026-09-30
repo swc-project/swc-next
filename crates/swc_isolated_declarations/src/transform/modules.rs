@@ -15,12 +15,12 @@ pub(super) enum ModuleScopeKind {
     Global,
 }
 
-impl<'semantic> Transformer<'semantic> {
+impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn transform_module_body(
         &mut self,
         body: Option<swc_next_ecma_ast::TsModuleBody>,
         ambient: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let Some(body) = body else {
             return;
@@ -51,7 +51,7 @@ impl<'semantic> Transformer<'semantic> {
         block: swc_next_ecma_ast::TsModuleBlock,
         context: DeclContext,
         scope: ModuleScopeKind,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) {
         let statements = self.transform_statements(block.body(ast), context, ast);
         let statements = self.normalize_module_statements(statements, scope, ast);
@@ -63,7 +63,7 @@ impl<'semantic> Transformer<'semantic> {
         &self,
         mut statements: Vec<Stmt>,
         scope: ModuleScopeKind,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> Vec<Stmt> {
         if scope == ModuleScopeKind::Global {
             return statements;
@@ -126,7 +126,7 @@ impl<'semantic> Transformer<'semantic> {
             .collect()
     }
 
-    pub(super) fn transform_import(&self, import: ImportDeclaration, ast: &mut Ast<'_>) -> bool {
+    pub(super) fn transform_import(&self, import: ImportDeclaration, ast: &mut Ast<'ast>) -> bool {
         let specifiers = import.specifiers(ast);
         if specifiers.is_empty() {
             return true;
@@ -147,7 +147,7 @@ impl<'semantic> Transformer<'semantic> {
     fn import_specifier_is_used(
         &self,
         specifier: ImportDeclarationSpecifier,
-        ast: &Ast<'_>,
+        ast: &Ast<'ast>,
     ) -> bool {
         let binding = match ast.import_declaration_specifier_data(specifier) {
             ImportDeclarationSpecifierData::ImportSpecifier(specifier) => specifier.local(ast),
@@ -161,7 +161,7 @@ impl<'semantic> Transformer<'semantic> {
         self.binding_is_used(binding)
     }
 
-    pub(super) fn ensure_module_marker<'ast>(
+    pub(super) fn ensure_module_marker(
         &self,
         mut body: Vec<Stmt>,
         ast: &mut Ast<'ast>,
@@ -206,7 +206,7 @@ impl<'semantic> Transformer<'semantic> {
         body
     }
 
-    fn empty_export_marker(&self, ast: &mut Ast<'_>) -> Stmt {
+    fn empty_export_marker(&self, ast: &mut Ast<'ast>) -> Stmt {
         ast.stmt_export_named_declaration(
             Span::new(0, 0),
             None,

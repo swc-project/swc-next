@@ -11,12 +11,12 @@ use super::diagnostics::{
     OBJECT_SPREAD_NOT_SUPPORTED,
 };
 
-impl<'semantic> Transformer<'semantic> {
+impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn infer_object_type(
         &mut self,
         object: swc_next_ecma_ast::ObjectExpression,
         is_const: bool,
-        ast: &mut Ast<'_>,
+        ast: &mut Ast<'ast>,
     ) -> TsType {
         let span = object.span(ast);
         let properties = object.properties(ast);
