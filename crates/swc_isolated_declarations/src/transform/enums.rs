@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use rustc_hash::FxHashMap;
 use swc_next_allocator::wtf8::Wtf8Buf;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, Diagnostic, Expr, ExprData, GetSpan, PropertyKeyData, SymbolId,
+    Ast, AstWtf8, BinaryOperator, Diagnostic, Expr, ExprData, GetSpan, PropertyKeyData, SymbolId,
     TsEnumDeclaration, UnaryOperator,
 };
 use swc_next_ecma_semantic::Semantic;
@@ -13,24 +13,47 @@ use swc_next_ecma_semantic::Semantic;
 const CONST_ENUM_INITIALIZER_NOT_CONSTANT: &str =
     "const enum member initializers must be constant expressions.";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum ConstantValue {
     Number(f64),
-    String(Wtf8Buf),
+    String(AstWtf8),
 }
 
 impl ConstantValue {
-    fn to_expression(&self, span: swc_next_ecma_ast::Span, ast: &mut Ast<'_>) -> Expr {
+    fn to_expression(self, span: swc_next_ecma_ast::Span, ast: &mut Ast<'_>) -> Expr {
         match self {
-            Self::Number(value) => ast.expr_numeric_literal(span, *value, None),
-            Self::String(value) => {
-                let value = ast.add_wtf8(value);
-                ast.expr_string_literal(span, value, ast.empty_utf8())
-            }
+            Self::Number(value) => ast.expr_numeric_literal(span, value, None),
+            Self::String(value) => ast.expr_string_literal(span, value, ast.empty_utf8()),
+        }
+    }
+}
+
+enum EvaluatedValue {
+    Number(f64),
+    StoredString(AstWtf8),
+    ComputedString(Wtf8Buf),
+}
+
+impl From<ConstantValue> for EvaluatedValue {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Number(value) => Self::Number(value),
+            ConstantValue::String(value) => Self::StoredString(value),
+        }
+    }
+}
+
+impl EvaluatedValue {
+    // Commit synthesized strings once; subsequent members reuse the AST pool handle.
+    fn into_constant(self, ast: &mut Ast<'_>) -> ConstantValue {
+        match self {
+            Self::Number(value) => ConstantValue::Number(value),
+            Self::StoredString(value) => ConstantValue::String(value),
+            Self::ComputedString(value) => ConstantValue::String(ast.add_wtf8(&value)),
         }
     }
 
-    fn append_to(self, output: &mut Wtf8Buf) {
+    fn append_to(self, output: &mut Wtf8Buf, ast: &Ast<'_>) {
         match self {
             Self::Number(value) if value.is_nan() => output.push_str("NaN"),
             Self::Number(value) if value == f64::INFINITY => output.push_str("Infinity"),
@@ -39,7 +62,8 @@ impl ConstantValue {
                 let mut buffer = zmij_ecma::Buffer::new();
                 output.push_str(buffer.format(value));
             }
-            Self::String(value) => output.push_wtf8(&value),
+            Self::StoredString(value) => output.push_wtf8(ast.get_wtf8(value)),
+            Self::ComputedString(value) => output.push_wtf8(&value),
         }
     }
 }
@@ -70,16 +94,15 @@ pub(super) fn transform_enum(
                 value
             }
             None if ambient && !is_const => None,
-            None => previous_number.map(|value| ConstantValue::Number(value + 1.0)),
+            None => previous_number.map(|value| EvaluatedValue::Number(value + 1.0)),
         };
+        let value = value.map(|value| value.into_constant(ast));
 
-        previous_number = match &value {
-            Some(ConstantValue::Number(value)) => Some(*value),
+        previous_number = match value {
+            Some(ConstantValue::Number(value)) => Some(value),
             _ => None,
         };
-        let initializer = value
-            .as_ref()
-            .map(|value| value.to_expression(member.span(ast), ast));
+        let initializer = value.map(|value| value.to_expression(member.span(ast), ast));
         if let Some(value) = value
             && let Some(symbol) = semantic.symbol_of(member.node_id())
         {
@@ -94,17 +117,18 @@ fn evaluate(
     semantic: &Semantic<'_>,
     previous_members: &FxHashMap<SymbolId, ConstantValue>,
     ast: &Ast<'_>,
-) -> Option<ConstantValue> {
+) -> Option<EvaluatedValue> {
     match ast.expr_data(crate::surface::unparenthesized(expression, ast)) {
-        ExprData::StringLiteral(literal) => Some(ConstantValue::String(
-            ast.get_wtf8(literal.value(ast)).to_owned(),
-        )),
-        ExprData::NumericLiteral(literal) => Some(ConstantValue::Number(literal.value(ast))),
+        ExprData::StringLiteral(literal) => Some(EvaluatedValue::StoredString(literal.value(ast))),
+        ExprData::NumericLiteral(literal) => Some(EvaluatedValue::Number(literal.value(ast))),
         ExprData::TemplateLiteral(template) => {
             let mut quasis = template.quasis(ast).iter();
             let first = ast.get_node_in_sub_range(quasis.next()?);
             if first.is_cooked_undefined(ast) {
                 return None;
+            }
+            if template.expressions(ast).is_empty() {
+                return Some(EvaluatedValue::StoredString(first.cooked(ast)));
             }
             let mut value = ast.get_wtf8(first.cooked(ast)).to_owned();
 
@@ -115,7 +139,7 @@ fn evaluate(
                     previous_members,
                     ast,
                 )?
-                .append_to(&mut value);
+                .append_to(&mut value, ast);
                 let quasi = ast.get_node_in_sub_range(quasi);
                 if quasi.is_cooked_undefined(ast) {
                     return None;
@@ -123,7 +147,7 @@ fn evaluate(
                 value.push_wtf8(ast.get_wtf8(quasi.cooked(ast)));
             }
 
-            Some(ConstantValue::String(value))
+            Some(EvaluatedValue::ComputedString(value))
         }
         ExprData::UnaryExpression(unary) => {
             let value = evaluate(unary.argument(ast), semantic, previous_members, ast)?;
@@ -132,39 +156,39 @@ fn evaluate(
         ExprData::BinaryExpression(binary) => {
             let left = evaluate(binary.left(ast), semantic, previous_members, ast)?;
             let right = evaluate(binary.right(ast), semantic, previous_members, ast)?;
-            evaluate_binary(binary.operator(ast), left, right)
+            evaluate_binary(binary.operator(ast), left, right, ast)
         }
         ExprData::IdentifierReference(identifier) => {
             if let Some(symbol) = resolve_symbol(expression, semantic, ast) {
-                return previous_members.get(&symbol).cloned();
+                return previous_members.get(&symbol).copied().map(Into::into);
             }
             let reference = semantic.reference_of(identifier.node_id())?;
             if semantic.reference(reference).symbol.is_some() {
                 return None;
             }
             match ast.get_utf8(identifier.name(ast)) {
-                "Infinity" => Some(ConstantValue::Number(f64::INFINITY)),
-                "NaN" => Some(ConstantValue::Number(f64::NAN)),
+                "Infinity" => Some(EvaluatedValue::Number(f64::INFINITY)),
+                "NaN" => Some(EvaluatedValue::Number(f64::NAN)),
                 _ => None,
             }
         }
         ExprData::MemberExpression(_) => {
             let symbol = resolve_symbol(expression, semantic, ast)?;
-            previous_members.get(&symbol).cloned()
+            previous_members.get(&symbol).copied().map(Into::into)
         }
         _ => None,
     }
 }
 
-fn evaluate_unary(operator: UnaryOperator, value: ConstantValue) -> Option<ConstantValue> {
+fn evaluate_unary(operator: UnaryOperator, value: EvaluatedValue) -> Option<EvaluatedValue> {
     let value = match value {
-        ConstantValue::Number(value) => value,
-        ConstantValue::String(_) => return None,
+        EvaluatedValue::Number(value) => value,
+        EvaluatedValue::StoredString(_) | EvaluatedValue::ComputedString(_) => return None,
     };
     match operator {
-        UnaryOperator::Negate => Some(ConstantValue::Number(-value)),
-        UnaryOperator::Positive => Some(ConstantValue::Number(value)),
-        UnaryOperator::BitwiseNot => Some(ConstantValue::Number(f64::from(!to_int32(value)))),
+        UnaryOperator::Negate => Some(EvaluatedValue::Number(-value)),
+        UnaryOperator::Positive => Some(EvaluatedValue::Number(value)),
+        UnaryOperator::BitwiseNot => Some(EvaluatedValue::Number(f64::from(!to_int32(value)))),
         UnaryOperator::LogicalNot
         | UnaryOperator::Typeof
         | UnaryOperator::Void
@@ -174,22 +198,24 @@ fn evaluate_unary(operator: UnaryOperator, value: ConstantValue) -> Option<Const
 
 fn evaluate_binary(
     operator: BinaryOperator,
-    left: ConstantValue,
-    right: ConstantValue,
-) -> Option<ConstantValue> {
+    left: EvaluatedValue,
+    right: EvaluatedValue,
+    ast: &Ast<'_>,
+) -> Option<EvaluatedValue> {
     if operator == BinaryOperator::Add
-        && (matches!(left, ConstantValue::String(_)) || matches!(right, ConstantValue::String(_)))
+        && (!matches!(left, EvaluatedValue::Number(_))
+            || !matches!(right, EvaluatedValue::Number(_)))
     {
         let mut value = Wtf8Buf::new();
-        left.append_to(&mut value);
-        right.append_to(&mut value);
-        return Some(ConstantValue::String(value));
+        left.append_to(&mut value, ast);
+        right.append_to(&mut value, ast);
+        return Some(EvaluatedValue::ComputedString(value));
     }
 
-    let ConstantValue::Number(left) = left else {
+    let EvaluatedValue::Number(left) = left else {
         return None;
     };
-    let ConstantValue::Number(right) = right else {
+    let EvaluatedValue::Number(right) = right else {
         return None;
     };
     let value = match operator {
@@ -216,7 +242,7 @@ fn evaluate_binary(
         | BinaryOperator::In
         | BinaryOperator::Instanceof => return None,
     };
-    Some(ConstantValue::Number(value))
+    Some(EvaluatedValue::Number(value))
 }
 
 fn to_uint32(value: f64) -> u32 {
