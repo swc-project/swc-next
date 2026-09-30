@@ -44,6 +44,20 @@ impl ArrowLayout {
     }
 }
 
+pub(super) enum RecordedArrow<'a> {
+    Verbatim(Fragment<'a>),
+    Formatted(FormattedRecordedArrow<'a>),
+}
+
+pub(super) struct FormattedRecordedArrow<'a> {
+    pub(super) signature: Fragment<'a>,
+    pub(super) independent_signature: bool,
+    pub(super) body: RecordedGroup<'a>,
+    pub(super) body_layout: ArrowBodyLayout,
+    pub(super) normal: Fragment<'a>,
+    pub(super) tail: Option<ExpressionTail<'a>>,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ArrowBodyLayout {
     Hug,
@@ -246,6 +260,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn source_formatted_arrow(
         &self,
         head: FormattedArrowHead<'ast>,
+        prepared_body: Option<PreparedArrowBody>,
     ) -> Result<FormattedSourceArrow<'ast>, FormatError> {
         let FormattedArrowHead {
             arrow,
@@ -258,7 +273,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             before_count,
         } = head;
         let (before, leading) = comments.split_at(before_count);
-        let body = self.prepare_arrow_body(body);
+        let body = prepared_body.unwrap_or_else(|| self.prepare_arrow_body(body));
         let (mode, first_statement, trailing_constraint) = match &body {
             PreparedArrowBody::FunctionBody(body) if self.has_suppression => {
                 let modes = self.signature_body_modes(
@@ -382,7 +397,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_verbatim_arrow(source, context, writer)?;
                 return Ok(None);
             }
-            SourceArrow::Formatted(head) => self.source_formatted_arrow(head)?,
+            SourceArrow::Formatted(head) => self.source_formatted_arrow(head, None)?,
         };
         if let Some(child) = source.next.take() {
             let chain = self.record_arrow_chain(source, child, context, writer)?;
@@ -472,6 +487,75 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
     }
 
+    pub(super) fn record_arrow(
+        &mut self,
+        source: SourceArrow<'ast>,
+        prepared_body: Option<PreparedArrowBody>,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedArrow<'ast>, FormatError> {
+        let mut source = match source {
+            SourceArrow::Verbatim(source) => {
+                let (value, ()) = writer.record_with_value(|writer| {
+                    self.format_verbatim_arrow(source, context, writer)
+                })?;
+                return Ok(RecordedArrow::Verbatim(value));
+            }
+            SourceArrow::Formatted(head) => self.source_formatted_arrow(head, prepared_body)?,
+        };
+        let Some(first_child) = source.next.take() else {
+            let independent_signature = !source.parameters.has_parameters();
+            let (signature, source_body) = writer
+                .record_with_value(|writer| self.format_arrow_head(source, context, writer))?;
+            let body_layout = source_body.layout();
+            let (body, tail) = writer.record_group_with_value(|writer| {
+                self.format_arrow_body_content(source_body, writer)
+            })?;
+            let (normal, ()) = writer.record_with_value(|writer| {
+                writer.group(false, |writer| {
+                    writer.write_fragment(signature);
+                    writer.write_fragment(if body_layout == ArrowBodyLayout::Hug {
+                        body.contents()
+                    } else {
+                        body.grouped()
+                    });
+                });
+                Ok::<_, FormatError>(())
+            })?;
+            return Ok(RecordedArrow::Formatted(FormattedRecordedArrow {
+                signature,
+                independent_signature,
+                body,
+                body_layout,
+                normal,
+                tail,
+            }));
+        };
+        let chain = self.record_arrow_chain(source, first_child, context, writer)?;
+        let (signature, ()) = writer.record_with_value(|writer| {
+            for link in std::iter::once(&chain.first).chain(&chain.rest) {
+                writer.write_fragment(link.signature);
+                if let Some(following) = link.following {
+                    writer.write_fragment(following);
+                }
+            }
+            writer.text("=>");
+            Ok::<_, FormatError>(())
+        })?;
+        let (normal, ()) = writer.record_with_value(|writer| {
+            chain.write(context.arrow_layout, writer);
+            Ok::<_, FormatError>(())
+        })?;
+        Ok(RecordedArrow::Formatted(FormattedRecordedArrow {
+            signature,
+            independent_signature: false,
+            body: chain.body,
+            body_layout: chain.body_layout,
+            normal,
+            tail: chain.tail,
+        }))
+    }
+
     fn record_arrow_chain(
         &mut self,
         mut source: FormattedSourceArrow<'ast>,
@@ -492,7 +576,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .parentheses
                 .map(|boundary| self.prepare_arrow_link_tail(boundary)),
         };
-        source = self.source_formatted_arrow(first_child.head)?;
+        source = self.source_formatted_arrow(first_child.head, None)?;
         let mut links = Vec::new();
         let (body, tail, body_layout) = loop {
             should_break |= self.arrow_chain_breaks(&source);
@@ -515,7 +599,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .parentheses
                         .map(|boundary| self.prepare_arrow_link_tail(boundary)),
                 });
-                source = self.source_formatted_arrow(child.head)?;
+                source = self.source_formatted_arrow(child.head, None)?;
             } else {
                 source_body.flat_conditional_pair &= !should_break;
                 let body_layout = source_body.layout();

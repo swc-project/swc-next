@@ -14,6 +14,30 @@ pub(super) enum ArrowParameterParentheses {
     Optional,
     Required,
 }
+/// Shape requested only while recording a sole last Function callback.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum CallbackParameterShape {
+    Identifiers,
+    Other,
+}
+
+impl CallbackParameterShape {
+    fn include(&mut self, parameter: RuntimeParameter, ast: &Ast<'_>) {
+        if *self == Self::Other {
+            return;
+        }
+        let identifier = matches!(parameter,
+            RuntimeParameter::Formal(node)
+                if node.type_annotation(ast).is_none()
+                    && node.initializer(ast).is_none()
+                    && matches!(ast.formal_parameter_pattern_data(node.pattern(ast)),
+                        FormalParameterPatternData::BindingIdentifier(_)));
+        if !identifier {
+            *self = Self::Other;
+        }
+    }
+}
+
 enum ParameterRole {
     Arrow(ArrowParameterParentheses),
     Function,
@@ -220,6 +244,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         parameters: SourceParameters,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_source_parameters_with_shape(parameters, None, writer)
+    }
+    pub(super) fn format_source_parameters_with_shape(
+        &mut self,
+        parameters: SourceParameters,
+        mut callback_shape: Option<&mut CallbackParameterShape>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
         let SourceParameters {
             node,
@@ -279,6 +311,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut following_mode =
                     (leading_mode == ContentMode::Verbatim).then_some(leading_mode);
                 while let Some(parameter) = next {
+                    if let Some(shape) = callback_shape.as_deref_mut() {
+                        shape.include(parameter, ast);
+                    }
                     next = parameters.next().transpose()?;
                     let span = parameter.span(ast);
                     if has_previous {
