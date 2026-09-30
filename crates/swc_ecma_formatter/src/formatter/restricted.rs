@@ -22,18 +22,30 @@ enum ArgumentEnvelope {
     Required,
 }
 
-impl ArgumentEnvelope {
-    fn argument_context(self, mode: ContentMode) -> ExpressionContext {
-        let indent = match self {
-            Self::Inline => OperandIndent::Expression,
-            _ => OperandIndent::Parent,
+#[derive(Clone, Copy)]
+enum RestrictedGrammar {
+    ReturnOrThrow,
+    Yield,
+}
+
+impl RestrictedGrammar {
+    fn argument_context(self, envelope: ArgumentEnvelope, mode: ContentMode) -> ExpressionContext {
+        let position = match self {
+            Self::ReturnOrThrow => ExpressionPosition::RestrictedArgument,
+            Self::Yield => ExpressionPosition::YieldArgument,
         };
-        let context = ExpressionContext::at(ExpressionPosition::RestrictedArgument)
+        let indent = match envelope {
+            ArgumentEnvelope::Inline => OperandIndent::Expression,
+            ArgumentEnvelope::Source | ArgumentEnvelope::Breakable | ArgumentEnvelope::Required => {
+                OperandIndent::Parent
+            }
+        };
+        let context = ExpressionContext::at(position)
             .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_operand_indent(indent)
             .with_content_mode(mode)
             .with_tail_owner(TailOwner::ParentOperation);
-        if matches!(self, Self::Required) {
+        if matches!(envelope, ArgumentEnvelope::Required) {
             context.inside_parentheses()
         } else {
             context
@@ -108,6 +120,7 @@ struct RestrictedArgument<'ast> {
     mode: ContentMode,
     envelope: ArgumentEnvelope,
     closing: LineConstraint,
+    grammar: RestrictedGrammar,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -115,6 +128,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         keyword_end: u32,
         argument: Expr,
+        write_keyword: impl FnOnce(&mut Writer<'ast>),
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_restricted_operand(
+            keyword_end,
+            argument,
+            RestrictedGrammar::ReturnOrThrow,
+            write_keyword,
+            writer,
+        )
+    }
+    pub(super) fn format_yield_argument(
+        &mut self,
+        keyword_end: u32,
+        argument: Expr,
+        write_keyword: impl FnOnce(&mut Writer<'ast>),
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_restricted_operand(
+            keyword_end,
+            argument,
+            RestrictedGrammar::Yield,
+            write_keyword,
+            writer,
+        )
+    }
+    fn format_restricted_operand(
+        &mut self,
+        keyword_end: u32,
+        argument: Expr,
+        grammar: RestrictedGrammar,
         write_keyword: impl FnOnce(&mut Writer<'ast>),
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -134,7 +178,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ArgumentEnvelope::Inline
             }
         } else {
-            let lexical_head = self.restricted_lexical_head(argument)?;
+            let lexical_head = self.restricted_lexical_head(argument, grammar)?;
             let leading_requires_envelope =
                 self.restricted_head_requires_envelope(leading, span.start);
             if lexical_head.requires_envelope {
@@ -165,6 +209,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             envelope,
             closing: self.line_constraint(span.end, span.end),
+            grammar,
         };
         write_keyword(writer);
         self.format_restricted_expression(prepared, writer)
@@ -179,7 +224,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &prepared,
             |formatter, content_start, writer| {
                 formatter.comments.claim(prepared.head.comments)?;
-                let context = prepared.envelope.argument_context(prepared.mode);
+                let context = prepared
+                    .grammar
+                    .argument_context(prepared.envelope, prepared.mode);
                 formatter.format_expression_with_leading_comments(
                     prepared.argument,
                     NodeHead {
@@ -284,6 +331,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn restricted_lexical_head(
         &self,
         mut expression: Expr,
+        grammar: RestrictedGrammar,
     ) -> Result<RestrictedHeadFacts, FormatError> {
         let mut comments =
             RestrictedHeadComments::new(self.ast.comments(), expression.span(self.ast));
@@ -293,7 +341,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 requires_envelope: false,
             });
         }
-        let mut context = ExpressionContext::at(ExpressionPosition::RestrictedArgument);
+        let mut context = ExpressionContext::at(match grammar {
+            RestrictedGrammar::ReturnOrThrow => ExpressionPosition::RestrictedArgument,
+            RestrictedGrammar::Yield => ExpressionPosition::YieldArgument,
+        });
         let mut requires_envelope = false;
         loop {
             comments.before(expression.span(self.ast).end);
@@ -320,7 +371,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     child
                 }
                 ExprData::MemberExpression(member) => {
-                    if !member.computed(self.ast) {
+                    if matches!(grammar, RestrictedGrammar::ReturnOrThrow)
+                        && !member.computed(self.ast)
+                    {
                         let gap = Span::new(
                             member.object(self.ast).span(self.ast).end,
                             member.property(self.ast).span(self.ast).start,

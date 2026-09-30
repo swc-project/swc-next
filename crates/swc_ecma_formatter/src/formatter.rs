@@ -12,7 +12,7 @@ mod source;
 mod statements;
 mod suppression;
 
-use swc_next_ecma_ast::{Ast, GetSpan, Span, StmtData};
+use swc_next_ecma_ast::{Ast, AwaitExpression, GetSpan, Span, StmtData};
 
 use self::comments::CommentCursor;
 use self::statements::{StatementItem, StatementSequenceKind};
@@ -27,6 +27,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     has_target_annotations: bool,
     has_type_casts: bool,
     has_file_directives: bool,
+    enclosing_await: Option<AwaitExpression>,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -43,6 +44,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             has_target_annotations: false,
             has_type_casts: false,
             has_file_directives: false,
+            enclosing_await: None,
         };
         for &comment in ast.comments() {
             if !formatter.has_type_casts {

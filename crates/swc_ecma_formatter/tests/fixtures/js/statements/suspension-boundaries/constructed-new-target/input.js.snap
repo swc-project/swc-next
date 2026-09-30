@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function F(value) { return () => [new /* meta */ . /* property */ target === F, arguments[0]]; }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function F(value) {
+  return () => [
+    new /* meta */. /* property */target ===
+      F,
+    arguments[0],
+  ];
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function F(value) {
+  return () => [
+    new /* meta */. /* property */target ===
+      F,
+    arguments[0],
+  ]
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function F(value) {
+  return () => [new /* meta */. /* property */target === F, arguments[0]];
+}

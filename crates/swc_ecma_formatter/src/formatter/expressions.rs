@@ -12,6 +12,7 @@ mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;
 mod sequence;
+mod suspension;
 mod targets;
 mod unary;
 
@@ -36,6 +37,8 @@ pub(super) enum ExpressionPosition {
     Nested,
     ArrowBody,
     RestrictedArgument,
+    YieldArgument,
+    AwaitArgument,
     PropertyValue,
     SpreadArgument,
     MemberObject,
@@ -171,6 +174,15 @@ pub(super) struct ExpressionContext {
 }
 
 impl ExpressionContext {
+    fn is_call_or_member_receiver(self) -> bool {
+        matches!(
+            self.position,
+            ExpressionPosition::MemberObject
+                | ExpressionPosition::MemberAssignmentObject
+                | ExpressionPosition::CallCallee
+        )
+    }
+
     pub(super) fn is_verbatim(self) -> bool {
         self.content_mode == ContentMode::Verbatim
     }
@@ -220,7 +232,9 @@ impl ExpressionContext {
                 ExpressionPosition::AssignmentRight(_)
                 | ExpressionPosition::Initializer(_)
                 | ExpressionPosition::UnaryArgument(_)
-                | ExpressionPosition::RestrictedArgument => ConditionalEnvelope::ContinuationRoot,
+                | ExpressionPosition::RestrictedArgument
+                | ExpressionPosition::AwaitArgument
+                | ExpressionPosition::YieldArgument => ConditionalEnvelope::ContinuationRoot,
                 _ => ConditionalEnvelope::Local,
             },
             source_parentheses_tail: None,
@@ -480,6 +494,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(child) = BinaryOperatorKind::from_data(data, self.ast) {
             return Some(match position {
                 ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::AwaitArgument
                 | ExpressionPosition::SpreadArgument
                 | ExpressionPosition::CallCallee
                 | ExpressionPosition::NewCallee
@@ -514,6 +529,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 position,
                 ExpressionPosition::UnaryArgument(_)
                     | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                    | ExpressionPosition::AwaitArgument
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::MemberObject
                     | ExpressionPosition::MemberAssignmentObject
@@ -521,6 +537,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::NewCallee
                     | ExpressionPosition::ConditionalTest
             )),
+            ExprData::AwaitExpression(_) | ExprData::YieldExpression(_) => Some(
+                matches!(
+                    position,
+                    ExpressionPosition::UnaryArgument(_)
+                        | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                        | ExpressionPosition::BinaryOperand { .. }
+                        | ExpressionPosition::SpreadArgument
+                        | ExpressionPosition::MemberObject
+                        | ExpressionPosition::MemberAssignmentObject
+                        | ExpressionPosition::CallCallee
+                        | ExpressionPosition::NewCallee
+                        | ExpressionPosition::ConditionalTest
+                ) || matches!(data, ExprData::YieldExpression(_))
+                    && matches!(position, ExpressionPosition::AwaitArgument),
+            ),
+            ExprData::MetaProperty(_) => Some(false),
             ExprData::Function(_) => Some(matches!(
                 position,
                 ExpressionPosition::CallCallee | ExpressionPosition::NewCallee
@@ -534,6 +566,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 position,
                 ExpressionPosition::UnaryArgument(_)
                     | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                    | ExpressionPosition::AwaitArgument
                     | ExpressionPosition::SpreadArgument
                     | ExpressionPosition::BinaryOperand { .. }
                     | ExpressionPosition::ConditionalTest
@@ -677,6 +710,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
             ExprData::ThisExpression(_) => writer.text("this"),
+            ExprData::AwaitExpression(node) => return self.format_await(node, context, writer),
+            ExprData::YieldExpression(node) => return self.format_yield(node, writer),
+            ExprData::MetaProperty(node) => {
+                self.format_meta_property(node, writer)?;
+            }
             ExprData::Function(function) => {
                 self.format_function(function, writer)?;
             }
