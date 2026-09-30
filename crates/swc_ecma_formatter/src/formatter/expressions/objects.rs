@@ -943,6 +943,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::UnaryExpression(unary) => {
                     self.expression_content(unary.argument(self.ast)).data
                 }
+                ExprData::AwaitExpression(node) => {
+                    self.expression_content(node.argument(self.ast)).data
+                }
+                ExprData::YieldExpression(node) => {
+                    let Some(argument) = node.argument(self.ast) else {
+                        return ComputedKeyScope::Text;
+                    };
+                    self.expression_content(argument).data
+                }
                 ExprData::UpdateExpression(update) => {
                     match self
                         .ast
@@ -956,6 +965,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::IdentifierReference(_)
                 | ExprData::ThisExpression(_)
+                | ExprData::MetaProperty(_)
                 | ExprData::StringLiteral(_)
                 | ExprData::NumericLiteral(_)
                 | ExprData::BigIntLiteral(_)

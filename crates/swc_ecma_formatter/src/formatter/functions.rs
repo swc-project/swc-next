@@ -108,7 +108,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let start = function.span(ast).start;
         let name = function.id(ast);
         let head_end = name.map_or(header_start, |name| name.span(ast).start);
-        let keyword_end = start + 8;
+        let function_start = if function.r#async(ast) {
+            let gap = Span::new(start + 5, head_end);
+            let comments = self.comments.in_range(gap);
+            let Some(token) = self.find_token(gap, comments, "function") else {
+                return Err(self.unsupported("async function keyword boundary", function));
+            };
+            Some(token)
+        } else {
+            None
+        };
+        let keyword_end = function_start.unwrap_or(start) + 8;
+        let star = if function.generator(ast) {
+            let gap = Span::new(keyword_end, head_end);
+            let comments = self.comments.in_range(gap);
+            let Some(token) = self.find_token(gap, comments, "*") else {
+                return Err(self.unsupported("generator star boundary", function));
+            };
+            Some(token)
+        } else {
+            None
+        };
+        let header_end = star.map_or(keyword_end, |star| star + 1);
         let mut name_modes = match name {
             Some(name) => self.function_name_modes(Span::new(name.span(ast).end, header_start)),
             None => FunctionNameModes {
@@ -136,8 +157,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             name_modes.name = ContentMode::Verbatim;
         }
+        if let Some(function_start) = function_start {
+            writer.text("async");
+            self.format_source_token_gap(start + 5, function_start, true, writer)?;
+        }
         writer.text("function");
-        self.format_source_token_gap(keyword_end, head_end, true, writer)?;
+        if let Some(star) = star {
+            self.format_source_token_gap(keyword_end, star, false, writer)?;
+            writer.text("*");
+        }
+        self.format_source_token_gap(header_end, head_end, true, writer)?;
         if let Some(name) = name {
             let span = name.span(ast);
             if name_modes.name == ContentMode::Verbatim {
@@ -177,9 +206,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         function: Function,
     ) -> Result<SourceFunctionSignature<'ast>, FormatError> {
         let ast = self.ast;
-        if function.r#async(ast) || function.generator(ast) {
-            return Err(self.unsupported("async or generator function", function));
-        }
         if function.this_param(ast).is_some()
             || function.return_type(ast).is_some()
             || function.type_parameters(ast).is_some()

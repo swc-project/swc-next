@@ -689,6 +689,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::ConditionalTest
                         | ExpressionPosition::ArrowBody
                         | ExpressionPosition::RestrictedArgument
+                        | ExpressionPosition::AwaitArgument
+                        | ExpressionPosition::YieldArgument
                         | ExpressionPosition::MemberObject
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee
