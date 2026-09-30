@@ -1,6 +1,19 @@
 use super::*;
 use crate::binder::{TsImportAliasIssue, TsNamespaceExportAliasIssue};
 
+pub(super) fn check_method_definition(
+    builder: &mut SemanticBuilder<'_, '_>,
+    method: MethodDefinition,
+) {
+    if method.r#abstract(builder.ast) {
+        builder.report(
+            builder.ast.span(method.node_id()),
+            "An abstract method cannot have an implementation",
+            ReportOptions::default(),
+        );
+    }
+}
+
 pub(super) fn check_ts_alias_issues(
     builder: &mut SemanticBuilder<'_, '_>,
     export_alias_issues: impl IntoIterator<Item = TsNamespaceExportAliasIssue>,

@@ -1,6 +1,68 @@
 use super::*;
 
 #[track_caller]
+fn assert_method_syntax_diagnostics(source: &str, expected: usize) {
+    let allocator = Allocator::new();
+    let parse = Parser::init(&allocator, source, ts_module_options(), NoTokenParserConfig).parse();
+    assert!(parse.diagnostics.is_empty());
+    assert_eq!(parse.ast.root_program().body(&parse.ast).len(), 1);
+
+    for check_syntax in [false, true] {
+        let result = analyze(
+            &parse.ast,
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
+        );
+        assert_eq!(
+            result.diagnostics.len(),
+            if check_syntax { expected } else { 0 }
+        );
+    }
+}
+
+#[test]
+fn abstract_methods() {
+    assert_method_syntax_diagnostics("abstract class A { abstract m() {} }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract async m() {} }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract *m() {} }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract async *m() {} }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract ['m']() {} }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract m(): void; }", 0);
+
+    assert_method_syntax_diagnostics("abstract class A { m() {} }", 0);
+
+    assert_method_syntax_diagnostics("class A { async m() {} }", 0);
+
+    assert_method_syntax_diagnostics("class A { *m() {} }", 0);
+
+    assert_method_syntax_diagnostics("class A { async *m() {} }", 0);
+
+    assert_method_syntax_diagnostics("class A { abstract() {} }", 0);
+}
+
+#[test]
+fn abstract_accessors() {
+    assert_method_syntax_diagnostics("abstract class A { abstract get m() { return 1; } }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract set m(value: number) {} }", 1);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract get m(): number; }", 0);
+
+    assert_method_syntax_diagnostics("abstract class A { abstract set m(value: number); }", 0);
+
+    assert_method_syntax_diagnostics("class A { get m() { return 1; } }", 0);
+
+    assert_method_syntax_diagnostics("class A { set m(value: number) {} }", 0);
+}
+
+#[track_caller]
 fn assert_static_alias_spaces(source: &str) {
     let allocator = Allocator::new();
     for check_syntax in [false, true] {
