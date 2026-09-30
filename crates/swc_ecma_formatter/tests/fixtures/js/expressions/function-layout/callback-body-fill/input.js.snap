@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume("numbers", value => { return [1,1234567,2345678,3456789,4567890,5678901,6789012,7890123,8901234,9012345]; });
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+consume("numbers", (value) => {
+  return [
+    1, 1234567, 2345678, 3456789, 4567890, 5678901, 6789012, 7890123, 8901234,
+    9012345,
+  ];
+});
