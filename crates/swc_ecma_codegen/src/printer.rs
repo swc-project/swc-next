@@ -2893,7 +2893,9 @@ impl<'a> Printer<'a> {
         }
         let type_parameters = e.type_parameters(self.ast);
         if let Some(t) = type_parameters {
-            self.print_ts_type_params(t);
+            // Disambiguate singleton generic arrows from JSX.
+            let trailing_comma = self.ast.lang() == Lang::Tsx && t.params(self.ast).len() == 1;
+            self.print_ts_type_params_with_trailing_comma(t, trailing_comma);
         }
         let params = e.params(self.ast);
         let return_type = e.return_type(self.ast);
@@ -3909,6 +3911,14 @@ impl<'a> Printer<'a> {
     }
 
     fn print_ts_type_params(&mut self, d: TsTypeParameterDeclaration) {
+        self.print_ts_type_params_with_trailing_comma(d, false);
+    }
+
+    fn print_ts_type_params_with_trailing_comma(
+        &mut self,
+        d: TsTypeParameterDeclaration,
+        trailing_comma: bool,
+    ) {
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -3936,6 +3946,9 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print_ts_type(t, TsTypePrecedence::Lowest);
             }
+        }
+        if trailing_comma {
+            self.print(",");
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
     }

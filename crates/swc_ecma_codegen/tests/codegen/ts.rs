@@ -1,12 +1,130 @@
 use crate::{expect_printed_ts, expect_printed_ts_minify};
+use swc_next_allocator::Allocator;
+use swc_next_ecma_ast::Lang;
+use swc_next_ecma_codegen::{Options as PrintOptions, print};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+#[track_caller]
+fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &str) {
+    for preserve_parens in [false, true] {
+        let allocator = Allocator::new();
+        let parse_options = ParseOptions {
+            lang,
+            preserve_parens,
+            ..ParseOptions::default()
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+
+        for minify in [false, true] {
+            let print_options = PrintOptions {
+                minify,
+                ..PrintOptions::default()
+            };
+            let printed = print(&allocator, &original.ast, print_options.clone());
+            assert_eq!(printed.code, if minify { compact } else { pretty });
+
+            let reparsed =
+                Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+            assert!(reparsed.diagnostics.is_empty());
+            let repeated = print(&allocator, &reparsed.ast, print_options);
+            assert_eq!(repeated.code, printed.code);
+        }
+    }
+}
+
+#[test]
+fn test_tsx_generic_arrows() {
+    expect_generic_parameters(
+        "const f = <T,>(x: T) => x;",
+        Lang::Tsx,
+        "const f = <T,>(x: T) => x;\n",
+        "const f=<T,>(x:T)=>x;",
+    );
+
+    expect_generic_parameters(
+        "const f = <const T,>(x: T) => x;",
+        Lang::Tsx,
+        "const f = <const T,>(x: T) => x;\n",
+        "const f=<const T,>(x:T)=>x;",
+    );
+
+    expect_generic_parameters(
+        "const f = <T extends object>(x: T) => x;",
+        Lang::Tsx,
+        "const f = <T extends object,>(x: T) => x;\n",
+        "const f=<T extends object,>(x:T)=>x;",
+    );
+
+    expect_generic_parameters(
+        "const f = <T = string,>(x: T) => x;",
+        Lang::Tsx,
+        "const f = <T = string,>(x: T) => x;\n",
+        "const f=<T=string,>(x:T)=>x;",
+    );
+
+    expect_generic_parameters(
+        "const f = <const T extends object = {},>(x: T) => x;",
+        Lang::Tsx,
+        "const f = <const T extends object = {},>(x: T) => x;\n",
+        "const f=<const T extends object={},>(x:T)=>x;",
+    );
+
+    expect_generic_parameters(
+        "const f = async <T,>(x: T): Promise<T> => x;",
+        Lang::Tsx,
+        "const f = async <T,>(x: T): Promise<T> => x;\n",
+        "const f=async<T,>(x:T):Promise<T>=>x;",
+    );
+
+    expect_generic_parameters(
+        "const f = <T, U,>(x: T, y: U) => x;",
+        Lang::Tsx,
+        "const f = <T, U>(x: T, y: U) => x;\n",
+        "const f=<T,U>(x:T,y:U)=>x;",
+    );
+}
+
+#[test]
+fn test_generic_parameter_contexts() {
+    expect_generic_parameters(
+        "const f = <T,>(x: T) => x;",
+        Lang::Ts,
+        "const f = <T>(x: T) => x;\n",
+        "const f=<T>(x:T)=>x;",
+    );
+
+    expect_generic_parameters(
+        "function f<T,>(x: T) {}",
+        Lang::Tsx,
+        "function f<T>(x: T) {\n}\n",
+        "function f<T>(x:T){}",
+    );
+
+    expect_generic_parameters(
+        "class C<T,> {}",
+        Lang::Tsx,
+        "class C<T> {\n}\n",
+        "class C<T>{}",
+    );
+
+    expect_generic_parameters(
+        "interface I<T,> {}",
+        Lang::Tsx,
+        "interface I<T> {}\n",
+        "interface I<T>{}",
+    );
+
+    expect_generic_parameters(
+        "type F = <T,>(x: T) => T;",
+        Lang::Tsx,
+        "type F = <T>(x: T) => T;\n",
+        "type F=<T>(x:T) => T;",
+    );
+}
 
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
-    use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::Lang;
-    use swc_next_ecma_codegen::{Options as PrintOptions, print};
-    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
-
     let allocator = Allocator::new();
     let parse_options = ParseOptions {
         lang: Lang::Ts,
