@@ -24,7 +24,7 @@ Run from the workspace root.
 | Build all N-API packages | `pnpm build [--release]`                                                                                  |
 | Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build [--release]`                   |
 | Build browser package    | `pnpm build:browser [--profile wasm-release]`                                                             |
-| Assemble browser package | `node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core`                     |
+| Assemble browser package | `node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core`                 |
 | Build all WASM packages  | `pnpm build:wasm [--profile wasm-release]`                                                                |
 | Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--profile wasm-release]` |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                                   |
@@ -51,13 +51,13 @@ cases are reported separately in `{parser,codegen}_local.snap`, not Test262 tota
 Use `.js` for JavaScript or `.ts` for TypeScript local cases; the extension selects
 the parser language.
 
-| Runner    | Suites                     | Check                                                | Command                                                          |
-| --------- | -------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Parser    | Test262, TypeScript, Babel, local | Parse + semantic result matches upstream expectation | `cargo run -p testsuite --bin conformance --profile conformance` |
+| Runner    | Suites                            | Check                                                          | Command                                                          |
+| --------- | --------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Parser    | Test262, TypeScript, Babel, local | Parse + semantic result matches upstream expectation           | `cargo run -p testsuite --bin conformance --profile conformance` |
 | Codegen   | Test262, TypeScript, Babel, local | AST round trip and print idempotence in both parenthesis modes | Same as above                                                    |
-| Resolver  | SWC resolver fixtures      | Name resolution text matches `swc-conformance`       | Same as above                                                    |
-| Transform | Babel                      | Normalized output matches Babel fixtures             | `cargo run -p testsuite --bin babel_transform`                   |
-| ESTree    | Test262, TypeScript        | N-API AST matches `estree-conformance`               | `pnpm test:conformance`                                          |
+| Resolver  | SWC resolver fixtures             | Name resolution text matches `swc-conformance`                 | Same as above                                                    |
+| Transform | Babel                             | Normalized output matches Babel fixtures                       | `cargo run -p testsuite --bin babel_transform`                   |
+| ESTree    | Test262, TypeScript               | N-API AST matches `estree-conformance`                         | `pnpm test:conformance`                                          |
 
 Debug one fixture with:
 
@@ -80,12 +80,12 @@ These tests run in the existing workspace test CI without external fixtures.
 
 Use a small `input.js`/`.ts`/`.tsx` file.
 
-| Scenario                                            | Command                                                                                                          |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Parser diagnostics, tokens, AST counts              | `cargo run -p swc_next_ecma_parser --example parser -- input.js [--preserve-parens]`                             |
+| Scenario                                            | Command                                                                                                                            |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Parser diagnostics, tokens, AST counts              | `cargo run -p swc_next_ecma_parser --example parser -- input.js [--preserve-parens]`                                               |
 | Printed output, minification, escaping, parentheses | `cargo run -p swc_next_ecma_codegen --example codegen -- input.js [--minify] [--ascii-only] [--inline-script] [--preserve-parens]` |
-| Scopes, bindings, semantic diagnostics              | `cargo run -p swc_next_ecma_semantic --example semantic -- input.js`                                             |
-| Compare/profile Rspack-like pipelines               | `TARGET=<legacy\|next\|oxc> cargo run -p benchmark --release --example rspack_simulator [--features tracy]`      |
+| Scopes, bindings, semantic diagnostics              | `cargo run -p swc_next_ecma_semantic --example semantic -- input.js`                                                               |
+| Compare/profile Rspack-like pipelines               | `TARGET=<legacy\|next\|oxc> cargo run -p benchmark --release --example rspack_simulator [--features tracy]`                        |
 
 ### Adding Rust Unit Tests
 
