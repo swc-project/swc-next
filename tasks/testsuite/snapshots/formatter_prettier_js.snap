@@ -3,12 +3,12 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 216/1070 (20.19%)
-Snapshot matched: 216/1070
+Passed: 225/1070 (21.03%)
+Snapshot matched: 225/1070
 AST parity: 260/260
 AST mismatched: 0/260
 AST format errors: 0/1070
-Mismatched: 44/1070
+Mismatched: 35/1070
 Format errors: 809/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
@@ -141,7 +141,6 @@ Unsupported option sets: 19
 - js/chain-expression/issue-15785-2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/issue-15785-3.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/issue-15916.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/chain-expression/member-chain.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/tagged-template-literals.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/test-2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/test-4.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -373,8 +372,6 @@ Unsupported option sets: 19
 - js/functional-composition/functional_compose.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/functional-composition/lodash_flow.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/functional-composition/lodash_flow_right.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/functional-composition/pipe-function-calls-with-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/functional-composition/pipe-function-calls.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/functional-composition/ramda_compose.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/functional-composition/ramda_pipe.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/functional-composition/redux_compose.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -464,14 +461,10 @@ Unsupported option sets: 19
 - js/method-chain/break-last-call.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/break-last-member.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/computed-merge.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/computed.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/conditional.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/d3.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/first_long.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/fluent-configuration.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/inline_merge.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/issue-11298.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/issue-3594.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/issue-3621.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/issue-4125.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -483,7 +476,6 @@ Unsupported option sets: 19
 - js/method-chain/short-names.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/simple-args.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/square_0.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/test.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/this.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/module-string-names/module-string-names-export.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/module-string-names/module-string-names-import.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -524,7 +516,6 @@ Unsupported option sets: 19
 - js/optional-catch-binding/optional_catch_binding.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/optional-chaining/as-key.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/optional-chaining/chaining.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/optional-chaining/comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/optional-chaining/eval.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/performance/nested-real.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/preserve-line/comments.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

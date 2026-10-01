@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+source.start() /* callee */ .next // keep
+ (value).finish();
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+source
+  .start() /* callee */
+  .next // keep
+  (value)
+  .finish();

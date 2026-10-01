@@ -607,6 +607,60 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.trailing_content_mode(trailing, true)
     }
 
+    /// Resolve the real emitted head without discarding its source envelope.
+    /// Retained, ignored and grammar-owned pairs remain the chain's head owner.
+    pub(super) fn prepare_chain_parentheses_head(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        context: ExpressionContext,
+    ) -> Option<ExpressionContent> {
+        if context.content_mode != ContentMode::Formatted
+            || self.diagnostic_range_is_sensitive(parenthesized.span(self.ast))
+        {
+            return None;
+        }
+        let SourceParenthesesChoice::Content {
+            mode: ContentMode::Formatted,
+            ignored_child: None,
+        } = self.source_parentheses_choice(parenthesized, context)
+        else {
+            return None;
+        };
+        let content = self.expression_content(Expr::ParenthesizedExpression(parenthesized));
+        let removed = content.parentheses?;
+        // The source owner has selected removal. Its required generated pair
+        // may still stop the chain walk; the leading run remains outside it.
+        if matches!(removed.head.binding, CommentBinding::SourceBound) {
+            return None;
+        }
+        Some(content)
+    }
+
+    /// Only a selected formatted source envelope can expose its operand head.
+    pub(super) fn source_parentheses_head_is_removable(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        content: &ExpressionContent,
+        context: ExpressionContext,
+    ) -> bool {
+        let Some(removed) = content.parentheses else {
+            return false;
+        };
+        if context.content_mode != ContentMode::Formatted
+            || matches!(removed.head.binding, CommentBinding::SourceBound)
+            || self.diagnostic_range_is_sensitive(parenthesized.span(self.ast))
+        {
+            return false;
+        }
+        matches!(
+            self.source_parentheses_choice(parenthesized, context),
+            SourceParenthesesChoice::Content {
+                mode: ContentMode::Formatted,
+                ignored_child: None,
+            }
+        )
+    }
+
     fn source_parentheses_choice(
         &self,
         parenthesized: ParenthesizedExpression,

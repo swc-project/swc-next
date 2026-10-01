@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ source.start()).next() /* prettier-ignore */ (  value  ).finish();
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(/*#__PURE__*/ source.start())
+  .next()(/* prettier-ignore */ value)
+  .finish();
