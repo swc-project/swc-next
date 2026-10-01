@@ -33,7 +33,9 @@ fn integration() {
 fn run_fixture(input: &Path, lang: Lang) {
     let source = fs::read_to_string(input).unwrap();
     let base = input.with_extension("");
-    let expected = fs::read_to_string(base.with_extension("output.d.ts")).unwrap();
+    let expected = fs::read_to_string(base.with_extension("output.d.ts"))
+        .unwrap()
+        .replace("\r\n", "\n");
     let errors = fs::read_to_string(base.with_extension("errors.txt")).unwrap();
     let expected_diagnostics = errors
         .lines()
