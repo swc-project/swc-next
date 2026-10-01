@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function read(){return (/** @returns {string} */ function(){return 1;}.call()).next.finish();}
+---------- Options ----------
+{}
+---------- Output ----------
+function read() {
+  return /** @returns {string} */ function () {
+    return 1;
+  }
+    .call()
+    .next.finish();
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function read() {
+  return /** @returns {string} */ function () {
+    return 1
+  }
+    .call()
+    .next.finish()
+}
