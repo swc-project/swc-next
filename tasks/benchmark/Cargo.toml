@@ -10,6 +10,7 @@ tracy    = []
 
 
 [dev-dependencies]
+swc_core               = { workspace = true }
 oxc                    = { workspace = true }
 oxc_allocator          = { workspace = true }
 swc_next_allocator     = { workspace = true }
@@ -40,3 +41,7 @@ name    = "visit"
 [[bench]]
 harness = false
 name    = "semantic"
+
+[[bench]]
+harness = false
+name    = "ast_clone_gungraun"

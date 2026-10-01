@@ -1,4 +1,4 @@
-name: Gungraun Benchmarks
+name: AST Clone Comparison (temporary)
 
 on:
   pull_request:
@@ -71,19 +71,13 @@ jobs:
         run: |
           git checkout --detach "$BASE_SHA"
 
-          # Bootstrap the benchmark harness while this workflow is not on the
-          # base branch yet. Later PRs benchmark the base branch as-is.
-          if ! git cat-file -e \
-            "${BASE_SHA}:tasks/benchmark/benches/gungraun.rs" 2>/dev/null
-          then
-            git checkout "$COMPARE_SHA" -- \
-              Cargo.toml \
-              Cargo.lock \
-              tasks/benchmark/Cargo.toml \
-              tasks/benchmark/benches/gungraun.rs
-          fi
+          # Use identical comparison plumbing on both unchanged production revisions.
+          git checkout "$COMPARE_SHA" -- \
+            Cargo.lock \
+            tasks/benchmark/Cargo.toml \
+            tasks/benchmark/benches/ast_clone_gungraun.rs
 
-          cargo bench --quiet -p benchmark --bench gungraun -- \
+          cargo bench --quiet -p benchmark --bench ast_clone_gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --callgrind-args=cycle-estimation=yes \
             --callgrind-metrics=Ir,Ct \
@@ -100,7 +94,7 @@ jobs:
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
           set +e
-          cargo bench --quiet -p benchmark --bench gungraun -- \
+          cargo bench --quiet -p benchmark --bench ast_clone_gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
             --callgrind-args=cycle-estimation=yes \
@@ -217,10 +211,10 @@ jobs:
               },
               benchmark: {
                 package: "benchmark",
-                bench: "gungraun",
+                bench: "ast_clone_gungraun",
                 baseline: "base",
-                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-baseline=base",
-                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-summary=json"
+                base_command: "cargo bench --quiet -p benchmark --bench ast_clone_gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-baseline=base",
+                compare_command: "cargo bench --quiet -p benchmark --bench ast_clone_gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-summary=json"
               },
               files: {
                 data_root: "gungraun",
@@ -273,64 +267,3 @@ jobs:
             echo
             echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Publish benchmark diff to pull request
-        if: >-
-          always() &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
-        env:
-          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          report="$RUNNER_TEMP/gungraun-diff.txt"
-          if [[ ! -f "$report" ]]
-          then
-            exit 0
-          fi
-
-          summary="$RUNNER_TEMP/gungraun-summary.md"
-          comment="$RUNNER_TEMP/gungraun-comment.md"
-          {
-            echo '<!-- gungraun-benchmark-diff -->'
-            echo '## Gungraun benchmark diff'
-            echo
-            echo 'Values are shown as `merge | base`.'
-            echo
-            if [[ -n "$ARTIFACT_URL" ]]
-            then
-              echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
-              echo
-            fi
-            if [[ -s "$summary" ]]
-            then
-              cat "$summary"
-              echo
-            fi
-            echo '<details>'
-            echo '<summary>Benchmark results</summary>'
-            echo
-            echo '```text'
-            cat "$report"
-            echo '```'
-            echo '</details>'
-          } > "$comment"
-
-          comment_id="$(
-            gh api \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
-              --jq \
-              'map(select((.body | contains("<!-- gungraun-benchmark-diff -->")) or (.body | contains("<!-- gungraun-parser-benchmark-diff -->"))))[0].id // empty'
-          )"
-
-          if [[ -n "$comment_id" ]]
-          then
-            gh api --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
-              -F body=@"$comment"
-          else
-            gh api --method POST \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-              -F body=@"$comment"
-          fi
