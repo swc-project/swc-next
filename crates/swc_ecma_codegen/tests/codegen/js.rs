@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
-    StmtData, SubRange,
+    StmtData, SubRange, UnaryOperator,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -326,7 +326,10 @@ fn test_number_format() {
         },
     );
     assert_eq!(
-        print_negative_number_contexts(NumberFormat::Hexadecimal { lowercase: true }),
+        print_negative_number_contexts(PrintOptions {
+            number_format: NumberFormat::Hexadecimal { lowercase: true },
+            ..PrintOptions::default()
+        }),
         "(-0x2).toString;\n(-0x2) ** 0x2;\n"
     );
 }
@@ -558,7 +561,40 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
     .to_owned()
 }
 
-fn print_negative_number_contexts(number_format: NumberFormat) -> String {
+#[test]
+fn synthesized_number_contexts() {
+    fn print_unary(value: f64, options: PrintOptions) -> String {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let argument = ast.expr_numeric_literal(DUMMY_SP, value, None);
+        let unary = ast.expr_unary_expression(DUMMY_SP, argument, UnaryOperator::Negate);
+        let statement = ast.stmt_expression_statement(DUMMY_SP, unary);
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
+        ast.set_root_program(program);
+        print(&allocator, &ast, options).code.to_owned()
+    }
+
+    let pretty = PrintOptions::default();
+    let minified = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+
+    let code = print_negative_number_contexts(pretty);
+    assert_eq!(code, "(-2).toString;\n(-2) ** 2;\n");
+
+    let code = print_negative_number_contexts(minified.clone());
+    assert_eq!(code, "(-2).toString;(-2)**2;");
+
+    let code = print_unary(-1.0, minified.clone());
+    assert_eq!(code, "-(-1);");
+
+    let code = print_unary(f64::NEG_INFINITY, minified);
+    assert_eq!(code, "-(-1/0);");
+}
+
+fn print_negative_number_contexts(options: PrintOptions) -> String {
     let allocator = Allocator::new();
     let mut ast = Ast::new("", &allocator);
 
@@ -588,16 +624,7 @@ fn print_negative_number_contexts(number_format: NumberFormat) -> String {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(
-        &allocator,
-        &ast,
-        PrintOptions {
-            number_format,
-            ..PrintOptions::default()
-        },
-    )
-    .code
-    .to_owned()
+    print(&allocator, &ast, options).code.to_owned()
 }
 
 #[test]

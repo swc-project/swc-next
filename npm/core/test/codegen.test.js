@@ -54,75 +54,24 @@ test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
 });
 
-test("printSync preserves modified negative zero", () => {
+test("printSync preserves special numeric values across FFI", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].init.value = -0;
 
   assert.equal(printSync(program).code, "const value = -0;\n");
+
+  program.body[0].declarations[0].init.value = -Infinity;
+  assert.equal(printSync(program).code, "const value = -1 / 0;\n");
 });
 
-test("printSync handles modified negative numbers contextually", () => {
-  const exponent = parseSync("1 ** 2;").program;
-  exponent.body[0].expression.left.value = -1;
-  assert.equal(printSync(exponent).code, "(-1) ** 2;\n");
-  assert.equal(printSync(exponent, { minify: true }).code, "(-1)**2;");
-
-  const member = parseSync("1..toString;").program;
-  member.body[0].expression.object.value = -1;
-  assert.equal(printSync(member, { minify: true }).code, "(-1).toString;");
-
-  const unary = parseSync("-1;").program;
-  unary.body[0].expression.argument.value = -1;
-  assert.equal(printSync(unary, { minify: true }).code, "-(-1);");
-
-  unary.body[0].expression.argument.value = -Infinity;
-  assert.equal(printSync(unary, { minify: true }).code, "-(-1/0);");
-
-  const property = parseSync("({ 1: 0 });").program;
-  property.body[0].expression.expression.properties[0].key.value = -1;
-  assert.equal(printSync(property).code, '({ "-1": 0 });\n');
-});
-
-test("printSync separates subtraction from modified negative numbers", () => {
-  const { program } = parseSync("x - 1;");
-  const right = program.body[0].expression.right;
-  const minified = { minify: true };
-
-  right.value = -1;
-  const negative = printSync(program, minified).code;
-  assert.equal(negative, "x- -1;");
-  assert.equal(Function("x", `return ${negative}`)(1), 2);
-  assert.equal(printSync(program).code, "x - -1;\n");
-
-  right.value = -0;
-  const negativeZero = printSync(program, minified).code;
-  assert.equal(negativeZero, "x- -0;");
-  assert.ok(Object.is(Function("x", `return ${negativeZero}`)(-0), 0));
-  assert.equal(printSync(program).code, "x - -0;\n");
-
-  right.value = -Infinity;
-  const negativeInfinity = printSync(program, minified).code;
-  assert.equal(negativeInfinity, "x- -1/0;");
-  assert.equal(Function("x", `return ${negativeInfinity}`)(1), Infinity);
-  assert.equal(printSync(program).code, "x - -1 / 0;\n");
-
-  right.value = 1;
-  const positive = printSync(program, minified).code;
-  assert.equal(positive, "x-1;");
-  assert.equal(Function("x", `return ${positive}`)(1), 0);
-
-  const unary = parseSync("x - -1;").program;
-  assert.equal(printSync(unary, minified).code, "x- -1;");
-});
-
-test("printSync preserves reordered directive statements", () => {
+test("encoder rebuilds the directive prologue after reordering", () => {
   const { program } = parseSync('"use strict"; work();');
   program.body.reverse();
 
   assert.equal(printSync(program).code, 'work();\n"use strict";\n');
 });
 
-test("printSync invalidates stale directive raw text", () => {
+test("encoder invalidates stale directive raw text", () => {
   const { program } = parseSync('"use client";');
   program.body[0].expression.value = "use server";
 
@@ -141,7 +90,7 @@ test("printSync invalidates stale directive raw text", () => {
   assert.equal(printSync(escaped).code, '"use server";\n');
 });
 
-test("printSync preserves code point escapes with leading zeros", () => {
+test("encoder accepts directive raw escapes with leading zeros", () => {
   const { program } = parseSync('"use\\u{0000020}strict";', {
     sourceType: "script",
   });
@@ -149,13 +98,13 @@ test("printSync preserves code point escapes with leading zeros", () => {
   assert.equal(printSync(program).code, '"use\\u{0000020}strict";\n');
 });
 
-test("printSync preserves an unchanged BigInt radix", () => {
+test("encoder preserves BigInt raw radix", () => {
   const { program } = parseSync("0x1_2_3n;");
 
   assert.equal(printSync(program).code, "0x123n;\n");
 });
 
-test("printSync preserves unchanged legacy octal raw text", () => {
+test("encoder validates legacy octal raw text", () => {
   const { program } = parseSync("077;", { sourceType: "script" });
 
   assert.equal(printSync(program).code, "077;\n");
@@ -164,17 +113,17 @@ test("printSync preserves unchanged legacy octal raw text", () => {
   assert.equal(printSync(program).code, "64;\n");
 });
 
-test("printSync handles modified negative BigInts contextually", () => {
-  const exponent = parseSync("1n ** 2n;").program;
-  exponent.body[0].expression.left.value = -1n;
-  assert.equal(printSync(exponent).code, "(-1n) ** 2n;\n");
+test("encoder normalizes negative BigInts and property keys", () => {
+  const { program } = parseSync("1n;");
+  program.body[0].expression.value = -1n;
+  assert.equal(printSync(program).code, "-1n;\n");
 
   const property = parseSync("({ 1n: 0 });").program;
   property.body[0].expression.expression.properties[0].key.value = -1n;
   assert.equal(printSync(property).code, '({ "-1": 0 });\n');
 });
 
-test("printSync uses modified RegExp metadata", () => {
+test("encoder uses modified RegExp metadata", () => {
   const { program } = parseSync("/old/;");
   program.body[0].expression.regex.pattern = "new";
   program.body[0].expression.regex.flags = "g";
@@ -191,22 +140,17 @@ test("printSync forwards codegen options", () => {
   );
 
   const script = parseSync('const text = "</ScRiPt>";').program;
-  assert.equal(printSync(script).code, 'const text = "</ScRiPt>";\n');
+  assert.equal(
+    printSync(script, { inlineScript: false }).code,
+    'const text = "</ScRiPt>";\n',
+  );
   assert.equal(
     printSync(script, { inlineScript: true }).code,
     'const text = "<\\/ScRiPt>";\n',
   );
-  assert.equal(
-    printSync(script, { inlineScript: true, asciiOnly: true, minify: true }).code,
-    'const text="<\\/ScRiPt>";',
-  );
-  assert.equal(
-    printSync(script, { inlineScript: false, minify: true }).code,
-    'const text="</ScRiPt>";',
-  );
 });
 
-test("printSync prints modified JSX attribute strings", () => {
+test("encoder invalidates stale JSX attribute raw text", () => {
   const { program } = parseSync(
     'const element = <div title="old" />;',
     { lang: "tsx" },

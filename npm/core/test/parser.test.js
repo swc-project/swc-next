@@ -79,21 +79,9 @@ test("parseSync decodes UTF-8 source and pool strings", () => {
   assert.equal(declarations[2].declarations[0].init.value, "\uFEFF");
 });
 
-test("parseSync resolves unambiguous CommonJS wrapper syntax", () => {
-  const options = { sourceType: SourceType.Unambiguous };
-
-  const topLevelReturn = parseSync("return;", options);
-  assert.equal(topLevelReturn.program.sourceType, SourceType.CommonJs);
-
-  const newTarget = parseSync("() => new.target;", options);
-  assert.equal(newTarget.program.sourceType, SourceType.CommonJs);
-
-  const module = parseSync("export {}; new.target;", options);
-  assert.equal(module.program.sourceType, SourceType.Module);
-});
-
 test("parseSync exposes flat comments lazily", () => {
-  const source = '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
+  const source =
+    '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
   const result = parseSync(source, { comments: CommentMode.Flat });
   const descriptor = Object.getOwnPropertyDescriptor(result, "comments");
 
@@ -176,7 +164,7 @@ test("parseSync returns an empty diagnostics array for valid input", () => {
 });
 
 test("parseSync reports diagnostics with UTF-16 offsets", () => {
-  const source = '/* 文😀 */ const = 1';
+  const source = "/* 文😀 */ const = 1";
   const result = parseSync(source);
 
   assert.equal(result.diagnostics.length, 1);
@@ -213,40 +201,16 @@ test("parseSync preserves diagnostic help, labels, and Unicode messages", () => 
   assert.equal(error.labels[0].end, source.indexOf("开始") + 2);
 });
 
-test("parseSync preserves multiple recoverable diagnostics", () => {
+test("parseSync decodes diagnostic arrays and optional metadata", () => {
   const result = parseSync("const a; const b;");
 
   assert.equal(result.diagnostics.length, 2);
   assert.equal(result.diagnostics[0].severity, "error");
   assert.equal(result.diagnostics[1].severity, "error");
   assert.ok(result.diagnostics[0].start < result.diagnostics[1].start);
-  assert.equal(result.program.body.length, 2);
 
   const ambient = parseSync("declare function f() {}", { lang: Lang.Dts });
   assert.equal(ambient.diagnostics.length, 1);
   assert.equal(ambient.diagnostics[0].severity, "error");
   assert.equal(ambient.diagnostics[0].help, undefined);
-});
-
-
-test("ambient implementation recovery preserves enclosing and following declarations", () => {
-  for (const container of ["namespace N", 'module "pkg"']) {
-    const source = `declare ${container} { function bad() {} function good(): void; } declare function after(): void;`;
-    const result = parseSync(source, { lang: Lang.Ts, sourceType: SourceType.Module });
-    assert.equal(result.diagnostics.length, 1);
-    assert.equal(result.program.body.length, 2);
-    const members = result.program.body[0].body.body;
-    assert.deepEqual(members.map((node) => node.id.name), ["bad", "good"]);
-    assert.equal(members[0].type, "TSDeclareFunction");
-    assert.equal(members[0].body, null);
-    assert.equal(result.program.body[1].id.name, "after");
-  }
-  const result = parseSync("declare function bad() {} declare function good(): void;", {
-    lang: Lang.Dts,
-    sourceType: SourceType.Module,
-  });
-  assert.equal(result.diagnostics.length, 1);
-  assert.deepEqual(result.program.body.map((node) => node.id.name), ["bad", "good"]);
-  assert.equal(result.program.body[0].declare, true);
-  assert.equal(result.program.body[0].body, null);
 });

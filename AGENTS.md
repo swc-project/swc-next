@@ -105,6 +105,7 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 
 ### Adding JavaScript Unit Tests
 
+- Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
 - New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
 
 Update this file when the commands or workflows above change; otherwise do not edit it.

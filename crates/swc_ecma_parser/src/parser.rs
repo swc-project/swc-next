@@ -13288,6 +13288,61 @@ mod tests {
     }
 
     #[test]
+    fn ambient_function_recovery() {
+        fn function_name(ast: &Ast<'_>, statement: Stmt) -> String {
+            let function = statement
+                .as_declaration(ast)
+                .unwrap()
+                .as_ts_function(ast)
+                .unwrap();
+            ast.get_utf8(function.id(ast).unwrap().name(ast)).to_owned()
+        }
+
+        fn recovered_names(source: &str, lang: Lang) -> Vec<String> {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert_eq!(parsed.diagnostics.len(), 1);
+            let ast = &parsed.ast;
+            let body = ast.root_program().body(ast);
+            assert_eq!(body.len(), 2);
+            let declaration = body.get_node(ast, 0).unwrap().as_declaration(ast).unwrap();
+            let functions = if let Some(module) = declaration.as_ts_module_declaration(ast) {
+                assert_eq!(function_name(ast, body.get_node(ast, 1).unwrap()), "after");
+                module
+                    .body(ast)
+                    .unwrap()
+                    .as_ts_module_block(ast)
+                    .unwrap()
+                    .body(ast)
+            } else {
+                assert!(declaration.as_ts_function(ast).unwrap().declare(ast));
+                body
+            };
+            functions
+                .iter()
+                .map(|id| function_name(ast, ast.get_node_in_sub_range(id)))
+                .collect()
+        }
+
+        let source = "declare namespace N { function bad() {} function good(): void; } declare function after(): void;";
+        let names = recovered_names(source, Lang::Ts);
+        assert_eq!(names, ["bad", "good"]);
+
+        let source = "declare module \"pkg\" { function bad() {} function good(): void; } declare function after(): void;";
+        let names = recovered_names(source, Lang::Ts);
+        assert_eq!(names, ["bad", "good"]);
+
+        let source = "declare function bad() {} declare function good(): void;";
+        let names = recovered_names(source, Lang::Dts);
+        assert_eq!(names, ["bad", "good"]);
+    }
+
+    #[test]
     fn template_raw_values() {
         fn values(source: &str) -> (String, Option<String>) {
             let allocator = Allocator::new();
