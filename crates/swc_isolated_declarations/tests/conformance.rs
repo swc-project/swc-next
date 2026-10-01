@@ -1,8 +1,4 @@
-use std::{
-    env::var,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::Path};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
@@ -11,13 +7,27 @@ use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use swc_next_isolated_declarations::transform;
 
-fn sorted_directory_entries(path: &Path) -> Vec<PathBuf> {
-    let mut entries = fs::read_dir(path)
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .collect::<Vec<_>>();
-    entries.sort();
-    entries
+#[test]
+fn declaration_emit() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    for category in fs::read_dir(&root).unwrap() {
+        let category = category.unwrap().path();
+        if !category.is_dir() {
+            continue;
+        }
+        for input in fs::read_dir(&category).unwrap() {
+            let input = input.unwrap().path();
+            let file_name = input.file_name().unwrap().to_string_lossy();
+            let lang = if file_name.ends_with(".input.ts") {
+                Lang::Ts
+            } else if file_name.ends_with(".input.tsx") {
+                Lang::Tsx
+            } else {
+                continue;
+            };
+            run_fixture(&input, lang);
+        }
+    }
 }
 
 fn run_fixture(input: &Path, lang: Lang) {
@@ -28,8 +38,7 @@ fn run_fixture(input: &Path, lang: Lang) {
     let expected_diagnostics = errors
         .lines()
         .filter(|line| !line.is_empty())
-        .map(|line| line.split_once(": ").unwrap().1)
-        .collect::<Vec<_>>();
+        .map(|line| line.split_once(": ").unwrap().1);
 
     let allocator = Allocator::default();
     let parse = Parser::init(
@@ -54,8 +63,7 @@ fn run_fixture(input: &Path, lang: Lang) {
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     let diagnostics = transform(&mut ast, &semantic)
         .into_iter()
-        .map(|diagnostic| diagnostic.message)
-        .collect::<Vec<_>>();
+        .map(|diagnostic| diagnostic.message);
     let actual = print(&allocator, &ast, PrintOptions::default()).code;
     assert!(
         actual == expected,
@@ -63,7 +71,7 @@ fn run_fixture(input: &Path, lang: Lang) {
         input.display()
     );
     assert!(
-        diagnostics == expected_diagnostics,
+        diagnostics.eq(expected_diagnostics),
         "{}: diagnostic mismatch",
         input.display()
     );
