@@ -4,7 +4,7 @@ use super::AccessKind;
 use super::ExpressionContext;
 use super::Formatter;
 use super::calls::CallCallee;
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail};
+use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
@@ -565,6 +565,11 @@ struct SourceFirstArgument {
     node: Argument,
     mode: ContentMode,
 }
+/// An argument owner also reports the boundary actually emitted to its chain.
+pub(super) struct FormattedArguments<'ast> {
+    pub(super) tail: Option<ExpressionTail<'ast>>,
+    pub(super) has_outside_prefix: bool,
+}
 enum ArgumentPrefix<'ast> {
     Outside(&'ast [Comment]),
     Arguments(&'ast [Comment]),
@@ -603,7 +608,54 @@ impl SourceArgumentPrefix<'_> {
     }
 }
 
-impl SourceArguments<'_> {
+impl<'ast> SourceArguments<'ast> {
+    pub(super) fn arguments(&self) -> SubRange<Argument> {
+        self.arguments
+    }
+    /// An empty call has no first argument that could own this ordinary packet.
+    pub(super) fn empty_call_head(&self) -> Option<NodeHead<'ast>> {
+        if !self.arguments.is_empty() || self.callee_mode != ContentMode::Formatted {
+            return None;
+        }
+        let comments = match &self.prefix {
+            SourceArgumentPrefix::Empty { comments, .. } => *comments,
+            SourceArgumentPrefix::Direct(prefix) if prefix.comments().is_empty() => {
+                prefix.comments()
+            }
+            SourceArgumentPrefix::Optional { before, after, .. }
+                if before.is_empty() && after.comments().is_empty() =>
+            {
+                after.comments()
+            }
+            _ => return None,
+        };
+        Some(NodeHead {
+            comments,
+            content_start: self.delimiters.start,
+            layout: CommentRunLayout::GroupedLeading(self.delimiters.start),
+            gap_end: None,
+        })
+    }
+
+    /// Move the prepared packet without claiming it; the chain keeps its source order.
+    pub(super) fn take_empty_call_head(&mut self) -> Option<NodeHead<'ast>> {
+        let head = self.empty_call_head()?;
+        let operator = match self.prefix {
+            SourceArgumentPrefix::Empty { operator, .. } => operator,
+            SourceArgumentPrefix::Optional { operator, .. } => Some(operator),
+            SourceArgumentPrefix::Direct(_) => None,
+        };
+        self.prefix = match operator {
+            Some(operator) => SourceArgumentPrefix::Optional {
+                operator,
+                before: &[],
+                after: ArgumentPrefix::Outside(&[]),
+            },
+            None => SourceArgumentPrefix::Direct(ArgumentPrefix::Outside(&[])),
+        };
+        Some(head)
+    }
+
     pub(super) fn access(&self) -> AccessKind {
         match self.prefix {
             SourceArgumentPrefix::Direct(_) => AccessKind::Ordinary,
@@ -860,12 +912,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    pub(super) fn format_argument_with_function_fact(
+        &mut self,
+        argument: Argument,
+        mode: ContentMode,
+        missing_function: &mut Option<&mut bool>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if missing_function.is_some()
+            && let ArgumentData::Expr(expression) = self.ast.argument_data(argument)
+            && matches!(
+                self.expression_content(expression).data,
+                ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
+            )
+            && let Some(function) = missing_function.take()
+        {
+            *function = true;
+        }
+        self.format_argument(argument, mode, writer)
+    }
+
     pub(super) fn format_source_arguments(
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let output = self.format_source_arguments_with_function_fact(list, tail, None, writer)?;
+        Ok(output.tail)
+    }
+
+    pub(super) fn format_source_arguments_with_function_fact(
+        &mut self,
+        list: SourceArguments<'ast>,
+        tail: Option<ExpressionTail<'ast>>,
+        mut missing_function: Option<&mut bool>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<FormattedArguments<'ast>, FormatError> {
         let ast = self.ast;
         let SourceArguments {
             arguments,
@@ -879,6 +962,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let opening = delimiters.start;
         let prefix_start = callee_span.end;
         let source_end = tail.as_ref().map_or(prefix_start, |tail| tail.source_end);
+        let mut has_outside_prefix = false;
         let content_start = match prefix {
             SourceArgumentPrefix::Empty { operator, comments } => {
                 let comments = if tail.is_some() {
@@ -886,6 +970,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     comments
                 };
+                has_outside_prefix |= !comments.is_empty();
                 self.comments.claim(comments)?;
                 self.format_empty_argument_prefix(comments, operator, source_end, writer)?;
                 if operator.is_some() {
@@ -918,6 +1003,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     before.len()
                 };
                 let (outside, inside) = before.split_at(outside_count);
+                has_outside_prefix |= !outside.is_empty();
                 let boundary = self.prepare_comment_boundary(outside, source_end, opening);
                 self.format_comment_boundary(&boundary, writer)?;
                 boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
@@ -941,6 +1027,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     before
                 };
 
+                has_outside_prefix |= !before.is_empty();
                 let boundary = self.prepare_comment_boundary(before, source_end, operator.start);
                 self.format_comment_boundary(&boundary, writer)?;
                 boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
@@ -949,6 +1036,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     operator.end
                 } else {
                     let after = after.comments();
+                    has_outside_prefix |= !after.is_empty();
 
                     let boundary = self.prepare_comment_boundary(after, operator.end, opening);
                     self.format_comment_boundary(&boundary, writer)?;
@@ -962,13 +1050,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self.comments.in_range(content);
             if self.content_mode(comments) == ContentMode::Verbatim {
                 self.format_verbatim(Span::new(opening, delimiters.end), writer)?;
-                return Ok(None);
+                return Ok(FormattedArguments {
+                    tail: None,
+                    has_outside_prefix,
+                });
             }
             if comments.is_empty() {
                 writer.text("(");
                 self.format_argument_dangling(content, writer)?;
                 writer.text(")");
-                return Ok(None);
+                return Ok(FormattedArguments {
+                    tail: None,
+                    has_outside_prefix,
+                });
             }
         }
         let hugged = arguments.len() == 1
@@ -992,15 +1086,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .any(|empty| empty);
         if !expand && let Some(selected) = self.select_argument_layout(arguments) {
-            return self.format_selected_arguments(
+            let tail = self.format_selected_arguments(
                 arguments,
                 content,
                 ArgumentHead { first_mode },
                 selected,
+                missing_function,
                 writer,
-            );
+            )?;
+            return Ok(FormattedArguments {
+                tail,
+                has_outside_prefix,
+            });
         }
-        writer.group(expand, |writer| {
+        let tail = writer.group(expand, |writer| {
             writer.text("(");
             let mut write_items = |writer: &mut Writer<'ast>| {
                 if !hugged && (first.is_some() || !self.comments.in_range(content).is_empty()) {
@@ -1027,7 +1126,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if previous.is_none() && first_mode == ContentMode::Verbatim {
                         item.set_leading_mode(first_mode);
                     }
-                    let tail = self.format_argument(argument, item.mode, writer)?;
+                    let tail = self.format_argument_with_function_fact(
+                        argument,
+                        item.mode,
+                        &mut missing_function,
+                        writer,
+                    )?;
                     previous = Some(self.finish_delimited_item(item, tail, writer)?);
                 }
                 let end = previous.map_or(content.start, |boundary| boundary.end);
@@ -1047,6 +1151,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             writer.text(")");
             Ok(None)
+        })?;
+        Ok(FormattedArguments {
+            tail,
+            has_outside_prefix,
         })
     }
     pub(super) fn prepare_argument_slot(

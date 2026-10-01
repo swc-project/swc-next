@@ -383,7 +383,6 @@ impl<'a> Fragment<'a> {
             .then_some(FlatFragment(self))
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn try_neutral(self) -> Option<NeutralFragment<'a>> {
         matches!(self.capabilities, FragmentCapabilities::Neutral).then_some(NeutralFragment(self))
     }
@@ -391,7 +390,6 @@ impl<'a> Fragment<'a> {
 
 /// A flat view whose complete scope cannot observe layout mode.
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct NeutralFragment<'a>(Fragment<'a>);
 
 /// A zero-copy measurement request, distinct from a printed Flat projection.
