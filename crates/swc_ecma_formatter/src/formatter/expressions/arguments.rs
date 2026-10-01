@@ -1144,7 +1144,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 *previous = span.end;
                 Some(empty)
             })
-            .any(|empty| empty);
+            .any(|empty| empty)
+            || self.arguments_are_function_composition(arguments);
         if !expand && let Some(selected) = self.select_argument_layout(arguments, !hugged) {
             let tail = self.format_selected_arguments(
                 arguments,
