@@ -1,7 +1,12 @@
 //! Property identity and computed-key eligibility shared by analysis and emit.
 
-use swc_next_ecma_ast::{Ast, Expr, ExprData, UnaryOperator};
+use std::borrow::Cow;
+
+use swc_next_ecma_ast::{
+    Ast, Expr, ExprData, PropertyKey, PropertyKeyData, SymbolId, UnaryExpression, UnaryOperator,
+};
 use swc_next_ecma_semantic::Semantic;
+use zmij_ecma::Buffer;
 
 use super::expressions::unparenthesized;
 
@@ -9,19 +14,17 @@ use super::expressions::unparenthesized;
 /// retain WTF-8 bytes; computed names retain their lexical binding identities.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PropertyIdentity<'ast> {
-    Static(std::borrow::Cow<'ast, [u8]>),
-    Binding(swc_next_ecma_ast::SymbolId),
+    Static(Cow<'ast, [u8]>),
+    Binding(SymbolId),
     Unresolved(&'ast str),
-    Member(Box<PropertyIdentity<'ast>>, std::borrow::Cow<'ast, [u8]>),
+    Member(Box<PropertyIdentity<'ast>>, Cow<'ast, [u8]>),
 }
 
 pub(crate) fn property_identity<'ast>(
-    key: swc_next_ecma_ast::PropertyKey,
+    key: PropertyKey,
     ast: &Ast<'ast>,
     semantic: &Semantic<'_>,
 ) -> Option<PropertyIdentity<'ast>> {
-    use std::borrow::Cow;
-    use swc_next_ecma_ast::PropertyKeyData;
     let expression = match ast.property_key_data(key) {
         PropertyKeyData::IdentifierName(identifier) => {
             return Some(PropertyIdentity::Static(Cow::Borrowed(
@@ -60,11 +63,7 @@ pub(crate) fn property_identity<'ast>(
             )))
         }
         ExprData::MemberExpression(member) if !member.optional(ast) => {
-            let object = property_identity(
-                swc_next_ecma_ast::PropertyKey::Expr(member.object(ast)),
-                ast,
-                semantic,
-            )?;
+            let object = property_identity(PropertyKey::Expr(member.object(ast)), ast, semantic)?;
             let PropertyIdentity::Static(name) =
                 property_identity(member.property(ast), ast, semantic)?
             else {
@@ -76,10 +75,7 @@ pub(crate) fn property_identity<'ast>(
     }
 }
 
-pub(crate) fn signed_numeric_value(
-    unary: swc_next_ecma_ast::UnaryExpression,
-    ast: &Ast<'_>,
-) -> Option<f64> {
+pub(crate) fn signed_numeric_value(unary: UnaryExpression, ast: &Ast<'_>) -> Option<f64> {
     let ExprData::NumericLiteral(literal) =
         ast.expr_data(unparenthesized(unary.argument(ast), ast))
     else {
@@ -93,15 +89,13 @@ pub(crate) fn signed_numeric_value(
 }
 
 fn numeric_property_identity(value: f64) -> PropertyIdentity<'static> {
-    let mut buffer = zmij_ecma::Buffer::new();
-    PropertyIdentity::Static(std::borrow::Cow::Owned(
-        buffer.format(value).as_bytes().to_vec(),
-    ))
+    let mut buffer = Buffer::new();
+    PropertyIdentity::Static(Cow::Owned(buffer.format(value).as_bytes().to_vec()))
 }
 
 /// Object inference requires a literal name; classes can retain entity-name keys.
-pub(crate) fn supported_object_key(key: swc_next_ecma_ast::PropertyKey, ast: &Ast<'_>) -> bool {
-    let swc_next_ecma_ast::PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
+pub(crate) fn supported_object_key(key: PropertyKey, ast: &Ast<'_>) -> bool {
+    let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
         return true;
     };
     match ast.expr_data(unparenthesized(expression, ast)) {
@@ -121,15 +115,13 @@ pub(crate) fn supported_object_key(key: swc_next_ecma_ast::PropertyKey, ast: &As
 }
 
 pub(crate) fn supported_computed_key(
-    key: swc_next_ecma_ast::PropertyKey,
+    key: PropertyKey,
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
 ) -> bool {
     match ast.property_key_data(key) {
-        swc_next_ecma_ast::PropertyKeyData::IdentifierName(_) => true,
-        swc_next_ecma_ast::PropertyKeyData::Expr(expression) => {
-            is_computed_name_expression(expression, ast, semantic)
-        }
+        PropertyKeyData::IdentifierName(_) => true,
+        PropertyKeyData::Expr(expression) => is_computed_name_expression(expression, ast, semantic),
     }
 }
 fn is_computed_name_expression(expression: Expr, ast: &Ast<'_>, semantic: &Semantic<'_>) -> bool {

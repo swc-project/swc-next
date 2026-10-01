@@ -1,9 +1,10 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_ast::{Lang, ScopeId, SourceType};
 use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, ReferenceSpace, analyze};
 
+use super::TypeUsageAnalyzer;
 use crate::transform;
 
 fn declaration_output(source: &str) -> (String, usize) {
@@ -53,15 +54,11 @@ fn assert_export_dependencies(source: &str) {
     assert!(parsed.diagnostics.is_empty());
     let ast = parsed.ast;
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let scope = swc_next_ecma_ast::ScopeId::MODULE;
-    let local = semantic
-        .lookup(scope, b"X", swc_next_ecma_semantic::ReferenceSpace::Type)
-        .unwrap();
-    let exported = semantic
-        .lookup(scope, b"X", swc_next_ecma_semantic::ReferenceSpace::Value)
-        .unwrap();
+    let scope = ScopeId::MODULE;
+    let local = semantic.lookup(scope, b"X", ReferenceSpace::Type).unwrap();
+    let exported = semantic.lookup(scope, b"X", ReferenceSpace::Value).unwrap();
     assert_ne!(local, exported);
-    let (used, diagnostics, _) = super::TypeUsageAnalyzer::analyze(&ast, &semantic);
+    let (used, diagnostics, _) = TypeUsageAnalyzer::analyze(&ast, &semantic);
     assert!(diagnostics.is_empty());
     assert!(used.contains_type(local));
     assert!(!used.contains_value(local));

@@ -1,6 +1,11 @@
 //! Pair object and class accessors and select their declaration type sources.
 
-use swc_next_ecma_ast::{Ast, ExprData, Function, GetSpan, ObjectExpression, Span};
+use rustc_hash::FxHashMap;
+use swc_next_ecma_ast::{
+    Accessibility, Ast, ClassElement, ClassElementData, ExprData, FormalParameterItemData,
+    FormalParameters, Function, GetSpan, MethodDefinitionKind, NodeId, ObjectExpression,
+    ObjectPropertyKindData, PropertyKind, Span, TsFunction, TsTypeAnnotation,
+};
 use swc_next_ecma_semantic::Semantic;
 
 use super::keys::{PropertyIdentity, property_identity, supported_object_key};
@@ -14,45 +19,40 @@ pub(crate) struct AccessorKey<'ast> {
 #[derive(Clone, Copy)]
 pub(crate) enum AccessorFunction {
     Implementation(Function),
-    Signature(swc_next_ecma_ast::TsFunction),
+    Signature(TsFunction),
 }
 
 impl AccessorFunction {
-    pub(crate) fn node_id(self) -> swc_next_ecma_ast::NodeId {
+    pub(crate) fn node_id(self) -> NodeId {
         match self {
             Self::Implementation(function) => function.node_id(),
             Self::Signature(function) => function.node_id(),
         }
     }
-    pub(crate) fn span(self, ast: &Ast<'_>) -> swc_next_ecma_ast::Span {
+    pub(crate) fn span(self, ast: &Ast<'_>) -> Span {
         match self {
             Self::Implementation(function) => function.span(ast),
             Self::Signature(function) => function.span(ast),
         }
     }
-    fn return_type(self, ast: &Ast<'_>) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    fn return_type(self, ast: &Ast<'_>) -> Option<TsTypeAnnotation> {
         match self {
             Self::Implementation(function) => function.return_type(ast),
             Self::Signature(function) => function.return_type(ast),
         }
     }
-    fn params(self, ast: &Ast<'_>) -> swc_next_ecma_ast::FormalParameters {
+    fn params(self, ast: &Ast<'_>) -> FormalParameters {
         match self {
             Self::Implementation(function) => function.params(ast),
             Self::Signature(function) => function.params(ast),
         }
     }
 
-    fn first_parameter_annotation(
-        self,
-        ast: &Ast<'_>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    fn first_parameter_annotation(self, ast: &Ast<'_>) -> Option<TsTypeAnnotation> {
         let item = ast.get_node_in_sub_range(self.params(ast).items(ast).first()?);
         let parameter = match ast.formal_parameter_item_data(item) {
-            swc_next_ecma_ast::FormalParameterItemData::FormalParameter(parameter) => parameter,
-            swc_next_ecma_ast::FormalParameterItemData::TsParameterProperty(property) => {
-                property.parameter(ast)
-            }
+            FormalParameterItemData::FormalParameter(parameter) => parameter,
+            FormalParameterItemData::TsParameterProperty(property) => property.parameter(ast),
         };
         parameter.type_annotation(ast)
     }
@@ -67,7 +67,7 @@ pub(crate) struct AccessorPair {
 
 #[derive(Clone, Copy)]
 pub(crate) enum AccessorType {
-    Annotation(swc_next_ecma_ast::TsTypeAnnotation),
+    Annotation(TsTypeAnnotation),
     Inferred(Function),
 }
 
@@ -80,17 +80,11 @@ impl AccessorPair {
         }
     }
 
-    pub(crate) fn getter_annotation(
-        self,
-        ast: &Ast<'_>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    pub(crate) fn getter_annotation(self, ast: &Ast<'_>) -> Option<TsTypeAnnotation> {
         self.getter.and_then(|function| function.return_type(ast))
     }
 
-    pub(crate) fn setter_annotation(
-        self,
-        ast: &Ast<'_>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    pub(crate) fn setter_annotation(self, ast: &Ast<'_>) -> Option<TsTypeAnnotation> {
         self.setter?.first_parameter_annotation(ast)
     }
 
@@ -117,9 +111,8 @@ pub(crate) fn object_accessors<'ast>(
     object: ObjectExpression,
     ast: &Ast<'ast>,
     semantic: &Semantic<'_>,
-) -> rustc_hash::FxHashMap<AccessorKey<'ast>, AccessorPair> {
-    use swc_next_ecma_ast::{ObjectPropertyKindData, PropertyKind};
-    let mut pairs = rustc_hash::FxHashMap::<_, AccessorPair>::default();
+) -> FxHashMap<AccessorKey<'ast>, AccessorPair> {
+    let mut pairs = FxHashMap::<_, AccessorPair>::default();
     for property in object.properties(ast).iter() {
         let ObjectPropertyKindData::ObjectProperty(property) =
             ast.object_property_kind_data(ast.get_node_in_sub_range(property))
@@ -153,12 +146,11 @@ pub(crate) fn object_accessors<'ast>(
 }
 
 pub(crate) fn class_accessors<'ast>(
-    elements: impl Iterator<Item = swc_next_ecma_ast::ClassElement>,
+    elements: impl Iterator<Item = ClassElement>,
     ast: &Ast<'ast>,
     semantic: &Semantic<'_>,
-) -> rustc_hash::FxHashMap<AccessorKey<'ast>, AccessorPair> {
-    use swc_next_ecma_ast::{Accessibility, ClassElementData, MethodDefinitionKind};
-    let mut pairs = rustc_hash::FxHashMap::<_, AccessorPair>::default();
+) -> FxHashMap<AccessorKey<'ast>, AccessorPair> {
+    let mut pairs = FxHashMap::<_, AccessorPair>::default();
     for element in elements {
         let (function, kind, key, accessibility, is_static) = match ast.class_element_data(element)
         {

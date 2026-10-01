@@ -13,13 +13,14 @@ mod properties;
 mod signatures;
 mod type_surface;
 
+use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{
-    Ast, Diagnostic, ExportDefaultDeclarationKindData, GetSpan, NodeId, Stmt, StmtData,
+    Ast, Diagnostic, ExportDefaultDeclarationKindData, GetSpan, NodeId, Stmt, StmtData, SubRange,
 };
 use swc_next_ecma_semantic::Semantic;
 
 use crate::UsedSymbols;
-use crate::surface::DeclContext;
+use crate::surface::{DeclContext, DeclarationSurface, ExportExpression, export_expression};
 use crate::type_usage::TypeUsageAnalyzer;
 
 /// Transforms a semantically analyzed flat AST into isolated TypeScript declarations.
@@ -39,7 +40,7 @@ pub fn transform<'ast>(ast: &mut Ast<'ast>, semantic: &Semantic<'ast>) -> Vec<Di
         diagnostics,
         next_default_id: 0,
         reserved_names: None,
-        validated_type_methods: rustc_hash::FxHashSet::default(),
+        validated_type_methods: FxHashSet::default(),
     };
     transformer.transform_program(ast);
     transformer.diagnostics
@@ -48,11 +49,11 @@ pub fn transform<'ast>(ast: &mut Ast<'ast>, semantic: &Semantic<'ast>) -> Vec<Di
 struct Transformer<'semantic, 'ast> {
     semantic: &'semantic Semantic<'ast>,
     used: UsedSymbols,
-    surface: crate::surface::DeclarationSurface,
+    surface: DeclarationSurface,
     diagnostics: Vec<Diagnostic<'static>>,
     next_default_id: u32,
-    reserved_names: Option<rustc_hash::FxHashSet<&'ast [u8]>>,
-    validated_type_methods: rustc_hash::FxHashSet<NodeId>,
+    reserved_names: Option<FxHashSet<&'ast [u8]>>,
+    validated_type_methods: FxHashSet<NodeId>,
 }
 
 impl<'ast> Transformer<'_, 'ast> {
@@ -74,7 +75,7 @@ impl<'ast> Transformer<'_, 'ast> {
 
     fn transform_statements(
         &mut self,
-        statements: swc_next_ecma_ast::SubRange<Stmt>,
+        statements: SubRange<Stmt>,
         context: DeclContext,
         ast: &mut Ast<'ast>,
     ) -> Vec<Stmt> {
@@ -118,8 +119,8 @@ impl<'ast> Transformer<'_, 'ast> {
                     if let ExportDefaultDeclarationKindData::Expr(expression) =
                         ast.export_default_declaration_kind_data(declaration)
                         && !matches!(
-                            crate::surface::export_expression(expression, ast),
-                            crate::surface::ExportExpression::Reference(_)
+                            export_expression(expression, ast),
+                            ExportExpression::Reference(_)
                         )
                     {
                         let binding =
@@ -140,8 +141,8 @@ impl<'ast> Transformer<'_, 'ast> {
                 StmtData::TsExportAssignment(export) => {
                     let expression = export.expression(ast);
                     if matches!(
-                        crate::surface::export_expression(expression, ast),
-                        crate::surface::ExportExpression::Reference(_)
+                        export_expression(expression, ast),
+                        ExportExpression::Reference(_)
                     ) {
                         transformed.push(statement);
                         continue;

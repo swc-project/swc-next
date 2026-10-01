@@ -3,9 +3,10 @@
 use swc_next_ecma_ast::{
     Ast, BindingPattern, BindingPatternData, CloneIn, Diagnostic, FormalParameter,
     FormalParameterItem, FormalParameterItemData, FormalParameters, Function, GetSpan, Span,
-    TsFunction, TsMethodSignature, TsThisParameter, TsType, TsTypeData,
+    SubRange, TsFunction, TsMethodSignature, TsThisParameter, TsType, TsTypeAnnotation, TsTypeData,
 };
 
+use self::UndefinedPresence::{Absent, Any, Never, Present, UnknownKeyword, Unresolved, Void};
 use super::Transformer;
 use super::diagnostics::{
     FUNCTION_RETURN_TYPE_REQUIRED, METHOD_RETURN_TYPE_REQUIRED, PARAMETER_TYPE_REQUIRED,
@@ -49,7 +50,7 @@ impl<'ast> Transformer<'_, 'ast> {
         &mut self,
         function: Function,
         ast: &mut Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<TsTypeAnnotation> {
         let mut return_type = function.return_type(ast);
         if return_type.is_none() && !function.r#async(ast) && !function.generator(ast) {
             return_type = self.infer_function_return_type(function, ast);
@@ -70,7 +71,7 @@ impl<'ast> Transformer<'_, 'ast> {
         function: Function,
         diagnostic_span: Span,
         ast: &mut Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<TsTypeAnnotation> {
         let mut return_type = function.return_type(ast);
         if return_type.is_none() && !function.r#async(ast) && !function.generator(ast) {
             return_type = self.infer_function_return_type(function, ast);
@@ -140,7 +141,7 @@ impl<'ast> Transformer<'_, 'ast> {
         transformed.reverse();
 
         if let Some(rest) = params.rest(ast) {
-            rest.set_decorators(ast, swc_next_ecma_ast::SubRange::empty());
+            rest.set_decorators(ast, SubRange::empty());
             if report_missing_types && rest.type_annotation(ast).is_none() {
                 self.diagnostics
                     .push(Diagnostic::error(PARAMETER_TYPE_REQUIRED, rest.span(ast)));
@@ -174,7 +175,7 @@ impl<'ast> Transformer<'_, 'ast> {
         }
 
         self.strip_binding_defaults(pattern.into(), ast);
-        parameter.set_decorators(ast, swc_next_ecma_ast::SubRange::empty());
+        parameter.set_decorators(ast, SubRange::empty());
 
         if let Some(initializer) = initializer {
             if parameter.type_annotation(ast).is_none() {
@@ -217,7 +218,7 @@ impl<'ast> Transformer<'_, 'ast> {
         &self,
         function: Function,
         ast: &Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<TsTypeAnnotation> {
         self.first_parameter_annotation_in_params(function.params(ast), ast)
     }
 
@@ -225,7 +226,7 @@ impl<'ast> Transformer<'_, 'ast> {
         &self,
         params: FormalParameters,
         ast: &Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<TsTypeAnnotation> {
         let item = ast.get_node_in_sub_range(params.items(ast).first()?);
         match ast.formal_parameter_item_data(item) {
             FormalParameterItemData::FormalParameter(parameter) => parameter.type_annotation(ast),
@@ -238,7 +239,7 @@ impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn set_first_parameter_annotation(
         &self,
         function: Function,
-        annotation: &swc_next_ecma_ast::TsTypeAnnotation,
+        annotation: &TsTypeAnnotation,
         ast: &mut Ast<'ast>,
     ) {
         self.set_first_parameter_annotation_in_params(function.params(ast), annotation, ast);
@@ -247,7 +248,7 @@ impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn set_first_parameter_annotation_in_params(
         &self,
         params: FormalParameters,
-        annotation: &swc_next_ecma_ast::TsTypeAnnotation,
+        annotation: &TsTypeAnnotation,
         ast: &mut Ast<'ast>,
     ) {
         let Some(item) = params.items(ast).first() else {
@@ -451,7 +452,6 @@ enum UndefinedPresence {
 
 impl UndefinedPresence {
     fn union(self, other: Self) -> Self {
-        use UndefinedPresence::{Absent, Any, Never, Present, UnknownKeyword, Unresolved, Void};
         match (self, other) {
             (Unresolved, _) | (_, Unresolved) => Unresolved,
             (Any, _) | (_, Any) => Any,
@@ -464,7 +464,6 @@ impl UndefinedPresence {
     }
 
     fn intersection(self, other: Self) -> Self {
-        use UndefinedPresence::{Absent, Any, Never, Present, UnknownKeyword, Unresolved, Void};
         match (self, other) {
             (Never, _) | (_, Never) => Never,
             (Unresolved | Any, _) | (_, Unresolved | Any) => Unresolved,

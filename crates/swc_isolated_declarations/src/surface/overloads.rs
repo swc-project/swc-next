@@ -1,12 +1,15 @@
 //! Overload implementations omitted from the declaration surface.
 
-use super::DeclarationSurface;
+use std::mem::take;
+
 use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{
     Ast, Class, ClassElementData, Decl, DeclData, ExportDefaultDeclarationKindData,
     MethodDefinitionKind, Stmt, StmtData, SubRange, SymbolId,
 };
 use swc_next_ecma_semantic::Semantic;
+
+use super::{DeclarationSurface, property_identity};
 
 #[derive(Debug, Clone, Copy)]
 enum FunctionOverloadInfo {
@@ -38,7 +41,7 @@ impl DeclarationSurface {
                     false
                 }
                 Some(FunctionOverloadInfo::DefaultImplementation) => {
-                    std::mem::take(&mut has_default_overload)
+                    take(&mut has_default_overload)
                 }
                 _ => false,
             };
@@ -68,7 +71,7 @@ impl DeclarationSurface {
                 MethodDefinitionKind::Method
                     if !method.r#abstract(ast) && !method.optional(ast) =>
                 {
-                    if let Some(key) = super::property_identity(method.key(ast), ast, semantic) {
+                    if let Some(key) = property_identity(method.key(ast), ast, semantic) {
                         overloads.insert((key, method.r#static(ast)));
                     }
                 }
@@ -85,10 +88,8 @@ impl DeclarationSurface {
             };
             let hidden = match method.kind(ast) {
                 MethodDefinitionKind::Constructor => constructor_overload,
-                MethodDefinitionKind::Method => {
-                    super::property_identity(method.key(ast), ast, semantic)
-                        .is_some_and(|key| overloads.contains(&(key, method.r#static(ast))))
-                }
+                MethodDefinitionKind::Method => property_identity(method.key(ast), ast, semantic)
+                    .is_some_and(|key| overloads.contains(&(key, method.r#static(ast)))),
                 _ => false,
             };
             if hidden {

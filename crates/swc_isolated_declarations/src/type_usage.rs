@@ -1,18 +1,30 @@
 //! Declaration-surface type and value reachability analysis.
 
-use std::collections::VecDeque;
+use std::{
+    collections::VecDeque,
+    mem::{replace, take},
+};
 
 use bitflags::bitflags;
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
-    Accessibility, AssignmentPattern, Ast, AstNode, BindingPatternData, Decl, DeclData, Diagnostic,
-    ExportDefaultDeclaration, ExportNamedDeclaration, ExportSpecifier, FormalParameter,
-    FormalParameterRest, Function, GetSpan, IdentifierReference, MethodDefinition,
-    MethodDefinitionKind, NodeId, ObjectProperty, Program, PropertyDefinition, PropertyKey,
-    PropertyKeyData, Span, StaticBlock, Stmt, StmtData, SymbolId, TsFunction, TsGlobalDeclaration,
-    TsModuleBlock, TsModuleDeclaration, TsParameterProperty, VariableDeclarator, Visit, VisitWith,
+    Accessibility, ArgumentData, ArrowFunctionBodyData, ArrowFunctionExpression, AssignmentPattern,
+    Ast, AstNode, BindingPatternData, Class, Decl, DeclData, Diagnostic, ExportDefaultDeclaration,
+    ExportDefaultDeclarationKindData, ExportNamedDeclaration, ExportSpecifier, Expr, ExprData,
+    FormalParameter, FormalParameterItemData, FormalParameterRest, Function, FunctionBody, GetSpan,
+    IdentifierReference, MethodDefinition, MethodDefinitionKind, NodeId, ObjectProperty,
+    ObjectPropertyKindData, Program, PropertyDefinition, PropertyKey, PropertyKeyData,
+    PropertyKind, Severity, Span, StaticBlock, Stmt, StmtData, SymbolId, TsExportAssignment,
+    TsFunction, TsGlobalDeclaration, TsMethodDefinition, TsModuleBlock, TsModuleDeclaration,
+    TsParameterProperty, VariableDeclarator, Visit, VisitWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
+
+use crate::surface::{
+    AccessorKey, AccessorType, DeclContext, DeclarationSurface, ExportExpression, InferredType,
+    class_accessors, export_expression, inferred_type, namespace_binding, object_accessors,
+    property_identity, return_expression, supported_computed_key, supported_object_key,
+};
 
 bitflags! {
     /// The declaration namespaces in which a symbol is required by declaration emit.
@@ -116,20 +128,16 @@ pub(crate) struct TypeUsageAnalyzer<'visit, 'ast> {
     diagnostics: Vec<(Source, Diagnostic<'static>)>,
     returns: Vec<(Span, Span)>,
     erased_function_names: Vec<SymbolId>,
-    surface: crate::surface::DeclarationSurface,
-    context: crate::surface::DeclContext,
-    accessor_types: FxHashMap<NodeId, crate::surface::AccessorType>,
+    surface: DeclarationSurface,
+    context: DeclContext,
+    accessor_types: FxHashMap<NodeId, AccessorType>,
 }
 
 impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
     pub(crate) fn analyze(
         ast: &'visit Ast<'ast>,
         semantic: &'visit Semantic<'ast>,
-    ) -> (
-        UsedSymbols,
-        Vec<Diagnostic<'static>>,
-        crate::surface::DeclarationSurface,
-    ) {
+    ) -> (UsedSymbols, Vec<Diagnostic<'static>>, DeclarationSurface) {
         let mut analyzer = Self {
             ast,
             semantic,
@@ -141,21 +149,15 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             diagnostics: Vec::new(),
             returns: Vec::new(),
             erased_function_names: Vec::new(),
-            surface: crate::surface::DeclarationSurface::default(),
-            context: crate::surface::DeclContext::for_program(ast.source_type()),
+            surface: DeclarationSurface::default(),
+            context: DeclContext::for_program(ast.source_type()),
             accessor_types: FxHashMap::default(),
         };
         ast.root_program().visit_with(&mut analyzer);
         analyzer.finish()
     }
 
-    fn finish(
-        self,
-    ) -> (
-        UsedSymbols,
-        Vec<Diagnostic<'static>>,
-        crate::surface::DeclarationSurface,
-    ) {
+    fn finish(self) -> (UsedSymbols, Vec<Diagnostic<'static>>, DeclarationSurface) {
         let mut queue = SymbolQueue::default();
         queue.extend(self.roots);
 
@@ -212,7 +214,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
         if private_name && let Some(source) = self.source {
             let name = self.ast.get_utf8(reference.name);
             self.diagnostics.push((source, Diagnostic {
-                severity: swc_next_ecma_ast::Severity::Error,
+                severity: Severity::Error,
                 message: format!("Type containing private name '{name}' can't be used with --isolatedDeclarations.").into(),
                 span: self.ast.span(node),
                 help: None,
@@ -263,7 +265,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
 
     fn with_source(&mut self, source: Source, visit: impl FnOnce(&mut Self)) {
         let previous_source = self.source.replace(source);
-        let previous_edges = std::mem::take(&mut self.pending_edges);
+        let previous_edges = take(&mut self.pending_edges);
         visit(self);
         if let Source::Symbol(key) = source
             && !self.pending_edges.is_empty()
@@ -329,8 +331,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             annotation.visit_with(self);
         } else if !function.r#async(self.ast)
             && !function.generator(self.ast)
-            && let Some(expression) =
-                crate::surface::return_expression(function.body(self.ast), self.ast)
+            && let Some(expression) = return_expression(function.body(self.ast), self.ast)
         {
             self.visit_return_expression(function.body(self.ast), expression);
         }
@@ -339,32 +340,24 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
     // Check body-local bindings while walking the original declaration surface.
     // Bindings inside the returned expression (e.g. a generic function's type
     // parameters) survive; nested inferred returns add their own erased body.
-    fn visit_return_expression(
-        &mut self,
-        body: swc_next_ecma_ast::FunctionBody,
-        expression: swc_next_ecma_ast::Expr,
-    ) {
+    fn visit_return_expression(&mut self, body: FunctionBody, expression: Expr) {
         self.returns
             .push((body.span(self.ast), expression.span(self.ast)));
         self.visit_inferred_expression(expression, false);
         self.returns.pop();
     }
 
-    fn visit_export_expression(&mut self, expression: swc_next_ecma_ast::Expr) {
-        match crate::surface::export_expression(expression, self.ast) {
-            crate::surface::ExportExpression::Reference(reference) => {
-                self.add_reference(reference.node_id())
-            }
-            crate::surface::ExportExpression::Class(class) => class.visit_with(self),
-            crate::surface::ExportExpression::Inferred(expression) => {
+    fn visit_export_expression(&mut self, expression: Expr) {
+        match export_expression(expression, self.ast) {
+            ExportExpression::Reference(reference) => self.add_reference(reference.node_id()),
+            ExportExpression::Class(class) => class.visit_with(self),
+            ExportExpression::Inferred(expression) => {
                 self.visit_inferred_expression(expression, false)
             }
         }
     }
 
-    fn visit_inferred_expression(&mut self, expression: swc_next_ecma_ast::Expr, is_const: bool) {
-        use crate::surface::{InferredType, inferred_type};
-        use swc_next_ecma_ast::{ArgumentData, ObjectPropertyKindData};
+    fn visit_inferred_expression(&mut self, expression: Expr, is_const: bool) {
         match inferred_type(expression, is_const, self.ast, self.semantic, &self.surface) {
             InferredType::Annotation(annotation) | InferredType::OptionalParameter(annotation) => {
                 annotation.visit_with(self)
@@ -372,7 +365,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
             InferredType::Function(function) => self.visit_inferred_function_signature(function),
             InferredType::Arrow(function) => self.visit_arrow_function_expression(function),
             InferredType::Object(object, is_const) => {
-                let pairs = crate::surface::object_accessors(object, self.ast, self.semantic);
+                let pairs = object_accessors(object, self.ast, self.semantic);
                 for property in object.properties(self.ast).iter() {
                     let ObjectPropertyKindData::ObjectProperty(property) = self
                         .ast
@@ -382,31 +375,26 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
                     };
                     if property.shorthand(self.ast)
                         || (property.computed(self.ast)
-                            && !crate::surface::supported_object_key(
-                                property.key(self.ast),
-                                self.ast,
-                            ))
+                            && !supported_object_key(property.key(self.ast), self.ast))
                     {
                         continue;
                     }
                     property.key(self.ast).visit_with(self);
                     if matches!(
                         property.kind(self.ast),
-                        swc_next_ecma_ast::PropertyKind::Get | swc_next_ecma_ast::PropertyKind::Set
-                    ) && let Some(name) = crate::surface::property_identity(
-                        property.key(self.ast),
-                        self.ast,
-                        self.semantic,
-                    ) && let Some(pair) = pairs.get(&crate::surface::AccessorKey {
-                        name,
-                        r#static: false,
-                    }) {
-                        let selected =
-                            if property.kind(self.ast) == swc_next_ecma_ast::PropertyKind::Get {
-                                pair.read_type(self.ast)
-                            } else {
-                                pair.write_type(self.ast)
-                            };
+                        PropertyKind::Get | PropertyKind::Set
+                    ) && let Some(name) =
+                        property_identity(property.key(self.ast), self.ast, self.semantic)
+                        && let Some(pair) = pairs.get(&AccessorKey {
+                            name,
+                            r#static: false,
+                        })
+                    {
+                        let selected = if property.kind(self.ast) == PropertyKind::Get {
+                            pair.read_type(self.ast)
+                        } else {
+                            pair.write_type(self.ast)
+                        };
                         if let Some(selected) = selected {
                             self.visit_accessor_type(selected);
                         }
@@ -453,13 +441,11 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
         self.erased_function_names.pop();
     }
 
-    fn visit_accessor_type(&mut self, selected: crate::surface::AccessorType) {
+    fn visit_accessor_type(&mut self, selected: AccessorType) {
         match selected {
-            crate::surface::AccessorType::Annotation(annotation) => annotation.visit_with(self),
-            crate::surface::AccessorType::Inferred(function) => {
-                if let Some(expression) =
-                    crate::surface::return_expression(function.body(self.ast), self.ast)
-                {
+            AccessorType::Annotation(annotation) => annotation.visit_with(self),
+            AccessorType::Inferred(function) => {
+                if let Some(expression) = return_expression(function.body(self.ast), self.ast) {
                     self.visit_return_expression(function.body(self.ast), expression);
                 }
             }
@@ -490,14 +476,14 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
     }
 
     fn computed_key_is_declaration_safe(&self, key: PropertyKey) -> bool {
-        crate::surface::supported_computed_key(key, self.ast, self.semantic)
+        supported_computed_key(key, self.ast, self.semantic)
     }
 
     fn property_key_is_private(key: PropertyKey, ast: &Ast<'_>) -> bool {
         matches!(
             ast.property_key_data(key),
             PropertyKeyData::Expr(expression)
-                if matches!(ast.expr_data(expression), swc_next_ecma_ast::ExprData::PrivateIdentifier(_))
+                if matches!(ast.expr_data(expression), ExprData::PrivateIdentifier(_))
         )
     }
 }
@@ -606,7 +592,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
     fn visit_export_default_declaration(&mut self, declaration: ExportDefaultDeclaration) {
         self.with_scope_source(|analyzer| {
             let declaration = declaration.declaration(analyzer.ast);
-            if let swc_next_ecma_ast::ExportDefaultDeclarationKindData::Expr(expression) = analyzer
+            if let ExportDefaultDeclarationKindData::Expr(expression) = analyzer
                 .ast
                 .export_default_declaration_kind_data(declaration)
             {
@@ -621,7 +607,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
         self.add_reference(specifier.local(self.ast).node_id());
     }
 
-    fn visit_ts_export_assignment(&mut self, declaration: swc_next_ecma_ast::TsExportAssignment) {
+    fn visit_ts_export_assignment(&mut self, declaration: TsExportAssignment) {
         self.with_scope_source(|analyzer| {
             analyzer.visit_export_expression(declaration.expression(analyzer.ast));
         });
@@ -629,12 +615,12 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
 
     fn visit_ts_module_declaration(&mut self, declaration: TsModuleDeclaration) {
         let context = self.context.namespace(declaration, self.ast);
-        let previous_context = std::mem::replace(&mut self.context, context);
+        let previous_context = replace(&mut self.context, context);
         let id = declaration.id(self.ast);
-        if let Some(binding) = crate::surface::namespace_binding(id, self.ast) {
+        if let Some(binding) = namespace_binding(id, self.ast) {
             if let Some(key) = self.declaration_key(binding, SymbolUsage::all()) {
                 self.add_edge(key);
-                let previous_scope = std::mem::replace(&mut self.scope_source, Source::Symbol(key));
+                let previous_scope = replace(&mut self.scope_source, Source::Symbol(key));
                 let previous = self.source.take();
                 declaration.body(self.ast).visit_with(self);
                 self.source = previous;
@@ -660,10 +646,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
     }
 
     fn visit_ts_global_declaration(&mut self, declaration: TsGlobalDeclaration) {
-        let previous = std::mem::replace(
-            &mut self.context,
-            crate::surface::DeclContext::AMBIENT_MODULE,
-        );
+        let previous = replace(&mut self.context, DeclContext::AMBIENT_MODULE);
         self.with_source(Source::Root, |analyzer| {
             declaration.body(analyzer.ast).visit_with(analyzer);
         });
@@ -682,11 +665,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
         self.visit_ts_function_signature(function);
     }
 
-    fn visit_arrow_function_expression(
-        &mut self,
-        function: swc_next_ecma_ast::ArrowFunctionExpression,
-    ) {
-        use swc_next_ecma_ast::ArrowFunctionBodyData;
+    fn visit_arrow_function_expression(&mut self, function: ArrowFunctionExpression) {
         function.type_parameters(self.ast).visit_with(self);
         function.params(self.ast).visit_with(self);
         if let Some(annotation) = function.return_type(self.ast) {
@@ -695,7 +674,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
             let expression = match self.ast.arrow_function_body_data(function.body(self.ast)) {
                 ArrowFunctionBodyData::Expr(expression) => Some(expression),
                 ArrowFunctionBodyData::FunctionBody(body) => {
-                    if let Some(expression) = crate::surface::return_expression(body, self.ast) {
+                    if let Some(expression) = return_expression(body, self.ast) {
                         self.visit_return_expression(body, expression);
                     }
                     None
@@ -707,7 +686,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
         }
     }
 
-    fn visit_class(&mut self, class: swc_next_ecma_ast::Class) {
+    fn visit_class(&mut self, class: Class) {
         self.surface
             .record_class_overloads(class, self.ast, self.semantic);
         let elements = class
@@ -715,8 +694,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
             .body(self.ast)
             .iter()
             .map(|element| self.ast.get_node_in_sub_range(element));
-        for pair in crate::surface::class_accessors(elements, self.ast, self.semantic).into_values()
-        {
+        for pair in class_accessors(elements, self.ast, self.semantic).into_values() {
             if let Some(getter) = pair.getter
                 && let Some(selected) = pair.read_type(self.ast)
             {
@@ -795,7 +773,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
                 let params = method.value(self.ast).params(self.ast);
                 for item in params.items(self.ast).iter() {
                     let item = self.ast.get_node_in_sub_range(item);
-                    let swc_next_ecma_ast::FormalParameterItemData::TsParameterProperty(property) =
+                    let FormalParameterItemData::TsParameterProperty(property) =
                         self.ast.formal_parameter_item_data(item)
                     else {
                         continue;
@@ -816,7 +794,7 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
         }
     }
 
-    fn visit_ts_method_definition(&mut self, method: swc_next_ecma_ast::TsMethodDefinition) {
+    fn visit_ts_method_definition(&mut self, method: TsMethodDefinition) {
         if Self::property_key_is_private(method.key(self.ast), self.ast) {
             return;
         }

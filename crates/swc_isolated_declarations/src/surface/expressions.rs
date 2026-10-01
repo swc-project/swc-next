@@ -2,8 +2,9 @@
 
 use swc_next_ecma_ast::{
     ArrayExpression, ArrowFunctionExpression, Ast, Class, Expr, ExprData, Function, FunctionBody,
-    ObjectExpression, ReturnStatement, StmtData, TemplateElement, TemplateLiteral, TsLiteral,
-    TsType, TsTypeData, TsTypeNameData, UnaryOperator, Visit, VisitWith,
+    IdentifierReference, ObjectExpression, ReturnStatement, StmtData, TemplateElement,
+    TemplateLiteral, TsLiteral, TsType, TsTypeData, TsTypeNameData, UnaryOperator, Visit,
+    VisitWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -25,7 +26,7 @@ pub(crate) fn first_template_quasi(template: TemplateLiteral, ast: &Ast<'_>) -> 
 }
 
 pub(crate) enum ExportExpression {
-    Reference(swc_next_ecma_ast::IdentifierReference),
+    Reference(IdentifierReference),
     Class(Class),
     Inferred(Expr),
 }
@@ -66,7 +67,6 @@ pub(crate) fn inferred_type(
     semantic: &Semantic<'_>,
     surface: &DeclarationSurface,
 ) -> InferredType {
-    use InferredType::*;
     let expression = unparenthesized(expression, ast);
     match ast.expr_data(expression) {
         ExprData::TsAsExpression(assertion) => asserted_type(
@@ -83,58 +83,58 @@ pub(crate) fn inferred_type(
             semantic,
             surface,
         ),
-        ExprData::TsNonNullExpression(_) => Unsupported,
+        ExprData::TsNonNullExpression(_) => InferredType::Unsupported,
         ExprData::StringLiteral(literal) => {
             if is_const {
-                Literal(TsLiteral::StringLiteral(literal))
+                InferredType::Literal(TsLiteral::StringLiteral(literal))
             } else {
-                String
+                InferredType::String
             }
         }
         ExprData::NumericLiteral(literal) => {
             if is_const {
-                Literal(TsLiteral::NumericLiteral(literal))
+                InferredType::Literal(TsLiteral::NumericLiteral(literal))
             } else {
-                Number
+                InferredType::Number
             }
         }
         ExprData::BigIntLiteral(literal) => {
             if is_const {
-                Literal(TsLiteral::BigIntLiteral(literal))
+                InferredType::Literal(TsLiteral::BigIntLiteral(literal))
             } else {
-                BigInt
+                InferredType::BigInt
             }
         }
         ExprData::BooleanLiteral(literal) => {
             if is_const {
-                Literal(TsLiteral::BooleanLiteral(literal))
+                InferredType::Literal(TsLiteral::BooleanLiteral(literal))
             } else {
-                Boolean
+                InferredType::Boolean
             }
         }
-        ExprData::TemplateLiteral(_) if !is_const => String,
+        ExprData::TemplateLiteral(_) if !is_const => InferredType::String,
         ExprData::TemplateLiteral(template) if template.expressions(ast).is_empty() => {
-            Template(first_template_quasi(template, ast))
+            InferredType::Template(first_template_quasi(template, ast))
         }
-        ExprData::NullLiteral(_) => Null,
+        ExprData::NullLiteral(_) => InferredType::Null,
         ExprData::IdentifierReference(identifier) => {
             if ast.get_utf8(identifier.name(ast)) == "undefined"
                 && semantic
                     .reference_of(identifier.node_id())
                     .is_some_and(|id| semantic.reference(id).symbol.is_none())
             {
-                Undefined
+                InferredType::Undefined
             } else if let Some(reference) = semantic.reference_of(identifier.node_id())
                 && let Some(symbol) = semantic.reference(reference).resolution().symbol()
                 && let Some(annotation) = surface.annotations.get(&symbol)
             {
                 if annotation.optional {
-                    OptionalParameter(annotation.annotation)
+                    InferredType::OptionalParameter(annotation.annotation)
                 } else {
-                    Annotation(annotation.annotation)
+                    InferredType::Annotation(annotation.annotation)
                 }
             } else {
-                Unsupported
+                InferredType::Unsupported
             }
         }
         ExprData::UnaryExpression(unary)
@@ -146,35 +146,35 @@ pub(crate) fn inferred_type(
             match ast.expr_data(unparenthesized(unary.argument(ast), ast)) {
                 ExprData::NumericLiteral(number) => {
                     if !is_const {
-                        Number
+                        InferredType::Number
                     } else if unary.operator(ast) == UnaryOperator::Positive {
-                        Literal(TsLiteral::NumericLiteral(number))
+                        InferredType::Literal(TsLiteral::NumericLiteral(number))
                     } else {
-                        Literal(TsLiteral::UnaryExpression(unary))
+                        InferredType::Literal(TsLiteral::UnaryExpression(unary))
                     }
                 }
                 ExprData::BigIntLiteral(_) => {
                     if is_const {
-                        Literal(TsLiteral::UnaryExpression(unary))
+                        InferredType::Literal(TsLiteral::UnaryExpression(unary))
                     } else {
-                        BigInt
+                        InferredType::BigInt
                     }
                 }
-                _ => Unsupported,
+                _ => InferredType::Unsupported,
             }
         }
-        ExprData::ObjectExpression(object) => Object(object, is_const),
+        ExprData::ObjectExpression(object) => InferredType::Object(object, is_const),
         ExprData::ArrayExpression(array) => {
             if is_const {
-                Array(array)
+                InferredType::Array(array)
             } else {
-                InvalidArray
+                InferredType::InvalidArray
             }
         }
-        ExprData::Function(function) => Function(function),
-        ExprData::ArrowFunctionExpression(function) => Arrow(function),
-        ExprData::Class(_) if !is_const => InvalidClass,
-        _ => Unsupported,
+        ExprData::Function(function) => InferredType::Function(function),
+        ExprData::ArrowFunctionExpression(function) => InferredType::Arrow(function),
+        ExprData::Class(_) if !is_const => InferredType::InvalidClass,
+        _ => InferredType::Unsupported,
     }
 }
 

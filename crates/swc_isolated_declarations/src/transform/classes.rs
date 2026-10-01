@@ -1,15 +1,17 @@
 //! Class members, private declarations, and constructor parameter properties.
 
+use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{
     Accessibility, Ast, Class, ClassElement, ClassElementData, CloneIn, Diagnostic, Expr, ExprData,
     FormalParameterItemData, FormalParameters, GetSpan, MethodDefinitionKind, PropertyDefinition,
-    PropertyKey, Span, TsParameterProperty,
+    PropertyKey, Span, SubRange, TsParameterProperty, TsTypeAnnotation,
 };
 
 use super::diagnostics::{
     COMPUTED_PROPERTY_NOT_SUPPORTED, EXTENDS_EXPRESSION_NOT_SUPPORTED, PROPERTY_TYPE_REQUIRED,
 };
 use super::{DeclContext, Transformer};
+use crate::surface::{property_identity, unparenthesized};
 
 impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn transform_class(
@@ -19,10 +21,10 @@ impl<'ast> Transformer<'_, 'ast> {
         ast: &mut Ast<'ast>,
     ) {
         class.set_declare(ast, context.declare);
-        class.set_decorators(ast, swc_next_ecma_ast::SubRange::empty());
+        class.set_decorators(ast, SubRange::empty());
         if let Some(super_class) = class.super_class(ast)
             && !matches!(
-                ast.expr_data(crate::surface::unparenthesized(super_class, ast)),
+                ast.expr_data(unparenthesized(super_class, ast)),
                 ExprData::NullLiteral(_)
             )
             && !self.is_heritage_expression(super_class, ast)
@@ -39,7 +41,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let mut parameter_properties = Vec::new();
         let mut parameter_property_insert = None;
         let mut has_private_key = false;
-        let mut private_methods = rustc_hash::FxHashSet::default();
+        let mut private_methods = FxHashSet::default();
 
         for element in elements.iter() {
             let element = ast.get_node_in_sub_range(element);
@@ -159,7 +161,7 @@ impl<'ast> Transformer<'_, 'ast> {
                     let key = self.declaration_property_key(method.key(ast), ast);
                     let method = ast.ts_method_definition(
                         method.span(ast),
-                        swc_next_ecma_ast::SubRange::empty(),
+                        SubRange::empty(),
                         key,
                         function,
                         kind,
@@ -208,7 +210,7 @@ impl<'ast> Transformer<'_, 'ast> {
                         && method.kind(ast) == MethodDefinitionKind::Method
                     {
                         if let Some(identity) =
-                            crate::surface::property_identity(method.key(ast), ast, self.semantic)
+                            property_identity(method.key(ast), ast, self.semantic)
                             && !private_methods.insert((identity, method.r#static(ast)))
                         {
                             continue;
@@ -278,7 +280,7 @@ impl<'ast> Transformer<'_, 'ast> {
                         parameter_property_insert.get_or_insert(transformed.len());
                         if method.accessibility(ast) == Accessibility::Private {
                             let params = function.params(ast);
-                            params.set_items(ast, swc_next_ecma_ast::SubRange::empty());
+                            params.set_items(ast, SubRange::empty());
                             params.set_rest(ast, None);
                         } else {
                             self.report_untyped_this_parameter(function.this_param(ast), ast);
@@ -323,7 +325,7 @@ impl<'ast> Transformer<'_, 'ast> {
     }
 
     fn transform_property(&mut self, property: PropertyDefinition, ast: &mut Ast<'ast>) {
-        property.set_decorators(ast, swc_next_ecma_ast::SubRange::empty());
+        property.set_decorators(ast, SubRange::empty());
         property.set_declare(ast, false);
         property.set_definite(ast, false);
         property.set_override(ast, false);
@@ -354,7 +356,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 return;
             }
         }
-        let value = crate::surface::unparenthesized(value, ast);
+        let value = unparenthesized(value, ast);
         let inferred = match ast.expr_data(value) {
             ExprData::TemplateLiteral(template)
                 if readonly && !template.expressions(ast).is_empty() =>
@@ -385,7 +387,7 @@ impl<'ast> Transformer<'_, 'ast> {
     ) -> ClassElement {
         let property = ast.property_definition(
             span,
-            swc_next_ecma_ast::SubRange::empty(),
+            SubRange::empty(),
             key,
             None,
             None,
@@ -409,7 +411,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let key = ast.property_key_expr_private_identifier(span, name);
         let property = ast.property_definition(
             span,
-            swc_next_ecma_ast::SubRange::empty(),
+            SubRange::empty(),
             key,
             None,
             None,
@@ -493,7 +495,7 @@ impl<'ast> Transformer<'_, 'ast> {
                     }
                 }
             }
-            params.set_items(ast, swc_next_ecma_ast::SubRange::empty());
+            params.set_items(ast, SubRange::empty());
             params.set_rest(ast, None);
         } else {
             self.transform_formal_parameters(params, ast);
@@ -518,7 +520,7 @@ impl<'ast> Transformer<'_, 'ast> {
         &self,
         property: TsParameterProperty,
         optional: bool,
-        original_type: Option<swc_next_ecma_ast::TsTypeAnnotation>,
+        original_type: Option<TsTypeAnnotation>,
         ast: &mut Ast<'ast>,
     ) -> Option<ClassElement> {
         let parameter = property.parameter(ast);
@@ -540,7 +542,7 @@ impl<'ast> Transformer<'_, 'ast> {
             PropertyKey::IdentifierName(ast.identifier_name(binding.span(ast), binding.name(ast)));
         let property = ast.property_definition(
             property.span(ast),
-            swc_next_ecma_ast::SubRange::empty(),
+            SubRange::empty(),
             key,
             type_annotation,
             None,
@@ -566,7 +568,7 @@ impl<'ast> Transformer<'_, 'ast> {
     ) {
         params.set_rest(ast, None);
         if kind == MethodDefinitionKind::Get {
-            params.set_items(ast, swc_next_ecma_ast::SubRange::empty());
+            params.set_items(ast, SubRange::empty());
             return;
         }
         let items = params.items(ast);

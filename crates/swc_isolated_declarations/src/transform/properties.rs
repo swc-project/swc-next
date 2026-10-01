@@ -1,17 +1,22 @@
 //! Validate, spell, and normalize property keys for declaration output.
 
 use std::borrow::Cow;
+
 use swc_next_ecma_ast::{
-    Ast, Diagnostic, Expr, ExprData, GetSpan, PropertyKey, PropertyKeyData, TsTypeElement,
-    is_identifier,
+    Ast, Diagnostic, Expr, ExprData, GetSpan, PropertyKey, PropertyKeyData, SubRange,
+    TsTypeElement, TsTypeElementData, is_identifier,
 };
+use zmij_ecma::Buffer;
 
 use super::Transformer;
 use super::diagnostics::COMPUTED_SIGNATURE_NOT_SUPPORTED;
+use crate::surface::{
+    first_template_quasi, signed_numeric_value, supported_computed_key, unparenthesized,
+};
 
 impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn is_supported_computed_key(&self, key: PropertyKey, ast: &Ast<'ast>) -> bool {
-        crate::surface::supported_computed_key(key, ast, self.semantic)
+        supported_computed_key(key, ast, self.semantic)
     }
 
     pub(super) fn property_key_is_private(key: PropertyKey, ast: &Ast<'ast>) -> bool {
@@ -24,20 +29,16 @@ impl<'ast> Transformer<'_, 'ast> {
 
     pub(super) fn validate_computed_type_elements(
         &mut self,
-        elements: swc_next_ecma_ast::SubRange<TsTypeElement>,
+        elements: SubRange<TsTypeElement>,
         ast: &Ast<'ast>,
     ) {
         for element in elements.iter() {
             let element = ast.get_node_in_sub_range(element);
             let key = match ast.ts_type_element_data(element) {
-                swc_next_ecma_ast::TsTypeElementData::TsPropertySignature(signature)
-                    if signature.computed(ast) =>
-                {
+                TsTypeElementData::TsPropertySignature(signature) if signature.computed(ast) => {
                     Some(signature.key(ast))
                 }
-                swc_next_ecma_ast::TsTypeElementData::TsMethodSignature(signature)
-                    if signature.computed(ast) =>
-                {
+                TsTypeElementData::TsMethodSignature(signature) if signature.computed(ast) => {
                     Some(signature.key(ast))
                 }
                 _ => None,
@@ -103,7 +104,7 @@ impl<'ast> Transformer<'_, 'ast> {
     }
 
     fn number_property_name(&self, value: f64) -> String {
-        let mut buffer = zmij_ecma::Buffer::new();
+        let mut buffer = Buffer::new();
         buffer.format(value).to_owned()
     }
 
@@ -115,9 +116,9 @@ impl<'ast> Transformer<'_, 'ast> {
         let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
             return key;
         };
-        let expression = crate::surface::unparenthesized(expression, ast);
+        let expression = unparenthesized(expression, ast);
         if let ExprData::UnaryExpression(unary) = ast.expr_data(expression)
-            && crate::surface::signed_numeric_value(unary, ast) == Some(0.0)
+            && signed_numeric_value(unary, ast) == Some(0.0)
         {
             // TypeScript treats [-0] and [0] as different accessor names. Emit
             // the same spelling so consumers preserve JavaScript key identity.
@@ -140,7 +141,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 && let ExprData::TemplateLiteral(template) = ast.expr_data(expression)
                 && template.expressions(ast).is_empty()
             {
-                let quasi = crate::surface::first_template_quasi(template, ast);
+                let quasi = first_template_quasi(template, ast);
                 let expression = ast.expr_string_literal(
                     expression.span(ast),
                     quasi.cooked(ast),
@@ -173,7 +174,7 @@ impl<'ast> Transformer<'_, 'ast> {
         if let ExprData::TemplateLiteral(template) = ast.expr_data(expression)
             && template.expressions(ast).is_empty()
         {
-            let quasi = crate::surface::first_template_quasi(template, ast);
+            let quasi = first_template_quasi(template, ast);
             let expression =
                 ast.expr_string_literal(expression.span(ast), quasi.cooked(ast), ast.empty_utf8());
             let key = PropertyKey::Expr(expression);

@@ -1,14 +1,18 @@
 //! Isolated type inference from expressions and function return statements.
 
 use swc_next_ecma_ast::{
-    ArgumentData, ArrowFunctionBodyData, ArrowFunctionExpression, Ast, Diagnostic, Expr, ExprData,
-    Function, GetSpan, TsLiteral, TsTupleElement, TsType, TsTypeOperatorKind, UnaryOperator,
+    ArgumentData, ArrayExpression, ArrowFunctionBodyData, ArrowFunctionExpression, Ast, Diagnostic,
+    Expr, ExprData, Function, GetSpan, TsLiteral, TsLiteralData, TsTupleElement, TsType,
+    TsTypeAnnotation, TsTypeOperatorKind, UnaryOperator,
 };
 
 use super::Transformer;
 use super::diagnostics::{
     ARRAY_REQUIRES_CONST, ARRAY_SPREAD_NOT_SUPPORTED, CLASS_EXPRESSION_NOT_SUPPORTED,
     EXPRESSION_TYPE_REQUIRED, FUNCTION_RETURN_TYPE_REQUIRED,
+};
+use crate::surface::{
+    InferredType, first_template_quasi, inferred_type, return_expression, unparenthesized,
 };
 
 impl<'ast> Transformer<'_, 'ast> {
@@ -34,7 +38,6 @@ impl<'ast> Transformer<'_, 'ast> {
         is_const: bool,
         ast: &mut Ast<'ast>,
     ) -> Option<TsType> {
-        use crate::surface::{InferredType, inferred_type};
         let span = expression.span(ast);
         let ty = match inferred_type(expression, is_const, ast, self.semantic, &self.surface) {
             InferredType::Annotation(annotation) => annotation,
@@ -44,10 +47,8 @@ impl<'ast> Transformer<'_, 'ast> {
                 ast.ts_type_ts_union_type(span, types)
             }
             InferredType::Literal(literal) => {
-                if let swc_next_ecma_ast::TsLiteralData::UnaryExpression(unary) =
-                    ast.ts_literal_data(literal)
-                {
-                    let argument = crate::surface::unparenthesized(unary.argument(ast), ast);
+                if let TsLiteralData::UnaryExpression(unary) = ast.ts_literal_data(literal) {
+                    let argument = unparenthesized(unary.argument(ast), ast);
                     unary.set_argument(ast, argument);
                 }
                 ast.ts_type_ts_literal_type(span, literal)
@@ -109,11 +110,7 @@ impl<'ast> Transformer<'_, 'ast> {
         Some(ty)
     }
 
-    fn infer_const_array_type(
-        &mut self,
-        array: swc_next_ecma_ast::ArrayExpression,
-        ast: &mut Ast<'ast>,
-    ) -> TsType {
+    fn infer_const_array_type(&mut self, array: ArrayExpression, ast: &mut Ast<'ast>) -> TsType {
         let span = array.span(ast);
         let elements = array.elements(ast);
         let mut element_types = Vec::with_capacity(elements.len());
@@ -152,9 +149,9 @@ impl<'ast> Transformer<'_, 'ast> {
         &mut self,
         function: Function,
         ast: &mut Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<TsTypeAnnotation> {
         let body = function.body(ast);
-        let expression = crate::surface::return_expression(body, ast)?;
+        let expression = return_expression(body, ast)?;
         let ty = self.infer_type_from_expr(expression, ast)?;
         Some(ast.ts_type_annotation(function.span(ast), ty))
     }
@@ -163,7 +160,7 @@ impl<'ast> Transformer<'_, 'ast> {
         &mut self,
         function: ArrowFunctionExpression,
         ast: &mut Ast<'ast>,
-    ) -> Option<swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<TsTypeAnnotation> {
         if let Some(return_type) = function.return_type(ast) {
             return Some(return_type);
         }
@@ -176,7 +173,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 Some(ast.ts_type_annotation(expression.span(ast), ty))
             }
             ArrowFunctionBodyData::FunctionBody(body) => {
-                let expression = crate::surface::return_expression(body, ast)?;
+                let expression = return_expression(body, ast)?;
                 let ty = self.infer_type_from_expr(expression, ast)?;
                 Some(ast.ts_type_annotation(function.span(ast), ty))
             }
@@ -184,7 +181,7 @@ impl<'ast> Transformer<'_, 'ast> {
     }
 
     pub(super) fn is_literal_initializer(&self, expression: Expr, ast: &Ast<'ast>) -> bool {
-        let expression = crate::surface::unparenthesized(expression, ast);
+        let expression = unparenthesized(expression, ast);
         match ast.expr_data(expression) {
             ExprData::StringLiteral(_)
             | ExprData::NumericLiteral(_)
@@ -196,7 +193,7 @@ impl<'ast> Transformer<'_, 'ast> {
                     unary.operator(ast),
                     UnaryOperator::Negate | UnaryOperator::Positive
                 ) && matches!(
-                    ast.expr_data(crate::surface::unparenthesized(unary.argument(ast), ast)),
+                    ast.expr_data(unparenthesized(unary.argument(ast), ast)),
                     ExprData::NumericLiteral(_) | ExprData::BigIntLiteral(_)
                 )
             }
@@ -209,10 +206,10 @@ impl<'ast> Transformer<'_, 'ast> {
         expression: Expr,
         ast: &mut Ast<'ast>,
     ) -> Expr {
-        let expression = crate::surface::unparenthesized(expression, ast);
+        let expression = unparenthesized(expression, ast);
         match ast.expr_data(expression) {
             ExprData::UnaryExpression(unary) => {
-                let argument = crate::surface::unparenthesized(unary.argument(ast), ast);
+                let argument = unparenthesized(unary.argument(ast), ast);
                 if unary.operator(ast) == UnaryOperator::Positive
                     && matches!(ast.expr_data(argument), ExprData::NumericLiteral(_))
                 {
@@ -222,7 +219,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 expression
             }
             ExprData::TemplateLiteral(template) if template.expressions(ast).is_empty() => {
-                let quasi = crate::surface::first_template_quasi(template, ast);
+                let quasi = first_template_quasi(template, ast);
                 let raw = ast.add_utf8("");
                 ast.expr_string_literal(expression.span(ast), quasi.cooked(ast), raw)
             }

@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    env::var,
     fs,
     path::{Path, PathBuf},
 };
@@ -35,7 +36,7 @@ fn covers_deduplicated_declaration_emit_fixtures() {
     let mut sources = HashSet::new();
     let mut categories = HashSet::new();
     let mut failures = Vec::new();
-    let filter = std::env::var("DTS_FIXTURE").ok();
+    let filter = var("DTS_FIXTURE").ok();
     let exact_filter = filter
         .as_ref()
         .is_some_and(|filter| fixtures.iter().any(|fixture| &fixture.name == filter));

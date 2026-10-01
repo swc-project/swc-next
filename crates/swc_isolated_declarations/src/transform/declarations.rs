@@ -1,7 +1,9 @@
 //! Declaration retention, variable emit, and generated default exports.
 
+use std::borrow::Cow;
+
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, BindingPattern, BindingPatternData, ClassType, Decl, DeclData,
+    Ast, AstUtf8, BindingIdentifier, BindingPattern, BindingPatternData, ClassType, Decl, DeclData,
     Diagnostic, ExportDefaultDeclarationKind, ExportDefaultDeclarationKindData, Expr, ExprData,
     GetSpan, Stmt, SymbolId, TsModuleDeclarationKind, TsModuleNameData, VariableDeclaration,
     VariableDeclarator, VariableKind, Visit, VisitWith,
@@ -15,10 +17,11 @@ use super::enums::transform_enum;
 use super::modules::ModuleScopeKind;
 use super::{DeclContext, Transformer};
 use crate::SymbolUsage;
+use crate::surface::{ExportExpression, export_expression, namespace_binding, unparenthesized};
 
 pub(super) struct ExportExpressionBinding {
     declaration: Stmt,
-    pub(super) name: swc_next_ecma_ast::AstUtf8,
+    pub(super) name: AstUtf8,
     order: ExportOrder,
 }
 
@@ -116,7 +119,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 let name = module.id(ast);
                 let ambient_body = context.namespace(module, ast).ambient;
                 if !context.retain_all
-                    && crate::surface::namespace_binding(name, ast)
+                    && namespace_binding(name, ast)
                         .is_some_and(|binding| !self.binding_is_used(binding))
                 {
                     return None;
@@ -239,7 +242,7 @@ impl<'ast> Transformer<'_, 'ast> {
             ));
             return;
         };
-        let initializer = crate::surface::unparenthesized(initializer, ast);
+        let initializer = unparenthesized(initializer, ast);
         if kind == VariableKind::Const && self.is_literal_initializer(initializer, ast) {
             let initializer = self.normalize_literal_initializer(initializer, ast);
             declarator.set_init(ast, Some(initializer));
@@ -316,15 +319,15 @@ impl<'ast> Transformer<'_, 'ast> {
         context: DeclContext,
         ast: &mut Ast<'ast>,
     ) -> ExportExpressionBinding {
-        let expression = crate::surface::unparenthesized(expression, ast);
+        let expression = unparenthesized(expression, ast);
         let span = expression.span(ast);
         let name = self.fresh_default_name(ast);
         let binding = ast.binding_identifier(span, name);
 
         // Only references retained by dependency analysis can escape the class's
         // original name scope. References in erased method bodies do not matter.
-        let class = match crate::surface::export_expression(expression, ast) {
-            crate::surface::ExportExpression::Class(class) => Some(class),
+        let class = match export_expression(expression, ast) {
+            ExportExpression::Class(class) => Some(class),
             _ => None,
         };
         if let Some(class) = class
@@ -375,7 +378,7 @@ impl<'ast> Transformer<'_, 'ast> {
         }
     }
 
-    fn fresh_default_name(&mut self, ast: &mut Ast<'ast>) -> swc_next_ecma_ast::AstUtf8 {
+    fn fresh_default_name(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
         let names = self.reserved_names.get_or_insert_with(|| {
             let symbols = self
                 .semantic
@@ -394,9 +397,9 @@ impl<'ast> Transformer<'_, 'ast> {
             let suffix = self.next_default_id;
             self.next_default_id += 1;
             let candidate = if suffix == 0 {
-                std::borrow::Cow::Borrowed("_default")
+                Cow::Borrowed("_default")
             } else {
-                std::borrow::Cow::Owned(format!("_default_{suffix}"))
+                Cow::Owned(format!("_default_{suffix}"))
             };
             if !names.contains(candidate.as_bytes()) {
                 // The increasing suffix already keeps generated names distinct.

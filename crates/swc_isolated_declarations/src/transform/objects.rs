@@ -1,7 +1,10 @@
 //! Object literal declaration inference and accessor pair consumption.
 
+use std::collections::hash_map::Entry;
+
+use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
-    Ast, Diagnostic, ExprData, GetSpan, ObjectPropertyKindData, PropertyKind,
+    Ast, Diagnostic, ExprData, GetSpan, ObjectExpression, ObjectPropertyKindData, PropertyKind,
     TsMethodSignatureKind, TsType,
 };
 
@@ -10,20 +13,21 @@ use super::diagnostics::{
     COMPUTED_PROPERTY_NOT_SUPPORTED, EXPRESSION_TYPE_REQUIRED, OBJECT_SHORTHAND_NOT_SUPPORTED,
     OBJECT_SPREAD_NOT_SUPPORTED,
 };
+use crate::surface::{object_accessors, supported_object_key};
 
 impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn infer_object_type(
         &mut self,
-        object: swc_next_ecma_ast::ObjectExpression,
+        object: ObjectExpression,
         is_const: bool,
         ast: &mut Ast<'ast>,
     ) -> TsType {
         let span = object.span(ast);
         let properties = object.properties(ast);
-        let mut accessor_annotations = crate::surface::object_accessors(object, ast, self.semantic)
+        let mut accessor_annotations = object_accessors(object, ast, self.semantic)
             .into_iter()
             .map(|(key, pair)| (key, self.resolve_accessor_pair(pair, ast)))
-            .collect::<rustc_hash::FxHashMap<_, _>>();
+            .collect::<FxHashMap<_, _>>();
         let mut members = Vec::with_capacity(properties.len());
         for property in properties.iter() {
             let property = ast.get_node_in_sub_range(property);
@@ -44,9 +48,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 ));
                 continue;
             }
-            if property.computed(ast)
-                && !crate::surface::supported_object_key(property.key(ast), ast)
-            {
+            if property.computed(ast) && !supported_object_key(property.key(ast), ast) {
                 self.diagnostics.push(Diagnostic::error(
                     COMPUTED_PROPERTY_NOT_SUPPORTED,
                     property.key(ast).span(ast),
@@ -58,9 +60,7 @@ impl<'ast> Transformer<'_, 'ast> {
             if matches!(property.kind(ast), PropertyKind::Get | PropertyKind::Set)
                 && let Some(key) = self.accessor_key(property.key(ast), false, ast)
             {
-                let std::collections::hash_map::Entry::Occupied(entry) =
-                    accessor_annotations.entry(key)
-                else {
+                let Entry::Occupied(entry) = accessor_annotations.entry(key) else {
                     continue;
                 };
                 if entry.get().separate_signatures()

@@ -2,8 +2,8 @@
 
 use swc_next_ecma_ast::{
     Ast, Decl, DeclData, ImportDeclaration, ImportDeclarationSpecifier,
-    ImportDeclarationSpecifierData, ImportOrExportKind, Span, Stmt, StmtData, TsModuleBodyData,
-    TsModuleNameData,
+    ImportDeclarationSpecifierData, ImportOrExportKind, Span, Stmt, StmtData, SubRange,
+    TsModuleBlock, TsModuleBody, TsModuleBodyData, TsModuleNameData,
 };
 
 use super::{DeclContext, Transformer};
@@ -18,7 +18,7 @@ pub(super) enum ModuleScopeKind {
 impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn transform_module_body(
         &mut self,
-        body: Option<swc_next_ecma_ast::TsModuleBody>,
+        body: Option<TsModuleBody>,
         ambient: bool,
         ast: &mut Ast<'ast>,
     ) {
@@ -48,7 +48,7 @@ impl<'ast> Transformer<'_, 'ast> {
 
     pub(super) fn transform_module_block(
         &mut self,
-        block: swc_next_ecma_ast::TsModuleBlock,
+        block: TsModuleBlock,
         context: DeclContext,
         scope: ModuleScopeKind,
         ast: &mut Ast<'ast>,
@@ -229,9 +229,9 @@ impl<'ast> Transformer<'_, 'ast> {
         ast.stmt_export_named_declaration(
             Span::new(0, 0),
             None,
-            swc_next_ecma_ast::SubRange::empty(),
+            SubRange::empty(),
             None,
-            swc_next_ecma_ast::SubRange::empty(),
+            SubRange::empty(),
             ImportOrExportKind::Value,
         )
     }

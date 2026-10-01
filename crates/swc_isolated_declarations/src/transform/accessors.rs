@@ -2,22 +2,22 @@
 
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
-    Ast, ClassElement, CloneIn, Diagnostic, MethodDefinitionKind, PropertyKey, Span,
-    TsMethodSignatureKind, TsTypeElement,
+    Ast, ClassElement, CloneIn, Diagnostic, MethodDefinitionKind, PropertyKey, Span, SubRange,
+    TsMethodSignatureKind, TsTypeAnnotation, TsTypeElement, TsTypeElementData,
 };
 
 use super::Transformer;
 use super::diagnostics::ACCESSOR_TYPE_REQUIRED;
-use crate::surface::AccessorKey;
+use crate::surface::{AccessorKey, AccessorPair, AccessorType, class_accessors, property_identity};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct AccessorAnnotations {
     pub(super) span: Span,
     pub(super) has_getter: bool,
     pub(super) has_setter: bool,
-    pub(super) getter_explicit: Option<swc_next_ecma_ast::TsTypeAnnotation>,
-    pub(super) setter_explicit: Option<swc_next_ecma_ast::TsTypeAnnotation>,
-    pub(super) getter_inferred: Option<swc_next_ecma_ast::TsTypeAnnotation>,
+    pub(super) getter_explicit: Option<TsTypeAnnotation>,
+    pub(super) setter_explicit: Option<TsTypeAnnotation>,
+    pub(super) getter_inferred: Option<TsTypeAnnotation>,
 }
 
 impl AccessorAnnotations {
@@ -28,17 +28,17 @@ impl AccessorAnnotations {
 
 #[derive(Default)]
 struct AccessorSignatureAnnotations {
-    getter: Option<swc_next_ecma_ast::TsTypeAnnotation>,
-    setter: Option<swc_next_ecma_ast::TsTypeAnnotation>,
+    getter: Option<TsTypeAnnotation>,
+    setter: Option<TsTypeAnnotation>,
 }
 
 impl<'ast> Transformer<'_, 'ast> {
     pub(super) fn collect_accessor_annotations(
         &mut self,
-        elements: swc_next_ecma_ast::SubRange<ClassElement>,
+        elements: SubRange<ClassElement>,
         ast: &mut Ast<'ast>,
     ) -> FxHashMap<AccessorKey<'ast>, AccessorAnnotations> {
-        let pairs = crate::surface::class_accessors(
+        let pairs = class_accessors(
             elements
                 .iter()
                 .map(|element| ast.get_node_in_sub_range(element)),
@@ -63,13 +63,13 @@ impl<'ast> Transformer<'_, 'ast> {
 
     pub(super) fn resolve_accessor_pair(
         &mut self,
-        pair: crate::surface::AccessorPair,
+        pair: AccessorPair,
         ast: &mut Ast<'ast>,
     ) -> AccessorAnnotations {
         let getter_explicit = pair.getter_annotation(ast);
         let setter_explicit = pair.setter_annotation(ast);
         let getter_inferred = match pair.read_type(ast) {
-            Some(crate::surface::AccessorType::Inferred(function)) => {
+            Some(AccessorType::Inferred(function)) => {
                 self.infer_function_return_type(function, ast)
             }
             _ => None,
@@ -91,7 +91,7 @@ impl<'ast> Transformer<'_, 'ast> {
         kind: MethodDefinitionKind,
         annotations: &'map FxHashMap<AccessorKey<'ast>, AccessorAnnotations>,
         ast: &Ast<'ast>,
-    ) -> Option<&'map swc_next_ecma_ast::TsTypeAnnotation> {
+    ) -> Option<&'map TsTypeAnnotation> {
         if !matches!(kind, MethodDefinitionKind::Get | MethodDefinitionKind::Set) {
             return None;
         }
@@ -114,15 +114,14 @@ impl<'ast> Transformer<'_, 'ast> {
 
     pub(super) fn transform_type_accessor_elements(
         &self,
-        elements: swc_next_ecma_ast::SubRange<TsTypeElement>,
+        elements: SubRange<TsTypeElement>,
         ast: &mut Ast<'ast>,
     ) {
         let mut annotations = FxHashMap::default();
 
         for element in elements.iter() {
             let element = ast.get_node_in_sub_range(element);
-            let swc_next_ecma_ast::TsTypeElementData::TsMethodSignature(signature) =
-                ast.ts_type_element_data(element)
+            let TsTypeElementData::TsMethodSignature(signature) = ast.ts_type_element_data(element)
             else {
                 continue;
             };
@@ -151,8 +150,7 @@ impl<'ast> Transformer<'_, 'ast> {
 
         for element in elements.iter() {
             let element = ast.get_node_in_sub_range(element);
-            let swc_next_ecma_ast::TsTypeElementData::TsMethodSignature(signature) =
-                ast.ts_type_element_data(element)
+            let TsTypeElementData::TsMethodSignature(signature) = ast.ts_type_element_data(element)
             else {
                 continue;
             };
@@ -198,7 +196,7 @@ impl<'ast> Transformer<'_, 'ast> {
         r#static: bool,
         ast: &Ast<'ast>,
     ) -> Option<AccessorKey<'ast>> {
-        let name = crate::surface::property_identity(key, ast, self.semantic)?;
+        let name = property_identity(key, ast, self.semantic)?;
         Some(AccessorKey { name, r#static })
     }
 }

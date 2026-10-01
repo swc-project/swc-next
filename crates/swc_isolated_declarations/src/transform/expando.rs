@@ -10,6 +10,7 @@ use swc_next_ecma_ast::{
 use super::diagnostics::EXPANDO_FUNCTION_NOT_SUPPORTED;
 use super::{DeclContext, Transformer};
 use crate::SymbolUsage;
+use crate::surface::unparenthesized;
 
 #[derive(Default)]
 struct ExpandoFunction<'ast> {
@@ -80,7 +81,7 @@ impl<'ast> Transformer<'_, 'ast> {
                         };
                         if declarator.type_annotation(ast).is_some()
                             || !declarator.init(ast).is_some_and(|initializer| {
-                                let initializer = crate::surface::unparenthesized(initializer, ast);
+                                let initializer = unparenthesized(initializer, ast);
                                 matches!(
                                     ast.expr_data(initializer),
                                     ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
@@ -149,7 +150,7 @@ fn expando_member(
     let StmtData::ExpressionStatement(statement) = ast.stmt_data(statement) else {
         return None;
     };
-    let expression = crate::surface::unparenthesized(statement.expression(ast), ast);
+    let expression = unparenthesized(statement.expression(ast), ast);
     let ExprData::AssignmentExpression(assignment) = ast.expr_data(expression) else {
         return None;
     };
@@ -163,7 +164,7 @@ fn expando_member(
     else {
         return None;
     };
-    let object = crate::surface::unparenthesized(member.object(ast), ast);
+    let object = unparenthesized(member.object(ast), ast);
     let ExprData::IdentifierReference(object) = ast.expr_data(object) else {
         return None;
     };

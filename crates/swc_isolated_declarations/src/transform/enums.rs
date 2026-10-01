@@ -5,10 +5,13 @@ use std::borrow::Cow;
 use rustc_hash::FxHashMap;
 use swc_next_allocator::wtf8::Wtf8Buf;
 use swc_next_ecma_ast::{
-    Ast, AstWtf8, BinaryOperator, Diagnostic, Expr, ExprData, GetSpan, PropertyKeyData, SymbolId,
-    TsEnumDeclaration, UnaryOperator,
+    Ast, AstWtf8, BinaryOperator, Diagnostic, Expr, ExprData, GetSpan, PropertyKey,
+    PropertyKeyData, Span, SymbolId, TsEnumDeclaration, UnaryOperator,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic::{NameResolution, Semantic};
+use zmij_ecma::Buffer;
+
+use crate::surface::unparenthesized;
 
 const CONST_ENUM_INITIALIZER_NOT_CONSTANT: &str =
     "const enum member initializers must be constant expressions.";
@@ -20,7 +23,7 @@ enum ConstantValue {
 }
 
 impl ConstantValue {
-    fn to_expression(self, span: swc_next_ecma_ast::Span, ast: &mut Ast<'_>) -> Expr {
+    fn to_expression(self, span: Span, ast: &mut Ast<'_>) -> Expr {
         match self {
             Self::Number(value) => ast.expr_numeric_literal(span, value, None),
             Self::String(value) => ast.expr_string_literal(span, value, ast.empty_utf8()),
@@ -59,7 +62,7 @@ impl EvaluatedValue {
             Self::Number(value) if value == f64::INFINITY => output.push_str("Infinity"),
             Self::Number(value) if value == f64::NEG_INFINITY => output.push_str("-Infinity"),
             Self::Number(value) => {
-                let mut buffer = zmij_ecma::Buffer::new();
+                let mut buffer = Buffer::new();
                 output.push_str(buffer.format(value));
             }
             Self::StoredString(value) => output.push_wtf8(ast.get_wtf8(value)),
@@ -118,7 +121,7 @@ fn evaluate(
     previous_members: &FxHashMap<SymbolId, ConstantValue>,
     ast: &Ast<'_>,
 ) -> Option<EvaluatedValue> {
-    match ast.expr_data(crate::surface::unparenthesized(expression, ast)) {
+    match ast.expr_data(unparenthesized(expression, ast)) {
         ExprData::StringLiteral(literal) => Some(EvaluatedValue::StoredString(literal.value(ast))),
         ExprData::NumericLiteral(literal) => Some(EvaluatedValue::Number(literal.value(ast))),
         ExprData::TemplateLiteral(template) => {
@@ -257,7 +260,7 @@ fn to_int32(value: f64) -> i32 {
 }
 
 fn resolve_symbol(expression: Expr, semantic: &Semantic<'_>, ast: &Ast<'_>) -> Option<SymbolId> {
-    let expression = crate::surface::unparenthesized(expression, ast);
+    let expression = unparenthesized(expression, ast);
     match ast.expr_data(expression) {
         ExprData::IdentifierReference(identifier) => {
             let reference = semantic.reference_of(identifier.node_id())?;
@@ -273,30 +276,25 @@ fn resolve_symbol(expression: Expr, semantic: &Semantic<'_>, ast: &Ast<'_>) -> O
     }
 }
 
-fn unique_symbol(
-    mut targets: impl Iterator<Item = swc_next_ecma_semantic::NameResolution>,
-) -> Option<SymbolId> {
+fn unique_symbol(mut targets: impl Iterator<Item = NameResolution>) -> Option<SymbolId> {
     let symbol = targets.next()?.symbol()?;
     targets
         .all(|target| target.symbol() == Some(symbol))
         .then_some(symbol)
 }
 
-fn property_name<'ast>(
-    key: swc_next_ecma_ast::PropertyKey,
-    ast: &Ast<'ast>,
-) -> Option<Cow<'ast, [u8]>> {
+fn property_name<'ast>(key: PropertyKey, ast: &Ast<'ast>) -> Option<Cow<'ast, [u8]>> {
     match ast.property_key_data(key) {
         PropertyKeyData::IdentifierName(identifier) => {
             Some(Cow::Borrowed(ast.get_utf8(identifier.name(ast)).as_bytes()))
         }
         PropertyKeyData::Expr(expression) => {
-            match ast.expr_data(crate::surface::unparenthesized(expression, ast)) {
+            match ast.expr_data(unparenthesized(expression, ast)) {
                 ExprData::StringLiteral(literal) => {
                     Some(Cow::Borrowed(ast.get_wtf8(literal.value(ast)).as_bytes()))
                 }
                 ExprData::NumericLiteral(literal) => {
-                    let mut buffer = zmij_ecma::Buffer::new();
+                    let mut buffer = Buffer::new();
                     Some(Cow::Owned(
                         buffer.format(literal.value(ast)).as_bytes().to_vec(),
                     ))

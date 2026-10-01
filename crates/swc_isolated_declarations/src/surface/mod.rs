@@ -10,7 +10,11 @@ mod expressions;
 mod keys;
 mod overloads;
 
-use swc_next_ecma_ast::{Ast, SourceType, TsType};
+use rustc_hash::{FxHashMap, FxHashSet};
+use swc_next_ecma_ast::{
+    Ast, BindingIdentifier, FormalParameter, FormalParameterPatternData, NodeId, SourceType,
+    SymbolId, TsModuleDeclaration, TsModuleName, TsModuleNameData, TsQualifiedNameLeftData, TsType,
+};
 use swc_next_ecma_semantic::Semantic;
 
 pub(crate) use accessors::{
@@ -32,17 +36,16 @@ struct ParameterType {
 
 #[derive(Default)]
 pub(crate) struct DeclarationSurface {
-    annotations: rustc_hash::FxHashMap<swc_next_ecma_ast::SymbolId, ParameterType>,
-    pub(crate) hidden_implementations: rustc_hash::FxHashSet<swc_next_ecma_ast::NodeId>,
+    annotations: FxHashMap<SymbolId, ParameterType>,
+    pub(crate) hidden_implementations: FxHashSet<NodeId>,
 }
 impl DeclarationSurface {
     pub(crate) fn record_annotation(
         &mut self,
-        parameter: swc_next_ecma_ast::FormalParameter,
+        parameter: FormalParameter,
         ast: &Ast<'_>,
         semantic: &Semantic<'_>,
     ) {
-        use swc_next_ecma_ast::FormalParameterPatternData;
         if let FormalParameterPatternData::BindingIdentifier(binding) =
             ast.formal_parameter_pattern_data(parameter.pattern(ast))
             && let Some(annotation) = parameter.type_annotation(ast)
@@ -92,16 +95,12 @@ impl DeclContext {
         retain_all: true,
         ambient: true,
     };
-    pub(crate) fn namespace(
-        self,
-        module: swc_next_ecma_ast::TsModuleDeclaration,
-        ast: &swc_next_ecma_ast::Ast<'_>,
-    ) -> Self {
+    pub(crate) fn namespace(self, module: TsModuleDeclaration, ast: &Ast<'_>) -> Self {
         if self.ambient
             || module.declare(ast)
             || matches!(
                 ast.ts_module_name_data(module.id(ast)),
-                swc_next_ecma_ast::TsModuleNameData::StringLiteral(_)
+                TsModuleNameData::StringLiteral(_)
             )
         {
             Self::AMBIENT_MODULE
@@ -112,11 +111,7 @@ impl DeclContext {
 }
 
 /// The lexical binding that owns a namespace, including dotted declarations.
-pub(crate) fn namespace_binding(
-    name: swc_next_ecma_ast::TsModuleName,
-    ast: &Ast<'_>,
-) -> Option<swc_next_ecma_ast::BindingIdentifier> {
-    use swc_next_ecma_ast::{TsModuleNameData, TsQualifiedNameLeftData};
+pub(crate) fn namespace_binding(name: TsModuleName, ast: &Ast<'_>) -> Option<BindingIdentifier> {
     let mut qualified = match ast.ts_module_name_data(name) {
         TsModuleNameData::BindingIdentifier(binding) => return Some(binding),
         TsModuleNameData::StringLiteral(_) => return None,

@@ -1,7 +1,8 @@
 //! Project retained type members onto the declaration surface.
 
 use swc_next_ecma_ast::{
-    Ast, Program, SubRange, TsTypeElement, TsTypeElementData, VisitMut, VisitMutWith,
+    Ast, Program, SubRange, TsMethodSignatureKind, TsTypeElement, TsTypeElementData, VisitMut,
+    VisitMutWith,
 };
 
 use super::Transformer;
@@ -38,7 +39,7 @@ impl<'ast, 'semantic> VisitMut<'ast> for TypeSurfaceVisitor<'_, 'ast, 'semantic>
             let element = self.ast.get_node_in_sub_range(element);
             if let TsTypeElementData::TsMethodSignature(signature) =
                 self.ast.ts_type_element_data(element)
-                && signature.kind(self.ast) == swc_next_ecma_ast::TsMethodSignatureKind::Method
+                && signature.kind(self.ast) == TsMethodSignatureKind::Method
                 && !self
                     .transformer
                     .validated_type_methods
