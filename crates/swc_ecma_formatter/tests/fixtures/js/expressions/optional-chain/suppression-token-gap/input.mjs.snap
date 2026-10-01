@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object?. /* prettier-ignore */ (first  +  second);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object?.(
+  /* prettier-ignore */ first  +  second,
+);

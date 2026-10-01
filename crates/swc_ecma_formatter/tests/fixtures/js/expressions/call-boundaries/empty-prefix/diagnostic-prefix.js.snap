@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call?.
+// @ts-ignore
+/* note */();
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+call?.
+// @ts-ignore
+/* note */()
+
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+call?.
+// @ts-ignore
+/* note */();
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+call?.
+// @ts-ignore
+/* note */()
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+call?.
+// @ts-ignore
+/* note */();

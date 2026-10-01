@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+  ( // @ts-ignore
+    (value) => value
+    // trailing
+  )?.(argument),
+];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+[
+  (
+    // @ts-ignore
+    (value) => value
+    // trailing
+  )?.(argument),
+];
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+[
+  (
+    // @ts-ignore
+    (value) => value
+    // trailing
+  )?.(argument),
+];
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+;[
+  (
+    // @ts-ignore
+    (value) => value
+    // trailing
+  )?.(argument),
+]

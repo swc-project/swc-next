@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object.method /* receiver */ ?. /* operator */ ( /* argument */ argument());
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object.method /* receiver */?.(
+  /* operator */ /* argument */ argument(),
+);
