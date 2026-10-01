@@ -1,27 +1,34 @@
+// Test various namespace reference scenarios
+// Simple namespace reference
 export type SimpleRef = NS1.Type1;
 declare namespace NS1 {
-	type Type1 = string;
+  type Type1 = string;
 }
+// Nested namespace reference
 export type NestedRef = Outer.Inner.Type2;
 declare namespace Outer {
-	namespace Inner {
-		type Type2 = number;
-	}
+  namespace Inner {
+    type Type2 = number;
+  }
 }
+// Multiple references to same namespace
 export type Ref1 = NS2.TypeA;
 export type Ref2 = NS2.TypeB;
 declare namespace NS2 {
-	type TypeA = boolean;
-	type TypeB = symbol;
+  type TypeA = boolean;
+  type TypeB = symbol;
 }
+// Namespace used in union type
 export type UnionRef = NS3.Type3 | string;
 declare namespace NS3 {
-	type Type3 = "literal";
+  type Type3 = "literal";
 }
+// Namespace used in interface
 export interface InterfaceWithNS {
-	field: NS4.Type4;
+  field: NS4.Type4;
 }
 declare namespace NS4 {
-	type Type4 = bigint;
+  type Type4 = bigint;
 }
 export {};
+// Unreferenced namespace should not be included

@@ -1,5 +1,5 @@
 export declare function ssrGetDynamicModelProps(existingProps: any | undefined, model: unknown): {
-	checked: true;
+  checked: true;
 } | {
-	value: any;
+  value: any;
 } | null;

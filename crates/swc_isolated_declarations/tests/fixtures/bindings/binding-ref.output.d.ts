@@ -1,4 +1,4 @@
 export declare const ssrUtils: {
-    createComponentInstance: number;
+  createComponentInstance: number;
 };
 export declare function createComponentInstance(): void;

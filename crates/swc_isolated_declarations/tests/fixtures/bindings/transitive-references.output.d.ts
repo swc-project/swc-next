@@ -1,3 +1,3 @@
 export declare function exp1(): void;
 export declare function exp2(): void;
-export { };
+export {};

@@ -1,21 +1,21 @@
 // @isolatedDeclarations: true
 export declare class C1 {
-    private prop;
-    constructor(prop: string);
+  private prop;
+  constructor(prop: string);
 }
 export declare class C2 {
-    private prop;
-    constructor(prop: string);
+  private prop;
+  constructor(prop: string);
 }
 export declare class C3 {
-    readonly prop: any;
-    constructor(prop: string);
+  readonly prop: any;
+  constructor(prop: string);
 }
 export declare class C4 {
-    readonly prop: any;
-    constructor(prop: string);
+  readonly prop: any;
+  constructor(prop: string);
 }
 export declare class C5 {
-    private readonly prop;
-    constructor(prop: string);
+  private readonly prop;
+  constructor(prop: string);
 }

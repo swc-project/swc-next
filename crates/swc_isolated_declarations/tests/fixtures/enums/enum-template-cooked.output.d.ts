@@ -1,9 +1,9 @@
 export declare enum TemplateMemberKeys {
-    "A" = 1,
-    FromCooked = 2,
-    "\uD800" = 1,
-    FromString = 2,
-    FromTemplate = 3,
-    LoneSurrogate = "\uD800",
-    InterpolatedSurrogate = "x\uD800y"
+  "A" = 1,
+  FromCooked = 2,
+  "\uD800" = 1,
+  FromString = 2,
+  FromTemplate = 3,
+  LoneSurrogate = "\uD800",
+  InterpolatedSurrogate = "x\uD800y",
 }

@@ -1,27 +1,27 @@
 export declare namespace OnlyOneExport {
-	const a = 0;
+  const a = 0;
 }
 export declare namespace TwoExports {
-	const c = 0;
-	const a: typeof c;
+  const c = 0;
+  const a: typeof c;
 }
 export declare namespace OneExportReferencedANonExported {
-	const c = 0;
-	export const a: typeof c;
-	export {};
+  const c = 0;
+  export const a: typeof c;
+  export {};
 }
 declare module "OnlyOneExport" {
-	const a = 0;
+  const a = 0;
 }
 declare module "TwoExports" {
-	const c = 0;
-	const a: typeof c;
+  const c = 0;
+  const a: typeof c;
 }
 declare module "OneExportReferencedANonExported" {
-	const c = 0;
-	const a: typeof c;
+  const c = 0;
+  const a: typeof c;
 }
 declare global {
-	const c = 0;
-	export const a: typeof c;
+  const c = 0;
+  export const a: typeof c;
 }

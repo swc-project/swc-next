@@ -1,6 +1,6 @@
 export declare class Foo {
-	one?: (() => void) | undefined;
-	protected two?: (() => void) | undefined;
-	private three?;
-	constructor(one?: (() => void) | undefined, two?: (() => void) | undefined, three?: (() => void) | undefined);
+  one?: (() => void) | undefined;
+  protected two?: (() => void) | undefined;
+  private three?;
+  constructor(one?: (() => void) | undefined, two?: (() => void) | undefined, three?: (() => void) | undefined);
 }

@@ -1,13 +1,13 @@
 interface Source {
-	value: string;
+  value: string;
 }
 export declare function mapped(value: {
-	[K in keyof Source]: Source[K];
+  [K in keyof Source]: Source[K];
 } | undefined, required: string): void;
 export declare function keyOf(value: keyof Source | undefined, required: string): void;
 export declare function readonlyTuple(value: readonly [string] | undefined, required: string): void;
 export declare function intersection(value: {
-	optional?: string;
+  optional?: string;
 } & number[] | undefined, required: string): void;
 export declare function operatorIntersection(value: (keyof Source) & string | undefined, required: string): void;
 export declare function unknownOperatorIntersection(value: unknown & keyof Source | undefined, required: string): void;

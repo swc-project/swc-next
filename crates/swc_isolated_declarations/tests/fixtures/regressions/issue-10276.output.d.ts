@@ -1,7 +1,7 @@
 export declare const Tabs: {
-    readonly Name: "name";
+  readonly Name: "name";
 };
 export interface BandMember {
-    name: string;
+  name: string;
 }
 export declare const MemberTab: () => BandMember;

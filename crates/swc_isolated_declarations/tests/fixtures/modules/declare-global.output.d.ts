@@ -1,7 +1,7 @@
 declare function MyFunction(): string;
 declare global {
-	interface Window {
-		MyFunction: typeof MyFunction;
-	}
+  interface Window {
+    MyFunction: typeof MyFunction;
+  }
 }
 export {};

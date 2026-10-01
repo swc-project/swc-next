@@ -1,8 +1,8 @@
 export declare enum BadEnum {
-	A,
-	B
+  A,
+  B,
 }
 export declare const enum BadConstEnum {
-	A,
-	B
+  A,
+  B,
 }

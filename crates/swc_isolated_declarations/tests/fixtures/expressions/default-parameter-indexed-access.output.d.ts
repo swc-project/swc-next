@@ -1,5 +1,5 @@
 export interface UserConfig {
-	base?: string | false;
+  base?: string | false;
 }
 export type Base = UserConfig["base"];
 export declare function resolveBaseUrl(base: UserConfig["base"] | undefined, isBuild: boolean): string;

@@ -1,7 +1,7 @@
 export declare class Foo {
-    private constructor();
+  private constructor();
 }
 export declare class Bar {
-    readonly x: number;
-    private constructor();
+  readonly x: number;
+  private constructor();
 }

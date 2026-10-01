@@ -1,4 +1,4 @@
 export declare class SymbolKeys {
-	[Symbol.iterator](): Iterator<unknown>;
-	[globalThis.Symbol.iterator](): Iterator<unknown>;
+  [Symbol.iterator](): Iterator<unknown>;
+  [globalThis.Symbol.iterator](): Iterator<unknown>;
 }

@@ -1,10 +1,10 @@
 export declare class NumericPropertyNames {
-    get 1e21(): string;
-    set "1e+21"(value: string);
-    get 1e999(): number;
-    set "Infinity"(value: number);
+  get 1e21(): string;
+  set "1e+21"(value: string);
+  get 1e999(): number;
+  set "Infinity"(value: number);
 }
 export declare const computedNumericPropertyNames: {
-    [1e21]: string;
-    [1e999]: number;
+  [1e21]: string;
+  [1e999]: number;
 };

@@ -1,3 +1,3 @@
 export declare class ReadonlySatisfies {
-	readonly falseSatisfies;
+  readonly falseSatisfies;
 }

@@ -1,32 +1,30 @@
 export interface X {
-	set value(_: string);
+  set value(_: string);
 }
 export type A = {
-	set value({ a, b, c }: {
-		a: string;
-		b: string;
-		c: string;
-	});
-	get value(): {
-		a: string;
-		b: string;
-		c: string;
-	};
+  set value({ a, b, c }: {
+    a: string;
+    b: string;
+    c: string;
+  });
+  get value(): {
+    a: string;
+    b: string;
+    c: string;
+  };
 };
 export interface I {
-	set value(_: string);
-	get value(): string;
+  set value(_: string);
+  get value(): string;
 }
-export interface Ref<
-	T = any,
-	S = T
-> {
-	get value(): T;
-	set value(_: S);
+// Do nothing
+export interface Ref<T = any, S = T> {
+  get value(): T;
+  set value(_: S);
 }
 export interface MultipleSetterAndGetter {
-	get ok(): string;
-	set ok(_: string);
-	get bad(): string;
-	set bad(_: string);
+  get ok(): string;
+  set ok(_: string);
+  get bad(): string;
+  set bad(_: string);
 }

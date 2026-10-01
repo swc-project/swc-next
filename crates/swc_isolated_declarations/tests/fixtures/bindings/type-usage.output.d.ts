@@ -1,9 +1,7 @@
 import type * as Member from "some-path/my_module";
-export interface IMember extends Member.C<"SimpleEntity"> {
-}
+export interface IMember extends Member.C<"SimpleEntity"> {}
 import type * as Ident from "some-path/my_module";
-export interface IIdent extends Ident {
-}
+export interface IIdent extends Ident {}
 import * as Paren from "some-path/my_module";
 export declare class CParen extends Paren {
 }

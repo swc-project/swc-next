@@ -1,5 +1,5 @@
 export declare abstract class Manager {
-    protected abstract A(): void;
-    protected B(): void;
-    protected C(): void;
+  protected abstract A(): void;
+  protected B(): void;
+  protected C(): void;
 }

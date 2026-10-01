@@ -1,18 +1,19 @@
 import "foo";
 declare module "foo" {
-	interface Foo {}
-	const foo = 42;
+  interface Foo {  }
+  const foo = 42;
 }
 declare global {
-	interface Bar {}
-	const bar = 42;
+  interface Bar {  }
+  const bar = 42;
 }
 import { type X } from "./x";
 type Y = 1;
 declare module "foo" {
-	interface Foo {
-		x: X;
-		y: Y;
-	}
+  interface Foo {
+    x: X;
+    y: Y;
+  }
 }
 export {};
+// should not be emitted

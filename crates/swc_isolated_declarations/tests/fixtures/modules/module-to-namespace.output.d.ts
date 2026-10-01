@@ -1,18 +1,23 @@
+// Test module to namespace conversion
 export declare namespace Foo {
-	var a: number;
-	function bar(): void;
+  var a: number;
+  function bar(): void;
 }
+// Nested modules
 export declare namespace Outer {
-	namespace Inner {
-		var x: number;
-	}
+  namespace Inner {
+    var x: number;
+  }
 }
+// Should preserve namespace as-is
 export declare namespace Baz {
-	var c: number;
+  var c: number;
 }
+// Should preserve global as-is
 declare global {
-	interface GlobalTest {}
+  interface GlobalTest {  }
 }
+// Should preserve string modules as-is
 declare module "test-module" {
-	var d: 4;
+  var d: 4;
 }

@@ -1,11 +1,11 @@
 declare class Person {
-    name: string;
-    location: string;
-    constructor(name: string, location: string);
+  name: string;
+  location: string;
+  constructor(name: string, location: string);
 }
-type PersonConstructor = new(name: string, location: string) => Person;
+type PersonConstructor = new (name: string, location: string) => Person;
 declare const PersonsInJail: () => PersonConstructor;
 declare const NemesisLocation: ReturnType<typeof PersonsInJail>;
 export declare class KrustyShow extends NemesisLocation {
 }
-export { };
+export {};
