@@ -1085,7 +1085,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(empty)
             })
             .any(|empty| empty);
-        if !expand && let Some(selected) = self.select_argument_layout(arguments) {
+        if !expand && let Some(selected) = self.select_argument_layout(arguments, !hugged) {
             let tail = self.format_selected_arguments(
                 arguments,
                 content,

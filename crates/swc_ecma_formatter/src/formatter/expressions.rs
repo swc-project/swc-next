@@ -20,13 +20,14 @@ mod unary;
 
 use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, Expr, ExprData, GetSpan, SequenceExpression, Span, UnaryOperator,
-    UpdateOperator,
+    Argument, ArgumentData, Expr, ExprData, GetSpan, ObjectExpression, SequenceExpression, Span,
+    UnaryOperator, UpdateOperator,
 };
 
 use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use self::conditional::{ConditionalClosing, ConditionalEnvelope};
+use self::objects::RecordedObject;
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
 use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
@@ -849,6 +850,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         Ok(None)
     }
+    fn record_object_argument(
+        &mut self,
+        expression: Expr,
+        object: ObjectExpression,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedObject<'ast>, FormatError> {
+        let layout = self.expression_layout(expression);
+        match layout {
+            ExpressionLayout::Flat => {
+                let (normal, ()) = writer.record_with_value(|writer| {
+                    layout.write(writer, |writer| self.format_object(object, writer))
+                })?;
+                Ok(RecordedObject {
+                    normal,
+                    forced: None,
+                })
+            }
+            ExpressionLayout::Normal => self.record_object(object, writer),
+        }
+    }
+
     fn format_argument(
         &mut self,
         argument: Argument,

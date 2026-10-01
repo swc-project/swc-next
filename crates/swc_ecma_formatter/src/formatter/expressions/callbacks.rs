@@ -1,6 +1,7 @@
 //! Callback argument selection and immutable layouts over source-owned slots.
 use super::arguments::ArgumentHead;
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
+use super::objects::RecordedObject;
 use super::{ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter};
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
@@ -12,8 +13,8 @@ use crate::{
 };
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrowFunctionExpression, Expr, ExprData, Function, GetSpan,
-    ObjectPropertyKindData, PropertyKeyData, SimpleAssignmentTargetData, Span, SubRange,
-    UnaryOperator,
+    ObjectExpression, ObjectPropertyKindData, PropertyKeyData, SimpleAssignmentTargetData, Span,
+    SubRange, UnaryOperator,
 };
 #[derive(Clone, Copy)]
 enum CallbackKind {
@@ -32,12 +33,31 @@ pub(super) struct SelectedCallback {
     callback: Callback,
     prepared_body: Option<PreparedArrowBody>,
 }
+pub(super) struct SelectedObject {
+    argument: Argument,
+    expression: Expr,
+    object: ObjectExpression,
+}
+
+pub(super) enum SelectedArgument {
+    Callback(SelectedCallback),
+    FinalObject(SelectedObject),
+}
+
+#[derive(Clone, Copy)]
+enum GroupingPolicy {
+    Callback,
+    FinalObject,
+}
+
 enum SelectionOutcome {
     Callback,
+    FinalObject { has_forced: bool },
     Ordinary,
 }
 enum RecordedValue<'a> {
     Ordinary(Fragment<'a>),
+    FinalObject(RecordedObject<'a>),
     Callback {
         signature: Option<GroupedSignature<'a>>,
         body: CallbackBody<'a>,
@@ -68,6 +88,7 @@ enum GroupedSignature<'a> {
 
 enum GroupedValue<'a> {
     Ordinary(FlatFragment<'a>),
+    FinalObject(RecordedObject<'a>),
     Callback {
         signature: GroupedSignature<'a>,
         body: CallbackBody<'a>,
@@ -82,17 +103,18 @@ struct GroupedArgument<'a> {
 }
 
 impl<'a> RecordedArgument<'a> {
-    fn try_group(&self) -> Option<GroupedArgument<'a>> {
-        let prefix = self.prefix.try_flat()?;
-        let suffix = self.suffix.try_flat()?;
+    fn try_group(&self, policy: GroupingPolicy) -> Option<GroupedArgument<'a>> {
+        let prefix = grouping_view(self.prefix, policy)?;
+        let suffix = grouping_view(self.suffix, policy)?;
         let value = match self.value {
             RecordedValue::Ordinary(value) => {
                 // A neighboring value retains its own source layout preference.
                 if value.preferred_breaks() {
                     return None;
                 }
-                GroupedValue::Ordinary(value.try_flat()?)
+                GroupedValue::Ordinary(grouping_view(value, policy)?)
             }
+            RecordedValue::FinalObject(value) => GroupedValue::FinalObject(value),
             RecordedValue::Callback {
                 signature,
                 body,
@@ -118,6 +140,13 @@ impl<'a> RecordedArgument<'a> {
             suffix,
         })
     }
+}
+
+fn grouping_view(fragment: Fragment<'_>, policy: GroupingPolicy) -> Option<FlatFragment<'_>> {
+    if matches!(policy, GroupingPolicy::FinalObject) && fragment.preferred_breaks() {
+        return None;
+    }
+    fragment.try_flat()
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -156,7 +185,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn select_argument_layout(
         &self,
         arguments: SubRange<Argument>,
-    ) -> Option<SelectedCallback> {
+        allow_final_collection: bool,
+    ) -> Option<SelectedArgument> {
         let ast = self.ast;
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let argument = items.next_back()?;
@@ -174,6 +204,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 kind: CallbackKind::Function(function),
             },
             ExprData::ParenthesizedExpression(_) => self.callback_data(data)?,
+            ExprData::ObjectExpression(object) if allow_final_collection => {
+                if let Some(previous) = items.next_back()
+                    && matches!(ast.argument_data(previous), ArgumentData::Expr(expression)
+                        if matches!(ast.expr_data(expression), ExprData::ObjectExpression(_)))
+                {
+                    return None;
+                }
+                let span = object.span(ast);
+                if object.properties(ast).is_empty()
+                    && self
+                        .comments
+                        .in_range(Span::new(span.start + 1, span.end - 1))
+                        .is_empty()
+                {
+                    return None;
+                }
+                return Some(SelectedArgument::FinalObject(SelectedObject {
+                    argument,
+                    expression,
+                    object,
+                }));
+            }
             _ => return None,
         };
         if let Some(previous) = items.next_back()
@@ -186,11 +238,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             CallbackKind::Function(_) => None,
             CallbackKind::Arrow(arrow) => Some(self.callback_can_expand(arrow)?),
         };
-        Some(SelectedCallback {
+        Some(SelectedArgument::Callback(SelectedCallback {
             argument,
             callback,
             prepared_body,
-        })
+        }))
     }
     fn callback_can_expand(&self, arrow: ArrowFunctionExpression) -> Option<PreparedArrowBody> {
         let root = self.prepare_arrow_body(arrow.body(self.ast));
@@ -434,13 +486,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         arguments: SubRange<Argument>,
         content: Span,
         head: ArgumentHead,
-        mut selected: SelectedCallback,
+        mut selected: SelectedArgument,
         mut missing_function: Option<&mut bool>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
-        let selected_argument = selected.argument;
-        let mut outcome = SelectionOutcome::Callback;
+        let (selected_argument, mut outcome) = match &selected {
+            SelectedArgument::Callback(selected) => (selected.argument, SelectionOutcome::Callback),
+            SelectedArgument::FinalObject(selected) => (
+                selected.argument,
+                SelectionOutcome::FinalObject { has_forced: false },
+            ),
+        };
         let (opening, ()) = writer.record_with_value(|writer| {
             self.opening_line_constraint(content).write(
                 writer,
@@ -470,37 +527,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if previous.is_none() && head.first_mode == ContentMode::Verbatim {
                 item.set_leading_mode(head.first_mode);
             }
-            let (value, tail) = if argument == selected.argument
-                && item.mode == ContentMode::Formatted
-                && !self.argument_has_boundary_comments(&item)
-            {
-                if let Some(function) = missing_function.take() {
-                    *function = true;
-                }
-                let (mut value, tail) =
-                    self.record_callback(&mut selected, sole_argument, writer)?;
-                if tail.as_ref().is_some_and(|tail| !tail.comments.is_empty())
-                    && let RecordedValue::Callback { normal, .. } = value
+            let (value, tail) = match &mut selected {
+                SelectedArgument::Callback(selected)
+                    if argument == selected.argument
+                        && item.mode == ContentMode::Formatted
+                        && !self.argument_has_boundary_comments(&item) =>
                 {
-                    value = RecordedValue::Ordinary(normal);
+                    if let Some(function) = missing_function.take() {
+                        *function = true;
+                    }
+                    let (mut value, tail) =
+                        self.record_callback(selected, sole_argument, writer)?;
+                    if tail.as_ref().is_some_and(|tail| !tail.comments.is_empty())
+                        && let RecordedValue::Callback { normal, .. } = value
+                    {
+                        value = RecordedValue::Ordinary(normal);
+                    }
+                    if matches!(value, RecordedValue::Ordinary(_)) {
+                        outcome = SelectionOutcome::Ordinary;
+                    }
+                    (value, tail)
                 }
-                if matches!(value, RecordedValue::Ordinary(_)) {
-                    outcome = SelectionOutcome::Ordinary;
+                SelectedArgument::FinalObject(selected)
+                    if argument == selected.argument
+                        && item.mode == ContentMode::Formatted
+                        && !self.argument_has_boundary_comments(&item) =>
+                {
+                    let object =
+                        self.record_object_argument(selected.expression, selected.object, writer)?;
+                    outcome = SelectionOutcome::FinalObject {
+                        has_forced: object.forced.is_some(),
+                    };
+                    (RecordedValue::FinalObject(object), None)
                 }
-                (value, tail)
-            } else {
-                if argument == selected_argument {
-                    outcome = SelectionOutcome::Ordinary;
+                _ => {
+                    if argument == selected_argument {
+                        outcome = SelectionOutcome::Ordinary;
+                    }
+                    let (value, tail) = writer.record_with_value(|writer| {
+                        self.format_argument_with_function_fact(
+                            argument,
+                            item.mode,
+                            &mut missing_function,
+                            writer,
+                        )
+                    })?;
+                    (RecordedValue::Ordinary(value), tail)
                 }
-                let (value, tail) = writer.record_with_value(|writer| {
-                    self.format_argument_with_function_fact(
-                        argument,
-                        item.mode,
-                        &mut missing_function,
-                        writer,
-                    )
-                })?;
-                (RecordedValue::Ordinary(value), tail)
             };
             let (suffix, boundary) = writer
                 .record_with_value(|writer| self.finish_delimited_item(item, tail, writer))?;
@@ -545,6 +618,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             RecordedValue::Ordinary(value) => {
                                 writer.write_fragment(value);
                             }
+                            RecordedValue::FinalObject(object) => {
+                                writer.write_fragment(object.normal)
+                            }
                             RecordedValue::Callback { normal, .. } => writer.write_fragment(normal),
                         }
                         writer.write_fragment(item.suffix);
@@ -555,16 +631,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
             Ok::<_, FormatError>(())
         })?;
-        if matches!(outcome, SelectionOutcome::Ordinary) {
-            writer.write_fragment(fallback);
-            return Ok(None);
-        }
+        let policy = match outcome {
+            SelectionOutcome::Callback => GroupingPolicy::Callback,
+            SelectionOutcome::FinalObject { .. } => GroupingPolicy::FinalObject,
+            SelectionOutcome::Ordinary => {
+                writer.write_fragment(fallback);
+                return Ok(None);
+            }
+        };
         if let Some(grouped_items) = recorded
             .iter()
-            .map(|item| item.try_group())
+            .map(|item| item.try_group(policy))
             .collect::<Option<Vec<_>>>()
-            && let Some(opening) = opening.try_flat()
-            && let Some(flat_closing) = closing.try_flat()
+            && let Some(opening) = grouping_view(opening, policy)
+            && let Some(flat_closing) = grouping_view(closing, policy)
         {
             let (grouped, ()) = writer.record_with_value(|writer| {
                 write_grouped_arguments(
@@ -577,9 +657,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 Ok::<_, FormatError>(())
             })?;
-            if grouped_items
-                .iter()
-                .any(|item| matches!(item.value, GroupedValue::Callback { .. }))
+            if matches!(outcome, SelectionOutcome::FinalObject { has_forced: true })
+                || matches!(outcome, SelectionOutcome::Callback)
+                    && grouped_items
+                        .iter()
+                        .any(|item| matches!(item.value, GroupedValue::Callback { .. }))
             {
                 let (expanded, ()) = writer.record_with_value(|writer| {
                     write_grouped_arguments(
@@ -602,6 +684,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(None)
     }
 }
+
 fn write_grouped_arguments<'a>(
     opening: FlatFragment<'a>,
     items: &[GroupedArgument<'a>],
@@ -616,6 +699,14 @@ fn write_grouped_arguments<'a>(
         writer.write_flat_fragment(item.prefix);
         match item.value {
             GroupedValue::Ordinary(value) => writer.write_flat_fragment(value),
+            GroupedValue::FinalObject(object) => {
+                let value = if expand_body {
+                    object.forced.unwrap_or(object.normal)
+                } else {
+                    object.normal
+                };
+                writer.write_fragment(value);
+            }
             GroupedValue::Callback {
                 signature,
                 body: CallbackBody::Terminal(body),
