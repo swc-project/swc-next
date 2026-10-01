@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object /* receiver */ ?. /* operator */ [ /* key */ key() /* tail */ ];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object /* receiver */?. /* operator */ [
+  /* key */ key() /* tail */
+];

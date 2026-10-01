@@ -1,0 +1,3 @@
+call?.
+// @ts-ignore
+/* note */();
