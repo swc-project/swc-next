@@ -308,6 +308,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         gap_end: None,
                     },
                     context,
+                    None,
                     writer,
                 )
             },

@@ -93,9 +93,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .with_content_mode(mode)
                 .with_operand_indent(operand_indent);
             let tail = match source_pair {
-                Some(boundary) => {
-                    self.format_protected_grammar_parentheses(boundary, content, context, writer)?
-                }
+                Some(boundary) => self.format_protected_grammar_parentheses(
+                    boundary, content, context, None, writer,
+                )?,
                 None => {
                     self.format_expression_prepared(argument, Some(content), context, writer)?
                 }
@@ -146,6 +146,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             gap_end: None,
                         },
                         context,
+                        None,
                         writer,
                     )?;
                     self.format_expression_tail(tail, writer)?;
