@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1)
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
+
+---------- Options ----------
+{"bracketSpacing":false}
+---------- Output ----------
+// @ts-expect-error
+pipe((x) => x, (y) => y + 1);
