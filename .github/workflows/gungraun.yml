@@ -26,8 +26,10 @@ jobs:
       - name: Setup rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
         with:
-          toolchain: 1.97.1
           cache-save-if: false
+
+      - name: Keep the same Rust toolchain for base and merge
+        run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
 
       - name: Install CodSpeed Valgrind
         env:

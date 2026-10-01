@@ -3,6 +3,7 @@ use super::sealed::AstNode as SealedAstNode;
 oxc_index::define_index_type! {
     #[repr(transparent)]
     pub struct NodeId = u32;
+    MAX_INDEX = u32::MAX as usize;
 }
 
 /// A generated AST handle. Implementations are restricted to this crate.

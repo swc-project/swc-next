@@ -253,6 +253,7 @@ mod tests {
 
     oxc_index::define_index_type! {
         struct TestId = u32;
+        MAX_INDEX = u32::MAX as usize;
     }
 
     multi_index_vec! {

@@ -5,6 +5,7 @@ use super::{NodeId, sealed::ExtraDataValue as SealedExtraDataValue};
 oxc_index::define_index_type! {
     #[repr(transparent)]
     pub struct ExtraDataId = u32;
+    MAX_INDEX = u32::MAX as usize;
 }
 
 /// Compact values stored in the flattening AST's extra-data table.
