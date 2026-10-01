@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
+---------- Options ----------
+{}
+---------- Output ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+pipe(
+  map(
+    /**@type{(x:number)=>number}*/ (
+      (x) => x
+    ),
+  ),
+  second,
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+pipe(
+  map(
+    /**@type{(x:number)=>number}*/ (
+      (x) => x
+    ),
+  ),
+  second,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second)
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);
+
+---------- Options ----------
+{"bracketSpacing":false}
+---------- Output ----------
+pipe(map(/**@type{(x:number)=>number}*/ ((x) => x)), second);

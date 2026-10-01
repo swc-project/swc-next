@@ -200,6 +200,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(super) fn arguments_are_function_composition(&self, arguments: SubRange<Argument>) -> bool {
+        if arguments.len() <= 1 {
+            return false;
+        }
+        let ast = self.ast;
+        let mut has_function = false;
+        for argument in arguments.iter().map(|id| ast.get_node_in_sub_range(id)) {
+            match self.composition_argument_data(argument) {
+                Some(ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)) => {
+                    if has_function {
+                        return true;
+                    }
+                    has_function = true;
+                }
+                Some(ExprData::CallExpression(call)) => {
+                    let has_callback = call.arguments(ast).iter().any(|id| {
+                        let argument = ast.get_node_in_sub_range(id);
+                        matches!(
+                            self.composition_argument_data(argument),
+                            Some(ExprData::Function(_) | ExprData::ArrowFunctionExpression(_))
+                        )
+                    });
+                    if has_callback {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    fn composition_argument_data(&self, argument: Argument) -> Option<ExprData> {
+        let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+            return None;
+        };
+        let data = self.expression_content(expression).data;
+        if matches!(data, ExprData::ChainExpression(_)) {
+            return match self.chain_element_data(data) {
+                data @ ExprData::CallExpression(_) => Some(data),
+                _ => None,
+            };
+        }
+        Some(data)
+    }
+
     pub(super) fn select_argument_layout(
         &self,
         arguments: SubRange<Argument>,
