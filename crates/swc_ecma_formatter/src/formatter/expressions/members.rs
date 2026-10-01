@@ -133,9 +133,15 @@ pub(super) struct MemberBoundary<'ast> {
     before: CommentBoundary<'ast>,
     after: &'ast [Comment],
     pub(super) owns_lookup_comments: bool,
+    pub(super) empty_line: bool,
+    pub(super) has_comments: bool,
 }
 
 impl MemberBoundary<'_> {
+    pub(super) fn has_before_comments(&self) -> bool {
+        !self.before.is_empty()
+    }
+
     pub(super) fn gap(&self) -> CommentGap {
         self.before.gap()
     }
@@ -148,7 +154,7 @@ pub(super) enum MemberLookupOwner {
     Expression,
 }
 impl MemberLookupOwner {
-    fn from_context(context: ExpressionContext) -> Self {
+    pub(super) fn from_context(context: ExpressionContext) -> Self {
         if matches!(context.position, ExpressionPosition::MemberAssignmentObject)
             || context.member_layout == MemberLayout::Tight
         {
@@ -210,6 +216,27 @@ impl SourceMember {
 
     pub(super) fn is_computed(&self) -> bool {
         matches!(self.punctuation, MemberPunctuation::Computed { .. })
+    }
+
+    pub(super) fn key(&self) -> Option<Expr> {
+        match self.punctuation {
+            MemberPunctuation::Computed { key, .. } => Some(key),
+            MemberPunctuation::Static { .. } => None,
+        }
+    }
+
+    pub(super) fn name(&self) -> Option<IdentifierName> {
+        match self.punctuation {
+            MemberPunctuation::Static {
+                key: StaticMemberKey::Public(key),
+                ..
+            } => Some(key),
+            MemberPunctuation::Static {
+                key: StaticMemberKey::Private(_),
+                ..
+            } => None,
+            MemberPunctuation::Computed { .. } => None,
+        }
     }
 
     pub(super) fn receiver_context(&self, context: ExpressionContext) -> ExpressionContext {
@@ -534,10 +561,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator.start
         };
         let before = self.prepare_comment_boundary(before, source_end, next_start);
+        let empty_line = self.next_line_is_empty(before.end(), next_start);
         Ok(MemberBoundary {
             before,
             after,
             owns_lookup_comments,
+            empty_line,
+            has_comments: !comments.is_empty(),
         })
     }
 

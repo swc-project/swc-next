@@ -11,8 +11,9 @@ use crate::{
     document::{FlatFragment, Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrowFunctionExpression, Expr, ExprData, Function, GetSpan, Span,
-    SubRange,
+    Argument, ArgumentData, ArrowFunctionExpression, Expr, ExprData, Function, GetSpan,
+    ObjectPropertyKindData, PropertyKeyData, SimpleAssignmentTargetData, Span, SubRange,
+    UnaryOperator,
 };
 #[derive(Clone, Copy)]
 enum CallbackKind {
@@ -317,12 +318,124 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ))
     }
 
+    fn simple_callback_neighbor(&self, expression: Expr, depth: u8) -> bool {
+        if depth == 0 {
+            return false;
+        }
+        let data = self.expression_content(expression).data;
+        self.simple_callback_neighbor_data(data, depth)
+    }
+
+    pub(super) fn simple_call_argument(&self, argument: Argument, depth: u8) -> bool {
+        let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+            return false;
+        };
+        self.simple_callback_neighbor(expression, depth)
+    }
+
+    fn simple_callback_neighbor_data(&self, mut data: ExprData, depth: u8) -> bool {
+        if depth == 0 {
+            return false;
+        }
+        let ast = self.ast;
+        let child_depth = depth - 1;
+        loop {
+            let next = match data {
+                ExprData::IdentifierReference(_)
+                | ExprData::ThisExpression(_)
+                | ExprData::StringLiteral(_)
+                | ExprData::NumericLiteral(_)
+                | ExprData::BooleanLiteral(_)
+                | ExprData::NullLiteral(_)
+                | ExprData::BigIntLiteral(_) => return true,
+                ExprData::RegExpLiteral(literal) => {
+                    return crate::text_width::width(ast.get_utf8(literal.pattern(ast))) <= 5;
+                }
+                ExprData::ChainExpression(chain) => chain.expression(ast),
+                ExprData::UnaryExpression(unary)
+                    if matches!(
+                        unary.operator(ast),
+                        UnaryOperator::LogicalNot
+                            | UnaryOperator::Negate
+                            | UnaryOperator::Positive
+                            | UnaryOperator::BitwiseNot
+                    ) =>
+                {
+                    unary.argument(ast)
+                }
+                ExprData::UpdateExpression(update) => {
+                    match ast.simple_assignment_target_data(update.argument(ast)) {
+                        SimpleAssignmentTargetData::IdentifierReference(_) => return true,
+                        SimpleAssignmentTargetData::MemberExpression(member) => {
+                            Expr::MemberExpression(member)
+                        }
+                        _ => return false,
+                    }
+                }
+                ExprData::MemberExpression(member) => {
+                    if let PropertyKeyData::Expr(property) =
+                        ast.property_key_data(member.property(ast))
+                        && !self.simple_callback_neighbor(property, depth)
+                    {
+                        return false;
+                    }
+                    member.object(ast)
+                }
+                ExprData::CallExpression(call) => {
+                    let arguments = call.arguments(ast);
+                    if arguments.len() > usize::from(depth)
+                        || !arguments.iter().all(|id| {
+                            self.simple_call_argument(ast.get_node_in_sub_range(id), child_depth)
+                        })
+                    {
+                        return false;
+                    }
+                    call.callee(ast)
+                }
+                ExprData::NewExpression(new) => {
+                    let arguments = new.arguments(ast);
+                    if arguments.len() > usize::from(depth)
+                        || !arguments.iter().all(|id| {
+                            self.simple_call_argument(ast.get_node_in_sub_range(id), child_depth)
+                        })
+                    {
+                        return false;
+                    }
+                    new.callee(ast)
+                }
+                ExprData::ArrayExpression(array) => {
+                    return array.elements(ast).iter().all(|id| {
+                        ast.get_node_in_sub_range(id)
+                            .is_none_or(|argument| self.simple_call_argument(argument, child_depth))
+                    });
+                }
+                ExprData::ObjectExpression(object) => {
+                    return object.properties(ast).iter().all(|id| {
+                        let property = ast.get_node_in_sub_range(id);
+                        let ObjectPropertyKindData::ObjectProperty(property) =
+                            ast.object_property_kind_data(property)
+                        else {
+                            return false;
+                        };
+                        !property.computed(ast)
+                            && !property.method(ast)
+                            && (property.shorthand(ast)
+                                || self.simple_callback_neighbor(property.value(ast), child_depth))
+                    });
+                }
+                _ => return false,
+            };
+            data = self.expression_content(next).data;
+        }
+    }
+
     pub(super) fn format_selected_arguments(
         &mut self,
         arguments: SubRange<Argument>,
         content: Span,
         head: ArgumentHead,
         mut selected: SelectedCallback,
+        mut missing_function: Option<&mut bool>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -361,6 +474,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && item.mode == ContentMode::Formatted
                 && !self.argument_has_boundary_comments(&item)
             {
+                if let Some(function) = missing_function.take() {
+                    *function = true;
+                }
                 let (mut value, tail) =
                     self.record_callback(&mut selected, sole_argument, writer)?;
                 if tail.as_ref().is_some_and(|tail| !tail.comments.is_empty())
@@ -377,7 +493,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     outcome = SelectionOutcome::Ordinary;
                 }
                 let (value, tail) = writer.record_with_value(|writer| {
-                    self.format_argument(argument, item.mode, writer)
+                    self.format_argument_with_function_fact(
+                        argument,
+                        item.mode,
+                        &mut missing_function,
+                        writer,
+                    )
                 })?;
                 (RecordedValue::Ordinary(value), tail)
             };

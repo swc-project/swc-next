@@ -628,7 +628,6 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::FlatFragment(fragment));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn write_neutral_fragment(
         &mut self,
         NeutralFragment(fragment): NeutralFragment<'a>,

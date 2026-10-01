@@ -7,6 +7,7 @@ pub(super) mod assignment;
 mod binary;
 mod callbacks;
 mod calls;
+pub(super) mod chains;
 mod conditional;
 mod constructors;
 mod members;
@@ -17,6 +18,7 @@ mod suspension;
 mod targets;
 mod unary;
 
+use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
     Argument, ArgumentData, Expr, ExprData, GetSpan, SequenceExpression, Span, UnaryOperator,
     UpdateOperator,
@@ -762,12 +764,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
             ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
-            ExprData::CallExpression(call) => return self.format_call(call, context, writer),
             ExprData::NewExpression(constructor) => {
                 return self.format_new(constructor, context, writer);
             }
             ExprData::MemberExpression(member) => {
-                return self.format_member(member, context, writer);
+                let eligibility = if context.member_chain_layout == MemberChainLayout::Local {
+                    FluentChainEligibility::Unqualified
+                } else {
+                    self.fluent_chain_eligibility(
+                        self.ast.expr_data(expression),
+                        context,
+                        self.expression_layout(expression),
+                    )
+                };
+                match eligibility {
+                    FluentChainEligibility::Fluent => {
+                        return self.format_fluent_chain(expression, context, writer);
+                    }
+                    FluentChainEligibility::MemberOnly => {
+                        return self.format_member(
+                            member,
+                            {
+                                let mut local = context;
+                                local.member_chain_layout = MemberChainLayout::Local;
+                                local
+                            },
+                            writer,
+                        );
+                    }
+                    FluentChainEligibility::Unqualified => {
+                        return self.format_member(member, context, writer);
+                    }
+                }
+            }
+            ExprData::CallExpression(call) => {
+                if !chains::atomic_chain_head(self.ast.expr_data(call.callee(self.ast)))
+                    && matches!(
+                        self.fluent_chain_eligibility(
+                            self.ast.expr_data(expression),
+                            context,
+                            self.expression_layout(expression)
+                        ),
+                        FluentChainEligibility::Fluent
+                    )
+                {
+                    return self.format_fluent_chain(expression, context, writer);
+                } else {
+                    return self.format_call(call, context, writer);
+                }
             }
             ExprData::BinaryExpression(node) => {
                 return self.format_binary(

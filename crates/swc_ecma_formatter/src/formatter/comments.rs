@@ -102,6 +102,12 @@ pub(super) struct CommentBoundary<'ast> {
 }
 
 impl CommentBoundary<'_> {
+    pub(super) fn end(&self) -> u32 {
+        self.comments
+            .last()
+            .map_or(self.source_end, |comment| comment.span.end)
+    }
+
     pub(super) fn is_empty(&self) -> bool {
         self.comments.is_empty()
     }
@@ -118,6 +124,13 @@ pub(super) enum CommentGap {
 }
 
 impl CommentGap {
+    pub(super) fn requires_line(self) -> bool {
+        matches!(
+            self,
+            Self::LineComment | Self::Source(LineConstraint::NewLine(_))
+        )
+    }
+
     pub(super) fn write<'a>(
         self,
         writer: &mut Writer<'a>,

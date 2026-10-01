@@ -7,7 +7,10 @@ use swc_next_ecma_ast::{
 use super::Formatter;
 use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::parentheses::SourceParentheses;
+use super::expressions::chains::PreparedChain;
+use super::expressions::parentheses::{
+    ExpressionContent, ResolvedExpressionHead, SourceParentheses,
+};
 use super::expressions::{
     ExpressionContext, ExpressionPosition, OperandIndent, SourceTailOwner, TailOwner,
 };
@@ -211,8 +214,73 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             closing: self.line_constraint(span.end, span.end),
             grammar,
         };
+        if !protected_opening
+            && mode == ContentMode::Formatted
+            && matches!(
+                content.data,
+                ExprData::CallExpression(_) | ExprData::MemberExpression(_)
+            )
+        {
+            self.format_restricted_chain(prepared, &content, write_keyword, writer)
+        } else {
+            write_keyword(writer);
+            self.format_restricted_expression(prepared, writer)
+        }
+    }
+
+    /// A chain plan belongs only to this branch, including plans whose head
+    /// keeps its existing owner. Ordinary operands never carry that payload.
+    fn format_restricted_chain(
+        &mut self,
+        mut prepared: RestrictedArgument<'ast>,
+        content: &ExpressionContent,
+        write_keyword: impl FnOnce(&mut Writer<'ast>),
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let start = prepared.head.expression.span(self.ast).start;
+        let chain: Option<PreparedChain<'ast>> = self.prepare_restricted_fluent_chain(
+            prepared.argument,
+            content,
+            prepared
+                .grammar
+                .argument_context(prepared.envelope, prepared.mode),
+            &ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: prepared.head.comments,
+                    content_start: start,
+                    layout: CommentRunLayout::FlatLeading(start),
+                    gap_end: None,
+                },
+                binding: self.expression_head_binding(prepared.head.comments, prepared.argument),
+            },
+        )?;
+        let Some(mut chain) = chain else {
+            write_keyword(writer);
+            return self.format_restricted_expression(prepared, writer);
+        };
+        if chain.has_call_operation_head() {
+            // This is an optional readability frame for the actual call
+            // operation head, not a restricted-grammar requirement.
+            prepared.envelope = ArgumentEnvelope::Breakable;
+            chain.set_enclosing_context(
+                prepared
+                    .grammar
+                    .argument_context(prepared.envelope, prepared.mode),
+            );
+        }
+        chain.set_leading_comment_layout(
+            if matches!(prepared.envelope, ArgumentEnvelope::Required) {
+                CommentRunLayout::GroupedLeading(start)
+            } else {
+                CommentRunLayout::FlatLeading(start)
+            },
+        );
         write_keyword(writer);
-        self.format_restricted_expression(prepared, writer)
+        self.format_restricted_envelope(
+            &prepared,
+            |formatter, _, writer| formatter.format_prepared_chain(chain, writer),
+            writer,
+        )
     }
 
     fn format_restricted_expression(
