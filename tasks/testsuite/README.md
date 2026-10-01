@@ -54,8 +54,10 @@ with two runners:
 The eight summaries are written to
 `tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel,local}.snap`.
 
-Project-owned syntax regressions under `fixtures-manual/parser` use Test262
-metadata but are counted in the separate `local` suite. Retained upstream cases
+Project-owned JavaScript syntax regressions under `fixtures-manual/parser` use
+Test262 metadata but are counted in the separate `local` suite. Keep TypeScript
+syntax regressions in the existing feature tests in
+`crates/swc_ecma_parser/src/parser.rs`. Retained upstream cases
 under `fixtures-manual/test262-legacy` remain part of the Test262 suite.
 
 The Babel parser and codegen runs use

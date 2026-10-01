@@ -1,5 +1,5 @@
 codegen * local
 ========================
-Positive Passed: 50/50 (100.00%)
+Positive Passed: 23/23 (100.00%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/50 (0.00%)
+Panicked: 0/23 (0.00%)
