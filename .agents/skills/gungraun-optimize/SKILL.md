@@ -1,6 +1,6 @@
 ---
 name: gungraun-optimize
-description: "Autonomously profile and optimize Rust code with Gungraun benchmarks in GitHub Actions using Callgrind, Cachegrind, DHAT, baseline comparisons, and one accepted optimization per stacked pull request. Use when asked to make Rust code faster, reduce instructions, cache misses, or allocations, investigate a Gungraun CI performance regression, analyze where Rust code spends work, or create a temporary Gungraun benchmark and GitHub Actions harness before optimization."
+description: "Don't trigger if not asked explicitly. Autonomously profile and optimize Rust code with Gungraun benchmarks in GitHub Actions using Callgrind, Cachegrind, DHAT, baseline comparisons, and one accepted optimization per stacked pull request. Use when asked to make Rust code faster, reduce instructions, cache misses, or allocations, investigate a Gungraun CI performance regression, analyze where Rust code spends work, or create a temporary Gungraun benchmark and GitHub Actions harness before optimization."
 ---
 
 # Gungraun Optimize
