@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function read() { return create.read// receiver
+().next.finish(); }
+---------- Options ----------
+{}
+---------- Output ----------
+function read() {
+  return (
+    create
+      .read// receiver
+      ()
+      .next.finish()
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function read() {
+  return (
+    create
+      .read// receiver
+      ()
+      .next.finish()
+  )
+}
