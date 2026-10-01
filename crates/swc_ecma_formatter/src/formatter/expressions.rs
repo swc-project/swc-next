@@ -20,17 +20,18 @@ mod unary;
 
 use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, Expr, ExprData, GetSpan, ObjectExpression, SequenceExpression, Span,
-    UnaryOperator, UpdateOperator,
+    Argument, ArgumentData, ArrayExpression, Expr, ExprData, GetSpan, ObjectExpression,
+    SequenceExpression, Span, UnaryOperator, UpdateOperator,
 };
 
+use self::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use self::conditional::{ConditionalClosing, ConditionalEnvelope};
 use self::objects::RecordedObject;
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
-use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
+use super::comments::{ArrayCommentOwner, CommentRunLayout, ExpressionTail, NodeHead};
 use super::literals::StringContext;
 use super::suppression::ContentMode;
 use crate::{FormatError, Semicolons, document::Writer};
@@ -312,7 +313,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_expression_with_leading_comments(
+        self.format_expression_with_array_comments(expression, context, None, writer)
+    }
+
+    pub(super) fn format_expression_with_array_comments(
+        &mut self,
+        expression: Expr,
+        context: ExpressionContext,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let tail = self.format_expression_with_leading_comments(
             expression,
             NodeHead {
                 comments: &[],
@@ -321,8 +332,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap_end: None,
             },
             context,
+            array_comments.as_deref_mut(),
             writer,
-        )
+        )?;
+        if let Some(owner) = array_comments {
+            let end = tail
+                .as_ref()
+                .map_or(expression.span(self.ast).end, |tail| tail.source_end);
+            owner.finish_source(self, end);
+        }
+        Ok(tail)
     }
 
     fn format_expression_prepared(
@@ -332,13 +351,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_expression_prepared_with_array_comments(
+            expression, prepared, context, None, writer,
+        )
+    }
+
+    fn format_expression_prepared_with_array_comments(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let binding = prepared
             .as_ref()
             .and_then(|content| content.parentheses)
             .map_or(super::comments::CommentBinding::Unbound, |removed| {
                 removed.head.binding
             });
-        self.format_expression_leading_prepared(
+        let tail = self.format_expression_leading_prepared(
             expression,
             prepared,
             ResolvedExpressionHead {
@@ -351,8 +383,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 binding,
             },
             context,
+            array_comments.as_deref_mut(),
             writer,
-        )
+        )?;
+        if let Some(owner) = array_comments {
+            let end = tail
+                .as_ref()
+                .map_or(expression.span(self.ast).end, |tail| tail.source_end);
+            owner.finish_source(self, end);
+        }
+        Ok(tail)
     }
 
     pub(super) fn binary_grammar_pair_owns_indent(position: ExpressionPosition) -> bool {
@@ -871,27 +911,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn record_array_argument(
+        &mut self,
+        expression: Expr,
+        array: ArrayExpression,
+        arity: ArrayArgumentArity,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedArrayArgument<'ast>, FormatError> {
+        let layout = self.expression_layout(expression);
+        match layout {
+            ExpressionLayout::Flat => {
+                let (normal, ()) = writer.record_with_value(|writer| {
+                    layout.write(writer, |writer| self.format_array(array, writer))
+                })?;
+                Ok(RecordedArrayArgument::Selected(RecordedArray {
+                    normal,
+                    forced: None,
+                }))
+            }
+            ExpressionLayout::Normal => self.record_array(array, arity, writer),
+        }
+    }
+
     fn format_argument(
         &mut self,
         argument: Argument,
         mode: ContentMode,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_argument_data(self.ast.argument_data(argument), mode, writer)
+        self.format_argument_with_array_comments(argument, mode, None, writer)
     }
 
-    fn format_argument_data(
+    fn format_argument_with_array_comments(
+        &mut self,
+        argument: Argument,
+        mode: ContentMode,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_argument_data_with_array_comments(
+            self.ast.argument_data(argument),
+            mode,
+            array_comments,
+            writer,
+        )
+    }
+
+    fn format_argument_data_with_array_comments(
         &mut self,
         argument: ArgumentData,
         mode: ContentMode,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match argument {
-            ArgumentData::Expr(expression) => self.format_expression(
+            ArgumentData::Expr(expression) => self.format_expression_with_array_comments(
                 expression,
                 ExpressionContext::at(ExpressionPosition::Nested)
                     .with_content_mode(mode)
                     .with_arrow_layout(arrows::ArrowLayout::Argument),
+                array_comments,
                 writer,
             ),
             ArgumentData::SpreadElement(spread) => {

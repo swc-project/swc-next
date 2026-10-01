@@ -1,30 +1,63 @@
 //! Array slots, comment boundaries, and grouped delimiter layout.
 
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, CommentKind, ExprData, GetSpan, Span, UnaryOperator,
+    Argument, ArgumentData, ArrayExpression, CommentKind, Expr, ExprData, GetSpan, Span,
+    UnaryOperator,
 };
 
 use super::Formatter;
 use super::arguments::{
     ArgumentLayout, ArrayArgumentSlot, ElisionLayout, FollowingArgument, Separator,
 };
-use crate::formatter::comments::CommentRunLayout;
+use super::parentheses::NumericContentView;
+use crate::formatter::comments::{ArrayCommentOwner, CommentRunLayout};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::ContentMode;
-use crate::{FormatError, TrailingCommas, document::Writer};
+use crate::{
+    FormatError, TrailingCommas,
+    document::{Fragment, Writer},
+};
 
-enum SourceArray {
-    Verbatim(Span),
-    Empty,
-    Formatted(PreparedArray),
+#[derive(Clone, Copy)]
+pub(super) enum ArrayArgumentArity {
+    Single,
+    Multiple,
 }
 
-struct PreparedArray {
+enum SourceArray<'ast> {
+    Verbatim(Span),
+    Empty,
+    Formatted(PreparedArray<'ast>),
+}
+
+struct PreparedArray<'ast> {
     array: ArrayExpression,
     content: Span,
     expand: bool,
     opening: LineConstraint,
     layout: ArgumentLayout,
+    numeric_comments: Option<ArrayCommentOwner<'ast>>,
+}
+
+struct NumericArrayFacts {
+    fill_first: Option<Argument>,
+    reference: Option<ReferenceNumericBounds>,
+}
+
+struct ReferenceNumericBounds {
+    first: Expr,
+    last: Expr,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct RecordedArray<'ast> {
+    pub(super) normal: Fragment<'ast>,
+    pub(super) forced: Option<Fragment<'ast>>,
+}
+
+pub(super) enum RecordedArrayArgument<'ast> {
+    Ordinary(Fragment<'ast>),
+    Selected(RecordedArray<'ast>),
 }
 
 struct ArgumentItem {
@@ -61,11 +94,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array: ArrayExpression,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let source = self.source_array(array)?;
+        let source = self.source_array(array, false)?;
         self.format_source_array(source, writer)
     }
 
-    fn source_array(&mut self, array: ArrayExpression) -> Result<SourceArray, FormatError> {
+    fn source_array(
+        &mut self,
+        array: ArrayExpression,
+        qualify: bool,
+    ) -> Result<SourceArray<'ast>, FormatError> {
         let elements = array.elements(self.ast);
         let span = array.span(self.ast);
         let content = Span::new(span.start + 1, span.end - 1);
@@ -81,11 +118,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(SourceArray::Empty);
         }
         let expand = self.array_should_expand(array);
-        let numeric = self.numeric_array_first(array);
+        let numeric = if qualify {
+            self.numeric_array_facts(array)
+        } else {
+            NumericArrayFacts {
+                fill_first: self.numeric_array_first(array),
+                reference: None,
+            }
+        };
         let opening = self.opening_line_constraint(content);
-        let layout = match numeric {
+        let (layout, numeric_comments) = match numeric.fill_first {
             Some(first) => {
-                // The complete borrowed comment run owns the numeric fill decision.
+                // Keep this old fallible query even if qualification demotes later.
                 let comments = self.comments.between(content)?;
                 let first_end = first.span(self.ast).end;
                 let fill_line = comments.iter().any(|comment| {
@@ -93,13 +137,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && comment.kind == CommentKind::Line
                         && !self.source_position_starts_line(comment.span.start)
                 });
-                if fill_line {
+                let layout = if fill_line {
                     ArgumentLayout::Lines
                 } else {
                     ArgumentLayout::Fill
-                }
+                };
+                (
+                    layout,
+                    numeric.reference.map(|bounds| {
+                        ArrayCommentOwner::new(
+                            comments,
+                            bounds.first.span(self.ast).end,
+                            bounds.last.span(self.ast).start,
+                        )
+                    }),
+                )
             }
-            None => ArgumentLayout::Lines,
+            None => {
+                // A reference-only number behind source protection must not add between.
+                let comments = numeric.reference.map(|bounds| {
+                    ArrayCommentOwner::new(
+                        self.comments.in_range(content),
+                        bounds.first.span(self.ast).end,
+                        bounds.last.span(self.ast).start,
+                    )
+                });
+                (ArgumentLayout::Lines, comments)
+            }
         };
         Ok(SourceArray::Formatted(PreparedArray {
             array,
@@ -107,12 +171,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expand,
             opening,
             layout,
+            numeric_comments,
         }))
     }
 
     fn format_source_array(
         &mut self,
-        source: SourceArray,
+        source: SourceArray<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match source {
@@ -127,26 +192,80 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn record_array(
+        &mut self,
+        array: ArrayExpression,
+        arity: ArrayArgumentArity,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedArrayArgument<'ast>, FormatError> {
+        let qualify = matches!(arity, ArrayArgumentArity::Multiple);
+        let source = self.source_array(array, qualify)?;
+        let source = match source {
+            SourceArray::Formatted(source) => source,
+            source => {
+                let (value, ()) =
+                    writer.record_with_value(|writer| self.format_source_array(source, writer))?;
+                return Ok(RecordedArrayArgument::Ordinary(value));
+            }
+        };
+        let expand = source.expand;
+        let (content, concise) =
+            writer.record_with_value(|writer| self.format_array_contents(source, writer))?;
+        let (normal, ()) = writer.record_with_value(|writer| {
+            writer.group(expand, |writer| writer.write_fragment(content));
+            Ok::<_, FormatError>(())
+        })?;
+        if concise {
+            return Ok(RecordedArrayArgument::Ordinary(normal));
+        }
+        let forced = if normal.preferred_breaks() {
+            None
+        } else {
+            let (forced, ()) = writer.record_with_value(|writer| {
+                writer.group(true, |writer| writer.write_fragment(content));
+                Ok::<_, FormatError>(())
+            })?;
+            Some(forced)
+        };
+        Ok(RecordedArrayArgument::Selected(RecordedArray {
+            normal,
+            forced,
+        }))
+    }
+
     fn format_array_contents(
         &mut self,
-        source: PreparedArray,
+        source: PreparedArray<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<bool, FormatError> {
         let PreparedArray {
             array,
             content,
             opening,
             layout,
+            mut numeric_comments,
             ..
         } = source;
         writer.text("[");
         let end = writer.indent(|writer| {
             opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
             match layout {
-                ArgumentLayout::Lines => self.format_array_items(array, content, layout, writer),
-                ArgumentLayout::Fill => {
-                    writer.fill(|writer| self.format_array_items(array, content, layout, writer))
-                }
+                ArgumentLayout::Lines => self.format_array_items(
+                    array,
+                    content,
+                    layout,
+                    numeric_comments.as_mut(),
+                    writer,
+                ),
+                ArgumentLayout::Fill => writer.fill(|writer| {
+                    self.format_array_items(
+                        array,
+                        content,
+                        layout,
+                        numeric_comments.as_mut(),
+                        writer,
+                    )
+                }),
             }
         })?;
         self.line_constraint(end, content.end).write(
@@ -155,7 +274,124 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Writer::soft_line,
         );
         writer.text("]");
-        Ok(())
+        if let Some(owner) = numeric_comments.as_mut() {
+            owner.finish_source(self, content.end);
+        }
+        Ok(numeric_comments
+            .as_ref()
+            .is_some_and(ArrayCommentOwner::is_concise))
+    }
+
+    /// Selected Multiple qualification reduces two decisions in one element pass.
+    fn numeric_array_facts(&self, array: ArrayExpression) -> NumericArrayFacts {
+        let mut elements = array
+            .elements(self.ast)
+            .iter()
+            .map(|id| self.ast.get_node_in_sub_range(id));
+        let Some(Some(first)) = elements.next() else {
+            return NumericArrayFacts {
+                fill_first: None,
+                reference: None,
+            };
+        };
+        let mut fill = true;
+        let mut reference = true;
+        let mut reference_bounds = None;
+        for argument in std::iter::once(Some(first)).chain(elements) {
+            let Some(argument) = argument else {
+                return NumericArrayFacts {
+                    fill_first: None,
+                    reference: None,
+                };
+            };
+            let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+                return NumericArrayFacts {
+                    fill_first: None,
+                    reference: None,
+                };
+            };
+            let view = match (fill, reference) {
+                (true, true) => NumericContentView::Both,
+                (true, false) => NumericContentView::Source,
+                (false, true) => NumericContentView::Reference,
+                (false, false) => {
+                    return NumericArrayFacts {
+                        fill_first: None,
+                        reference: None,
+                    };
+                }
+            };
+            let content = self.numeric_argument_content(expression, view);
+            let source_numeric = matches!(content.source, Some(ExprData::NumericLiteral(_)));
+            let reference_root = content.reference;
+            let reference_numeric = reference_root
+                .as_ref()
+                .is_some_and(|root| matches!(root.data, ExprData::NumericLiteral(_)));
+            let source_unary = match content.source {
+                Some(ExprData::UnaryExpression(unary)) => Some(unary),
+                _ => None,
+            };
+            let reference_unary = reference_root.as_ref().and_then(|root| match root.data {
+                ExprData::UnaryExpression(unary) => Some(unary),
+                _ => None,
+            });
+            let mut signed_source = false;
+            let mut signed_reference = false;
+            let signed = match (source_unary, reference_unary) {
+                (Some(unary), Some(_)) => Some((unary, NumericContentView::Both)),
+                (Some(unary), None) => Some((unary, NumericContentView::Source)),
+                (None, Some(unary)) => Some((unary, NumericContentView::Reference)),
+                (None, None) => None,
+            };
+            if let Some((unary, view)) = signed
+                && matches!(
+                    unary.operator(self.ast),
+                    UnaryOperator::Positive | UnaryOperator::Negate
+                )
+            {
+                let actual_operand = unary.argument(self.ast);
+                let operand = self.numeric_argument_content(actual_operand, view);
+                let source_operand = matches!(operand.source, Some(ExprData::NumericLiteral(_)));
+                let reference_operand = operand
+                    .reference
+                    .as_ref()
+                    .is_some_and(|root| matches!(root.data, ExprData::NumericLiteral(_)));
+                if source_operand || reference_operand {
+                    // Under the numeric reference proof, actual_operand's source
+                    // envelope has exactly one normalized Numeric child. Both the
+                    // operator-to-child gap and its trailing envelope attach to
+                    // that child; comments outside this unary span do not.
+                    let no_comments = self.comments.in_range(unary.span(self.ast)).is_empty();
+                    signed_source = source_unary.is_some() && source_operand && no_comments;
+                    signed_reference =
+                        reference_unary.is_some() && reference_operand && no_comments;
+                }
+            }
+            fill &= source_numeric || signed_source;
+            reference &= reference_numeric || signed_reference;
+            if reference && let Some(root) = reference_root {
+                reference_bounds = Some(match reference_bounds {
+                    Some(ReferenceNumericBounds { first, .. }) => ReferenceNumericBounds {
+                        first,
+                        last: root.expression,
+                    },
+                    None => ReferenceNumericBounds {
+                        first: root.expression,
+                        last: root.expression,
+                    },
+                });
+            }
+            if !fill && !reference {
+                return NumericArrayFacts {
+                    fill_first: None,
+                    reference: None,
+                };
+            }
+        }
+        NumericArrayFacts {
+            fill_first: fill.then_some(first),
+            reference: if reference { reference_bounds } else { None },
+        }
     }
 
     fn array_should_expand(&self, array: ArrayExpression) -> bool {
@@ -222,6 +458,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array: ArrayExpression,
         span: Span,
         layout: ArgumentLayout,
+        mut numeric_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<u32, FormatError> {
         let ast = self.ast;
@@ -329,7 +566,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             let boundary = layout.entry(writer, |writer| {
-                self.format_argument_item(
+                self.format_argument_item_with_array_comments(
                     ArrayArgumentSlot {
                         argument,
                         mode,
@@ -347,6 +584,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     Span::new(previous_end, span.end),
                     self.options.trailing_commas != TrailingCommas::None,
+                    numeric_comments.as_deref_mut(),
                     writer,
                 )
             })?;
@@ -367,7 +605,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if has_slot && let Some(first) = dangling.first() {
             self.comment_gap(previous_end, first.span.start, writer);
         }
-        self.format_comment_run(dangling, CommentRunLayout::Lines, writer)?;
+        self.format_comment_run_with_array_comments(
+            dangling,
+            CommentRunLayout::Lines,
+            numeric_comments,
+            writer,
+        )?;
         Ok(dangling
             .last()
             .map_or(previous_end, |comment| comment.span.end))
