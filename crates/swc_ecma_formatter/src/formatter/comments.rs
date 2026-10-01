@@ -102,6 +102,10 @@ pub(super) struct CommentBoundary<'ast> {
 }
 
 impl CommentBoundary<'_> {
+    pub(super) fn is_empty(&self) -> bool {
+        self.comments.is_empty()
+    }
+
     pub(super) fn gap(&self) -> CommentGap {
         self.gap
     }

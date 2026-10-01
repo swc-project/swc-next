@@ -329,6 +329,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     parenthesized.expression(self.ast)
                 }
+                ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 ExprData::MemberExpression(member) => member.object(self.ast),
                 ExprData::CallExpression(call) => call.callee(self.ast),
                 _ => return None,
@@ -429,6 +430,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let data = self.ast.expr_data(expression);
                     if let ExprData::ParenthesizedExpression(node) = data {
                         return CommentBinding::BoundTo(node.span(self.ast));
+                    }
+                    if let ExprData::ChainExpression(node) = data {
+                        expression = node.expression(self.ast);
+                        continue;
                     }
                     if let ExprData::CallExpression(node) = data {
                         expression = node.callee(self.ast);
@@ -643,7 +648,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         }
         if context.parentheses_owner == ParenthesesOwner::Expression
-            && matches!(context.position, ExpressionPosition::CallCallee)
+            && matches!(context.position, ExpressionPosition::CallCallee { .. })
         {
             let receiver = if mode == ContentMode::Formatted {
                 self.expression_content(child).expression
@@ -691,9 +696,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::RestrictedArgument
                         | ExpressionPosition::AwaitArgument
                         | ExpressionPosition::YieldArgument
-                        | ExpressionPosition::MemberObject
+                        | ExpressionPosition::MemberObject(_)
                         | ExpressionPosition::MemberAssignmentObject
-                        | ExpressionPosition::CallCallee
+                        | ExpressionPosition::CallCallee { .. }
                         | ExpressionPosition::NewCallee
                 )
                 || self.parentheses_separate_diagnostic_lines(boundary)
@@ -939,9 +944,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && parenthesize
             && matches!(
                 context.position,
-                ExpressionPosition::CallCallee
+                ExpressionPosition::CallCallee { .. }
                     | ExpressionPosition::NewCallee
-                    | ExpressionPosition::MemberObject
+                    | ExpressionPosition::MemberObject(_)
                     | ExpressionPosition::MemberAssignmentObject
             )
         {
@@ -1516,6 +1521,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return removed_binding
                         .combine(CommentBinding::BoundTo(expression.span(self.ast)));
                 }
+                ExprData::ChainExpression(node) => node.expression(self.ast),
                 ExprData::MemberExpression(node) => node.object(self.ast),
                 ExprData::ConditionalExpression(node) => node.test(self.ast),
                 ExprData::SequenceExpression(node) => {
@@ -1776,7 +1782,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 matches!(context.position, ExpressionPosition::ConditionalTest)
                     || matches!(
                         context.position,
-                        ExpressionPosition::MemberObject
+                        ExpressionPosition::MemberObject(_)
                             | ExpressionPosition::MemberAssignmentObject
                     ) && (context.conditional_closing == super::ConditionalClosing::MemberLine
                         || context.conditional_envelope

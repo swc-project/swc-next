@@ -1,4 +1,5 @@
 //! Callees and source-owned argument delimiters.
+use super::AccessKind;
 use super::arguments::SourceArguments;
 use super::{ExpressionContext, ExpressionPosition, Formatter, MemberLayout, TailOwner};
 use crate::formatter::comments::ExpressionTail;
@@ -8,13 +9,16 @@ use swc_next_ecma_ast::{CallExpression, Expr, ExprData, GetSpan, Span};
 pub(super) struct CallCallee {
     pub(super) expression: Expr,
     pub(super) mode: ContentMode,
+    pub(super) access: AccessKind,
 }
 impl CallCallee {
     pub(super) fn context(&self, context: ExpressionContext) -> ExpressionContext {
-        let mut callee = ExpressionContext::at(ExpressionPosition::CallCallee)
-            .with_parent_head(context)
-            .with_tail_owner(TailOwner::ParentOperation)
-            .with_content_mode(self.mode);
+        let mut callee = ExpressionContext::at(ExpressionPosition::CallCallee {
+            access: self.access,
+        })
+        .with_parent_head(context)
+        .with_tail_owner(TailOwner::ParentOperation)
+        .with_content_mode(self.mode);
         callee.member_chain_layout = context.member_chain_layout;
         callee.conditional_envelope = context.conditional_envelope.chain_head();
         callee
@@ -38,6 +42,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         loop {
             expression = match self.expression_content(expression).data {
+                ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 ExprData::MemberExpression(member) => {
                     let Ok(head) = self.prepare_member_head(member) else {
                         return false;
@@ -71,12 +76,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.has_suppression {
             return Ok(self.source_call(call)?.callee_head());
         }
-        if call.optional(self.ast) || call.type_arguments(self.ast).is_some() {
-            return Err(self.unsupported("typed or optional call", call));
+        if call.type_arguments(self.ast).is_some() {
+            return Err(self.unsupported("typed call", call));
         }
         Ok(CallCallee {
             expression: call.callee(self.ast),
             mode: ContentMode::Formatted,
+            access: if call.optional(self.ast) {
+                AccessKind::Optional
+            } else {
+                AccessKind::Ordinary
+            },
         })
     }
     pub(super) fn format_call(
@@ -119,13 +129,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         call: CallExpression,
     ) -> Result<SourceArguments<'ast>, FormatError> {
-        if call.optional(self.ast) || call.type_arguments(self.ast).is_some() {
-            return Err(self.unsupported("typed or optional call", call));
+        if call.type_arguments(self.ast).is_some() {
+            return Err(self.unsupported("typed call", call));
         }
         self.source_arguments(
             call.arguments(self.ast),
             call.callee(self.ast),
             call.span(self.ast).end,
+            if call.optional(self.ast) {
+                AccessKind::Optional
+            } else {
+                AccessKind::Ordinary
+            },
         )
         .ok_or_else(|| self.unsupported("call opening boundary", call))
     }
