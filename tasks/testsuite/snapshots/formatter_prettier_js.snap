@@ -3,12 +3,12 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 233/1070 (21.78%)
-Snapshot matched: 233/1070
+Passed: 236/1070 (22.06%)
+Snapshot matched: 236/1070
 AST parity: 260/260
 AST mismatched: 0/260
 AST format errors: 0/1070
-Mismatched: 27/1070
+Mismatched: 24/1070
 Format errors: 809/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
@@ -73,7 +73,6 @@ Unsupported option sets: 19
 - js/arrows/issue-14563.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/arrows/issue-4166-curry.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/arrows/long-contents.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/arrows/parens.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/assignment-comments/call.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment-comments/call2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment-comments/function.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -137,7 +136,6 @@ Unsupported option sets: 19
 - js/call/first-argument-expansion/issue-4401.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/call/first-argument-expansion/jsx.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/call/first-argument-expansion/test.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/chain-expression/issue-15785-1.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/issue-15785-2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/issue-15785-3.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/chain-expression/issue-15916.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
