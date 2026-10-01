@@ -8,7 +8,7 @@ use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use swc_next_isolated_declarations::transform;
 
 #[test]
-fn declaration_emit() {
+fn integration() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     for category in fs::read_dir(&root).unwrap() {
         let category = category.unwrap().path();
