@@ -157,6 +157,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionContext::at(position)
                 .with_content_mode(mode)
                 .with_tail_owner(TailOwner::ParentOperation),
+            None,
             writer,
         )
     }

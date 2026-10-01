@@ -183,6 +183,112 @@ struct SourceCommentRun {
     ordinary: bool,
 }
 
+/// One selected array owns this borrowed source stream through its real children.
+/// A boundary can prepare a Line before the following leading owner emits it.
+pub(super) struct ArrayCommentOwner<'ast> {
+    remaining: &'ast [Comment],
+    first_end: u32,
+    last_start: u32,
+    run: Option<SourceCommentRun>,
+    pending: Option<PreparedLineFact>,
+    reference_inline_trailing: bool,
+}
+
+impl<'ast> ArrayCommentOwner<'ast> {
+    pub(super) fn new(comments: &'ast [Comment], first_end: u32, last_start: u32) -> Self {
+        Self {
+            remaining: comments,
+            first_end,
+            last_start,
+            run: None,
+            pending: None,
+            reference_inline_trailing: false,
+        }
+    }
+
+    fn advance(
+        &mut self,
+        formatter: &Formatter<'ast, '_>,
+        comment: Comment,
+    ) -> Option<PreparedLineFact> {
+        let fact = formatter.prepare_source_comment(comment, &mut self.run);
+        if let Some(fact) = fact {
+            let has_preceding = comment.span.start >= self.first_end;
+            let has_following = comment.span.end <= self.last_start;
+            self.reference_inline_trailing |= !fact.current_starts_line
+                && fact.attachment(has_preceding, has_following) == LineAttachment::Trailing;
+        }
+        fact
+    }
+
+    fn prepare(
+        &mut self,
+        formatter: &Formatter<'ast, '_>,
+        comment: Comment,
+    ) -> Option<PreparedLineFact> {
+        if let Some(fact) = self.pending
+            && fact.comment.span == comment.span
+        {
+            return Some(fact);
+        }
+        let mut result = None;
+        while let Some((&next, rest)) = self.remaining.split_first()
+            && next.span.end <= comment.span.end
+        {
+            self.remaining = rest;
+            let fact = self.advance(formatter, next);
+            if next.span == comment.span {
+                result = fact;
+            }
+        }
+        if let Some(fact) = result {
+            debug_assert!(
+                self.pending.is_none(),
+                "an array's prepared Line must reach its real owner before a later Line",
+            );
+            self.pending = Some(fact);
+        }
+        result
+    }
+
+    fn consume(
+        &mut self,
+        formatter: &Formatter<'ast, '_>,
+        comment: Comment,
+    ) -> Option<PreparedLineFact> {
+        let fact = self.prepare(formatter, comment);
+        debug_assert!(
+            comment.kind != CommentKind::Line || fact.is_some(),
+            "an array-owned Line must reach its renderer with its prepared source fact",
+        );
+        if fact.is_some() {
+            self.pending = None;
+        }
+        fact
+    }
+
+    /// Raw children and completed source owners can consume trivia without a
+    /// comment renderer. Retain its source facts, without changing that policy.
+    pub(super) fn finish_source(&mut self, formatter: &Formatter<'ast, '_>, end: u32) {
+        if self
+            .pending
+            .is_some_and(|fact| fact.comment.span.end <= end)
+        {
+            self.pending = None;
+        }
+        while let Some((&comment, rest)) = self.remaining.split_first()
+            && comment.span.end <= end
+        {
+            self.remaining = rest;
+            self.advance(formatter, comment);
+        }
+    }
+
+    pub(super) fn is_concise(&self) -> bool {
+        !self.reference_inline_trailing
+    }
+}
+
 /// One complete ordinary prefix owned by a real delimiter boundary.
 /// Its final Line and preceding Blocks are emitted together, in source order.
 pub(super) struct PreparedTrailingRun<'ast> {
@@ -417,6 +523,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_end: u32,
         trailing_limit: u32,
         has_following: bool,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
     ) -> Option<PreparedTrailingRun<'ast>> {
         let mut run = None;
         let mut ordinary_prefix = true;
@@ -424,8 +531,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if comment.span.start >= trailing_limit {
                 break;
             }
-            let fact = self.prepare_source_comment(comment, &mut run);
-            ordinary_prefix &= run.as_ref().is_none_or(|run| run.ordinary);
+            let fact = match array_comments.as_deref_mut() {
+                Some(owner) => {
+                    let fact = owner.prepare(self, comment);
+                    ordinary_prefix &= owner.run.as_ref().is_none_or(|run| run.ordinary);
+                    fact
+                }
+                None => {
+                    let fact = self.prepare_source_comment(comment, &mut run);
+                    ordinary_prefix &= run.as_ref().is_none_or(|run| run.ordinary);
+                    fact
+                }
+            };
             if let Some(fact) = fact {
                 return (ordinary_prefix
                     && fact.movable()
@@ -443,6 +560,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_prepared_trailing_run(
         &self,
         run: PreparedTrailingRun<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         debug_assert!(
@@ -455,7 +573,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && run.fact.run_start <= run.fact.comment.span.start,
             "a prepared trailing run must retain its actual final Line and delimiter owner",
         );
-        self.format_trailing_comment_run(run.comments, writer)
+        self.format_inline_trailing_comments_with_array_comments(
+            run.comments,
+            array_comments,
+            writer,
+        )
     }
 
     pub(super) fn split_separator_comments(
@@ -743,6 +865,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: CommentRunLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_comment_run_with_array_comments(comments, layout, None, writer)
+    }
+    pub(super) fn format_comment_run_with_array_comments(
+        &self,
+        comments: &[Comment],
+        layout: CommentRunLayout,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let mut previous: Option<PreparedComment<'ast>> = None;
         let mut packet: Option<BlockCommentPacket> = None;
         for (index, &comment) in comments.iter().enumerate() {
@@ -752,6 +883,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .is_none_or(|packet| comment.span.start >= packet.end)
             {
                 packet = self.block_comment_packet(&comments[index..]);
+            }
+            if let Some(owner) = array_comments.as_deref_mut() {
+                owner.consume(self, comment);
             }
             let prepared = self.prepare_comment(comment)?;
             let line_suffix = if let (CommentRunLayout::SourceAfter(start), CommentKind::Line) =
@@ -860,11 +994,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_expression_tail_with_array_comments(tail, None, writer)
+    }
+    pub(super) fn format_expression_tail_with_array_comments(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         if let Some(tail) = tail {
             self.comments.claim(tail.comments)?;
-            self.format_comment_run(
+            self.format_comment_run_with_array_comments(
                 tail.comments,
                 CommentRunLayout::SourceAfter(tail.source_end),
+                array_comments,
                 writer,
             )?;
         }
@@ -937,8 +1080,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &[Comment],
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        self.format_inline_trailing_comments_with_array_comments(comments, None, writer)
+    }
+    pub(super) fn format_inline_trailing_comments_with_array_comments(
+        &self,
+        comments: &[Comment],
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let mut previous: Option<PreparedComment<'ast>> = None;
         for &comment in comments {
+            if let Some(owner) = array_comments.as_deref_mut() {
+                owner.consume(self, comment);
+            }
             let prepared = self.prepare_comment(comment)?;
             if previous
                 .as_ref()

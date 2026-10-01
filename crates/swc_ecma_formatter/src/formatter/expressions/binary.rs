@@ -503,6 +503,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 binding,
                 context,
+                None,
                 writer,
             )?
         } else {

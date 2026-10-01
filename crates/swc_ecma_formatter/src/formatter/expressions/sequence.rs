@@ -172,7 +172,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let start = if enclosed_head {
             context.expression_start
         } else {
-            self.format_node_head(head, context.expression_start, writer)?
+            self.format_node_head(head, context.expression_start, None, writer)?
         };
         if let Some(enclosure) = generated {
             return self.format_prepared_generated_enclosure(
@@ -259,7 +259,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 write_items(writer)?
             };
             let tail = if parenthesize {
-                self.format_parentheses_tail(context.source_parentheses_tail, tail, writer)?
+                self.format_parentheses_tail(context.source_parentheses_tail, tail, None, writer)?
             } else {
                 tail
             };
@@ -318,6 +318,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap_end: None,
             },
             context.with_content_mode(mode).with_tail_owner(tail_owner),
+            None,
             writer,
         )
     }

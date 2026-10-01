@@ -689,6 +689,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     right,
                     boundary.right_head(),
                     context,
+                    None,
                     writer,
                 ),
             }

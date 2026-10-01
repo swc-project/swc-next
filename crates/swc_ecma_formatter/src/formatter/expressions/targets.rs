@@ -532,6 +532,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             gap_end: None,
                         },
                         context.expression_start,
+                        None,
                         writer,
                     )?;
                     layers = remaining;

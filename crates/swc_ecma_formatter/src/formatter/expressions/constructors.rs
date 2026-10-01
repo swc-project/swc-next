@@ -68,6 +68,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap_end: None,
             },
             callee_context,
+            None,
             writer,
         )?;
         if let Some(arguments) = arguments {

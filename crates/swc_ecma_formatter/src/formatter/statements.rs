@@ -766,8 +766,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         ExpressionStart::StatementPending
                     });
-                tail = self
-                    .format_expression_with_leading_comments(expression, head, context, writer)?;
+                tail = self.format_expression_with_leading_comments(
+                    expression, head, context, None, writer,
+                )?;
                 expression.span(self.ast).end
             }
             StmtData::DebuggerStatement(node) => {

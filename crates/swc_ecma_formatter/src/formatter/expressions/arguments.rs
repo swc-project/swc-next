@@ -4,7 +4,9 @@ use super::AccessKind;
 use super::ExpressionContext;
 use super::Formatter;
 use super::calls::CallCallee;
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{
+    ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
@@ -53,6 +55,11 @@ impl FollowingItem {
 pub(in crate::formatter) enum TrailingCommaPolicy {
     Forbidden,
     IfBreak,
+}
+
+struct ItemComments<'item, 'ast> {
+    head: CommentRunLayout,
+    array: Option<&'item mut ArrayCommentOwner<'ast>>,
 }
 
 pub(in crate::formatter) struct PreparedItem {
@@ -158,11 +165,12 @@ impl ArgumentLayout {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_argument_item(
+    pub(super) fn format_argument_item_with_array_comments(
         &mut self,
         slot: ArrayArgumentSlot,
         span: Span,
         trailing_comma: bool,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
         let ArrayArgumentSlot {
@@ -179,23 +187,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             FollowingArgument::End => FollowingItem::End,
         };
-        let mut item = self.prepare_delimited_item(
+        let mut item = self.prepare_delimited_item_with_comments(
             argument.span(self.ast),
             following,
             span,
             trailing_comma,
+            ItemComments {
+                head: CommentRunLayout::Source,
+                array: array_comments.as_deref_mut(),
+            },
             writer,
         )?;
         item.set_leading_mode(mode);
-        let mut write =
-            |writer: &mut Writer<'ast>| self.format_argument(argument, item.mode, writer);
+        let mut write = |writer: &mut Writer<'ast>| {
+            self.format_argument_with_array_comments(
+                argument,
+                item.mode,
+                array_comments.as_deref_mut(),
+                writer,
+            )
+        };
         // Ordinary elements own their complete expression scope; their comma
         // and separator still observe the array. Concise fill owns its entries.
         let tail = match layout {
             ArgumentLayout::Lines => writer.group(false, write),
             ArgumentLayout::Fill => write(writer),
         }?;
-        self.finish_delimited_item(item, tail, writer)
+        self.finish_delimited_item_with_array_comments(item, tail, array_comments, writer)
     }
 
     pub(in crate::formatter) fn prepare_delimited_item(
@@ -241,6 +259,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head_layout: CommentRunLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
+        self.prepare_delimited_item_with_comments(
+            item_span,
+            following,
+            span,
+            trailing_comma,
+            ItemComments {
+                head: head_layout,
+                array: None,
+            },
+            writer,
+        )
+    }
+    fn prepare_delimited_item_with_comments(
+        &mut self,
+        item_span: Span,
+        following: FollowingItem,
+        span: Span,
+        trailing_comma: bool,
+        comments: ItemComments<'_, 'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedItem, FormatError> {
         let following_span = following.node();
         let suppression = self.delimited_suppression(
             item_span,
@@ -267,7 +306,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ContentMode::Formatted
         };
-        let source_head = matches!(head_layout, CommentRunLayout::Source)
+        let source_head = matches!(comments.head, CommentRunLayout::Source)
             || !matches!(
                 self.comment_binding(
                     leading,
@@ -276,13 +315,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ),
                 CommentBinding::Unbound
             );
-        self.format_comment_run(
+        self.format_comment_run_with_array_comments(
             leading,
             if source_head {
                 CommentRunLayout::Source
             } else {
-                head_layout
+                comments.head
             },
+            comments.array,
             writer,
         )?;
         if source_head && let Some(last) = leading.last() {
@@ -307,6 +347,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         item: PreparedItem,
         tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ItemBoundary, FormatError> {
+        self.finish_delimited_item_with_array_comments(item, tail, None, writer)
+    }
+    fn finish_delimited_item_with_array_comments(
+        &mut self,
+        item: PreparedItem,
+        tail: Option<ExpressionTail<'ast>>,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
         let PreparedItem {
@@ -415,6 +464,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 content_end,
                 trailing_limit,
                 following_span.is_some(),
+                array_comments.as_deref_mut(),
             )
         } else {
             None
@@ -445,11 +495,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let trailing_end = trailing
             .last()
             .map_or(content_end, |comment| comment.span.end);
-        self.format_trailing_comment_run(trailing, writer)?;
+        self.format_inline_trailing_comments_with_array_comments(
+            trailing,
+            array_comments.as_deref_mut(),
+            writer,
+        )?;
         if !before_comma.is_empty() {
-            self.format_comment_run(
+            self.format_comment_run_with_array_comments(
                 before_comma,
                 CommentRunLayout::SourceAfter(trailing_end),
+                array_comments.as_deref_mut(),
                 writer,
             )?;
         }
@@ -502,7 +557,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(run) = prepared_run {
             // Keep comma and the entire ordinary Block/Line packet together.
             // The next real separator owns its mandatory suffix termination.
-            self.format_prepared_trailing_run(run, writer)?;
+            self.format_prepared_trailing_run(run, array_comments.as_deref_mut(), writer)?;
             if !matches!(separator, Separator::EmptyLine) {
                 separator = Separator::TrailingLine;
             }
@@ -526,7 +581,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if self.previous_line_is_empty(end, first.span.start) {
                     writer.hard_line();
                 }
-                self.format_comment_run(own_line, CommentRunLayout::Lines, writer)?;
+                self.format_comment_run_with_array_comments(
+                    own_line,
+                    CommentRunLayout::Lines,
+                    array_comments,
+                    writer,
+                )?;
             }
             if let Some(last) = own_line.last() {
                 end = last.span.end;

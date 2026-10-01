@@ -781,6 +781,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ..head.resolved.head
                 },
                 chain.head_context.expression_start,
+                None,
                 writer,
             )?;
             head.has_comments = false;
@@ -1180,7 +1181,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         if let Some((_, head)) = source.operation_head.take_if(|(owner, _)| *owner == call) {
-            self.format_node_head(head, ExpressionStart::None, writer)?;
+            self.format_node_head(head, ExpressionStart::None, None, writer)?;
             facts.has_boundary_comments = true;
             facts.source_break = true;
         }
