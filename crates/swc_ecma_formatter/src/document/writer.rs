@@ -423,12 +423,10 @@ impl<'a> Writer<'a> {
     }
 
     /// Wraps a completed scope without recording its syntax or allocating a named group.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_fragment(&self, expand: bool, fragment: Fragment<'a>) -> Fragment<'a> {
         self.group_fragment_with_request(GroupRequest::from(expand), fragment)
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn group_fragment_with_request(
         &self,
         request: GroupRequest,

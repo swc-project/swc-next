@@ -49,6 +49,12 @@ enum ObjectContents<'ast> {
     },
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct RecordedObject<'ast> {
+    pub(super) normal: Fragment<'ast>,
+    pub(super) forced: Option<Fragment<'ast>>,
+}
+
 struct ObjectBoundary<'ast> {
     inline: &'ast [Comment],
     own_line: &'ast [Comment],
@@ -179,6 +185,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 remaining,
             },
         }))
+    }
+
+    pub(super) fn record_object(
+        &mut self,
+        object: ObjectExpression,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedObject<'ast>, FormatError> {
+        match self.source_object(object)? {
+            SourceObject::Verbatim(span) => {
+                let (normal, ()) =
+                    writer.record_with_value(|writer| self.format_verbatim(span, writer))?;
+                Ok(RecordedObject {
+                    normal,
+                    forced: None,
+                })
+            }
+            SourceObject::Formatted(FormattedObject { expand, contents }) => {
+                let (content, ()) = writer
+                    .record_with_value(|writer| self.format_object_contents(contents, writer))?;
+                let request = if expand {
+                    GroupRequest::PreserveSource
+                } else {
+                    GroupRequest::Auto
+                };
+                let normal = writer.group_fragment_with_request(request, content);
+                let forced = if normal.preferred_breaks() {
+                    None
+                } else {
+                    Some(writer.group_fragment(true, content))
+                };
+                Ok(RecordedObject { normal, forced })
+            }
+        }
     }
 
     fn format_object_contents(
