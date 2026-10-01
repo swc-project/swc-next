@@ -1,0 +1,1 @@
+f(first,[/**@type(number)*/ (1),2]);
