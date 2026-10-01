@@ -10,6 +10,7 @@ version               = "0.2.3"
 
 [dependencies]
 arrayvec           = { workspace = true }
+bitflags           = { workspace = true }
 memchr             = { workspace = true }
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
