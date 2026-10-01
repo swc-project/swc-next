@@ -21,11 +21,9 @@ use super::util::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
     UnterminatedString,
-    // UnterminatedRegex,
     NonTerminatedTemplateLiteral,
     UnterminatedRegexLiteral,
     InvalidRegexLineTerminator,
-    // InvalidRegex,
     InvalidRegexFlag,
     DuplicateRegexFlag,
     IncompatibleRegexFlags,
@@ -41,7 +39,6 @@ pub enum LexicalError {
     InvalidExponentPart,
     NumericSeparatorMisuse,
     ConsecutiveNumericSeparators,
-    // MultipleDecimalPoints,
     InvalidBigIntSuffix,
     IdentifierAfterNumericLiteral,
     InvalidUtf8,
@@ -1692,13 +1689,11 @@ pub fn lexical_error_message(error_type: LexicalError) -> &'static str {
     match error_type {
         LexicalError::InvalidHexEscape => "Invalid hexadecimal escape sequence",
         LexicalError::UnterminatedString => "Unterminated string literal",
-        // LexicalError::UnterminatedRegex => "Unterminated regular expression",
         LexicalError::NonTerminatedTemplateLiteral => "Unterminated template literal",
         LexicalError::UnterminatedRegexLiteral => "Unterminated regular expression literal",
         LexicalError::InvalidRegexLineTerminator => {
             "Line terminator not allowed in regular expression literal"
         }
-        // LexicalError::InvalidRegex => "Invalid regular expression",
         LexicalError::InvalidRegexFlag => "Invalid regular expression flag",
         LexicalError::DuplicateRegexFlag => "Duplicate regular expression flag",
         LexicalError::IncompatibleRegexFlags => {
@@ -1725,9 +1720,6 @@ pub fn lexical_error_message(error_type: LexicalError) -> &'static str {
         LexicalError::ConsecutiveNumericSeparators => {
             "Numeric literal cannot contain consecutive separators"
         }
-        // LexicalError::MultipleDecimalPoints => {
-        //     "Numeric literal cannot contain multiple decimal points"
-        // }
         LexicalError::InvalidBigIntSuffix => {
             "BigInt literal cannot contain decimal point or exponent"
         }
@@ -1752,9 +1744,6 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
         LexicalError::UnterminatedString => {
             "Try adding a closing quote here to complete the string"
         }
-        // LexicalError::UnterminatedRegex => {
-        //     "Try adding a closing slash (/) here to complete the regex"
-        // }
         LexicalError::NonTerminatedTemplateLiteral => {
             "Try adding a closing backtick (`) here to complete the template"
         }
@@ -1764,9 +1753,6 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
         LexicalError::InvalidRegexLineTerminator => {
             "Try removing the line break here or escaping it within the regex pattern"
         }
-        // LexicalError::InvalidRegex => {
-        //     "Try checking the regex syntax here for unclosed groups, invalid escapes, or malformed patterns"
-        // }
         LexicalError::InvalidRegexFlag => {
             "Valid regex flags are: `g` (global), `i` (ignoreCase), `m` (multiline), `s` (dotAll), `u` (unicode), `y` (sticky), `d` (hasIndices), `v` (setNotation)"
         }
@@ -1809,7 +1795,6 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
         LexicalError::ConsecutiveNumericSeparators => {
             "Try removing one of the consecutive underscores here"
         }
-        // LexicalError::MultipleDecimalPoints => "Try removing the extra decimal point here",
         LexicalError::InvalidBigIntSuffix => {
             "Try removing the 'n' suffix here, or remove the decimal point/exponent from the number"
         }
