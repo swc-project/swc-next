@@ -27,7 +27,7 @@ pub(super) const OBJECT_SHORTHAND_NOT_SUPPORTED: &str =
 pub(super) const ARRAY_REQUIRES_CONST: &str =
     "Only const arrays can be inferred with --isolatedDeclarations.";
 pub(super) const ARRAY_SPREAD_NOT_SUPPORTED: &str =
-    "Arrays with spread elements can't inferred with --isolatedDeclarations.";
+    "Arrays with spread elements can't be inferred with --isolatedDeclarations.";
 pub(super) const CLASS_EXPRESSION_NOT_SUPPORTED: &str =
     "Inference from class expressions is not supported with --isolatedDeclarations.";
 pub(super) const BINDING_ELEMENT_NOT_SUPPORTED: &str =
