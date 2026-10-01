@@ -13096,21 +13096,6 @@ mod tests {
 
     use super::*;
 
-    fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
-        let allocator = Allocator::new();
-        Parser::init(
-            &allocator,
-            source,
-            Options {
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse()
-        .diagnostics
-    }
-
     fn parse_typescript_declaration<'a>(
         allocator: &'a Allocator,
         source: &'a str,
@@ -13838,7 +13823,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_expression_fragment() {
+    fn expression_fragment() {
         fn parse<'a>(allocator: &'a Allocator, source: &'a str, options: Options) -> Ast<'a> {
             Parser::init(allocator, source, options, NoTokenParserConfig)
                 .parse_expression_fragment(FragmentContext::TopLevel)
@@ -13943,6 +13928,21 @@ mod tests {
 
     #[test]
     fn disallow_unerasable_assertions() {
+        fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            Parser::init(
+                &allocator,
+                source,
+                Options {
+                    lang: Lang::Ts,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse()
+            .diagnostics
+        }
+
         let diagnostics = parse_typescript_diagnostics("1 + 1 as number * 2");
         assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
 
