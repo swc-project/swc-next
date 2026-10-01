@@ -33,6 +33,100 @@ fn expect_token_boundary(source: &str, expected: &str) {
 }
 
 #[test]
+fn test_type_members() {
+    expect_token_boundary(
+        "interface A { x: string; y: number; }",
+        "interface A{x:string;y:number}",
+    );
+
+    expect_token_boundary(
+        "type A = { x: string; y: number; };",
+        "type A={x:string;y:number};",
+    );
+
+    expect_token_boundary(
+        "type A = { (): string; (): number; };",
+        "type A={():string;():number};",
+    );
+
+    expect_token_boundary(
+        "type A = { x(): string; y(): number; };",
+        "type A={x():string;y():number};",
+    );
+
+    expect_token_boundary(
+        "type A = { get x(): number; set x(value: number); };",
+        "type A={get x():number;set x(value:number)};",
+    );
+
+    expect_token_boundary(
+        "type A = { new(): A; new(x: number): A; };",
+        "type A={new ():A;new (x:number):A};",
+    );
+
+    expect_token_boundary(
+        "type A = { [x: string]: number; [x: number]: number; };",
+        "type A={[x:string]:number;[x:number]:number};",
+    );
+
+    expect_token_boundary(
+        "type A = { a: { b: string }; c: number };",
+        "type A={a:{b:string};c:number};",
+    );
+
+    expect_token_boundary("interface A {}", "interface A{}");
+
+    expect_token_boundary("interface A { x: string }", "interface A{x:string}");
+
+    expect_token_boundary("type A = {};", "type A={};");
+
+    expect_token_boundary("type A = { x: string };", "type A={x:string};");
+}
+
+#[test]
+fn test_type_members_directives() {
+    expect_token_boundary(
+        "function f(x: { a: number }) { \"use strict\"; return this; }",
+        "function f(x:{a:number}){\"use strict\";return this}",
+    );
+
+    expect_token_boundary(
+        "function f(): { a: number } { \"use strict\"; return { a: 1 }; }",
+        "function f():{a:number}{\"use strict\";return {a:1}}",
+    );
+
+    expect_token_boundary(
+        "const f = (x: { a: number }) => { \"use strict\"; return this; };",
+        "const f=(x:{a:number})=>{\"use strict\";return this};",
+    );
+
+    expect_token_boundary(
+        "const f = (): { a: number } => { \"use strict\"; return { a: 1 }; };",
+        "const f=():{a:number}=>{\"use strict\";return {a:1}};",
+    );
+
+    expect_token_boundary(
+        "function f(x: { a: { b: number } }) { \"use strict\"; return this; }",
+        "function f(x:{a:{b:number}}){\"use strict\";return this}",
+    );
+}
+
+#[test]
+fn test_type_members_pretty() {
+    expect_printed_ts(
+        "interface A { x: string; y: number; }",
+        "interface A {\n  x: string;\n  y: number;\n}\n",
+    );
+
+    expect_printed_ts(
+        "type A = { a: { b: string }; c: number };",
+        "type A = {\n  a: {\n    b: string;\n  };\n  c: number;\n};\n",
+    );
+
+    expect_printed_ts("interface A {}", "interface A {}\n");
+}
+
+#[test]
 fn test_non_null_token_boundaries() {
     expect_token_boundary("x! == y", "x! ==y;");
 
@@ -47,6 +141,21 @@ fn test_non_null_token_boundaries() {
     expect_token_boundary("x! != y", "x!!=y;");
 
     expect_token_boundary("x! += y", "x!+=y;");
+}
+
+#[test]
+fn test_non_null_optional_chains() {
+    expect_printed_ts("(value?.prop)!;", "(value?.prop)!;\n");
+
+    expect_printed_ts("(value?.[x])!;", "(value?.[x])!;\n");
+
+    expect_printed_ts("(value?.())!;", "(value?.())!;\n");
+
+    expect_printed_ts("(value?.prop)!.x;", "(value?.prop)!.x;\n");
+
+    expect_printed_ts("((value?.prop)!)!;", "(value?.prop)!!;\n");
+
+    expect_printed_ts_minify("(value?.prop)!;", "(value?.prop)!;");
 }
 
 #[test]
@@ -338,4 +447,79 @@ fn test_legal_comments() {
         "type X = number /*! license */;",
         "type X=number;/*! license */",
     );
+}
+
+#[test]
+fn test_instantiation_expression_boundaries() {
+    expect_printed_ts("(f<T>)<U>();", "(f<T>)<U>();\n");
+
+    expect_printed_ts("(f<T>)!;", "(f<T>)!;\n");
+
+    expect_printed_ts("((f<T>)!)<U>();", "(f<T>)!<U>();\n");
+
+    expect_printed_ts("((f<T>)!)!;", "(f<T>)!!;\n");
+
+    expect_printed_ts("(f<T>)();", "(f<T>)();\n");
+
+    expect_printed_ts("(f<T>).x;", "(f<T>).x;\n");
+
+    expect_printed_ts("new (f<T>)<U>();", "new (f<T>)<U>();\n");
+
+    expect_printed_ts("(f<T>)<U>`x`;", "(f<T>)<U>`x`;\n");
+
+    expect_printed_ts(
+        "class C extends (f<T>)<U> {}",
+        "class C extends (f<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.x<T>) {}",
+        "class C extends (f?.x<T>) {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.x<T>)<U> {}",
+        "class C extends (f?.x<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.x!<T>)<U> {}",
+        "class C extends (f?.x!<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.[x]<T>)<U> {}",
+        "class C extends (f?.[x]<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends (f?.()<T>)<U> {}",
+        "class C extends (f?.()<T>)<U> {\n}\n",
+    );
+
+    expect_printed_ts(
+        "class C extends f?.x<T> {}",
+        "class C extends f?.x<T> {\n}\n",
+    );
+
+    expect_printed_ts("class C extends f?.x {}", "class C extends f?.x {\n}\n");
+
+    expect_printed_ts_minify(
+        "class C extends (f?.x<T>)<U> {}",
+        "class C extends (f?.x<T>)<U>{}",
+    );
+
+    expect_printed_ts("f<T>?.<U>();", "f<T>?.<U>();\n");
+
+    expect_printed_ts("(f<T>)?.x;", "(f<T>)?.x;\n");
+
+    expect_printed_ts("f<T>?.[x];", "f<T>?.[x];\n");
+
+    expect_printed_ts("(f<T>)?.[x];", "f<T>?.[x];\n");
+
+    expect_printed_ts_minify("(f<T>)?.x;", "(f<T>)?.x;");
+
+    expect_printed_ts_minify("((f<T>)!)<U>();", "(f<T>)!<U>();");
+
+    expect_printed_ts_minify("((f<T>)!)!;", "(f<T>)!!;");
 }

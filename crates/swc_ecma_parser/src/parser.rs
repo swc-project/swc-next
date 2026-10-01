@@ -4352,7 +4352,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             });
         }
 
-        if tag == TokenTag::Async && !self.current_token.has_line_terminator_before() {
+        if tag == TokenTag::Async {
             let next = self.peek_ahead()?;
             if next.tag() == TokenTag::Function && !next.has_line_terminator_before() {
                 let async_start = self.current_token.start();
@@ -13210,6 +13210,73 @@ mod tests {
         let mut buffer = vec![0; buffer_size(ast, &[])];
         serialize_into(ast, &[], &mut buffer, ast.source().encode_utf16().count());
         buffer
+    }
+
+    #[test]
+    fn default_export_declarations() {
+        fn declaration(ast: &Ast<'_>) -> ExportDefaultDeclarationKindData {
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let export = statement.as_export_default_declaration(ast).unwrap();
+            ast.export_default_declaration_kind_data(export.declaration(ast))
+        }
+
+        fn exported_function(ast: &Ast<'_>) -> Function {
+            let ExportDefaultDeclarationKindData::Function(function) = declaration(ast) else {
+                panic!("expected a default-exported function declaration");
+            };
+            function
+        }
+
+        for lang in [Lang::Js, Lang::Ts, Lang::Tsx] {
+            for preserve_parens in [false, true] {
+                let allocator = Allocator::new();
+                let options = Options {
+                    lang,
+                    source_type: SourceType::Module,
+                    preserve_parens,
+                    ..Options::default()
+                };
+                let parse = |source| {
+                    let result =
+                        Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+                    assert!(result.diagnostics.is_empty());
+                    result.ast
+                };
+
+                let ast = parse("export default\nasync function f() {}");
+                let function = exported_function(&ast);
+                assert_eq!(
+                    function.function_type(&ast),
+                    FunctionType::FunctionDeclaration
+                );
+                assert!(function.r#async(&ast));
+                assert!(!function.generator(&ast));
+                assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "f");
+
+                let ast = parse("export default /*\n*/ async function* () {}");
+                let function = exported_function(&ast);
+                assert_eq!(
+                    function.function_type(&ast),
+                    FunctionType::FunctionDeclaration
+                );
+                assert!(function.r#async(&ast));
+                assert!(function.generator(&ast));
+                assert!(function.id(&ast).is_none());
+
+                let ast = parse("export default async\nfunction f() {}");
+                let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
+                    panic!("expected a default-exported expression");
+                };
+                assert!(expression.as_identifier_reference(&ast).is_some());
+                assert_eq!(ast.root_program().body(&ast).len(), 2);
+
+                let ast = parse("export default (async function f() {});");
+                assert!(matches!(
+                    declaration(&ast),
+                    ExportDefaultDeclarationKindData::Expr(_)
+                ));
+            }
+        }
     }
 
     #[test]

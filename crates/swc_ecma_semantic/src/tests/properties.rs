@@ -1,5 +1,38 @@
 use super::*;
 
+#[test]
+fn abstract_method_syntax_check() {
+    let allocator = Allocator::new();
+    let source = "abstract class A { abstract m() {} }";
+    let parse = Parser::init(&allocator, source, ts_module_options(), NoTokenParserConfig).parse();
+    assert!(parse.diagnostics.is_empty());
+    let ast = &parse.ast;
+    let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+    let declaration = statement.as_declaration(ast).unwrap();
+    let class = declaration.as_class(ast).unwrap();
+    let body = class.body(ast).body(ast);
+    let element = body.get_node(ast, 0).unwrap();
+    let method = element.as_method_definition(ast).unwrap();
+    assert!(method.r#abstract(ast));
+
+    // Conformance accepts parser errors and always enables syntax checking.
+    // AST consumers must still be able to parse and analyze without that check.
+    let options = AnalyzeOptions {
+        check_syntax: false,
+        ..AnalyzeOptions::default()
+    };
+    let unchecked = analyze(ast, options);
+    assert!(unchecked.diagnostics.is_empty());
+
+    let checked_options = AnalyzeOptions {
+        check_syntax: true,
+        ..options
+    };
+    let checked = analyze(ast, checked_options);
+    assert_eq!(checked.diagnostics.len(), 1);
+    assert_eq!(checked.diagnostics[0].span, ast.span(method.node_id()));
+}
+
 #[track_caller]
 fn assert_static_alias_spaces(source: &str) {
     let allocator = Allocator::new();

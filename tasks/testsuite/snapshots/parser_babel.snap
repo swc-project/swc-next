@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2235/2235 (100.00%)
-Negative Passed: 1636/1743 (93.86%)
+Negative Passed: 1640/1743 (94.09%)
 Panicked: 0/3978 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
@@ -11,8 +11,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/unpar
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-method-in-non-abstract-class-1/input.ts - typescript/class/abstract-method-in-non-abstract-class-1: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-method-in-non-abstract-class-2/input.ts - typescript/class/abstract-method-in-non-abstract-class-2: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-method-in-non-abstract-class-3/input.ts - typescript/class/abstract-method-in-non-abstract-class-3: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-method-with-body-computed/input.ts - typescript/class/abstract-method-with-body-computed: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-method-with-body/input.ts - typescript/class/abstract-method-with-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/abstract-property-initializer/input.ts - typescript/class/abstract-property-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/accessor-invalid/input.ts - typescript/class/accessor-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/constructor-overload-modifiers-invalid/input.ts - typescript/class/constructor-overload-modifiers-invalid: expected a parse or early error, but pipeline succeeded
@@ -25,7 +23,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/decl
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/declare-initializer/input.ts - typescript/class/declare-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/declare-method/input.ts - typescript/class/declare-method: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/declare-readonly-field-initializer-w-annotation/input.ts - typescript/class/declare-readonly-field-initializer-w-annotation: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/generator-method-with-modifiers/input.ts - typescript/class/generator-method-with-modifiers: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/index-signature-errors/input.ts - typescript/class/index-signature-errors: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/invalid-definite-initializer/input.ts - typescript/class/invalid-definite-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/invalid-definite-without-type/input.ts - typescript/class/invalid-definite-without-type: expected a parse or early error, but pipeline succeeded
@@ -35,7 +32,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modi
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-index-signatures/input.ts - typescript/class/modifiers-index-signatures: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-invalid-order/input.ts - typescript/class/modifiers-invalid-order: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-override-errors/input.ts - typescript/class/modifiers-override-errors: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/optional-generator-method-with-invalid-modifiers/input.ts - typescript/class/optional-generator-method-with-invalid-modifiers: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/parameter-properties-binding-patterns/input.ts - typescript/class/parameter-properties-binding-patterns: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-abstract/input.ts - typescript/class/private-fields-modifier-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-private/input.ts - typescript/class/private-fields-modifier-private: expected a parse or early error, but pipeline succeeded
