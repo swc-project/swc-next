@@ -208,6 +208,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::ConditionalExpression(_) | ExprData::CallExpression(_) => {
                     return child.is_none().then_some(root);
                 }
+                ExprData::ChainExpression(_)
+                    if matches!(
+                        self.chain_element_data(content.data),
+                        ExprData::CallExpression(_)
+                    ) =>
+                {
+                    return child.is_none().then_some(root);
+                }
                 _ => return None,
             }
         }

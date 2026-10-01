@@ -63,6 +63,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let data = self.ast.expr_data(argument);
             argument = match data {
                 ExprData::ParenthesizedExpression(node) => node.expression(self.ast),
+                ExprData::ChainExpression(node) => node.expression(self.ast),
                 ExprData::MemberExpression(node) => node.object(self.ast),
                 ExprData::CallExpression(node) => node.callee(self.ast),
                 ExprData::ConditionalExpression(node) => node.test(self.ast),

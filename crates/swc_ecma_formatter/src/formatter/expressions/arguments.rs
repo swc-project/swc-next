@@ -1,4 +1,5 @@
 //! Shared source-ordered argument slots and comma/comment boundaries.
+use super::AccessKind;
 
 use super::ExpressionContext;
 use super::Formatter;
@@ -543,6 +544,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 pub(super) struct ArgumentHead {
     pub(super) first_mode: ContentMode,
 }
+struct ArgumentPunctuation {
+    operator: Option<Span>,
+    opening: u32,
+}
+fn argument_opening_gap(prefix_start: u32, first: Option<Span>, end: u32) -> Span {
+    Span::new(prefix_start, first.map_or(end - 1, |span| span.start))
+}
 pub(super) struct SourceArguments<'ast> {
     arguments: SubRange<Argument>,
     first: Option<SourceFirstArgument>,
@@ -573,13 +581,50 @@ impl<'ast> ArgumentPrefix<'ast> {
 }
 enum SourceArgumentPrefix<'ast> {
     Direct(ArgumentPrefix<'ast>),
-    Empty { comments: &'ast [Comment] },
+    Optional {
+        operator: Span,
+        before: &'ast [Comment],
+        after: ArgumentPrefix<'ast>,
+    },
+    Empty {
+        operator: Option<Span>,
+        comments: &'ast [Comment],
+    },
 }
+impl SourceArgumentPrefix<'_> {
+    fn has_comments(&self) -> bool {
+        match self {
+            Self::Direct(prefix) => !prefix.comments().is_empty(),
+            Self::Optional { before, after, .. } => {
+                !before.is_empty() || !after.comments().is_empty()
+            }
+            Self::Empty { .. } => true,
+        }
+    }
+}
+
 impl SourceArguments<'_> {
+    pub(super) fn access(&self) -> AccessKind {
+        match self.prefix {
+            SourceArgumentPrefix::Direct(_) => AccessKind::Ordinary,
+            SourceArgumentPrefix::Optional { .. } => AccessKind::Optional,
+            SourceArgumentPrefix::Empty { operator, .. } => {
+                if operator.is_some() {
+                    AccessKind::Optional
+                } else {
+                    AccessKind::Ordinary
+                }
+            }
+        }
+    }
+
     pub(super) fn has_outside_prefix(&self) -> bool {
         match &self.prefix {
             SourceArgumentPrefix::Direct(prefix) => {
                 !prefix.belongs_to_arguments() && !prefix.comments().is_empty()
+            }
+            SourceArgumentPrefix::Optional { before, after, .. } => {
+                !before.is_empty() || !after.belongs_to_arguments() && !after.comments().is_empty()
             }
             SourceArgumentPrefix::Empty { .. } => true,
         }
@@ -587,6 +632,7 @@ impl SourceArguments<'_> {
     pub(super) fn callee_head(&self) -> CallCallee {
         CallCallee {
             expression: self.callee,
+            access: self.access(),
             mode: self.callee_mode,
         }
     }
@@ -595,52 +641,110 @@ impl SourceArguments<'_> {
     }
 }
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    fn source_argument_punctuation(
+        &self,
+        gap: Span,
+        access: AccessKind,
+        comments: &[Comment],
+    ) -> Option<ArgumentPunctuation> {
+        let operator = match access {
+            AccessKind::Ordinary => None,
+            AccessKind::Optional => {
+                let start = self.find_token(gap, comments, "?.")?;
+                Some(Span::new(start, start + 2))
+            }
+        };
+        let opening_start = operator.map_or(gap.start, |operator| operator.end);
+        let opening_gap = Span::new(opening_start, gap.end);
+        let opening = self.find_token(opening_gap, comments, "(")?;
+        Some(ArgumentPunctuation { operator, opening })
+    }
+
     pub(super) fn source_arguments(
         &self,
         arguments: SubRange<Argument>,
         callee: Expr,
         end: u32,
+        access: AccessKind,
     ) -> Option<SourceArguments<'ast>> {
         let ast = self.ast;
         let callee_span = callee.span(ast);
         let prefix_start = callee_span.end;
-        let mut first = arguments.first().map(|id| SourceFirstArgument {
+        let mut first = arguments.iter().next().map(|id| SourceFirstArgument {
             node: ast.get_node_in_sub_range(id),
             mode: ContentMode::Formatted,
         });
-        let gap = Span::new(
-            prefix_start,
-            first.map_or(end - 1, |a| a.node.span(ast).start),
-        );
+        let first_span = first.map(|argument| argument.node.span(ast));
+        let gap = argument_opening_gap(prefix_start, first_span, end);
         let boundary_comments = self.comments.in_range(gap);
-        let opening = self.find_token(gap, boundary_comments, "(")?;
+        let ArgumentPunctuation { operator, opening } =
+            self.source_argument_punctuation(gap, access, boundary_comments)?;
         let prefix_count = boundary_comments.partition_point(|comment| comment.span.end <= opening);
         let prefix_comments = &boundary_comments[..prefix_count];
-        let prefix = self.argument_prefix(
-            first.as_mut(),
-            Span::new(prefix_start, opening),
-            prefix_comments,
-        );
-        let callee_mode = if prefix.belongs_to_arguments() {
-            ContentMode::Formatted
-        } else {
-            self.trailing_content_mode(Span::new(prefix_start, opening), false)
-        };
-        let prefix = if first.is_none()
-            && !prefix.comments().is_empty()
-            && callee_mode == ContentMode::Formatted
-            && self.empty_call_prefix_can_relocate(
-                callee,
-                opening,
-                self.comments
-                    .in_range(Span::new(callee_span.start, opening)),
-            ) {
-            SourceArgumentPrefix::Empty {
-                comments: prefix_comments,
+        let (prefix, callee_mode) = match operator {
+            None => {
+                let span = Span::new(prefix_start, opening);
+                let prefix = self.argument_prefix(first.as_mut(), span, prefix_comments);
+                let mode = if prefix.belongs_to_arguments() {
+                    ContentMode::Formatted
+                } else {
+                    self.trailing_content_mode(span, false)
+                };
+                (SourceArgumentPrefix::Direct(prefix), mode)
             }
-        } else {
-            SourceArgumentPrefix::Direct(prefix)
+            Some(operator) => {
+                let before_count =
+                    prefix_comments.partition_point(|comment| comment.span.end <= operator.start);
+                let (before, after) = prefix_comments.split_at(before_count);
+                let before_span = Span::new(prefix_start, operator.start);
+                self.prepare_first_argument_suppression(first.as_mut(), before, operator.start);
+                let before_mode = self.trailing_content_mode(before_span, false);
+                let after_span = Span::new(operator.end, opening);
+                let after = self.argument_prefix(first.as_mut(), after_span, after);
+                let after_mode = if after.belongs_to_arguments() {
+                    ContentMode::Formatted
+                } else {
+                    self.trailing_content_mode(after_span, false)
+                };
+                if !after.belongs_to_arguments()
+                    && self.content_mode(after.comments()) == ContentMode::Verbatim
+                    && (first.is_some() || after_mode != ContentMode::Verbatim)
+                {
+                    return None;
+                }
+                let mode = if before_mode == ContentMode::Verbatim
+                    || after_mode == ContentMode::Verbatim
+                {
+                    ContentMode::Verbatim
+                } else {
+                    ContentMode::Formatted
+                };
+                let prefix = SourceArgumentPrefix::Optional {
+                    operator,
+                    before,
+                    after,
+                };
+                (prefix, mode)
+            }
         };
+        let prefix =
+            if first.is_none() && prefix.has_comments() && callee_mode == ContentMode::Formatted {
+                let comments = prefix_comments;
+                if !comments.is_empty()
+                    && self.empty_call_prefix_can_relocate(
+                        callee,
+                        opening,
+                        self.comments
+                            .in_range(Span::new(callee_span.start, opening)),
+                    )
+                {
+                    SourceArgumentPrefix::Empty { operator, comments }
+                } else {
+                    prefix
+                }
+            } else {
+                prefix
+            };
         Some(SourceArguments {
             arguments,
             first,
@@ -651,6 +755,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             callee_mode,
         })
     }
+
     /// A packet moves into an empty call only if that prefix can own it again.
     pub(super) fn empty_call_prefix_can_relocate(
         &self,
@@ -720,6 +825,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_empty_argument_prefix(
         &self,
         comments: &'ast [Comment],
+        operator: Option<Span>,
         source_end: u32,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
@@ -727,7 +833,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut pending_line = false;
         for comment in comments {
             let own_line = self.source_position_starts_line(comment.span.start);
-            let gap_start = previous_end;
+            let gap_start = operator
+                .filter(|operator| {
+                    previous_end <= operator.start && operator.end <= comment.span.start
+                })
+                .map_or(previous_end, |operator| operator.end);
             if pending_line || own_line {
                 writer.hard_line();
                 if self.next_line_is_empty(gap_start, comment.span.start) {
@@ -770,14 +880,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let prefix_start = callee_span.end;
         let source_end = tail.as_ref().map_or(prefix_start, |tail| tail.source_end);
         let content_start = match prefix {
-            SourceArgumentPrefix::Empty { comments } => {
+            SourceArgumentPrefix::Empty { operator, comments } => {
                 let comments = if tail.is_some() {
                     self.comments.between(Span::new(source_end, opening))?
                 } else {
                     comments
                 };
                 self.comments.claim(comments)?;
-                self.format_empty_argument_prefix(comments, source_end, writer)?;
+                self.format_empty_argument_prefix(comments, operator, source_end, writer)?;
+                if operator.is_some() {
+                    writer.text("?.");
+                }
                 opening + 1
             }
             SourceArgumentPrefix::Direct(prefix) => {
@@ -814,6 +927,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     source_end
                 } else {
                     prefix_start
+                }
+            }
+            SourceArgumentPrefix::Optional {
+                operator,
+                before,
+                after,
+            } => {
+                let before = if tail.is_some() {
+                    self.comments
+                        .between(Span::new(source_end, operator.start))?
+                } else {
+                    before
+                };
+
+                let boundary = self.prepare_comment_boundary(before, source_end, operator.start);
+                self.format_comment_boundary(&boundary, writer)?;
+                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                writer.text("?.");
+                if after.belongs_to_arguments() {
+                    operator.end
+                } else {
+                    let after = after.comments();
+
+                    let boundary = self.prepare_comment_boundary(after, operator.end, opening);
+                    self.format_comment_boundary(&boundary, writer)?;
+                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                    opening + 1
                 }
             }
         };

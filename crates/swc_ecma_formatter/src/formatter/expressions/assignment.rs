@@ -497,6 +497,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn assignment_expression_head(&self, content: &ExpressionContent) -> Option<ExpressionContent> {
         let mut expression = match content.data {
+            ExprData::ChainExpression(chain) => chain.expression(self.ast),
             ExprData::MemberExpression(member) => member.object(self.ast),
             ExprData::CallExpression(call) => call.callee(self.ast),
             _ => return None,
@@ -515,6 +516,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(head);
             }
             expression = match head.data {
+                ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 ExprData::MemberExpression(member) => member.object(self.ast),
                 ExprData::CallExpression(call) => call.callee(self.ast),
                 _ => return Some(head),

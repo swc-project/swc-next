@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{
     PrivateIdentifier, PropertyKeyData, Span,
 };
 
+use super::AccessKind;
 use super::parentheses::ResolvedExpressionHead;
 use super::{
     ConditionalClosing, ExpressionContext, ExpressionPosition, Formatter, MemberLayout,
@@ -37,6 +38,7 @@ enum MemberPunctuation {
     },
     Computed {
         key: Expr,
+        optional: Option<Span>,
         brackets: Span,
         opening: LineConstraint,
     },
@@ -46,7 +48,15 @@ impl MemberPunctuation {
     fn operator(&self) -> Span {
         match *self {
             Self::Static { operator, .. } => operator,
-            Self::Computed { brackets, .. } => Span::new(brackets.start, brackets.start + 1),
+            Self::Computed {
+                optional: Some(operator),
+                ..
+            } => operator,
+            Self::Computed {
+                optional: None,
+                brackets,
+                ..
+            } => Span::new(brackets.start, brackets.start + 1),
         }
     }
 }
@@ -71,10 +81,12 @@ pub(super) struct MemberHead {
     property_span: Span,
     gap: Span,
     key: MemberKey,
+    access: AccessKind,
 }
 
 fn member_receiver_context(
     context: ExpressionContext,
+    access: AccessKind,
     mode: ContentMode,
     computed: bool,
     object: Expr,
@@ -85,7 +97,7 @@ fn member_receiver_context(
     ) {
         ExpressionPosition::MemberAssignmentObject
     } else {
-        ExpressionPosition::MemberObject
+        ExpressionPosition::MemberObject(access)
     };
     let mut receiver = ExpressionContext::at(position)
         .with_parent_head(context)
@@ -99,7 +111,10 @@ fn member_receiver_context(
     } else {
         ConditionalClosing::MemberLine
     };
-    if computed && context.expression_head == super::ExpressionHead::Statement {
+    if computed
+        && access == AccessKind::Ordinary
+        && context.expression_head == super::ExpressionHead::Statement
+    {
         receiver.computed_receiver = Some(object);
     }
     receiver
@@ -109,6 +124,7 @@ pub(super) struct SourceMember {
     pub(super) object: Expr,
     property_span: Span,
     punctuation: MemberPunctuation,
+    pub(super) access: AccessKind,
     pub(super) receiver_mode: ContentMode,
     key_mode: ContentMode,
 }
@@ -137,7 +153,7 @@ impl MemberLookupOwner {
             || context.member_layout == MemberLayout::Tight
         {
             Self::InlineContext
-        } else if matches!(context.position, ExpressionPosition::MemberObject) {
+        } else if matches!(context.position, ExpressionPosition::MemberObject(_)) {
             Self::Receiver
         } else {
             Self::Expression
@@ -197,7 +213,13 @@ impl SourceMember {
     }
 
     pub(super) fn receiver_context(&self, context: ExpressionContext) -> ExpressionContext {
-        member_receiver_context(context, self.receiver_mode, self.is_computed(), self.object)
+        member_receiver_context(
+            context,
+            self.access,
+            self.receiver_mode,
+            self.is_computed(),
+            self.object,
+        )
     }
 }
 
@@ -219,12 +241,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             });
         }
-        if member.optional(self.ast) {
-            return Err(self.unsupported("optional member", member));
-        }
         let receiver = member.object(self.ast);
         let context = member_receiver_context(
             context,
+            if member.optional(self.ast) {
+                AccessKind::Optional
+            } else {
+                AccessKind::Ordinary
+            },
             ContentMode::Formatted,
             member.computed(self.ast),
             receiver,
@@ -293,9 +317,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         member: MemberExpression,
     ) -> Result<MemberHead, FormatError> {
-        if member.optional(self.ast) {
-            return Err(self.unsupported("optional member", member));
-        }
+        let access = if member.optional(self.ast) {
+            AccessKind::Optional
+        } else {
+            AccessKind::Ordinary
+        };
         let property = member.property(self.ast);
         let key = match (
             member.computed(self.ast),
@@ -323,6 +349,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             property_span,
             gap,
             key,
+            access,
         })
     }
 
@@ -356,21 +383,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let property_span = head.property_span;
         let gap = head.gap;
         let key = head.key;
+        let access = head.access;
         let comments = self.comments.in_range(gap);
         let mut punctuation = match key {
             MemberKey::Computed(expression) => {
-                let opening_gap = gap;
+                let optional = if access == AccessKind::Optional {
+                    let start = self
+                        .find_token(gap, comments, "?.")
+                        .ok_or_else(|| self.unsupported("member optional boundary", member))?;
+                    Some(Span::new(start, start + 2))
+                } else {
+                    None
+                };
+                let opening_gap = Span::new(optional.map_or(gap.start, |span| span.end), gap.end);
                 let opening = self
                     .find_token(opening_gap, comments, "[")
                     .ok_or_else(|| self.unsupported("member opening boundary", member))?;
                 MemberPunctuation::Computed {
                     key: expression,
+                    optional,
                     brackets: Span::new(opening, member.span(self.ast).end),
                     opening: LineConstraint::Unconstrained,
                 }
             }
             MemberKey::Static(identifier) => {
-                let token = ".";
+                let token = if access == AccessKind::Optional {
+                    "?."
+                } else {
+                    "."
+                };
                 let start = self
                     .find_token(gap, comments, token)
                     .ok_or_else(|| self.unsupported("member operator boundary", member))?;
@@ -422,6 +463,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             object,
             property_span,
             punctuation,
+            access,
             receiver_mode: receiver,
             key_mode: key,
         }))
@@ -517,15 +559,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match &member.punctuation {
             MemberPunctuation::Computed {
                 key: expression,
+                optional,
                 brackets,
                 opening,
-            } => self.format_member_key(*expression, *brackets, member.key_mode, *opening, writer),
+            } => {
+                if let Some(optional) = optional {
+                    writer.text("?.");
+                    let before_bracket_count =
+                        after.partition_point(|comment| comment.span.end <= brackets.start);
+                    let before_bracket = &after[..before_bracket_count];
+                    let boundary =
+                        self.prepare_comment_boundary(before_bracket, optional.end, brackets.start);
+                    let separator = if boundary.is_empty() {
+                        FlatSeparator::Empty
+                    } else {
+                        FlatSeparator::Space
+                    };
+                    self.format_comment_boundary(&boundary, writer)?;
+                    boundary.gap().write(writer, separator, |writer| {
+                        if !boundary.is_empty() {
+                            writer.space();
+                        }
+                    });
+                }
+                self.format_member_key(*expression, *brackets, member.key_mode, *opening, writer)
+            }
             MemberPunctuation::Static {
                 key: identifier,
                 operator,
                 key_gap,
             } => {
-                writer.text(".");
+                writer.text(if member.access == AccessKind::Optional {
+                    "?."
+                } else {
+                    "."
+                });
                 if let Some(gap) = key_gap {
                     let source =
                         self.format_delimited_source_gap(*gap, DelimitedFollowing::Node, writer)?;

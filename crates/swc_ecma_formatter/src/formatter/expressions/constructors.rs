@@ -1,4 +1,5 @@
 //! Constructor keyword ownership and member-expression callee grammar.
+use super::AccessKind;
 
 use swc_next_ecma_ast::{ExprData, GetSpan, NewExpression, Span};
 
@@ -25,8 +26,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         } else {
             Some(
-                self.source_arguments(constructor.arguments(self.ast), callee, span.end)
-                    .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?,
+                self.source_arguments(
+                    constructor.arguments(self.ast),
+                    callee,
+                    span.end,
+                    AccessKind::Ordinary,
+                )
+                .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?,
             )
         };
         let keyword_end = span.start + 3;
