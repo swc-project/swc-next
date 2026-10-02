@@ -84,6 +84,37 @@ pub(super) struct MemberHead {
     access: AccessKind,
 }
 
+impl MemberHead {
+    pub(super) fn is_computed(&self) -> bool {
+        matches!(self.key, MemberKey::Computed(_))
+    }
+
+    pub(super) fn key(&self) -> Option<Expr> {
+        match self.key {
+            MemberKey::Computed(key) => Some(key),
+            MemberKey::Static(_) => None,
+        }
+    }
+
+    pub(super) fn name(&self) -> Option<IdentifierName> {
+        match self.key {
+            MemberKey::Static(StaticMemberKey::Public(name)) => Some(name),
+            MemberKey::Static(StaticMemberKey::Private(_)) | MemberKey::Computed(_) => None,
+        }
+    }
+
+    /// Used after the source-clear query has established formatted content.
+    pub(super) fn receiver_context(&self, context: ExpressionContext) -> ExpressionContext {
+        member_receiver_context(
+            context,
+            self.access,
+            ContentMode::Formatted,
+            self.is_computed(),
+            self.object,
+        )
+    }
+}
+
 fn member_receiver_context(
     context: ExpressionContext,
     access: AccessKind,
@@ -151,6 +182,7 @@ impl MemberBoundary<'_> {
 pub(super) enum MemberLookupOwner {
     InlineContext,
     Receiver,
+    Rhs,
     Expression,
 }
 impl MemberLookupOwner {
@@ -161,6 +193,8 @@ impl MemberLookupOwner {
             Self::InlineContext
         } else if matches!(context.position, ExpressionPosition::MemberObject(_)) {
             Self::Receiver
+        } else if context.member_layout == MemberLayout::Rhs {
+            Self::Rhs
         } else {
             Self::Expression
         }
@@ -335,6 +369,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let receiver = self.expression_content(member.object).data;
         if matches!(receiver, ExprData::IdentifierReference(_)) {
+            return MemberLookupLayout::Inline;
+        }
+        // The enclosing RHS fits the complete call and its terminal lookup.
+        // Keep the call's arguments as the available internal break points.
+        if matches!(owner, MemberLookupOwner::Rhs)
+            && member.receiver_mode == ContentMode::Formatted
+            && matches!(self.chain_element_data(receiver), ExprData::CallExpression(call)
+                if !call.arguments(self.ast).is_empty())
+        {
             return MemberLookupLayout::Inline;
         }
         MemberLookupLayout::Grouped

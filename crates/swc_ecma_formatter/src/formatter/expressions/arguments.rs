@@ -740,6 +740,12 @@ impl<'ast> SourceArguments<'ast> {
         Some(head)
     }
 
+    pub(super) fn empty_argument_content(&self) -> Option<Span> {
+        self.arguments
+            .is_empty()
+            .then(|| Span::new(self.delimiters.start + 1, self.delimiters.end - 1))
+    }
+
     pub(super) fn access(&self) -> AccessKind {
         match self.prefix {
             SourceArgumentPrefix::Direct(_) => AccessKind::Ordinary,
@@ -778,6 +784,24 @@ impl<'ast> SourceArguments<'ast> {
     }
 }
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    /// The enclosing chain has already proved that this argument boundary is
+    /// comment- and diagnostic-clear. Preserve the actual source token geometry.
+    pub(super) fn source_clear_argument_opening(
+        &self,
+        arguments: SubRange<Argument>,
+        callee: Expr,
+        end: u32,
+        access: AccessKind,
+    ) -> bool {
+        let ast = self.ast;
+        let first = arguments.first().map(|id| {
+            let argument: Argument = ast.get_node_in_sub_range(id);
+            argument.span(ast)
+        });
+        let gap = argument_opening_gap(callee.span(ast).end, first, end);
+        self.source_argument_punctuation(gap, access, &[]).is_some()
+    }
+
     fn source_argument_punctuation(
         &self,
         gap: Span,

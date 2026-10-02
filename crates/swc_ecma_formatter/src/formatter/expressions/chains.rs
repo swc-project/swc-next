@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{
 
 use super::arguments::{ArgumentGroup, SourceArguments};
 use super::members::{
-    MemberBoundary, MemberLookupLayout, MemberLookupOwner, PreparedMember, SourceMember,
+    MemberBoundary, MemberHead, MemberLookupLayout, MemberLookupOwner, PreparedMember, SourceMember,
 };
 use super::parentheses::{
     ExpressionContent, ParenthesisInner, RemovedExpressionParentheses, ResolvedExpressionHead,
@@ -32,6 +32,72 @@ pub(super) enum FluentChainEligibility {
     Fluent,
     MemberOnly,
     Unqualified,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum RhsCallChainOwnership {
+    Compact,
+    Fluent,
+}
+
+/// Reverse summaries of the head printer's two incoming `leading` states.
+/// Only source-clear chains can use topology in place of recorded boundary facts.
+#[derive(Clone, Copy, Default)]
+struct ChainHeadPrefix {
+    parts: usize,
+    last_name: Option<IdentifierName>,
+    pending_computed: bool,
+}
+
+impl ChainHeadPrefix {
+    fn prepend(self, name: Option<IdentifierName>) -> Self {
+        Self {
+            parts: self.parts + 1,
+            last_name: if self.parts == 0 {
+                name
+            } else {
+                self.last_name
+            },
+            pending_computed: self.pending_computed,
+        }
+    }
+
+    fn pending(computed: bool) -> Self {
+        Self {
+            pending_computed: computed,
+            ..Self::default()
+        }
+    }
+}
+
+#[derive(Default)]
+struct RhsChainHead {
+    leading: ChainHeadPrefix,
+    following: ChainHeadPrefix,
+    next_is_member: bool,
+}
+
+impl RhsChainHead {
+    fn call(&mut self) {
+        self.leading = self.leading.prepend(None);
+        self.following = self.following.prepend(None);
+        self.next_is_member = false;
+    }
+
+    fn member(&mut self, member: &MemberHead, numeric: bool) {
+        let following = if self.next_is_member {
+            self.following.prepend(member.name())
+        } else {
+            ChainHeadPrefix::pending(member.is_computed())
+        };
+        self.leading = if numeric {
+            self.leading.prepend(member.name())
+        } else {
+            following
+        };
+        self.following = following;
+        self.next_is_member = true;
+    }
 }
 
 pub(super) fn atomic_chain_head(data: ExprData) -> bool {
@@ -382,6 +448,125 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if member && calls >= required_calls {
                 return FluentChainEligibility::Fluent;
             }
+        }
+    }
+
+    /// Inspect the immutable source window while walking short calls and member
+    /// barriers. Empty argument frames consume their own packets; the remaining
+    /// spine stays clear, including terminal members outside the outermost call.
+    pub(super) fn rhs_call_chain_ownership(
+        &self,
+        call: CallExpression,
+        covered_span: Span,
+    ) -> Option<RhsCallChainOwnership> {
+        if self.diagnostic_range_is_sensitive(covered_span) {
+            return None;
+        }
+        let comments = self.ast.comments();
+        let first = comments.partition_point(|comment| comment.span.end <= covered_span.start);
+        let comments = &comments[first..];
+        let count = comments.partition_point(|comment| comment.span.start < covered_span.end);
+        let mut comments = &comments[..count];
+        let mut current = Expr::CallExpression(call);
+        let mut context = ExpressionContext::at(ExpressionPosition::Nested);
+        let mut grouping = ChainGrouping::new();
+        let mut prefix = RhsChainHead::default();
+        loop {
+            current = match self.ast.expr_data(current) {
+                ExprData::MemberExpression(member) => {
+                    let head = self.prepare_member_head(member).ok()?;
+                    if comments
+                        .last()
+                        .is_some_and(|comment| comment.span.end > head.object.span(self.ast).end)
+                    {
+                        return None;
+                    }
+                    let numeric = head.key().is_some_and(|key| {
+                        matches!(self.ast.expr_data(key), ExprData::NumericLiteral(_))
+                    });
+                    grouping.member(numeric);
+                    // Prepending never removes groups, and the head can merge
+                    // at most one. Once that budget fails, compact is impossible.
+                    if !short_chain(grouping.groups, true) {
+                        return None;
+                    }
+                    if self.source_clear_member_has_chain_barrier(&head).ok()? {
+                        return None;
+                    }
+                    prefix.member(&head, numeric);
+                    context = head.receiver_context(context);
+                    head.object
+                }
+                ExprData::CallExpression(call) => {
+                    if !self.assignment_call_is_short(call) {
+                        return None;
+                    }
+                    let callee_end = call.callee(self.ast).span(self.ast).end;
+                    let mut count = comments.len();
+                    while count != 0 && comments[count - 1].span.end > callee_end {
+                        count -= 1;
+                    }
+                    let (callee_comments, frame_comments) = comments.split_at(count);
+                    let callee = if let Some(first) = frame_comments.first() {
+                        let arguments = self.source_call(call, context).ok()?;
+                        let content = arguments.empty_argument_content()?;
+                        if arguments.callee_mode != ContentMode::Formatted
+                            || arguments.has_outside_prefix()
+                            || first.span.start < content.start
+                            || frame_comments
+                                .last()
+                                .is_some_and(|comment| comment.span.end > content.end)
+                        {
+                            return None;
+                        }
+                        arguments.callee_head()
+                    } else {
+                        self.rhs_call_callee(call, context)?
+                    };
+                    comments = callee_comments;
+                    grouping.call();
+                    prefix.call();
+                    context = callee.context(context);
+                    callee.expression
+                }
+                ExprData::ParenthesizedExpression(node) => {
+                    self.chain_parentheses_operand(node, context)?
+                }
+                ExprData::ChainExpression(chain)
+                    if matches!(
+                        context.position,
+                        ExpressionPosition::MemberObject(AccessKind::Optional)
+                            | ExpressionPosition::CallCallee {
+                                access: AccessKind::Optional,
+                                ..
+                            }
+                    ) =>
+                {
+                    chain.expression(self.ast)
+                }
+                data => {
+                    if !comments.is_empty()
+                        || !matches!(
+                            data,
+                            ExprData::IdentifierReference(_) | ExprData::ThisExpression(_)
+                        )
+                    {
+                        return None;
+                    }
+                    let head = prefix.leading;
+                    let attach = self.chain_head_attaches(data, ExpressionPosition::Nested);
+                    let factory = head
+                        .last_name
+                        .is_some_and(|name| factory_name(self.ast.get_utf8(name.name(self.ast))));
+                    let merge =
+                        merge_chain_head(head.parts, factory, head.pending_computed, attach);
+                    return Some(if short_chain(grouping.groups, merge) {
+                        RhsCallChainOwnership::Compact
+                    } else {
+                        RhsCallChainOwnership::Fluent
+                    });
+                }
+            };
         }
     }
 
