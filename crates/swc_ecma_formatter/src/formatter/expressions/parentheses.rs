@@ -774,6 +774,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.trailing_content_mode(trailing, true)
     }
 
+    pub(super) fn chain_parentheses_operand(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        context: ExpressionContext,
+    ) -> Option<Expr> {
+        let child = parenthesized.expression(self.ast);
+        let boundary = SourceParentheses {
+            outer: parenthesized.span(self.ast),
+            inner: child.span(self.ast),
+            inner_target: ParenthesisInner::Expression(child),
+        };
+        if context.content_mode != ContentMode::Formatted
+            || !self
+                .comments
+                .in_range(Span::new(boundary.outer.start, boundary.inner.start))
+                .is_empty()
+            || !self
+                .comments
+                .in_range(Span::new(boundary.inner.end, boundary.outer.end))
+                .is_empty()
+            || self.diagnostic_range_is_sensitive(boundary.outer)
+            || !self.parentheses_are_removable(boundary)
+            || self.expression_needs_parentheses(
+                self.ast.expr_data(child),
+                context.position,
+                context.content_mode,
+            ) != Some(false)
+        {
+            return None;
+        }
+        Some(child)
+    }
+
     /// Resolve the real emitted head without discarding its source envelope.
     /// Retained, ignored and grammar-owned pairs remain the chain's head owner.
     pub(super) fn prepare_chain_parentheses_head(

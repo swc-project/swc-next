@@ -1,10 +1,12 @@
 //! Assignment layouts and borrowed operator boundaries prepared before printing.
 
 use super::binary::BinaryLike;
+use super::chains::RhsCallChainOwnership;
 use super::parentheses::ExpressionContent;
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, SuppressionPosition, is_suppression_comment,
 };
@@ -13,7 +15,8 @@ use crate::{
     document::{Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    AssignmentExpression, Comment, CommentKind, Expr, ExprData, GetSpan, Span,
+    ArgumentData, AssignmentExpression, CallExpression, Comment, CommentKind, Expr, ExprData,
+    GetSpan, Span,
 };
 
 #[derive(Clone, Copy)]
@@ -821,7 +824,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         (!matches!(data, ExprData::SequenceExpression(_))).then_some(content)
     }
 
-    /// Strings favor an enclosing operator break across inspectable unary prefixes.
+    /// Strings and compact member/call spines favor the enclosing operator break.
+    /// Fluent chains retain their own operation and argument groups.
     fn assignment_right_prefers_operator_break(
         &self,
         content: RhsContent,
@@ -833,19 +837,120 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         }
         let mut data = content.data;
+        let mut chain = false;
+        let mut outer_span = match data {
+            ExprData::MemberExpression(member) => Some(member.span(self.ast)),
+            ExprData::CallExpression(call) => Some(call.span(self.ast)),
+            _ => None,
+        };
         loop {
-            match data {
-                ExprData::UnaryExpression(unary) => {
+            let receiver = match data {
+                ExprData::UnaryExpression(unary) if !chain => {
                     let operand = self.expression_content(unary.argument(self.ast));
                     if !self.rhs_head_is_inspectable(unary.span(self.ast).start, operand.expression)
                     {
                         return false;
                     }
                     data = operand.data;
+                    continue;
                 }
-                ExprData::StringLiteral(_) => return true,
-                _ => return false,
+                ExprData::AwaitExpression(awaited) if !chain => awaited.argument(self.ast),
+                ExprData::YieldExpression(yielded) if !chain => {
+                    let Some(argument) = yielded.argument(self.ast) else {
+                        return false;
+                    };
+                    argument
+                }
+                ExprData::MemberExpression(access) => {
+                    outer_span.get_or_insert(access.span(self.ast));
+                    chain = true;
+                    access.object(self.ast)
+                }
+                ExprData::CallExpression(call) => {
+                    let covered_span = *outer_span.get_or_insert(call.span(self.ast));
+                    if content.unary_operand.is_none()
+                        && !self.rhs_head_is_inspectable(prefix_start, Expr::CallExpression(call))
+                    {
+                        return false;
+                    }
+                    return self.rhs_call_chain_ownership(call, covered_span)
+                        == Some(RhsCallChainOwnership::Compact);
+                }
+                ExprData::StringLiteral(_) if !chain => return true,
+                ExprData::ChainExpression(chain) => chain.expression(self.ast),
+                _ => {
+                    if !chain
+                        || !matches!(
+                            data,
+                            ExprData::IdentifierReference(_) | ExprData::ThisExpression(_)
+                        )
+                    {
+                        return false;
+                    }
+                    return true;
+                }
+            };
+            data = self.expression_content(receiver).data;
+        }
+    }
+
+    /// Classify values after the chain owner has checked diagnostic coverage.
+    /// It separately validates each frame's immutable comment window.
+    pub(super) fn assignment_call_is_short(&self, call: CallExpression) -> bool {
+        let ast = self.ast;
+        let arguments = call.arguments(ast);
+        match arguments.len() {
+            0 => true,
+            1 => {
+                let Some(first) = arguments.first() else {
+                    return false;
+                };
+                let argument = ast.get_node_in_sub_range(first);
+                let ArgumentData::Expr(expression) = ast.argument_data(argument) else {
+                    return false;
+                };
+                self.assignment_call_argument_is_short(expression)
             }
+            _ => false,
+        }
+    }
+
+    fn assignment_call_argument_is_short(&self, mut expression: Expr) -> bool {
+        let ast = self.ast;
+        let threshold = usize::from(self.options.line_width) / 4;
+        loop {
+            let data = self.expression_content(expression).data;
+            return match data {
+                ExprData::IdentifierReference(identifier) => {
+                    rhs_text_is_short(ast.get_utf8(identifier.name(ast)), threshold)
+                }
+                ExprData::UnaryExpression(unary) => {
+                    expression = unary.argument(ast);
+                    continue;
+                }
+                ExprData::RegExpLiteral(literal) => {
+                    rhs_text_is_short(ast.get_utf8(literal.pattern(ast)), threshold)
+                }
+                ExprData::StringLiteral(literal) => {
+                    let text = self.string_literal_text(literal, StringContext::Expression);
+                    rhs_text_is_short(&text, threshold)
+                }
+                ExprData::CallExpression(call) => {
+                    call.arguments(ast).is_empty()
+                        && threshold >= 2
+                        && matches!(
+                            ast.expr_data(call.callee(ast)),
+                            ExprData::IdentifierReference(identifier)
+                                if rhs_text_is_short(ast.get_utf8(identifier.name(ast)), threshold - 2)
+                        )
+                }
+                ExprData::ThisExpression(_)
+                | ExprData::NullLiteral(_)
+                | ExprData::BigIntLiteral(_)
+                | ExprData::BooleanLiteral(_)
+                | ExprData::NumericLiteral(_) => true,
+                _ => false,
+            };
         }
     }
 
@@ -866,4 +971,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.expression_head_binding(&comments[first..last], operand)
             .allows_relocation(Some(span))
     }
+}
+
+/// The lone-short policy counts JavaScript string length, not display columns.
+fn rhs_text_is_short(text: &str, threshold: usize) -> bool {
+    text.len() <= threshold || text.encode_utf16().take(threshold + 1).count() <= threshold
 }
