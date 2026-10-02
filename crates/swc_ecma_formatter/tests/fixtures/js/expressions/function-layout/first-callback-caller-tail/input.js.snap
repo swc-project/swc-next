@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+runFirst(function (value) { return first(value); }, second()) /* caller tail */; third();
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+runFirst(function (value) {
+  return first(value);
+}, second()); /* caller tail */
+third();
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+runFirst(function (value) {
+  return first(value);
+}, second()); /* caller tail */
+third();

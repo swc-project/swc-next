@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function run(source) { return source.first().then(x => Socket.open({ first: one, second: two, nested: foo({ a: 1, b: 2, c: 3 }) }).map(x => x).retry(x => x)); }
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function run(source) {
+  return source.first().then((x) =>
+    Socket.open({
+      first: one,
+      second: two,
+      nested: foo({ a: 1, b: 2, c: 3 }),
+    })
+      .map((x) => x)
+      .retry((x) => x),
+  );
+}
