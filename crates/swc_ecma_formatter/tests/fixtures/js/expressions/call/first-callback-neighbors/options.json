@@ -1,0 +1,21 @@
+[
+  {
+    "printWidth": 24
+  },
+  {
+    "printWidth": 40
+  },
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 40,
+    "trailingComma": "none",
+    "semi": false
+  },
+  {
+    "printWidth": 40,
+    "useTabs": true,
+    "arrowParens": "avoid"
+  }
+]

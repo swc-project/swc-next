@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(() => { return run(); },
+// prettier-ignore
+( state [ key ] ));
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+schedule(
+  () => {
+    return run();
+  },
+  // prettier-ignore
+  state [ key ],
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+schedule(
+  () => {
+    return run();
+  },
+  // prettier-ignore
+  state [ key ],
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+schedule(
+  () => {
+    return run();
+  },
+  // prettier-ignore
+  state [ key ],
+);
+
+---------- Options ----------
+{"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+schedule(
+  () => {
+    return run()
+  },
+  // prettier-ignore
+  state [ key ]
+)
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"useTabs":true}
+---------- Output ----------
+schedule(
+	() => {
+		return run();
+	},
+	// prettier-ignore
+	state [ key ],
+);
