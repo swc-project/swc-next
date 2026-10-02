@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 238/1070 (22.24%)
-Snapshot matched: 238/1070
-AST parity: 260/260
-AST mismatched: 0/260
+Passed: 243/1070 (22.71%)
+Snapshot matched: 243/1070
+AST parity: 265/265
+AST mismatched: 0/265
 AST format errors: 0/1070
 Mismatched: 22/1070
-Format errors: 809/1070
+Format errors: 804/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -107,7 +107,6 @@ Unsupported option sets: 19
 - js/assignment/sequence.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/unary.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/async/async-iteration.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/async/async-shorthand-method.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/async/conditional-expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/async/inline-await.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/async/nested.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -462,7 +461,6 @@ Unsupported option sets: 19
 - js/method-chain/issue-4125.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/logical.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/multiple-members.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/object-literal.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/pr-7889.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/print-width-120/constructor.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/short-names.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -499,11 +497,8 @@ Unsupported option sets: 19
 - js/object-prop-break-in/test.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/object-property-comment/after-key.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/object-property-ignore/issue-5678.js: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
-- js/objects/bigint-key.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/objects/escape-sequence-key.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/objects/expand.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/objects/getter-setter.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/objects/method.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/objects/right-break.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/optional-catch-binding/optional_catch_binding.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/optional-chaining/as-key.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

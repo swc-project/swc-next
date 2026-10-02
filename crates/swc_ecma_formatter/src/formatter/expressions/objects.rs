@@ -26,6 +26,12 @@ pub(in crate::formatter) enum PropertyKeyQuoting {
     Preserve,
 }
 
+#[derive(Clone, Copy)]
+pub(in crate::formatter) enum PropertyKeyContext {
+    Ordinary,
+    FunctionValueBinding,
+}
+
 enum SourceObject<'ast> {
     Verbatim(Span),
     Formatted(FormattedObject<'ast>),
@@ -503,7 +509,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
         if property.method(ast) || property.kind(ast) != PropertyKind::Init {
-            return Err(self.unsupported("object method", property));
+            let header = self.source_method_header(property, quoting)?;
+            self.format_method_header(header, writer)?;
+            return Ok(None);
         }
         let key_end = self.object_key_end(property)?;
         if property.shorthand(ast) {
@@ -817,9 +825,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn unquoted_string_key(
         &self,
         literal: swc_next_ecma_ast::StringLiteral,
+        context: PropertyKeyContext,
         quoting: PropertyKeyQuoting,
     ) -> Option<&'ast str> {
-        if quoting != PropertyKeyQuoting::AsNeeded {
+        if quoting != PropertyKeyQuoting::AsNeeded
+            || matches!(context, PropertyKeyContext::FunctionValueBinding)
+        {
             return None;
         }
         self.unquoted_string_key_content(literal)
@@ -838,6 +849,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         key: PropertyKey,
         computed: Option<Span>,
         mode: ContentMode,
+        quoting: PropertyKeyQuoting,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_property_key_context(
+            key,
+            computed,
+            mode,
+            PropertyKeyContext::Ordinary,
+            quoting,
+            writer,
+        )
+    }
+
+    pub(in crate::formatter) fn format_property_key_context(
+        &mut self,
+        key: PropertyKey,
+        computed: Option<Span>,
+        mode: ContentMode,
+        context: PropertyKeyContext,
         quoting: PropertyKeyQuoting,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
@@ -860,7 +890,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             PropertyKeyData::Expr(expression) => match ast.expr_data(expression) {
                 ExprData::StringLiteral(literal) => {
-                    if let Some(content) = self.unquoted_string_key(literal, quoting) {
+                    if let Some(content) = self.unquoted_string_key(literal, context, quoting) {
                         writer.text(content);
                     } else {
                         self.format_string_literal(literal, StringContext::Expression, writer);

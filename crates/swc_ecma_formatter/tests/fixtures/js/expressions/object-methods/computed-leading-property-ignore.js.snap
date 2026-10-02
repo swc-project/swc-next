@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({[/* prettier-ignore */
+first+second]: third+fourth});
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  [/* prettier-ignore */
+first+second]: third+fourth,
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [/* prettier-ignore */
+first+second]: third+fourth,
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  [/* prettier-ignore */
+first+second]: third+fourth
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  [/* prettier-ignore */
+first+second]: third+fourth,
+})
