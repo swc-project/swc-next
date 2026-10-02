@@ -1092,12 +1092,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             source.tail
         };
-        let continuation_layout =
-            if matches!(context.position, ExpressionPosition::AssignmentRight(_)) {
-                ChainLookupLayout::InlineContinuation
-            } else {
-                ChainLookupLayout::ExpressionContinuation
-            };
+        let continuation_layout = if matches!(
+            context.position,
+            ExpressionPosition::AssignmentRight(_) | ExpressionPosition::Initializer(_)
+        ) {
+            ChainLookupLayout::InlineContinuation
+        } else {
+            ChainLookupLayout::ExpressionContinuation
+        };
         self.format_chain_operations(parts, tail, continuation_layout, writer)
     }
 

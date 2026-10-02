@@ -4,6 +4,7 @@ use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
 use super::parentheses::ExpressionContent;
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
+use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
@@ -227,8 +228,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(pattern) = binding {
             let group = match layout {
                 AssignmentLayout::Ordinary(rhs_layout) => {
-                    let (group, rhs_layout) =
-                        self.binding_initializer_layout(pattern, data, &boundary, rhs_layout);
+                    let (group, rhs_layout) = self.binding_initializer_layout(
+                        pattern,
+                        BindingInitializerOwner::Assignment,
+                        data,
+                        &boundary,
+                        rhs_layout,
+                    );
                     layout = AssignmentLayout::Ordinary(rhs_layout);
                     group
                 }
