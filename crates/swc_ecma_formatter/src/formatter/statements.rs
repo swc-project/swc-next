@@ -1,26 +1,33 @@
 //! Basic statement bodies and their enclosing source boundaries.
 
+mod control_flow;
 mod tails;
 
+use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
+
 use swc_next_ecma_ast::{
-    Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, ExprData,
-    FunctionBody, GetSpan, Span, Stmt, StmtData,
+    Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, FunctionBody,
+    GetSpan, Span, Stmt, StmtData, SubRange,
 };
 
-use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart};
 use super::literals::StringContext;
 use super::source::is_source_whitespace;
-use super::suppression::{ContentMode, is_suppression_comment};
+use super::suppression::ContentMode;
 use crate::{FormatError, Semicolons, document::Writer};
 
 #[derive(Clone, Copy)]
 pub(super) enum StatementSequenceKind<'ast> {
-    Program,
-    Block,
+    Program {
+        has_source_items: bool,
+    },
+    Block {
+        incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
+    },
     Function {
         incoming: Option<IncomingStatement>,
         leading: StatementBodyLeading<'ast>,
@@ -74,9 +81,78 @@ pub(super) struct IncomingStatement {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum EmptyBlock {
+    Compact,
+    Expanded,
+}
+
+/// Layout supplied by the real parent without bypassing statement ownership.
+struct StatementLayout {
+    start: ExpressionStart,
+    empty_block: EmptyBlock,
+}
+
+pub(super) struct StatementSequence {
+    pub(super) has_content: bool,
+    end: u32,
+}
+
+#[derive(Clone, Copy)]
 pub(super) enum StatementItem {
     Directive(Directive),
     Statement(Stmt),
+}
+
+enum BodySource<'ast> {
+    Block {
+        node: BlockStatement,
+        incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
+        empty: EmptyBlock,
+    },
+    Function(
+        FunctionBody,
+        Option<IncomingStatement>,
+        StatementBodyLeading<'ast>,
+    ),
+}
+
+struct StatementAnnotationTail<'ast> {
+    comments: &'ast [Comment],
+    end: u32,
+    suppression: StatementTailModes,
+    following_gap: Option<LineConstraint>,
+}
+
+#[derive(Clone, Copy)]
+struct OmittedStatementTail<'ast> {
+    comments: &'ast [Comment],
+    binding: CommentBinding,
+    source_gap: Span,
+}
+
+struct PreparedStatement<'ast> {
+    item: StatementItem,
+    span: Span,
+    mode: ContentMode,
+    source_gap: Option<LineConstraint>,
+    annotation_tail: Option<StatementAnnotationTail<'ast>>,
+}
+
+enum StatementMode {
+    Formatted,
+    Verbatim(StatementContent),
+}
+
+fn statement_body_has_items(
+    ast: &Ast<'_>,
+    directives: Option<SubRange<Directive>>,
+    body: SubRange<Stmt>,
+) -> bool {
+    directives.is_some_and(|directives| !directives.is_empty())
+        || body
+            .iter()
+            .any(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)).is_nonempty(ast))
 }
 
 impl StatementItem {
@@ -103,11 +179,6 @@ impl StatementItem {
 }
 
 #[derive(Clone, Copy)]
-struct StatementLayout {
-    guarded: bool,
-}
-
-#[derive(Clone, Copy)]
 pub(super) struct StatementSourceTerminator {
     start: u32,
 }
@@ -121,65 +192,83 @@ enum StatementPunctuation {
 
 #[derive(Clone, Copy)]
 enum StatementBoundary {
-    SourceEnd { end: u32, has_terminator: bool },
-    SourceTerminator { end: u32, terminator: u32 },
+    Semicolon {
+        end: u32,
+        terminator: u32,
+    },
+    /// A printed source separator has already consumed the following head's guard.
+    SourceTerminator {
+        end: u32,
+        terminator: u32,
+    },
+    SourceEnd {
+        end: u32,
+        has_terminator: bool,
+    },
+}
+
+/// A compound statement forwards a pending run beyond its own layout group.
+/// Source terminators consume their bound run before returning this result.
+struct PrintedStatement<'ast> {
+    boundary: StatementBoundary,
+    pending: Option<ExpressionTail<'ast>>,
+}
+
+impl From<StatementBoundary> for PrintedStatement<'_> {
+    fn from(boundary: StatementBoundary) -> Self {
+        Self {
+            boundary,
+            pending: None,
+        }
+    }
 }
 
 impl StatementBoundary {
     fn end(self) -> u32 {
         match self {
-            Self::SourceEnd { end, .. } | Self::SourceTerminator { end, .. } => end,
+            Self::Semicolon { end, .. }
+            | Self::SourceTerminator { end, .. }
+            | Self::SourceEnd { end, .. } => end,
         }
     }
+
     fn has_terminator(self) -> bool {
         match self {
+            Self::Semicolon { .. } | Self::SourceTerminator { .. } => true,
             Self::SourceEnd { has_terminator, .. } => has_terminator,
-            Self::SourceTerminator { .. } => true,
         }
     }
+
     fn guards_expression(self) -> bool {
-        self.has_terminator()
+        // An empty body's semicolon does not consume the next printed head's guard.
+        // Source packets retain their own grammar closure.
+        matches!(
+            self,
+            Self::SourceTerminator { .. }
+                | Self::SourceEnd {
+                    has_terminator: true,
+                    ..
+                }
+        )
     }
+
     fn with_end(self, end: u32) -> Self {
         match self {
+            Self::Semicolon { terminator, .. } => Self::Semicolon { end, terminator },
+            Self::SourceTerminator { terminator, .. } => Self::SourceTerminator { end, terminator },
             Self::SourceEnd { has_terminator, .. } => Self::SourceEnd {
                 end,
                 has_terminator,
             },
-            Self::SourceTerminator { terminator, .. } => Self::SourceTerminator { end, terminator },
         }
     }
+
     fn with_source_packet(self, end: u32) -> Self {
         Self::SourceEnd {
             end,
             has_terminator: true,
         }
     }
-}
-
-struct StatementAnnotationTail<'ast> {
-    comments: &'ast [Comment],
-    end: u32,
-    suppression: StatementTailModes,
-    following_gap: Option<LineConstraint>,
-}
-
-struct PreparedStatement<'ast> {
-    item: StatementItem,
-    span: Span,
-    mode: ContentMode,
-    source_gap: Option<LineConstraint>,
-    annotation_tail: Option<StatementAnnotationTail<'ast>>,
-}
-
-enum StatementMode {
-    Formatted,
-    Verbatim(StatementContent),
-}
-
-pub(super) struct StatementSequence {
-    pub(super) has_content: bool,
-    pub(super) end: u32,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -192,17 +281,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<StatementSequence, FormatError> {
         let ast = self.ast;
-        let (incoming, mut body_leading) = match kind {
-            StatementSequenceKind::Function { incoming, leading } => (incoming, leading),
-            _ => (None, StatementBodyLeading::empty()),
+        let incoming = match kind {
+            StatementSequenceKind::Block { incoming, .. }
+            | StatementSequenceKind::Function { incoming, .. } => incoming,
+            _ => None,
         };
-        let mut first_statement = true;
+        let mut body_leading = match kind {
+            StatementSequenceKind::Block { leading, .. }
+            | StatementSequenceKind::Function { leading, .. } => leading,
+            _ => StatementBodyLeading::empty(),
+        };
         let mut previous = previous_end.map(|end| StatementBoundary::SourceEnd {
             end,
             has_terminator: false,
         });
+        let mut first_statement = true;
         let mut previous_span_end = previous_end.unwrap_or(span.start);
-        let mut previous_omitted: Option<Span> = None;
+        let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
         let mut pending = statements.next().map(|item| {
             self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
         });
@@ -244,20 +339,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
             let following = pending.as_ref().map(|next| next.span.start);
-            let omitted = omitted.map(|empty| {
-                self.prepare_omitted_statement_tail(statement_span.end, empty, following, span.end)
+            let omitted = omitted.map(|statements| {
+                self.prepare_omitted_statement_tail(
+                    statement_span.end,
+                    statements,
+                    following,
+                    span.end,
+                )
             });
-            let relation = if following.is_some() {
-                StatementTailRelation::Statement
+            let suppression_tail = if self.has_suppression {
+                let limit = following.unwrap_or(span.end);
+                let relation = if following.is_some() {
+                    StatementTailRelation::Statement
+                } else {
+                    StatementTailRelation::Terminal
+                };
+                self.prepare_statement_suppression_tail_at(
+                    statement,
+                    statement_span,
+                    limit,
+                    relation,
+                )
             } else {
-                StatementTailRelation::Terminal
+                None
             };
-            let suppression_tail = self.prepare_statement_suppression_tail_at(
-                statement,
-                statement_span,
-                following.unwrap_or(span.end),
-                relation,
-            );
             if let Some(tail) = suppression_tail.as_ref()
                 && tail.modes.following == ContentMode::Verbatim
                 && let Some(next) = pending.as_mut()
@@ -275,10 +380,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .and_then(|tail| tail.source_packet);
             let punctuation = if source_packet.is_some() {
                 StatementPunctuation::SourcePacket
-            } else if let Some(terminator) = source_terminator {
-                StatementPunctuation::Source(terminator)
             } else {
-                StatementPunctuation::Canonical(self.options.semicolons)
+                match source_terminator {
+                    Some(terminator) => StatementPunctuation::Source(terminator),
+                    None => StatementPunctuation::Canonical(self.options.semicolons),
+                }
             };
             let mode = if source_mode == ContentMode::Verbatim
                 || leading_mode == ContentMode::Verbatim
@@ -287,15 +393,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim)
             {
                 ContentMode::Verbatim
+            } else if !self.has_suppression {
+                ContentMode::Formatted
             } else {
                 suppression_tail
                     .as_ref()
                     .map_or(ContentMode::Formatted, |tail| tail.modes.current)
             };
             let leading = self.comments.take(leading.len());
-            let mut guarded = previous.is_some_and(StatementBoundary::guards_expression);
+            let mut expression_start = ExpressionStart::StatementPending;
             if first_statement
-                && matches!(kind, StatementSequenceKind::Program)
+                && matches!(kind, StatementSequenceKind::Program { .. })
                 && self.has_file_directives
                 && leading
                     .iter()
@@ -304,23 +412,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .iter()
                     .any(|&comment| self.comment_has_target_annotation(comment))
             {
-                guarded = true;
+                // Program start already separates the first statement. Keep its header intact.
+                expression_start = ExpressionStart::StatementGuarded;
             }
             if let Some(boundary) = previous {
-                let end = boundary.end();
+                if boundary.guards_expression() {
+                    expression_start = ExpressionStart::StatementGuarded;
+                }
                 let next_start = leading
                     .first()
                     .map_or(statement_span.start, |comment| comment.span.start);
                 let constraint =
-                    source_gap.unwrap_or_else(|| self.line_constraint(end, next_start));
+                    source_gap.unwrap_or_else(|| self.line_constraint(boundary.end(), next_start));
                 if constraint == LineConstraint::SameLine
                     && self.options.semicolons == Semicolons::AsNeeded
                     && !boundary.has_terminator()
+                    && statement.is_nonempty(ast)
                 {
                     writer.text(";");
-                    guarded = true;
+                    expression_start = ExpressionStart::StatementGuarded;
                 }
-                let separator = if matches!(boundary, StatementBoundary::SourceTerminator { end, terminator } if end == terminator + 1)
+                let separator = if matches!(boundary, StatementBoundary::Semicolon { end, terminator } | StatementBoundary::SourceTerminator { end, terminator } if end == terminator + 1)
                 {
                     FlatSeparator::Empty
                 } else {
@@ -328,12 +440,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 constraint.write(writer, separator, Writer::hard_line);
                 if constraint == LineConstraint::Unconstrained {
-                    let empty_line = if let Some(gap) = previous_omitted {
-                        self.next_line_is_empty(gap.start, gap.end)
+                    let empty_line = if let Some(tail) = previous_omitted {
+                        self.next_line_is_empty(tail.source_gap.start, tail.source_gap.end)
                     } else {
-                        let gap_start = previous_span_end.max(end);
-                        let before_separator = end < gap_start
-                            && self.next_line_is_empty(end, gap_start.min(next_start));
+                        let gap_start = previous_span_end.max(boundary.end());
+                        let before_separator = boundary.end() < gap_start
+                            && self.next_line_is_empty(boundary.end(), gap_start.min(next_start));
+                        // Comments inside the previous statement do not delimit its following gap.
                         let separator_end = leading
                             .get(leading.partition_point(|comment| comment.span.start < gap_start))
                             .map_or(statement_span.start, |comment| comment.span.start);
@@ -346,41 +459,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let expression = match statement {
-                StatementItem::Statement(node) => match ast.stmt_data(node) {
-                    StmtData::ExpressionStatement(node) => Some(node.expression(ast)),
-                    _ => None,
-                },
-                StatementItem::Directive(_) => None,
-            };
-            let needs_guard = mode == ContentMode::Verbatim
-                && !guarded
-                && self.options.semicolons == Semicolons::AsNeeded
-                && expression
-                    .map(|expression| self.statement_expression_needs_guard(expression, mode))
-                    .transpose()?
-                    .unwrap_or(false);
-            let protected = leading.iter().any(|&comment| {
-                self.comment_has_target_annotation(comment)
-                    || mode == ContentMode::Verbatim && is_suppression_comment(ast, comment)
-            });
-            if needs_guard && protected && mode == ContentMode::Verbatim {
-                writer.text(";");
-                guarded = true;
-                if mode == ContentMode::Verbatim
-                    && let Some(marker) = leading
-                        .iter()
-                        .find(|&&comment| is_suppression_comment(ast, comment))
-                {
-                    if self.source_position_starts_line(marker.span.start) {
-                        writer.hard_line();
-                    } else if marker.kind == CommentKind::Line {
-                        writer.space();
-                    }
-                }
-            }
-            let layout = StatementLayout { guarded };
-            let expression_head = expression.is_some() && mode == ContentMode::Formatted;
             let transferred = match statement {
                 StatementItem::Statement(node) => body_leading.take_for(node),
                 StatementItem::Directive(_) => &[],
@@ -393,46 +471,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
             }
             let head = NodeHead {
-                comments: if expression_head { leading } else { &[] },
+                comments: leading,
                 content_start: statement_span.start,
                 layout: CommentRunLayout::Source,
-                gap_end: Some(statement_span.start),
+                gap_end: leading.last().map(|_| statement_span.start),
             };
-            if !expression_head {
-                self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
-                if let Some(last) = leading.last() {
-                    self.comment_gap(last.span.end, statement_span.start, writer);
-                }
-            }
-            let content = if mode == ContentMode::Verbatim {
-                StatementMode::Verbatim(
-                    suppression_tail
-                        .as_ref()
-                        .map_or_else(|| self.statement_content(statement), |tail| tail.content),
-                )
-            } else {
-                StatementMode::Formatted
-            };
-            let (mut boundary, mut expression_tail) = match statement {
-                StatementItem::Statement(node) => {
-                    self.format_statement(node, head, layout, content, punctuation, writer)?
-                }
-                StatementItem::Directive(node) => {
-                    let expression = node.expression(ast);
+            let printed = match statement {
+                StatementItem::Directive(directive) => {
+                    self.format_node_head(head, expression_start, None, writer)?;
+                    let expression = directive.expression(ast);
                     if mode == ContentMode::Verbatim {
                         self.format_verbatim(expression.span(ast), writer)?;
                     } else {
                         self.format_string_literal(expression, StringContext::Directive, writer);
                     }
-                    (
-                        self.finish_statement(expression.span(ast).end, punctuation, writer)?,
-                        None,
-                    )
+                    self.finish_statement(expression.span(ast).end, None, punctuation, writer)?
+                }
+                StatementItem::Statement(statement) => {
+                    let content = if mode == ContentMode::Verbatim {
+                        let content = suppression_tail.as_ref().map_or_else(
+                            || self.statement_content(StatementItem::Statement(statement)),
+                            |tail| tail.content,
+                        );
+                        StatementMode::Verbatim(content)
+                    } else {
+                        StatementMode::Formatted
+                    };
+                    self.format_prepared_statement(
+                        statement,
+                        statement_span,
+                        StatementLayout {
+                            start: expression_start,
+                            empty_block: EmptyBlock::Expanded,
+                        },
+                        content,
+                        head,
+                        punctuation,
+                        writer,
+                    )?
                 }
             };
-            if source_packet.is_some() || annotation_tail.is_some() || omitted.is_some() {
-                self.format_expression_tail(expression_tail.take(), writer)?;
-            }
+            let (mut boundary, pending_tail) =
+                if source_packet.is_some() || annotation_tail.is_some() {
+                    (self.flush_statement_tail(printed, writer)?, None)
+                } else {
+                    (printed.boundary, printed.pending)
+                };
+            first_statement = false;
             let trailing_start = if let Some(packet) = source_packet {
                 let start = packet.span.start.max(boundary.end());
                 self.format_verbatim(Span::new(start, packet.span.end), writer)?;
@@ -458,23 +543,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 boundary.end()
             };
-            let end = if let Some((comments, _)) = omitted
+            let end = if let Some(tail) = omitted
                 && source_packet.is_none()
             {
-                self.format_omitted_statement_tail(comments, trailing_start, writer)?
+                self.format_omitted_statement_tail(tail, trailing_start, pending_tail, writer)?
             } else {
                 self.format_trailing_comments(
                     Span::new(trailing_start, following.unwrap_or(span.end)),
                     statement_span.end,
                     following.is_some(),
-                    expression_tail,
+                    pending_tail,
                     writer,
                 )?
             };
-            first_statement = false;
-            previous = Some(boundary.with_end(end));
             previous_span_end = statement_span.end;
-            previous_omitted = omitted.map(|(_, gap)| gap);
+            previous = Some(boundary.with_end(end));
+            previous_omitted = omitted;
         }
         let transferred = body_leading.take_dangling();
         if !transferred.is_empty() {
@@ -496,20 +580,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             self.comment_gap(boundary.end(), first.span.start, writer);
         }
-        self.format_comment_run(
-            dangling,
-            if previous.is_none()
-                && matches!(
-                    kind,
-                    StatementSequenceKind::Block | StatementSequenceKind::Function { .. }
-                )
-            {
-                CommentRunLayout::CanonicalDangling
-            } else {
-                CommentRunLayout::Source
-            },
-            writer,
-        )?;
+        let layout = match (previous, kind) {
+            (
+                None,
+                StatementSequenceKind::Block { .. } | StatementSequenceKind::Function { .. },
+            ) => CommentRunLayout::CanonicalDangling,
+            (
+                None,
+                StatementSequenceKind::Program {
+                    has_source_items: true,
+                },
+            ) => CommentRunLayout::Lines,
+            _ => CommentRunLayout::Source,
+        };
+        self.format_comment_run(dangling, layout, writer)?;
         Ok(StatementSequence {
             has_content: previous.is_some() || !dangling.is_empty() || !transferred.is_empty(),
             end: dangling.last().map_or_else(
@@ -525,7 +609,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         statements: Span,
         following: Option<u32>,
         end: u32,
-    ) -> (&'ast [Comment], Span) {
+    ) -> OmittedStatementTail<'ast> {
         let limit = following.unwrap_or(end);
         let comments = self.comments.in_range(Span::new(start, limit));
         let mut gap_start = start;
@@ -561,28 +645,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             previous = comment.span.end;
             count += 1;
         }
-        (&comments[..count], Span::new(gap_start, limit))
+        let comments = &comments[..count];
+        let end = comments.last().map_or(start, |comment| comment.span.end);
+        OmittedStatementTail {
+            comments,
+            binding: self.comment_binding(comments, Span::new(start, end), None),
+            source_gap: Span::new(gap_start, limit),
+        }
     }
 
     fn format_omitted_statement_tail(
         &mut self,
-        comments: &[Comment],
+        tail: OmittedStatementTail<'ast>,
         start: u32,
+        pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<u32, FormatError> {
-        let end = comments
+        let source_end = pending.as_ref().map_or(start, |pending| pending.source_end);
+        let end = tail
+            .comments
             .last()
             .map_or(start, |comment| start.max(comment.span.end));
-        let comments = self.comments.between(Span::new(start, end))?;
-        let comments = self.comments.take(comments.len());
-        if self
-            .comment_binding(comments, Span::new(start, end), None)
-            .allows_relocation(None)
-        {
-            self.format_trailing_comment_run(comments, writer)?;
-        } else {
-            self.format_comment_run(comments, CommentRunLayout::SourceAfter(start), writer)?;
+        let end = pending
+            .as_ref()
+            .and_then(|pending| pending.comments.last())
+            .map_or(end, |comment| end.max(comment.span.end));
+        let comments = self.comments.between(Span::new(source_end, end))?;
+        self.comments.claim(comments)?;
+        let binding =
+            tail.binding
+                .combine(self.comment_binding(comments, Span::new(source_end, end), None));
+        if !binding.allows_relocation(None) {
+            self.format_comment_run(comments, CommentRunLayout::SourceAfter(source_end), writer)?;
+            return Ok(end);
         }
+        let inherited = pending.as_ref().map_or(0, |pending| pending.comments.len());
+        let (inherited, comments) = comments.split_at(inherited);
+        self.format_comment_run(inherited, CommentRunLayout::SourceAfter(source_end), writer)?;
+        self.format_trailing_comment_run(comments, inherited.last().copied(), None, writer)?;
         Ok(end)
     }
 
@@ -657,6 +757,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StatementTailModes {
                 current: self.content_mode(comments),
                 following: ContentMode::Formatted,
+                enclosing: ContentMode::Formatted,
             }
         } else {
             self.statement_annotation_tail_modes(comments, span.end)
@@ -711,159 +812,222 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_statement(
         &mut self,
         statement: Stmt,
-        head: NodeHead<'ast>,
         layout: StatementLayout,
-        content: StatementMode,
+        mode: ContentMode,
+        head: NodeHead<'ast>,
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
-    ) -> Result<(StatementBoundary, Option<ExpressionTail<'ast>>), FormatError> {
-        if let StatementMode::Verbatim(content) = content {
-            if !matches!(
-                self.ast.stmt_data(statement),
-                StmtData::ExpressionStatement(_)
-                    | StmtData::DebuggerStatement(_)
-                    | StmtData::BlockStatement(_)
-                    | StmtData::ReturnStatement(_)
-                    | StmtData::ThrowStatement(_)
-                    | StmtData::Declaration(_)
-            ) {
-                return Err(self.unsupported("statement", statement));
-            }
-            if let StmtData::ExpressionStatement(node) = self.ast.stmt_data(statement) {
-                let expression = node.expression(self.ast);
-                if !layout.guarded
-                    && self.options.semicolons == Semicolons::AsNeeded
-                    && self.statement_expression_needs_guard(expression, ContentMode::Verbatim)?
-                {
-                    writer.text(";");
-                }
-            }
-            let end = content.end();
-            let parenthesize = matches!(self.ast.stmt_data(statement), StmtData::ExpressionStatement(node) if matches!(self.ast.expr_data(node.expression(self.ast)), ExprData::StringLiteral(_)));
-            if parenthesize {
-                writer.text("(");
-            }
-            self.format_verbatim(Span::new(statement.span(self.ast).start, end), writer)?;
-            if parenthesize {
-                writer.text(")");
-            }
-            let boundary = match content {
-                StatementContent::Semicolon(_) => self.finish_statement(end, punctuation, writer),
-                StatementContent::Complete(_) => Ok(StatementBoundary::SourceEnd {
-                    end,
-                    has_terminator: false,
-                }),
-            }?;
-            return Ok((boundary, None));
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let span = statement.span(self.ast);
+        let content = if mode == ContentMode::Verbatim {
+            StatementMode::Verbatim(self.statement_content(StatementItem::Statement(statement)))
+        } else {
+            StatementMode::Formatted
+        };
+        self.format_prepared_statement(statement, span, layout, content, head, punctuation, writer)
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "Carry the prepared statement envelope instead of rediscovering it during printing."
+    )]
+    fn format_prepared_statement(
+        &mut self,
+        statement: Stmt,
+        span: Span,
+        layout: StatementLayout,
+        content: StatementMode,
+        head: NodeHead<'ast>,
+        punctuation: StatementPunctuation,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let mode = match content {
+            StatementMode::Formatted => ContentMode::Formatted,
+            StatementMode::Verbatim(_) => ContentMode::Verbatim,
+        };
+        let data = self.ast.stmt_data(statement);
+        if let StmtData::ExpressionStatement(node) = data {
+            let expression = node.expression(self.ast);
+            let tail = self.format_expression_with_leading_comments(
+                expression,
+                head,
+                ExpressionContext::at(ExpressionPosition::Statement)
+                    .with_expression_start(layout.start)
+                    .with_content_mode(mode),
+                None,
+                writer,
+            )?;
+            let content_end = expression.span(self.ast).end;
+            return self.finish_statement(content_end, tail, punctuation, writer);
         }
-        let mut tail = None;
-        let content_end = match self.ast.stmt_data(statement) {
-            StmtData::ExpressionStatement(node) => {
-                let expression = node.expression(self.ast);
-                let context = ExpressionContext::at(ExpressionPosition::Statement)
-                    .with_expression_start(if layout.guarded {
-                        ExpressionStart::StatementGuarded
-                    } else {
-                        ExpressionStart::StatementPending
-                    });
-                tail = self.format_expression_with_leading_comments(
-                    expression, head, context, None, writer,
-                )?;
-                expression.span(self.ast).end
+        self.format_node_head(head, layout.start, None, writer)?;
+        match data {
+            StmtData::EmptyStatement(node) => {
+                writer.text(";");
+                Ok(StatementBoundary::Semicolon {
+                    end: node.span(self.ast).end,
+                    terminator: node.span(self.ast).end - 1,
+                }
+                .into())
             }
             StmtData::DebuggerStatement(node) => {
                 writer.text("debugger");
-                node.span(self.ast).start + "debugger".len() as u32
+                self.finish_statement(
+                    node.span(self.ast).start + "debugger".len() as u32,
+                    None,
+                    punctuation,
+                    writer,
+                )
             }
-            StmtData::ReturnStatement(node) => {
-                let end = node.span(self.ast).start + 6;
-                if let Some(argument) = node.argument(self.ast) {
-                    tail = self.format_restricted_argument(
-                        end,
-                        argument,
-                        |writer| writer.text("return"),
-                        writer,
-                    )?;
-                    argument.span(self.ast).end
-                } else {
+            StmtData::ReturnStatement(node) if mode == ContentMode::Formatted => {
+                let span = node.span(self.ast);
+                let keyword_end = span.start + "return".len() as u32;
+                let Some(argument) = node.argument(self.ast) else {
                     writer.text("return");
-                    end
-                }
+                    return self.finish_statement(keyword_end, None, punctuation, writer);
+                };
+                let tail = self.format_restricted_argument(
+                    keyword_end,
+                    argument,
+                    |writer| writer.text("return"),
+                    writer,
+                )?;
+                self.finish_statement(argument.span(self.ast).end, tail, punctuation, writer)
             }
-            StmtData::ThrowStatement(node) => {
+            StmtData::ThrowStatement(node) if mode == ContentMode::Formatted => {
+                let span = node.span(self.ast);
                 let argument = node.argument(self.ast);
-                tail = self.format_restricted_argument(
-                    node.span(self.ast).start + 5,
+                let tail = self.format_restricted_argument(
+                    span.start + "throw".len() as u32,
                     argument,
                     |writer| writer.text("throw"),
                     writer,
                 )?;
-                argument.span(self.ast).end
+                self.finish_statement(argument.span(self.ast).end, tail, punctuation, writer)
             }
-            StmtData::Declaration(declaration) => {
+            StmtData::Declaration(declaration) if mode == ContentMode::Formatted => {
                 let DeclData::Function(function) = self.ast.decl_data(declaration) else {
                     return Err(self.unsupported("declaration", declaration));
                 };
                 self.format_function(function, writer)?;
-                return Ok((
-                    StatementBoundary::SourceEnd {
-                        end: function.span(self.ast).end,
-                        has_terminator: false,
-                    },
-                    None,
-                ));
+                Ok(StatementBoundary::SourceEnd {
+                    end: function.span(self.ast).end,
+                    has_terminator: false,
+                }
+                .into())
+            }
+            StmtData::IfStatement(node) if mode == ContentMode::Formatted => {
+                self.format_if_statement(node, punctuation, writer)
             }
             StmtData::BlockStatement(block) => {
-                self.format_block(block, writer)?;
-                return Ok((
-                    StatementBoundary::SourceEnd {
-                        end: block.span(self.ast).end,
-                        has_terminator: false,
-                    },
-                    None,
-                ));
+                if mode == ContentMode::Verbatim {
+                    self.format_verbatim(block.span(self.ast), writer)?;
+                } else {
+                    self.format_block(block, layout.empty_block, writer)?;
+                }
+                Ok(StatementBoundary::SourceEnd {
+                    end: block.span(self.ast).end,
+                    has_terminator: false,
+                }
+                .into())
             }
-            _ => return Err(self.unsupported("statement", statement)),
-        };
-        let boundary = self.finish_statement(content_end, punctuation, writer)?;
-        Ok((boundary, tail))
+            _ => {
+                let StatementMode::Verbatim(content) = content else {
+                    return Err(self.unsupported("statement", statement));
+                };
+                if !matches!(
+                    data,
+                    StmtData::ReturnStatement(_)
+                        | StmtData::ThrowStatement(_)
+                        | StmtData::Declaration(_)
+                        | StmtData::IfStatement(_)
+                ) {
+                    return Err(self.unsupported("statement", statement));
+                }
+                self.format_verbatim_statement(span, content, punctuation, writer)
+            }
+        }
+    }
+
+    fn format_verbatim_statement(
+        &mut self,
+        span: Span,
+        content: StatementContent,
+        punctuation: StatementPunctuation,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
+        match content {
+            StatementContent::Semicolon(end) => {
+                let punctuation = if self.has_suppression
+                    && matches!(punctuation, StatementPunctuation::Canonical(_))
+                    && let Some(terminator) = self.statement_source_terminator(span)
+                    && self.content_mode(self.comments.in_range(Span::new(end, terminator.start)))
+                        == ContentMode::Verbatim
+                {
+                    StatementPunctuation::Source(terminator)
+                } else {
+                    punctuation
+                };
+                self.format_verbatim(Span::new(span.start, end), writer)?;
+                self.finish_statement(end, None, punctuation, writer)
+            }
+            StatementContent::Complete(_) => {
+                self.format_verbatim(span, writer)?;
+                Ok(StatementBoundary::SourceEnd {
+                    end: span.end,
+                    has_terminator: self.statement_source_terminator(span).is_some(),
+                }
+                .into())
+            }
+        }
     }
 
     fn finish_statement(
         &mut self,
         content_end: u32,
+        tail: Option<ExpressionTail<'ast>>,
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
-    ) -> Result<StatementBoundary, FormatError> {
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
         if matches!(punctuation, StatementPunctuation::SourcePacket) {
+            let end = tail
+                .as_ref()
+                .and_then(|tail| tail.comments.last())
+                .map_or(content_end, |comment| comment.span.end);
+            self.format_expression_tail(tail, writer)?;
             return Ok(StatementBoundary::SourceEnd {
-                end: content_end,
+                end,
                 has_terminator: false,
-            });
+            }
+            .into());
         }
         if let StatementPunctuation::Source(terminator) = punctuation {
             let source_end = terminator.start + 1;
+            let tail_start = tail.as_ref().map_or(content_end, |tail| tail.source_end);
+            let source_comments = self.comments.in_range(Span::new(tail_start, source_end));
+            let printed_end = tail
+                .as_ref()
+                .and_then(|tail| tail.comments.last())
+                .map_or(content_end, |comment| comment.span.end);
+            self.format_expression_tail(tail, writer)?;
             let comments = self.comments.between(Span::new(content_end, source_end))?;
             self.comments.claim(comments)?;
-            self.format_comment_run(comments, CommentRunLayout::SourceAfter(content_end), writer)?;
-            let end = comments
-                .last()
-                .map_or(content_end, |comment| comment.span.end);
+            self.format_comment_run(comments, CommentRunLayout::SourceAfter(printed_end), writer)?;
+            let last = comments.last().or_else(|| source_comments.last());
+            let end = last.map_or(content_end, |comment| comment.span.end);
             self.line_constraint(end, terminator.start).write(
                 writer,
                 FlatSeparator::Empty,
                 |writer| {
                     if self.line_breaks(end, terminator.start) != 0
-                        || comments
-                            .last()
-                            .is_some_and(|comment| comment.kind == CommentKind::Line)
+                        || last.is_some_and(|comment| comment.kind == CommentKind::Line)
                     {
                         writer.hard_line();
                     }
                 },
             );
             writer.text(";");
-            return Ok(if self.line_breaks(content_end, terminator.start) != 0 {
+            let boundary = if self.line_breaks(content_end, terminator.start) != 0 {
                 StatementBoundary::SourceTerminator {
                     end: source_end,
                     terminator: terminator.start,
@@ -873,38 +1037,88 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     end: source_end,
                     has_terminator: true,
                 }
-            });
+            };
+            return Ok(boundary.into());
         }
-        let has_terminator = matches!(
+        if matches!(
             punctuation,
             StatementPunctuation::Canonical(Semicolons::Always)
-        );
-        if has_terminator {
+        ) {
             writer.text(";");
         }
-        Ok(StatementBoundary::SourceEnd {
-            end: content_end,
-            has_terminator,
+        Ok(PrintedStatement {
+            boundary: StatementBoundary::SourceEnd {
+                end: content_end,
+                has_terminator: matches!(
+                    punctuation,
+                    StatementPunctuation::Canonical(Semicolons::Always)
+                ),
+            },
+            pending: tail,
         })
     }
 
-    fn statement_expression_needs_guard(
-        &self,
-        expression: swc_next_ecma_ast::Expr,
+    fn flush_statement_tail(
+        &mut self,
+        printed: PrintedStatement<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<StatementBoundary, FormatError> {
+        let end = printed
+            .pending
+            .as_ref()
+            .and_then(|tail| tail.comments.last())
+            .map_or(printed.boundary.end(), |comment| {
+                printed.boundary.end().max(comment.span.end)
+            });
+        self.format_expression_tail(printed.pending, writer)?;
+        Ok(printed.boundary.with_end(end))
+    }
+
+    fn format_block(
+        &mut self,
+        block: BlockStatement,
+        empty: EmptyBlock,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_compound_block(
+            block,
+            ContentMode::Formatted,
+            None,
+            StatementBodyLeading::empty(),
+            empty,
+            writer,
+        )
+    }
+
+    fn format_compound_block(
+        &mut self,
+        node: BlockStatement,
         mode: ContentMode,
-    ) -> Result<bool, FormatError> {
-        self.expression_needs_asi_guard(
-            expression,
-            ExpressionContext::at(ExpressionPosition::Statement).with_content_mode(mode),
+        incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
+        empty: EmptyBlock,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_braced_body(
+            BodySource::Block {
+                node,
+                incoming,
+                leading,
+                empty,
+            },
+            mode,
+            writer,
         )
     }
 
     pub(in crate::formatter) fn function_body_requires_break(&self, body: FunctionBody) -> bool {
-        !body.directives(self.ast).is_empty()
-            || body.body(self.ast).iter().any(|id| {
-                StatementItem::Statement(self.ast.get_node_in_sub_range(id)).is_nonempty(self.ast)
-            })
+        statement_body_has_items(
+            self.ast,
+            Some(body.directives(self.ast)),
+            body.body(self.ast),
+        )
     }
+
     pub(super) fn format_function_body(
         &mut self,
         body: FunctionBody,
@@ -914,13 +1128,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         self.comments.claim(leading.comments())?;
+        self.format_braced_body(BodySource::Function(body, incoming, leading), mode, writer)
+    }
+
+    fn format_braced_body(
+        &mut self,
+        source: BodySource<'ast>,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
-        let span = body.span(ast);
+        let (span, directives, body, kind, empty_layout, leading) = match source {
+            BodySource::Block {
+                node,
+                incoming,
+                leading,
+                empty,
+            } => (
+                node.span(ast),
+                None,
+                node.body(ast),
+                StatementSequenceKind::Block { incoming, leading },
+                empty,
+                leading,
+            ),
+            BodySource::Function(function, incoming, leading) => (
+                function.span(ast),
+                Some(function.directives(ast)),
+                function.body(ast),
+                StatementSequenceKind::Function { incoming, leading },
+                EmptyBlock::Compact,
+                leading,
+            ),
+        };
         if mode == ContentMode::Verbatim {
             return self.format_verbatim(span, writer);
         }
         let content = Span::new(span.start + 1, span.end - 1);
-        let has_items = self.function_body_requires_break(body);
+        let has_items = statement_body_has_items(ast, directives, body);
+        let directives = directives
+            .into_iter()
+            .flat_map(|directives| directives.iter())
+            .map(|id| StatementItem::Directive(ast.get_node_in_sub_range(id)));
+        let body = body
+            .iter()
+            .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)));
+        let items = directives.chain(body).peekable();
+        let leading = leading.comments();
         let source_empty = if has_items {
             false
         } else {
@@ -930,73 +1184,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             dangling.is_empty()
         };
-        let empty = source_empty && leading.comments().is_empty();
+        let empty = source_empty && leading.is_empty();
         let opening = self.opening_line_constraint(content);
         writer.text("{");
         if empty {
-            opening.write(writer, FlatSeparator::Empty, |_| {});
+            opening.write(writer, FlatSeparator::Empty, |writer| {
+                if matches!(empty_layout, EmptyBlock::Expanded) {
+                    writer.hard_line();
+                }
+            });
         } else {
             let sequence = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Space, Writer::hard_line);
-                self.format_statement_sequence(
-                    body.directives(ast)
-                        .iter()
-                        .map(|id| StatementItem::Directive(ast.get_node_in_sub_range(id)))
-                        .chain(
-                            body.body(ast)
-                                .iter()
-                                .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id))),
-                        )
-                        .peekable(),
-                    content,
-                    None,
-                    StatementSequenceKind::Function { incoming, leading },
-                    writer,
-                )
-            })?;
-            self.line_constraint(sequence.end, content.end).write(
-                writer,
-                FlatSeparator::Space,
-                Writer::hard_line,
-            );
-        }
-        writer.text("}");
-        Ok(())
-    }
-
-    fn format_block(
-        &mut self,
-        block: BlockStatement,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        let ast = self.ast;
-        let span = block.span(ast);
-        let content = Span::new(span.start + 1, span.end - 1);
-        let body = block.body(ast);
-        let has_items = body
-            .iter()
-            .any(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)).is_nonempty(ast));
-        let empty = !has_items && self.comments.between(content)?.is_empty();
-        if !has_items && self.content_mode(self.comments.in_range(content)) == ContentMode::Verbatim
-        {
-            return self.format_verbatim(span, writer);
-        }
-        let opening = self.opening_line_constraint(content);
-        writer.text("{");
-        if empty {
-            opening.write(writer, FlatSeparator::Empty, Writer::hard_line);
-        } else {
-            let sequence = writer.indent(|writer| {
-                opening.write(writer, FlatSeparator::Space, Writer::hard_line);
-                self.format_statement_sequence(
-                    body.iter()
-                        .map(|id| StatementItem::Statement(ast.get_node_in_sub_range(id)))
-                        .peekable(),
-                    content,
-                    None,
-                    StatementSequenceKind::Block,
-                    writer,
-                )
+                self.format_statement_sequence(items, content, None, kind, writer)
             })?;
             self.line_constraint(sequence.end, content.end).write(
                 writer,

@@ -1301,12 +1301,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionStart, FormatError> {
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
+            && self.has_target_annotations
             && let Some(index) = head
                 .comments
                 .iter()
                 .position(|&comment| self.comment_has_target_annotation(comment))
             && self.expression_needs_asi_guard(expression, context)?
         {
+            let ignored_head =
+                self.has_suppression && context.content_mode == ContentMode::Verbatim;
             let source_bound = matches!(binding, CommentBinding::SourceBound);
             let index = if source_bound { 0 } else { index };
             let (prefix, protected) = head.comments.split_at(index);
@@ -1324,6 +1327,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(";");
             if source_bound {
                 writer.hard_line();
+            } else if ignored_head {
+                let prefix = if self.source_position_starts_line(protected[0].span.start) {
+                    LineConstraint::NewLine(1)
+                } else {
+                    LineConstraint::SameLine
+                };
+                prefix.write(writer, FlatSeparator::Empty, |_| {});
             } else if protected
                 .iter()
                 .any(|comment| comment.kind == CommentKind::Line)
@@ -1337,7 +1347,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_node_head(head, context.expression_start, array_comments, writer)
     }
 
-    pub(super) fn format_node_head(
+    pub(in crate::formatter) fn format_node_head(
         &self,
         head: NodeHead<'ast>,
         mut start: ExpressionStart,
