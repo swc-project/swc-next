@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const [\u0076 /* prettier-ignore */=/* prettier-ignore */1+2]=items;
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+const [
+  \u0076 /* prettier-ignore */=/* prettier-ignore */1+2,
+] =
+  items;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const [
+  \u0076 /* prettier-ignore */=/* prettier-ignore */1+2,
+] = items
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const [\u0076 /* prettier-ignore */=/* prettier-ignore */1+2] = items;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const [\u0076 /* prettier-ignore */=/* prettier-ignore */1+2] = items

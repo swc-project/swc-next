@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let target={};[target.value]=[6];result=target.value;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+let target = {};
+[target.value] = [
+  6,
+];
+result =
+  target.value;
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+let target = {};
+[target.value] = [6];
+result = target.value;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+let target = {}
+;[target.value] = [
+  6,
+]
+result =
+  target.value
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+let target = {}
+;[target.value] = [6]
+result = target.value

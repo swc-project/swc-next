@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const pair = ["لالالا", value];
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+const pair = [
+  "لالالا",
+  value,
+];

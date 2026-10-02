@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = receiver.branch.method(éééééééééé);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method(
+    éééééééééé,
+  );
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method(éééééééééé);

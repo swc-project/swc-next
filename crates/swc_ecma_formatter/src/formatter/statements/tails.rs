@@ -1,6 +1,6 @@
 //! Statement-owned suppression tails and their actual following relation.
 
-use swc_next_ecma_ast::{Comment, GetSpan, Span, StmtData};
+use swc_next_ecma_ast::{Comment, DeclData, GetSpan, Span, StmtData};
 
 use super::{Formatter, StatementItem, StatementSourceTerminator};
 use crate::formatter::diagnostics::LineConstraint;
@@ -217,6 +217,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 StmtData::ThrowStatement(node) => {
                     return Semicolon(node.argument(self.ast).span(self.ast).end);
+                }
+                StmtData::Declaration(declaration) => {
+                    let DeclData::VariableDeclaration(variable) = self.ast.decl_data(declaration)
+                    else {
+                        return Complete(declaration.span(self.ast).end);
+                    };
+                    let Some(last) = variable.declarators(self.ast).last() else {
+                        return Complete(variable.span(self.ast).end);
+                    };
+                    return Semicolon(self.ast.get_node_in_sub_range(last).span(self.ast).end);
                 }
                 StmtData::DebuggerStatement(node) => {
                     return Semicolon(node.span(self.ast).start + "debugger".len() as u32);

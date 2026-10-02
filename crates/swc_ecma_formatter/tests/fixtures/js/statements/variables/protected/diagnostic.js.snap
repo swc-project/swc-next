@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+var first=unknownFirst,second=unknownSecond;
+unknownThird();
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+// @ts-expect-error
+var first = unknownFirst, second = unknownSecond;
+unknownThird();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+var first = unknownFirst, second = unknownSecond
+unknownThird()
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+// @ts-expect-error
+var first = unknownFirst, second = unknownSecond;
+unknownThird();
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+var first = unknownFirst, second = unknownSecond
+unknownThird()

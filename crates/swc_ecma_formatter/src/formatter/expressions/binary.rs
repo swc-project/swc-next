@@ -544,6 +544,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let parent_indents = matches!(
             context.position,
             ExpressionPosition::AssignmentRight(_)
+                | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
                 | ExpressionPosition::PropertyValue
                 | ExpressionPosition::ArrowBody
         ) && (!self.inline_logical_operand(binary.operator, binary.right)
