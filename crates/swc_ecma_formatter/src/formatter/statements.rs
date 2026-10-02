@@ -906,15 +906,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.finish_statement(argument.span(self.ast).end, tail, punctuation, writer)
             }
             StmtData::Declaration(declaration) if mode == ContentMode::Formatted => {
-                let DeclData::Function(function) = self.ast.decl_data(declaration) else {
-                    return Err(self.unsupported("declaration", declaration));
-                };
-                self.format_function(function, writer)?;
-                Ok(StatementBoundary::SourceEnd {
-                    end: function.span(self.ast).end,
-                    has_terminator: false,
+                match self.ast.decl_data(declaration) {
+                    DeclData::Function(function) => {
+                        self.format_function(function, writer)?;
+                        Ok(StatementBoundary::SourceEnd {
+                            end: function.span(self.ast).end,
+                            has_terminator: false,
+                        }
+                        .into())
+                    }
+                    DeclData::VariableDeclaration(variable) => {
+                        let (end, tail) = self.format_variable_declaration(variable, writer)?;
+                        self.finish_statement(end, tail, punctuation, writer)
+                    }
+                    _ => Err(self.unsupported("declaration", declaration)),
                 }
-                .into())
             }
             StmtData::IfStatement(node) if mode == ContentMode::Formatted => {
                 self.format_if_statement(node, punctuation, writer)

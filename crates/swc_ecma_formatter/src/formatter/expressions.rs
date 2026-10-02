@@ -208,6 +208,20 @@ impl ExpressionContext {
         self.content_mode == ContentMode::Verbatim
     }
 
+    pub(super) fn variable_initializer() -> Self {
+        Self::at(ExpressionPosition::Initializer(AssignmentParent::Statement))
+            .with_source_tail_owner(SourceTailOwner::Enclosure)
+            .with_arrow_layout(arrows::ArrowLayout::Assignment(
+                arrows::ArrowHeadGap::Expression,
+            ))
+    }
+
+    /// The real variable declarator owns its complete call/member RHS scope.
+    pub(super) fn with_variable_initializer_owner(mut self) -> Self {
+        self.member_layout = MemberLayout::Rhs;
+        self
+    }
+
     pub(super) fn binding_initializer() -> Self {
         let mut context = Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
             .with_source_tail_owner(SourceTailOwner::Enclosure);

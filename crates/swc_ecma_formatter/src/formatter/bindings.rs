@@ -29,6 +29,12 @@ pub(super) enum DefaultOwner<'ast> {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum BindingInitializerOwner {
+    Variable,
+    Assignment,
+}
+
+#[derive(Clone, Copy)]
 pub(super) enum BindingGroup {
     Auto,
     Expanded,
@@ -60,12 +66,12 @@ pub(super) enum InitializerLayout<'ast> {
 }
 
 pub(super) struct PreparedInitializer<'ast> {
-    pattern: BindingPattern,
-    group: BindingGroup,
-    right: Expr,
-    layout: InitializerLayout<'ast>,
-    left_mode: ContentMode,
-    context: ExpressionContext,
+    pub(super) pattern: BindingPattern,
+    pub(super) group: BindingGroup,
+    pub(super) right: Expr,
+    pub(super) layout: InitializerLayout<'ast>,
+    pub(super) left_mode: ContentMode,
+    pub(super) context: ExpressionContext,
 }
 struct DefaultGap<'ast> {
     span: Span,
@@ -101,6 +107,7 @@ impl PreparedBindingDefault<'_> {
 struct ObjectBindingShape {
     group: BindingGroup,
     complex: bool,
+    nonempty: bool,
 }
 
 impl ObjectBindingShape {
@@ -208,6 +215,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn binding_initializer_layout(
         &self,
         pattern: BindingPattern,
+        owner: BindingInitializerOwner,
         data: ExprData,
         boundary: &AssignmentBoundary<'ast>,
         rhs_layout: RhsLayout,
@@ -243,7 +251,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return (group, rhs_layout);
         }
-        if shape.complex {
+        let arrow_variable = matches!(owner, BindingInitializerOwner::Variable)
+            && shape.nonempty
+            && matches!(data, ExprData::ArrowFunctionExpression(_));
+        if shape.complex || arrow_variable {
             return (shape.left_group(), RhsLayout::NeverBreakAfterOperator);
         }
         (group, rhs_layout)
@@ -288,7 +299,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             BindingGroup::Auto
         };
-        ObjectBindingShape { group, complex }
+        ObjectBindingShape {
+            group,
+            complex,
+            nonempty: entries != 0,
+        }
     }
 
     pub(super) fn format_binding_with_group(
