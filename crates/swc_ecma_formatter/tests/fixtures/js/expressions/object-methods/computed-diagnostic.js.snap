@@ -1,0 +1,56 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [ // @ts-ignore
+missing
+](value) { return value; } });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  [
+    // @ts-ignore
+    missing
+  ](value) {
+    return value;
+  },
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [
+    // @ts-ignore
+    missing
+  ](value) {
+    return value;
+  },
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  [
+    // @ts-ignore
+    missing
+  ](
+    value
+  ) {
+    return value
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  [
+    // @ts-ignore
+    missing
+  ](value) {
+    return value
+  },
+})

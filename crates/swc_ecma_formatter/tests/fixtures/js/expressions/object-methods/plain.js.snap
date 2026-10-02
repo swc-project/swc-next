@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ method(first, second = 1 + 2, ...rest) { return [first, second, rest]; } });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  method(first, second = 1 + 2, ...rest) {
+    return [first, second, rest];
+  },
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  method(
+    first,
+    second = 1 + 2,
+    ...rest
+  ) {
+    return [
+      first,
+      second,
+      rest,
+    ];
+  },
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  method(
+    first,
+    second = 1 +
+      2,
+    ...rest
+  ) {
+    return [
+      first,
+      second,
+      rest
+    ]
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  method(
+    first,
+    second = 1 + 2,
+    ...rest
+  ) {
+    return [first, second, rest]
+  },
+})

@@ -1,0 +1,56 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ get [key]() { return value; }, set [key](value) { target(value); } });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  get [key]() {
+    return value;
+  },
+  set [key](value) {
+    target(value);
+  },
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  get [key]() {
+    return value;
+  },
+  set [key](value) {
+    target(value);
+  },
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  get [key]() {
+    return value
+  },
+  set [key](
+    value
+  ) {
+    target(
+      value
+    )
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  get [key]() {
+    return value
+  },
+  set [key](value) {
+    target(value)
+  },
+})
