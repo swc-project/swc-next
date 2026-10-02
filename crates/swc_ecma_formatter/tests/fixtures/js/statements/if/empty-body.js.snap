@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (enabled) /* #__PURE__ */ ; else [callback][0]();
+---------- Options ----------
+{}
+---------- Output ----------
+if (enabled) /* #__PURE__ */ ;
+else [callback][0]();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (enabled) /* #__PURE__ */ ;
+else [callback][0]()
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+if (
+  enabled
+) /* #__PURE__ */ ;
+else [callback][0]()
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+if (
+	enabled
+) /* #__PURE__ */ ;
+else
+	[callback][0]();

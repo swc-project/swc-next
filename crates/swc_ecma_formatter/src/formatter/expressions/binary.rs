@@ -226,8 +226,15 @@ enum OperandLayout {
     IndentedInline,
 }
 
+#[derive(Clone, Copy)]
+enum BinaryContinuationLayout {
+    Expression,
+    ControlCondition,
+}
+
 struct BinaryRightContext {
     parent: Option<BinaryOperatorKind>,
+    layout: BinaryContinuationLayout,
     tail_owner: TailOwner,
 }
 
@@ -520,6 +527,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if matches!(context.position, ExpressionPosition::ControlCondition) {
+            return self.format_binary_enclosed_with_context(binary, context, writer);
+        }
         let mut chain = self.binary_chain(binary)?;
         if context.operand_indent == super::OperandIndent::Parent
             || matches!(
@@ -695,6 +705,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::BinaryOperand { operator, .. } => Some(operator),
             _ => None,
         };
+        let layout = match context.position {
+            ExpressionPosition::ControlCondition => BinaryContinuationLayout::ControlCondition,
+            _ => BinaryContinuationLayout::Expression,
+        };
         let first = chain.first;
         let mut nodes = std::iter::once(first)
             .chain(chain.ancestors.into_iter().rev())
@@ -706,7 +720,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             tail = self.format_binary_right(
                 entry,
-                BinaryRightContext { parent, tail_owner },
+                BinaryRightContext {
+                    parent,
+                    layout,
+                    tail_owner,
+                },
                 tail,
                 writer,
             )?;
@@ -737,15 +755,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let BinaryRightContext { parent, tail_owner } = context;
-        let operand = self.format_binary_right_prefix(entry, parent, tail, writer)?;
-        self.format_binary_final_right(operand, tail_owner, writer)
+        let BinaryRightContext {
+            parent,
+            layout,
+            tail_owner,
+        } = context;
+        let operand = self.format_binary_right_prefix(entry, parent, layout, tail, writer)?;
+        self.format_binary_final_right(operand, layout, tail_owner, writer)
     }
 
     fn format_binary_right_prefix(
         &mut self,
         entry: ChainParent,
         mut parent: Option<BinaryOperatorKind>,
+        layout: BinaryContinuationLayout,
         mut tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<BinaryRightOperand<'ast>, FormatError> {
@@ -799,9 +822,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_binary_head(chain.first, head_context, &mut head_owner, writer)?;
                 tail = self.format_binary_continuation(
                     chain,
-                    ExpressionContext::at(ExpressionPosition::BinaryOperand {
-                        operator: entry.binary.operator,
-                        side: OperandSide::Right,
+                    ExpressionContext::at(match layout {
+                        BinaryContinuationLayout::ControlCondition => {
+                            ExpressionPosition::ControlCondition
+                        }
+                        BinaryContinuationLayout::Expression => ExpressionPosition::BinaryOperand {
+                            operator: entry.binary.operator,
+                            side: OperandSide::Right,
+                        },
                     })
                     .with_tail_owner(TailOwner::ParentOperation),
                     head,
@@ -839,6 +867,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_binary_final_right(
         &mut self,
         operand: BinaryRightOperand<'ast>,
+        layout: BinaryContinuationLayout,
         tail_owner: TailOwner,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -856,7 +885,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             BinaryOperatorKind::from_data(data, self.ast)
                 .is_some_and(|child| child.same_kind(binary.operator))
         };
-        let group_right = !parent.is_some_and(|parent| parent.same_kind(binary.operator))
+        let group_right = !matches!(
+            (layout, binary.operator),
+            (
+                BinaryContinuationLayout::ControlCondition,
+                BinaryOperatorKind::Logical(_)
+            )
+        ) && !parent.is_some_and(|parent| parent.same_kind(binary.operator))
             && (entry.left_scope == OperandScope::Enclosure || !same_kind(binary.left))
             && !BinaryOperatorKind::from_data(owner.prepare(self).content.data, self.ast)
                 .is_some_and(|child| child.same_kind(binary.operator));

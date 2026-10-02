@@ -13,7 +13,7 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
-use crate::formatter::suppression::{ContentMode, TrailingSuppression};
+use crate::formatter::suppression::{ContentMode, TrailingSuppression, is_suppression_comment};
 use crate::{FormatError, Semicolons, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -1299,12 +1299,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionStart, FormatError> {
+        let ignored_head = self.has_suppression && context.content_mode == ContentMode::Verbatim;
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
-            && let Some(index) = head
-                .comments
-                .iter()
-                .position(|&comment| self.comment_has_target_annotation(comment))
+            && let Some(index) = head.comments.iter().position(|&comment| {
+                self.has_target_annotations && self.comment_has_target_annotation(comment)
+                    || ignored_head && is_suppression_comment(self.ast, comment)
+            })
             && self.expression_needs_asi_guard(expression, context)?
         {
             let source_bound = matches!(binding, CommentBinding::SourceBound);
@@ -1324,6 +1325,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(";");
             if source_bound {
                 writer.hard_line();
+            } else if ignored_head {
+                let prefix = if self.source_position_starts_line(protected[0].span.start) {
+                    LineConstraint::NewLine(1)
+                } else {
+                    LineConstraint::SameLine
+                };
+                prefix.write(writer, FlatSeparator::Empty, |_| {});
             } else if protected
                 .iter()
                 .any(|comment| comment.kind == CommentKind::Line)
@@ -1337,7 +1345,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_node_head(head, context.expression_start, array_comments, writer)
     }
 
-    pub(super) fn format_node_head(
+    pub(in crate::formatter) fn format_node_head(
         &self,
         head: NodeHead<'ast>,
         mut start: ExpressionStart,

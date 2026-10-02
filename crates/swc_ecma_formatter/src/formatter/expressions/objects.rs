@@ -369,7 +369,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } else {
                             self.format_expression_tail(tail, writer)?;
                             self.comments.claim(boundary.inline)?;
-                            self.format_trailing_comment_run(boundary.inline, writer)?;
+                            self.format_inline_trailing_comments(boundary.inline, writer)?;
                             if !terminal {
                                 writer.text(",");
                                 let constraint = self.line_constraint(

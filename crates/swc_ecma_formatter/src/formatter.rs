@@ -99,7 +99,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             directives.chain(statements).peekable(),
             program.span(ast),
             hashbang.map(|node| node.span(ast).end),
-            StatementSequenceKind::Program,
+            StatementSequenceKind::Program {
+                has_source_items: !program.body(ast).is_empty()
+                    || !program.directives(ast).is_empty(),
+            },
             writer,
         )?;
         if let Some(comment) = self.comments.first() {
