@@ -13,9 +13,9 @@ use crate::{
     document::{FlatFragment, Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, ArrowFunctionExpression, Expr, ExprData, Function,
-    GetSpan, ObjectExpression, ObjectPropertyKindData, PropertyKeyData, SimpleAssignmentTargetData,
-    Span, SubRange, UnaryOperator,
+    Argument, ArgumentData, ArrayExpression, ArrowFunctionBodyData, ArrowFunctionExpression, Expr,
+    ExprData, Function, GetSpan, ObjectExpression, ObjectPropertyKindData, PropertyKeyData,
+    SimpleAssignmentTargetData, Span, SubRange, UnaryOperator,
 };
 #[derive(Clone, Copy)]
 enum CallbackKind {
@@ -29,9 +29,16 @@ struct Callback {
     kind: CallbackKind,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CallbackRole {
+    First,
+    Last,
+}
+
 pub(super) struct SelectedCallback {
     argument: Argument,
     callback: Callback,
+    role: CallbackRole,
     prepared_body: Option<PreparedArrowBody>,
 }
 pub(super) struct SelectedObject {
@@ -253,6 +260,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<SelectedArgument> {
         let ast = self.ast;
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
+        let first = items.next()?;
+        if arguments.len() == 2
+            && let Some(callback) = self.callback(first)
+            && self.callback_has_block(callback)
+            && let Some(second) = items.next()
+            && let ArgumentData::Expr(expression) = ast.argument_data(second)
+            && self.short_callback_neighbor(expression)
+        {
+            return Some(SelectedArgument::Callback(SelectedCallback {
+                argument: first,
+                callback,
+                role: CallbackRole::First,
+                prepared_body: None,
+            }));
+        }
+        let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let argument = items.next_back()?;
         let data = ast.argument_data(argument);
         let ArgumentData::Expr(expression) = data else {
@@ -337,6 +360,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some(SelectedArgument::Callback(SelectedCallback {
             argument,
             callback,
+            role: CallbackRole::Last,
             prepared_body,
         }))
     }
@@ -400,7 +424,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 (
                     recorded.signature,
-                    if recorded.body_layout == ArrowBodyLayout::Expression {
+                    if selected.role == CallbackRole::Last
+                        && recorded.body_layout == ArrowBodyLayout::Expression
+                    {
                         CallbackBody::Terminal(recorded.body.contents())
                     } else {
                         CallbackBody::Retained(if recorded.body_layout == ArrowBodyLayout::Hug {
@@ -425,7 +451,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return Ok((RecordedValue::Ordinary(value), None));
                 }
                 let independent = !source.has_parameters();
-                let mut shape = (sole_argument && layout == ExpressionLayout::Normal)
+                let mut shape = (selected.role == CallbackRole::Last
+                    && sole_argument
+                    && layout == ExpressionLayout::Normal)
                     .then_some(CallbackParameterShape::Identifiers);
                 let (signature, body) = writer.record_with_value(|writer| {
                     self.format_function_head_with_shape(function, source, shape.as_mut(), writer)
@@ -450,10 +478,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout.write(writer, |writer| writer.write_fragment(normal));
             Ok::<_, FormatError>(())
         })?;
-        let signature = if independent {
-            Some(GroupedSignature::Independent(signature))
-        } else {
-            signature.try_flat().map(GroupedSignature::Flat)
+        let signature = match (selected.role, callback.kind, layout) {
+            (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
+                Some(GroupedSignature::Independent(signature))
+            }
+            _ if selected.role == CallbackRole::Last && independent => {
+                Some(GroupedSignature::Independent(signature))
+            }
+            _ => signature.try_flat().map(GroupedSignature::Flat),
         };
         Ok((
             RecordedValue::Callback {
@@ -464,6 +496,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             tail,
         ))
+    }
+
+    fn callback_has_block(&self, callback: Callback) -> bool {
+        match callback.kind {
+            CallbackKind::Function(_) => true,
+            CallbackKind::Arrow(arrow) => matches!(
+                self.ast.arrow_function_body_data(arrow.body(self.ast)),
+                ArrowFunctionBodyData::FunctionBody(_)
+            ),
+        }
+    }
+
+    fn short_callback_neighbor(&self, expression: Expr) -> bool {
+        let ast = self.ast;
+        let data = self.expression_content(expression).data;
+        match data {
+            ExprData::BinaryExpression(binary) => {
+                self.simple_callback_neighbor(binary.left(ast), 1)
+                    && self.simple_callback_neighbor(binary.right(ast), 1)
+            }
+            ExprData::LogicalExpression(logical) => {
+                self.simple_callback_neighbor(logical.left(ast), 1)
+                    && self.simple_callback_neighbor(logical.right(ast), 1)
+            }
+            ExprData::CallExpression(call) if call.arguments(ast).len() > 1 => false,
+            ExprData::NewExpression(new) if new.arguments(ast).len() > 1 => false,
+            ExprData::RegExpLiteral(_) => true,
+            ExprData::ObjectExpression(object) => {
+                let span = object.span(ast);
+                object.properties(ast).is_empty() && self.comments.in_range(span).is_empty()
+            }
+            ExprData::ArrayExpression(array) => {
+                let span = array.span(ast);
+                array.elements(ast).is_empty() && self.comments.in_range(span).is_empty()
+            }
+            _ => self.simple_callback_neighbor_data(data, 2),
+        }
     }
 
     fn simple_callback_neighbor(&self, expression: Expr, depth: u8) -> bool {
@@ -631,7 +700,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 SelectedArgument::Callback(selected)
                     if argument == selected.argument
                         && item.mode == ContentMode::Formatted
-                        && !self.argument_has_boundary_comments(&item) =>
+                        && (selected.role != CallbackRole::First
+                            || !self.first_callback_has_boundary_comments(&item))
+                        && (selected.role != CallbackRole::Last
+                            || !self.argument_has_boundary_comments(&item)) =>
                 {
                     if let Some(function) = missing_function.take() {
                         *function = true;
