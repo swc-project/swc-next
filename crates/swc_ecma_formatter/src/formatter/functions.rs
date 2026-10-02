@@ -1,4 +1,5 @@
 //! Function headers and their actual parameter/body boundaries.
+mod methods;
 use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout};
 use super::diagnostics::{FlatSeparator, LineConstraint};
@@ -7,19 +8,32 @@ use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
-    BindingIdentifier, Comment, CommentKind, Function, FunctionBody, GetSpan, Span, Stmt, StmtData,
+    BindingIdentifier, Comment, CommentKind, Function, FunctionBody, GetSpan, PropertyKey, Span,
+    Stmt, StmtData,
 };
 pub(super) struct SourceFunctionSignature<'ast> {
     span: Span,
     parameters: SourceParameters,
     body: SourceFunctionBody<'ast>,
-    preceding: Option<BindingIdentifier>,
+    preceding: Option<SignaturePreceding>,
 }
 pub(super) struct PreparedFunctionSignature<'ast> {
+    span: Span,
     parameters: SourceParameters,
     body: PreparedFunctionBody<'ast>,
-    preceding: Option<BindingIdentifier>,
+    preceding: Option<SignaturePreceding>,
 }
+pub(super) enum FunctionSignatureOwner {
+    Function,
+    Method { key: PropertyKey },
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum SignaturePreceding {
+    Name(BindingIdentifier),
+    Key(PropertyKey),
+}
+
 pub(super) enum SignatureBoundaryRole {
     Function { has_preceding: bool },
     Arrow { has_parameters: bool },
@@ -33,6 +47,14 @@ pub(super) struct SignatureBodyModes {
 }
 
 impl SourceFunctionSignature<'_> {
+    pub(super) fn key_mode(&self, key: PropertyKey) -> ContentMode {
+        if matches!(self.preceding, Some(SignaturePreceding::Key(target)) if target == key) {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        }
+    }
+
     pub(super) fn enclosing_mode(&self) -> ContentMode {
         self.parameters.enclosing_mode()
     }
@@ -49,8 +71,16 @@ impl SourceFunctionSignature<'_> {
     }
 }
 impl PreparedFunctionSignature<'_> {
+    pub(super) fn key_mode(&self, key: PropertyKey) -> ContentMode {
+        if matches!(self.preceding, Some(SignaturePreceding::Key(target)) if target == key) {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        }
+    }
+
     fn name_mode(&self, name: BindingIdentifier) -> ContentMode {
-        if self.preceding == Some(name) {
+        if matches!(self.preceding, Some(SignaturePreceding::Name(target)) if target == name) {
             ContentMode::Verbatim
         } else {
             ContentMode::Formatted
@@ -97,7 +127,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         function: Function,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let signature = self.source_function_signature(function)?;
+        let signature =
+            self.source_function_signature(function, FunctionSignatureOwner::Function)?;
         if signature.parameters.enclosing_mode() == ContentMode::Verbatim {
             return self.format_verbatim(function.span(self.ast), writer);
         }
@@ -220,6 +251,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_function_signature(
         &self,
         function: Function,
+        owner: FunctionSignatureOwner,
     ) -> Result<SourceFunctionSignature<'ast>, FormatError> {
         let ast = self.ast;
         if function.this_param(ast).is_some()
@@ -235,7 +267,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let body_span = body.span(ast);
         let comments = self.comments.in_range(Span::new(span.end, body_span.start));
         let previous = if self.content_mode(comments) == ContentMode::Verbatim {
-            function.id(ast)
+            match owner {
+                FunctionSignatureOwner::Function => function.id(ast).map(SignaturePreceding::Name),
+                FunctionSignatureOwner::Method { key } => Some(SignaturePreceding::Key(key)),
+            }
         } else {
             None
         };
@@ -277,11 +312,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         signature: SourceFunctionSignature<'ast>,
     ) -> PreparedFunctionSignature<'ast> {
         PreparedFunctionSignature {
+            span: signature.span,
             parameters: signature.parameters,
             body: self.prepare_function_body(signature.body),
             preceding: signature.preceding,
         }
     }
+    fn format_function_signature(
+        &mut self,
+        signature: PreparedFunctionSignature<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedFunctionBody<'ast>, FormatError> {
+        writer.group(false, |writer| {
+            self.format_source_parameters(signature.parameters, writer)
+        })?;
+        Ok(signature.body)
+    }
+
     fn prepare_function_body(
         &self,
         source: SourceFunctionBody<'ast>,

@@ -6,6 +6,7 @@ use super::objects::RecordedObject;
 use super::{ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter};
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::functions::FunctionSignatureOwner;
 use crate::formatter::parameters::CallbackParameterShape;
 use crate::formatter::suppression::ContentMode;
 use crate::{
@@ -441,7 +442,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             CallbackKind::Function(function) => {
-                let source = self.source_function_signature(function)?;
+                let source =
+                    self.source_function_signature(function, FunctionSignatureOwner::Function)?;
                 if source.enclosing_mode() == ContentMode::Verbatim {
                     let (value, ()) = writer.record_with_value(|writer| {
                         layout.write(writer, |writer| {
