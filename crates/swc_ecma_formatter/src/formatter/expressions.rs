@@ -107,6 +107,7 @@ enum MemberChainLayout {
 enum MemberLayout {
     Normal,
     Tight,
+    Rhs,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -239,7 +240,11 @@ impl ExpressionContext {
                 ExpressionHead::None
             },
             computed_receiver: None,
-            member_layout: MemberLayout::Normal,
+            member_layout: if matches!(position, ExpressionPosition::AssignmentRight(_)) {
+                MemberLayout::Rhs
+            } else {
+                MemberLayout::Normal
+            },
             member_chain_layout: MemberChainLayout::Fluent,
             conditional_closing: ConditionalClosing::Inline,
             conditional_envelope: match position {

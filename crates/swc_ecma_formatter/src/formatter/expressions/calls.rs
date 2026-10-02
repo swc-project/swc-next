@@ -97,6 +97,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
         })
     }
+    /// The RHS spine owner has verified this call's suffix window.
+    /// Suppression still uses the complete source argument owner.
+    pub(super) fn rhs_call_callee(
+        &self,
+        call: CallExpression,
+        context: ExpressionContext,
+    ) -> Option<CallCallee> {
+        let ast = self.ast;
+        if self.has_suppression || call.type_arguments(ast).is_some() {
+            let source = self.source_call(call, context).ok()?;
+            if source.callee_mode != ContentMode::Formatted || source.has_outside_prefix() {
+                return None;
+            }
+            return Some(source.callee_head());
+        }
+        let callee = self.source_call_callee(call, context).ok()?;
+        self.source_clear_argument_opening(
+            call.arguments(ast),
+            callee.expression,
+            call.span(ast).end,
+            callee.access,
+        )
+        .then_some(callee)
+    }
+
     pub(super) fn format_call(
         &mut self,
         call: CallExpression,
