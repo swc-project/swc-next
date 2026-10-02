@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { await /* prefix */ using resource = /* @__NO_SIDE_EFFECTS__ */ () => dispose(); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  await using /* prefix */ resource = /* @__NO_SIDE_EFFECTS__ */ () =>
+      dispose();
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  await using /* prefix */ resource =
+      /* @__NO_SIDE_EFFECTS__ */ () =>
+        dispose();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  await using /* prefix */ resource =
+      /* @__NO_SIDE_EFFECTS__ */ () =>
+        dispose()
+}

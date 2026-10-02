@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { await /* prettier-ignore */ using resource = create(  value ); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  await using /* prettier-ignore */ resource = create(  value );
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  await using /* prettier-ignore */ resource = create(  value );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  await using /* prettier-ignore */ resource = create(  value )
+}

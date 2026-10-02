@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+var first,second,third;
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+var first,
+  second,
+  third;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+var first,
+  second,
+  third
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+var first, second, third;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+var first, second, third

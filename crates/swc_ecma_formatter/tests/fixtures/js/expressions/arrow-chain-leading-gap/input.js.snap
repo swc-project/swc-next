@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f =
+  /** @param {string} id */
+  (id) =>
+  /** @param {any} s */
+  (s) => s.id === id;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const f =
+  /** @param {string} id */
+  (id) =>
+    /** @param {any} s */
+    (s) =>
+      s.id === id;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const f =
+  /** @param {string} id */
+  (id) =>
+    /** @param {any} s */
+    (s) =>
+      s.id === id;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false}
+---------- Output ----------
+const f =
+  /** @param {string} id */
+  id =>
+    /** @param {any} s */
+    s =>
+      s.id === id

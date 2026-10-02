@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { alpha, beta } = parameter => transform(parameter);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const {
+  alpha,
+  beta,
+} = (parameter) => transform(parameter);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const { alpha, beta } = (parameter) => transform(parameter);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const {
+  alpha,
+  beta
+} = (parameter) => transform(parameter)

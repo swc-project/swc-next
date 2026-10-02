@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const other = someLongCall("argument"), { alpha, beta: renamed, gamma } = value;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const other = someLongCall("argument"),
+  {
+    alpha,
+    beta: renamed,
+    gamma,
+  } = value;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const other = someLongCall("argument"),
+  { alpha, beta: renamed, gamma } = value;
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const other = someLongCall("argument"),
+  {alpha, beta: renamed, gamma} = value

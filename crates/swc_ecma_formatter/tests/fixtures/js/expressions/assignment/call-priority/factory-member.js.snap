@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = foo.Bar.baz().qux();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const assignedValueName =
+  foo.Bar.baz().qux();
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const assignedValueName =
+  foo.Bar.baz().qux();
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const assignedValueName = foo.Bar.baz().qux();
