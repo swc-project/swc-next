@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ async /* keyword */ * /* star */ [ /* key */ name /* end */ ] /* parameters */ (first /* item */) /* body */ { return first; } });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  async /* keyword */ * /* star */[/* key */ name /* end */] /* parameters */(
+    first /* item */,
+  ) /* body */ {
+    return first;
+  },
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  async /* keyword */ * /* star */[/* key */ name /* end */] /* parameters */(
+    first /* item */,
+  ) /* body */ {
+    return first;
+  },
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  async /* keyword */ * /* star */[/* key */ name /* end */] /* parameters */(
+    first /* item */
+  ) /* body */ {
+    return first
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  async /* keyword */ * /* star */[/* key */ name /* end */] /* parameters */(
+    first /* item */,
+  ) /* body */ {
+    return first
+  },
+})

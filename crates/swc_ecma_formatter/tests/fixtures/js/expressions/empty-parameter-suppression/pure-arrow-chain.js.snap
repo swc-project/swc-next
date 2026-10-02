@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a=>/*#__PURE__*/ ((/* prettier-ignore */)=>f())();
+---------- Options ----------
+{}
+---------- Output ----------
+(a) => /*#__PURE__*/ ((/* prettier-ignore */)=>f())();
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(a) =>
+  /*#__PURE__*/ ((/* prettier-ignore */)=>f())();
+
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+(
+  a,
+) =>
+  /*#__PURE__*/ ((/* prettier-ignore */)=>f())();
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;(a) =>
+  /*#__PURE__*/ ((/* prettier-ignore */)=>f())()
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(a) =>
+	/*#__PURE__*/ ((/* prettier-ignore */)=>f())();

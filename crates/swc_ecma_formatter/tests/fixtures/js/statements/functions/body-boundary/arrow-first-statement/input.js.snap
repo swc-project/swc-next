@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(a)=>/* prettier-ignore */
+{return 1+2;f(3+4);};
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  a,
+) => /* prettier-ignore */
+{
+  return 1+2;
+  f(3 + 4);
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(a) => /* prettier-ignore */
+{
+  return 1+2;
+  f(3 + 4);
+};
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false}
+---------- Output ----------
+a => /* prettier-ignore */
+{
+  return 1+2
+  f(3 + 4)
+}

@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ async /* prettier-ignore */ *"method"(first=1+2) { yield first; } });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  async /* prettier-ignore */ *"method"(first = 1 + 2) {
+    yield first;
+  },
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  async /* prettier-ignore */ *"method"(
+    first = 1 + 2,
+  ) {
+    yield first;
+  },
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  async /* prettier-ignore */ *"method"(
+    first = 1 +
+      2
+  ) {
+    yield first
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  async /* prettier-ignore */ *"method"(
+    first = 1 + 2,
+  ) {
+    yield first
+  },
+})

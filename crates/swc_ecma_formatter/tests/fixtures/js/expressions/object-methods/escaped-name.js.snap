@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function /* prettier-ignore */ f\u006F\u006F(first=1+2) { return first; }
+---------- Options ----------
+{}
+---------- Output ----------
+function /* prettier-ignore */ f\u006F\u006F(first = 1 + 2) {
+  return first;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function /* prettier-ignore */ f\u006F\u006F(
+  first = 1 + 2,
+) {
+  return first;
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function /* prettier-ignore */ f\u006F\u006F(
+  first = 1 +
+    2
+) {
+  return first
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+function /* prettier-ignore */ f\u006F\u006F(
+  first = 1 + 2,
+) {
+  return first
+}
