@@ -1,0 +1,124 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+source.open().connect(firstArgument, secondArgument, thirdArgument)(outer).finish();
+---------- Options ----------
+{}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish()
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+source
+	.open()
+	.connect(
+		firstArgument,
+		secondArgument,
+		thirdArgument,
+	)(outer)
+	.finish();
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"printWidth":30,"trailingComma":"none"}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":30}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30}
+---------- Output ----------
+source
+  .open()
+  .connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )(outer)
+  .finish();
