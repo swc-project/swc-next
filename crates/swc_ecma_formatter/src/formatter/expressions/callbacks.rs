@@ -1,5 +1,5 @@
 //! Callback argument selection and immutable layouts over source-owned slots.
-use super::arguments::ArgumentHead;
+use super::arguments::{ArgumentGroup, ArgumentHead};
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
@@ -717,6 +717,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
             Ok::<_, FormatError>(())
         })?;
+        let fallback_group = match outcome {
+            SelectionOutcome::Ordinary => head.ordinary_group,
+            _ => ArgumentGroup::Local,
+        };
         // A rejected callback expansion owns a broken argument frame, even when
         // its neighbor only requested source layout. Chain measurement must see
         // that complete frame instead of flattening the neighbor in isolation.
@@ -731,7 +735,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => false,
             });
         let (fallback, ()) = writer.record_with_value(|writer| {
-            writer.group(expand_fallback, |writer| {
+            fallback_group.write(expand_fallback, writer, |writer| {
                 writer.text("(");
                 writer.indent(|writer| {
                     writer.write_fragment(opening);
