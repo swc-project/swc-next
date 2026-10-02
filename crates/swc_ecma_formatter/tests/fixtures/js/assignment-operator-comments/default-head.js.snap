@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const use = (value =
+  // default
+  fallback) => value;
+---------- Options ----------
+{}
+---------- Output ----------
+const use = (
+  // default
+  value = fallback,
+) => value;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const use = (
+  // default
+  value = fallback,
+) => value;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const use = (
+  // default
+  value = fallback,
+) => value
