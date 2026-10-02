@@ -13,9 +13,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;
 // prettier-ignore
-( this )
+;( this )
 
 ---------- Options ----------
 {"printWidth":10}
@@ -26,9 +25,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
-;
 // prettier-ignore
-( this )
+;( this )
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}

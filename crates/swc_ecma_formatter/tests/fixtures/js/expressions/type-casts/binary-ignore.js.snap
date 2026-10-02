@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+(right);
+---------- Options ----------
+{}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right)
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+	(right);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+left + 1.0e+00 || /** @satisfies {number} */ /* prettier-ignore */
+  (right);
