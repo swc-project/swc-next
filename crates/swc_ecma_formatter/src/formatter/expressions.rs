@@ -20,8 +20,8 @@ mod unary;
 
 use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, Expr, ExprData, GetSpan, ObjectExpression,
-    SequenceExpression, Span, UnaryOperator, UpdateOperator,
+    Argument, ArgumentData, ArrayExpression, CallExpression, Expr, ExprData, GetSpan,
+    ObjectExpression, SequenceExpression, Span, UnaryOperator, UpdateOperator,
 };
 
 use self::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
@@ -55,6 +55,7 @@ pub(super) enum ExpressionPosition {
     MemberObject(AccessKind),
     CallCallee {
         access: AccessKind,
+        curried_call: Option<CallExpression>,
     },
     NewCallee,
     MemberAssignmentObject,
@@ -470,7 +471,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             match data {
                 ExprData::CallExpression(call) => {
-                    let callee = self.source_call_callee(call)?;
+                    let callee = self.source_call_callee(call, context)?;
                     (callee.expression, callee.context(context))
                 }
                 ExprData::MemberExpression(member) => {
@@ -609,7 +610,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 position,
                 ExpressionPosition::MemberObject(AccessKind::Ordinary)
                     | ExpressionPosition::CallCallee {
-                        access: AccessKind::Ordinary
+                        access: AccessKind::Ordinary,
+                        ..
                     }
                     | ExpressionPosition::MemberAssignmentObject
                     | ExpressionPosition::NewCallee

@@ -1,20 +1,22 @@
 //! Callees and source-owned argument delimiters.
 use super::AccessKind;
-use super::arguments::SourceArguments;
+use super::arguments::{ArgumentGroup, SourceArguments};
 use super::{ExpressionContext, ExpressionPosition, Formatter, MemberLayout, TailOwner};
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
-use swc_next_ecma_ast::{CallExpression, Expr, ExprData, GetSpan, Span};
+use swc_next_ecma_ast::{Argument, CallExpression, Expr, ExprData, GetSpan, Span, SubRange};
 pub(super) struct CallCallee {
     pub(super) expression: Expr,
     pub(super) mode: ContentMode,
     pub(super) access: AccessKind,
+    pub(super) curried_call: Option<CallExpression>,
 }
 impl CallCallee {
     pub(super) fn context(&self, context: ExpressionContext) -> ExpressionContext {
         let mut callee = ExpressionContext::at(ExpressionPosition::CallCallee {
             access: self.access,
+            curried_call: self.curried_call,
         })
         .with_parent_head(context)
         .with_tail_owner(TailOwner::ParentOperation)
@@ -72,15 +74,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_call_callee(
         &self,
         call: CallExpression,
+        context: ExpressionContext,
     ) -> Result<CallCallee, FormatError> {
         if self.has_suppression {
-            return Ok(self.source_call(call)?.callee_head());
+            return Ok(self.source_call(call, context)?.callee_head());
         }
         if call.type_arguments(self.ast).is_some() {
             return Err(self.unsupported("typed call", call));
         }
         Ok(CallCallee {
             expression: call.callee(self.ast),
+            curried_call: self.curried_call_callee(
+                call.callee(self.ast),
+                call.arguments(self.ast),
+                ContentMode::Formatted,
+            ),
             mode: ContentMode::Formatted,
             access: if call.optional(self.ast) {
                 AccessKind::Optional
@@ -95,7 +103,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let arguments = self.source_call(call)?;
+        let arguments = self.source_call(call, context)?;
         let mut callee_context = arguments.callee_context(context);
         let member_callee = arguments.callee_mode == ContentMode::Formatted
             && matches!(
@@ -112,6 +120,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             callee_context.member_layout = MemberLayout::Tight;
             callee_context.member_chain_layout = super::MemberChainLayout::Local;
         }
+        let group = arguments.curried_callee.map(|_| arguments.group);
         let write = |writer: &mut Writer<'ast>| {
             let tail = self.format_expression(arguments.callee, callee_context, writer)?;
             self.format_source_arguments(arguments, tail, writer)
@@ -121,27 +130,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // receiver is not eligible for the tight, atomic-callee path.
             writer.group(false, write)
         } else {
-            write(writer)
+            match group {
+                Some(group) => group.write(false, writer, write),
+                None => write(writer),
+            }
         }
     }
 
     pub(super) fn source_call(
         &self,
         call: CallExpression,
+        context: ExpressionContext,
     ) -> Result<SourceArguments<'ast>, FormatError> {
         if call.type_arguments(self.ast).is_some() {
             return Err(self.unsupported("typed call", call));
         }
-        self.source_arguments(
+        let mut arguments = self
+            .source_arguments(
+                call.arguments(self.ast),
+                call.callee(self.ast),
+                call.span(self.ast).end,
+                if call.optional(self.ast) {
+                    AccessKind::Optional
+                } else {
+                    AccessKind::Ordinary
+                },
+            )
+            .ok_or_else(|| self.unsupported("call opening boundary", call))?;
+        arguments.group = if matches!(context.position,
+            ExpressionPosition::CallCallee { curried_call: Some(curried), .. } if curried == call)
+        {
+            ArgumentGroup::ParentCall
+        } else {
+            ArgumentGroup::Local
+        };
+        arguments.curried_callee = self.curried_call_callee(
+            arguments.callee,
             call.arguments(self.ast),
-            call.callee(self.ast),
-            call.span(self.ast).end,
-            if call.optional(self.ast) {
-                AccessKind::Optional
-            } else {
-                AccessKind::Ordinary
-            },
-        )
-        .ok_or_else(|| self.unsupported("call opening boundary", call))
+            arguments.callee_mode,
+        );
+        Ok(arguments)
+    }
+    fn curried_call_callee(
+        &self,
+        callee: Expr,
+        arguments: SubRange<Argument>,
+        mode: ContentMode,
+    ) -> Option<CallExpression> {
+        if arguments.is_empty() || mode != ContentMode::Formatted {
+            return None;
+        }
+        match self.expression_content(callee).data {
+            ExprData::CallExpression(child)
+                if child.arguments(self.ast).len() > arguments.len() =>
+            {
+                Some(child)
+            }
+            _ => None,
+        }
     }
 }

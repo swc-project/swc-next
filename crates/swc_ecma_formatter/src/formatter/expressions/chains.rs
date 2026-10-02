@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     CallExpression, Expr, ExprData, GetSpan, IdentifierName, ParenthesizedExpression, Span,
 };
 
-use super::arguments::SourceArguments;
+use super::arguments::{ArgumentGroup, SourceArguments};
 use super::members::{
     MemberBoundary, MemberLookupLayout, MemberLookupOwner, PreparedMember, SourceMember,
 };
@@ -258,6 +258,7 @@ struct GroupFacts {
     has_boundary_comments: bool,
     source_break: bool,
     preferred_breaks: bool,
+    has_parent_call_group: bool,
 }
 
 struct ChainGroup<'ast> {
@@ -301,17 +302,23 @@ impl<'ast> ChainGroups<'ast> {
             return ChainLayout::Expanded;
         }
         let mut has_function = self.head.facts.has_function;
+        let mut local_scopes = true;
         for group in earlier {
             if group.facts.source_break || group.facts.preferred_breaks || !group.can_flat {
                 return ChainLayout::Expanded;
             }
             has_function |= group.facts.has_function;
+            local_scopes &= !group.facts.has_parent_call_group;
         }
         let last_breaks = last.facts.preferred_breaks || !last.can_flat;
         if last.facts.source_break || last_breaks && has_function {
             return ChainLayout::Expanded;
         }
-        if !last_breaks && let Some(head) = self.head.doc.try_neutral() {
+        local_scopes &= !last.facts.has_parent_call_group;
+        if local_scopes
+            && !last_breaks
+            && let Some(head) = self.head.doc.try_neutral()
+        {
             return ChainLayout::Shared(head);
         }
         ChainLayout::Alternatives
@@ -473,7 +480,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 },
                 ExprData::CallExpression(call) => {
-                    let arguments = self.source_call(call)?;
+                    let arguments = self.source_call(call, current_context)?;
                     current = arguments.callee;
                     head_content = None;
                     current_context = arguments.callee_context(current_context);
@@ -1198,6 +1205,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         // Comments owned by the actual arguments may move inside their opener.
         // Only an outside prefix is a boundary for both merging and expansion.
+        facts.has_parent_call_group |= matches!(arguments.group, ArgumentGroup::ParentCall);
         let missing_function = if facts.has_function {
             None
         } else {

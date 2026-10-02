@@ -13,7 +13,8 @@ use crate::formatter::suppression::{
 };
 use crate::{FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, Comment, CommentKind, Expr, ExprData, GetSpan, Span, SubRange,
+    Argument, ArgumentData, CallExpression, Comment, CommentKind, Expr, ExprData, GetSpan, Span,
+    SubRange,
 };
 
 #[derive(Clone, Copy)]
@@ -603,6 +604,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
 pub(super) struct ArgumentHead {
     pub(super) first_mode: ContentMode,
+    pub(super) ordinary_group: ArgumentGroup,
 }
 struct ArgumentPunctuation {
     operator: Option<Span>,
@@ -619,6 +621,8 @@ pub(super) struct SourceArguments<'ast> {
     callee_span: Span,
     prefix: SourceArgumentPrefix<'ast>,
     pub(super) callee_mode: ContentMode,
+    pub(super) group: ArgumentGroup,
+    pub(super) curried_callee: Option<CallExpression>,
 }
 #[derive(Clone, Copy)]
 struct SourceFirstArgument {
@@ -664,6 +668,26 @@ impl SourceArgumentPrefix<'_> {
                 !before.is_empty() || !after.comments().is_empty()
             }
             Self::Empty { .. } => true,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum ArgumentGroup {
+    Local,
+    ParentCall,
+}
+
+impl ArgumentGroup {
+    pub(super) fn write<'a, T>(
+        self,
+        expand: bool,
+        writer: &mut Writer<'a>,
+        write: impl FnOnce(&mut Writer<'a>) -> T,
+    ) -> T {
+        match (self, expand) {
+            (Self::ParentCall, false) => write(writer),
+            _ => writer.group(expand, write),
         }
     }
 }
@@ -746,6 +770,7 @@ impl<'ast> SourceArguments<'ast> {
             expression: self.callee,
             access: self.access(),
             mode: self.callee_mode,
+            curried_call: self.curried_callee,
         }
     }
     pub(super) fn callee_context(&self, context: ExpressionContext) -> ExpressionContext {
@@ -865,6 +890,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             callee_span,
             prefix,
             callee_mode,
+            group: ArgumentGroup::Local,
+            curried_callee: None,
         })
     }
 
@@ -1016,6 +1043,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             delimiters,
             callee_span,
             prefix,
+            group,
             ..
         } = list;
         let first_mode = first.map_or(ContentMode::Formatted, |argument| argument.mode);
@@ -1150,7 +1178,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let tail = self.format_selected_arguments(
                 arguments,
                 content,
-                ArgumentHead { first_mode },
+                ArgumentHead {
+                    first_mode,
+                    ordinary_group: group,
+                },
                 selected,
                 missing_function,
                 writer,
@@ -1160,7 +1191,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_outside_prefix,
             });
         }
-        let tail = writer.group(expand, |writer| {
+        let tail = group.write(expand, writer, |writer| {
             writer.text("(");
             let mut write_items = |writer: &mut Writer<'ast>| {
                 if !hugged && (first.is_some() || !self.comments.in_range(content).is_empty()) {
