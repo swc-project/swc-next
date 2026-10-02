@@ -1,0 +1,79 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if ((
+// root head
+!(firstConditionWithLongName || secondConditionWithLongName)
+)) { run(); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+if (
+  // root head
+  !(firstConditionWithLongName || secondConditionWithLongName)
+) {
+  run();
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+if (
+  // root head
+  !(
+    firstConditionWithLongName ||
+    secondConditionWithLongName
+  )
+) {
+  run();
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+if (
+  // root head
+  !(firstConditionWithLongName || secondConditionWithLongName)
+) {
+  run()
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+if (
+  // root head
+  !(
+    firstConditionWithLongName ||
+    secondConditionWithLongName
+  )
+) {
+  run()
+}
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+if (
+	// root head
+	!(
+		firstConditionWithLongName ||
+		secondConditionWithLongName
+	)
+) {
+	run();
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+if (
+  // root head
+  !(
+    firstConditionWithLongName ||
+    secondConditionWithLongName
+  )
+) {
+  run();
+}

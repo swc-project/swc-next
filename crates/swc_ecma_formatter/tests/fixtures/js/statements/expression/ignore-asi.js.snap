@@ -16,9 +16,8 @@ first;
 {"semi":false}
 ---------- Output ----------
 first
-;
 // prettier-ignore
-(function(){return first;})()
+;(function(){return first;})()
 
 ---------- Options ----------
 {"printWidth":10}

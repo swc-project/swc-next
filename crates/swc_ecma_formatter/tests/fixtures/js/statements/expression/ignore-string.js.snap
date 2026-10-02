@@ -14,9 +14,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;
 // prettier-ignore
-("use strict")
+;("use strict")
 
 ---------- Options ----------
 {"printWidth":10}

@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+if (enabled) firstMissing(); else secondMissing();
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+if (enabled) firstMissing(); else secondMissing();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-expect-error
+if (enabled) firstMissing(); else secondMissing()
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+if (enabled) firstMissing(); else secondMissing()
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+if (enabled) firstMissing(); else secondMissing();

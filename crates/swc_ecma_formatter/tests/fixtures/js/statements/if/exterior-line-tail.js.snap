@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (a) { foo(); } // marker
+else { bar(); }
+---------- Options ----------
+{}
+---------- Output ----------
+if (a) {
+  foo();
+} // marker
+else {
+  bar();
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (a) {
+  foo()
+} // marker
+else {
+  bar()
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+if (a) {
+  foo()
+} // marker
+else {
+  bar()
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+if (a) {
+	foo();
+} // marker
+else {
+	bar();
+}
