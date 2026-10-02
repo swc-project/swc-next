@@ -270,7 +270,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })
                 .count();
             let inline = self.comments.take(count);
-            self.format_trailing_comment_run(inline, writer)?;
+            self.format_inline_trailing_comments(inline, writer)?;
             let source_end = inline.last().map_or(source_end, |comment| comment.span.end);
             writer.text(operator);
             self.capture_expression_tail(Span::new(source_end, boundary.end), None)

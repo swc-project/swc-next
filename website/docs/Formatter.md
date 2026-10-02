@@ -95,6 +95,12 @@ A child can return a borrowed pending comment tail when its parent owns the
 following punctuation or layout scope. The cursor remains at that run until
 the owning boundary claims it.
 
+Statement tails distinguish the current statement, its following sibling, and
+an enclosing keyword.
+
+Printed statements forward pending tails beyond their layout group; source
+terminators and following keywords consume the runs they own.
+
 ## Grammar and semantic boundaries
 
 Expression contexts carry precedence, operand roles, and statement-start rules.

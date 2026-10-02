@@ -11,18 +11,21 @@ use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppres
 pub(super) enum StatementTailRelation {
     Terminal,
     Statement,
+    Keyword,
 }
 
 #[derive(Clone, Copy)]
 enum StatementTailOwner {
     Current,
     Following,
+    Enclosing,
 }
 
 #[derive(Clone, Copy)]
 pub(super) struct StatementTailModes {
     pub(super) current: ContentMode,
     pub(super) following: ContentMode,
+    pub(super) enclosing: ContentMode,
 }
 
 #[derive(Clone, Copy)]
@@ -54,6 +57,20 @@ impl StatementContent {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    /// Probe the lexical tail before following a compound statement's final body.
+    pub(super) fn prepare_statement_suppression_tail(
+        &self,
+        statement: StatementItem,
+        limit: u32,
+        relation: StatementTailRelation,
+    ) -> Option<StatementSuppressionTail> {
+        if !self.has_suppression {
+            return None;
+        }
+        let span = statement.span(self.ast);
+        self.prepare_statement_suppression_tail_at(statement, span, limit, relation)
+    }
+
     pub(super) fn prepare_statement_suppression_tail_at(
         &self,
         statement: StatementItem,
@@ -167,30 +184,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(super) fn statement_content_end(&self, item: StatementItem) -> u32 {
+        self.statement_content(item).end()
+    }
+
     pub(super) fn statement_content(&self, item: StatementItem) -> StatementContent {
         use StatementContent::{Complete, Semicolon};
-        match item {
+
+        let mut statement = match item {
             StatementItem::Directive(node) => {
-                Semicolon(node.expression(self.ast).span(self.ast).end)
+                return Semicolon(node.expression(self.ast).span(self.ast).end);
             }
-            StatementItem::Statement(statement) => match self.ast.stmt_data(statement) {
-                StmtData::ExpressionStatement(node) => {
-                    Semicolon(node.expression(self.ast).span(self.ast).end)
+            StatementItem::Statement(statement) => statement,
+        };
+        loop {
+            match self.ast.stmt_data(statement) {
+                StmtData::IfStatement(node) => {
+                    statement = match node.alternate(self.ast) {
+                        Some(alternate) => alternate,
+                        None => node.consequent(self.ast),
+                    };
                 }
-                StmtData::ReturnStatement(node) => Semicolon(
-                    node.argument(self.ast)
-                        .map_or(node.span(self.ast).start + 6, |argument| {
-                            argument.span(self.ast).end
-                        }),
-                ),
+                StmtData::ExpressionStatement(node) => {
+                    return Semicolon(node.expression(self.ast).span(self.ast).end);
+                }
+                StmtData::ReturnStatement(node) => {
+                    let end = node.argument(self.ast).map_or(
+                        node.span(self.ast).start + "return".len() as u32,
+                        |argument| argument.span(self.ast).end,
+                    );
+                    return Semicolon(end);
+                }
                 StmtData::ThrowStatement(node) => {
-                    Semicolon(node.argument(self.ast).span(self.ast).end)
+                    return Semicolon(node.argument(self.ast).span(self.ast).end);
                 }
                 StmtData::DebuggerStatement(node) => {
-                    Semicolon(node.span(self.ast).start + "debugger".len() as u32)
+                    return Semicolon(node.span(self.ast).start + "debugger".len() as u32);
                 }
-                _ => Complete(statement.span(self.ast).end),
-            },
+                _ => return Complete(statement.span(self.ast).end),
+            }
         }
     }
 
@@ -221,6 +253,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut modes = StatementTailModes {
             current: ContentMode::Formatted,
             following: ContentMode::Formatted,
+            enclosing: ContentMode::Formatted,
         };
         if !self.has_suppression {
             return modes;
@@ -241,6 +274,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(following_start, |comment| comment.span.start);
             let position = self.suppression_position(run, following);
             let owner = match (position, relation) {
+                (Some(SuppressionPosition::OwnLine), StatementTailRelation::Keyword) => {
+                    StatementTailOwner::Enclosing
+                }
                 (Some(SuppressionPosition::OwnLine), StatementTailRelation::Statement) => {
                     StatementTailOwner::Following
                 }
@@ -261,6 +297,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             match owner {
                 StatementTailOwner::Current => modes.current = ContentMode::Verbatim,
                 StatementTailOwner::Following => modes.following = ContentMode::Verbatim,
+                StatementTailOwner::Enclosing => modes.enclosing = ContentMode::Verbatim,
             }
             comments = remaining;
         }

@@ -411,7 +411,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })?;
         let (suffix, ()) = writer.record_with_value(|writer| {
             writer.group(false, |writer| {
-                self.format_trailing_comment_run(std::slice::from_ref(line), writer)
+                self.format_inline_trailing_comments(std::slice::from_ref(line), writer)
             })
         })?;
         if matches!(layout, RhsLayout::NeverBreakAfterOperator) {

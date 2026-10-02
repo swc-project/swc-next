@@ -1060,7 +1060,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .comment_binding(comments, Span::new(span.start, last.span.end), None)
                     .allows_relocation(None)
                 {
-                    self.format_trailing_comment_run(comments, writer)?;
+                    self.format_inline_trailing_comments(comments, writer)?;
                 } else {
                     self.format_comment_run(
                         comments,
@@ -1075,7 +1075,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_trailing_comment_run(
+    pub(super) fn format_inline_trailing_comments(
         &self,
         comments: &[Comment],
         writer: &mut Writer<'ast>,
@@ -1085,10 +1085,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_inline_trailing_comments_with_array_comments(
         &self,
         comments: &[Comment],
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_trailing_comment_run(comments, None, array_comments, writer)
+    }
+
+    pub(super) fn format_trailing_comment_run(
+        &self,
+        comments: &[Comment],
+        previous: Option<Comment>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let mut previous: Option<PreparedComment<'ast>> = None;
+        let mut previous = previous
+            .map(|comment| self.prepare_comment(comment))
+            .transpose()?;
         for &comment in comments {
             if let Some(owner) = array_comments.as_deref_mut() {
                 owner.consume(self, comment);
@@ -1100,18 +1112,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 writer.hard_line();
                 prepared.text.write(writer);
-            } else if comment.kind == CommentKind::Line {
-                writer.line_suffix(self.source(comment.span).trim_end());
             } else {
-                let nestled = previous.as_ref().is_some_and(|previous| {
-                    previous.span.end == prepared.span.start
-                        && previous.is_alignable()
-                        && prepared.is_alignable()
-                });
-                if !nestled {
-                    writer.space();
+                match comment.kind {
+                    CommentKind::Line => writer.line_suffix(self.source(comment.span).trim_end()),
+                    CommentKind::Block => {
+                        let nestled = previous.as_ref().is_some_and(|previous| {
+                            previous.span.end == prepared.span.start
+                                && previous.is_alignable()
+                                && prepared.is_alignable()
+                        });
+                        if !nestled {
+                            writer.space();
+                        }
+                        prepared.text.write(writer);
+                    }
                 }
-                prepared.text.write(writer);
             }
             previous = Some(prepared);
         }

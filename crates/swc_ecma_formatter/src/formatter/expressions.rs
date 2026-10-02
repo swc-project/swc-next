@@ -66,6 +66,7 @@ pub(super) enum ExpressionPosition {
     AssignmentTarget,
     AssignmentRight(AssignmentParent),
     Initializer(AssignmentParent),
+    ControlCondition,
     ConditionalTest,
     ConditionalConsequent,
     ConditionalAlternate,
@@ -81,6 +82,8 @@ pub(super) enum ExpressionStart {
     StatementPending,
     StatementGuard,
     StatementGuarded,
+    /// A controlled body cannot insert a leading empty statement.
+    StatementBody,
     ArrowBody,
 }
 
@@ -88,7 +91,10 @@ impl ExpressionStart {
     fn is_statement(self) -> bool {
         matches!(
             self,
-            Self::StatementPending | Self::StatementGuard | Self::StatementGuarded
+            Self::StatementPending
+                | Self::StatementGuard
+                | Self::StatementGuarded
+                | Self::StatementBody
         )
     }
 
