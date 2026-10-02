@@ -1302,6 +1302,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .is_empty()
     }
 
+    pub(super) fn first_callback_has_boundary_comments(&self, item: &PreparedItem) -> bool {
+        if item.has_leading_comments {
+            return true;
+        }
+        let end = item
+            .following
+            .node()
+            .map_or(item.span.end, |span| span.start);
+        let gap = Span::new(item.item_span.end, end);
+        let comments = self.comments.in_range(gap);
+        let Some(comment) = comments.first() else {
+            return false;
+        };
+        let comma = self.find_token(gap, comments, ",");
+        comma.is_none_or(|comma| comment.span.start < comma)
+    }
+
     pub(super) fn format_argument_dangling(
         &mut self,
         span: Span,
