@@ -534,7 +534,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Flat views project their backing scopes without propagating backing break flags.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn flat_delimited_fragment(
         &self,
         open: &'a str,
@@ -576,7 +575,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Only prefix and body gain the outer indent; suffix retains its own complete scopes.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn indented_delimited_fragment(
         &self,
         open: &'a str,

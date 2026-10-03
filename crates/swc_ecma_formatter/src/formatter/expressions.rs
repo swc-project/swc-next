@@ -11,6 +11,7 @@ pub(super) mod chains;
 mod conditional;
 mod constructors;
 mod for_initializer;
+mod imports;
 mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;
@@ -830,7 +831,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::MemberAssignmentObject
                     | ExpressionPosition::NewCallee
             )),
-            ExprData::MetaProperty(_) => Some(false),
+            ExprData::MetaProperty(_) | ExprData::ImportExpression(_) => Some(false),
             ExprData::Class(_) => Some(matches!(
                 position,
                 ExpressionPosition::Statement | ExpressionPosition::NewCallee
@@ -1037,6 +1038,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ExprData::AwaitExpression(node) => return self.format_await(node, context, writer),
             ExprData::YieldExpression(node) => return self.format_yield(node, writer),
+            ExprData::ImportExpression(import) => {
+                return self.format_import_expression(import, writer);
+            }
             ExprData::MetaProperty(node) => {
                 self.format_meta_property(node, writer)?;
             }
