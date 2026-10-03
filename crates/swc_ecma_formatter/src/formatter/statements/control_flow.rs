@@ -1,5 +1,9 @@
 //! Parent-owned conditions, controlled bodies, and their following keywords.
 
+mod jumps;
+mod while_do;
+pub(super) use jumps::JumpStatement;
+
 use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, IfStatement, Span, Stmt, StmtData, UnaryOperator,
 };
@@ -23,6 +27,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 enum ControlledBodyRole {
     Body,
     Alternate,
+    Label,
 }
 
 #[derive(Clone, Copy)]
@@ -30,19 +35,21 @@ enum ControlledBodyShape {
     Empty,
     Block,
     ElseIf,
+    Label,
     Single,
 }
 
 #[derive(Clone, Copy)]
 enum ControlledBodyEnd {
     Alternate(Span),
+    LoopCondition(Span),
     Enclosing(u32),
 }
 
 impl ControlledBodyEnd {
     fn limit(self) -> u32 {
         match self {
-            Self::Alternate(keyword) => keyword.start,
+            Self::Alternate(keyword) | Self::LoopCondition(keyword) => keyword.start,
             Self::Enclosing(end) => end,
         }
     }
@@ -58,6 +65,7 @@ struct ControlledBody<'ast> {
     head_end: u32,
     leading: &'ast [Comment],
     shape: ControlledBodyShape,
+    role: ControlledBodyRole,
     empty_block: EmptyBlock,
     mode: ContentMode,
     punctuation: StatementPunctuation,
@@ -72,6 +80,11 @@ struct ControlledBodyTail<'ast> {
 }
 
 impl ControlledBody<'_> {
+    fn with_empty_block(mut self, empty: EmptyBlock) -> Self {
+        self.empty_block = empty;
+        self
+    }
+
     fn with_enclosing_punctuation(mut self, punctuation: StatementPunctuation) -> Self {
         if matches!(
             punctuation,
@@ -85,11 +98,20 @@ impl ControlledBody<'_> {
     }
 }
 
-struct ConditionHeader<'ast> {
-    keyword_end: u32,
-    opening: u32,
-    before_opening: &'ast [Comment],
-    relocate_before_opening: bool,
+#[derive(Clone, Copy)]
+enum ConditionPrefix {
+    Canonical,
+    Source { source: Span, mode: ContentMode },
+}
+
+enum ConditionHeader<'ast> {
+    Canonical {
+        keyword_end: u32,
+        opening: u32,
+        before_opening: &'ast [Comment],
+        relocate_before_opening: bool,
+    },
+    Source(Span),
 }
 
 struct Condition<'ast> {
@@ -196,6 +218,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         keyword_end: u32,
         body_start: u32,
     ) -> Result<Condition<'ast>, FormatError> {
+        self.prepare_condition_with_prefix(
+            expression,
+            keyword_end,
+            body_start,
+            ConditionPrefix::Canonical,
+        )
+    }
+
+    fn prepare_condition_with_prefix(
+        &self,
+        expression: Expr,
+        keyword_end: u32,
+        body_start: u32,
+        prefix: ConditionPrefix,
+    ) -> Result<Condition<'ast>, FormatError> {
         let span = expression.span(self.ast);
         let head = Span::new(keyword_end, span.start);
         let leading = self.comments.in_range(head);
@@ -215,26 +252,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 tail,
             ));
         };
-        let split = leading.partition_point(|comment| comment.span.end <= opening);
-        let before_opening = &leading[..split];
-        let relocate_before_opening = self
-            .comment_binding(before_opening, head, Some(span))
-            .allows_relocation(Some(span));
-        let leading = if relocate_before_opening {
-            leading
-        } else {
-            &leading[split..]
-        };
-        let leading_mode = self.content_mode(leading);
-        let inline = before_opening.is_empty()
-            && leading.is_empty()
-            && trailing.is_empty()
-            && self.condition_is_inline(expression);
-        let header = ConditionHeader {
-            keyword_end,
-            opening,
-            before_opening,
-            relocate_before_opening,
+        let (header, leading, leading_mode, inline) = match prefix {
+            ConditionPrefix::Canonical => {
+                let split = leading.partition_point(|comment| comment.span.end <= opening);
+                let before_opening = &leading[..split];
+                let relocate_before_opening = self
+                    .comment_binding(before_opening, head, Some(span))
+                    .allows_relocation(Some(span));
+                let leading = if relocate_before_opening {
+                    leading
+                } else {
+                    &leading[split..]
+                };
+                let mode = self.content_mode(leading);
+                let inline = before_opening.is_empty()
+                    && leading.is_empty()
+                    && trailing.is_empty()
+                    && self.condition_is_inline(expression);
+                let header = ConditionHeader::Canonical {
+                    keyword_end,
+                    opening,
+                    before_opening,
+                    relocate_before_opening,
+                };
+                (header, leading, mode, inline)
+            }
+            ConditionPrefix::Source { source, mode } => {
+                (ConditionHeader::Source(source), &[][..], mode, false)
+            }
         };
         let mode = if leading_mode == ContentMode::Verbatim {
             leading_mode
@@ -305,40 +350,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             inline,
         } = condition;
         let span = expression.span(self.ast);
-        let ConditionHeader {
-            keyword_end,
-            opening,
-            before_opening,
-            relocate_before_opening,
-        } = header;
-        let opening_constraint = {
-            if relocate_before_opening {
-                self.line_constraint(keyword_end, opening).write(
+        let opening_constraint = match header {
+            ConditionHeader::Source(source) => {
+                self.format_delimited_source_gap(
+                    source,
+                    crate::formatter::suppression::DelimitedFollowing::Node,
                     writer,
-                    FlatSeparator::Space,
-                    Writer::space,
-                );
-            } else {
-                let first = before_opening
-                    .first()
-                    .map_or(opening, |comment| comment.span.start);
-                self.line_constraint(keyword_end, first).write(
-                    writer,
-                    FlatSeparator::Space,
-                    Writer::space,
-                );
-                self.comments.claim(before_opening)?;
-                self.format_comment_run(
-                    before_opening,
-                    CommentRunLayout::FlatLeading(opening),
-                    writer,
-                )?;
+                )?
+                .following
             }
-            writer.text("(");
-            let first = leading
-                .first()
-                .map_or(span.start, |comment| comment.span.start.max(opening + 1));
-            self.line_constraint(opening + 1, first)
+            ConditionHeader::Canonical {
+                keyword_end,
+                opening,
+                before_opening,
+                relocate_before_opening,
+            } => {
+                if relocate_before_opening {
+                    self.line_constraint(keyword_end, opening).write(
+                        writer,
+                        FlatSeparator::Space,
+                        Writer::space,
+                    );
+                } else {
+                    let first = before_opening
+                        .first()
+                        .map_or(opening, |comment| comment.span.start);
+                    self.line_constraint(keyword_end, first).write(
+                        writer,
+                        FlatSeparator::Space,
+                        Writer::space,
+                    );
+                    self.comments.claim(before_opening)?;
+                    self.format_comment_run(
+                        before_opening,
+                        CommentRunLayout::FlatLeading(opening),
+                        writer,
+                    )?;
+                }
+                writer.text("(");
+                let first = leading
+                    .first()
+                    .map_or(span.start, |comment| comment.span.start.max(opening + 1));
+                self.line_constraint(opening + 1, first)
+            }
         };
         writer.group(false, |writer| {
             let mut write_contents = |writer: &mut Writer<'ast>| {
@@ -406,6 +460,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StmtData::IfStatement(_) if matches!(role, ControlledBodyRole::Alternate) => {
                 ControlledBodyShape::ElseIf
             }
+            _ if matches!(role, ControlledBodyRole::Label) => ControlledBodyShape::Label,
             _ => ControlledBodyShape::Single,
         };
         let needs_source_tail = self.has_suppression
@@ -447,6 +502,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head_end,
             leading,
             shape,
+            role,
             empty_block: EmptyBlock::Expanded,
             mode,
             punctuation,
@@ -466,7 +522,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         shape: ControlledBodyShape,
     ) -> Option<ControlledBodyTail<'ast>> {
         let limit = match end {
-            ControlledBodyEnd::Alternate(keyword) => keyword.start,
+            ControlledBodyEnd::Alternate(keyword) | ControlledBodyEnd::LoopCondition(keyword) => {
+                keyword.start
+            }
             ControlledBodyEnd::Enclosing(_) => self.ast.source().len() as u32,
         };
         let comments = self.comments.in_range(Span::new(content_end, limit));
@@ -563,6 +621,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             head_end,
             leading,
             shape,
+            role,
             empty_block,
             mode,
             punctuation,
@@ -576,11 +635,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let constraint = self.line_constraint(head_end, first);
         let leading_line = leading.first().is_some_and(|comment| {
             self.line_breaks(head_end, comment.span.start) != 0
-                || self.line_breaks(comment.span.start, comment.span.end) != 0
+                || !matches!(role, ControlledBodyRole::Label)
+                    && self.line_breaks(comment.span.start, comment.span.end) != 0
         });
         let adjacent = matches!(
             shape,
-            ControlledBodyShape::Block | ControlledBodyShape::ElseIf
+            ControlledBodyShape::Block | ControlledBodyShape::ElseIf | ControlledBodyShape::Label
         );
         let empty = matches!(shape, ControlledBodyShape::Empty);
         let compact_head = matches!(
@@ -744,7 +804,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => false,
         };
-        let following = if comments.is_empty() && tail_line {
+        let condition_tail = matches!(body.end, ControlledBodyEnd::LoopCondition(_))
+            && tail.is_some_and(|tail| tail.binding.allows_relocation(None));
+        let following = if comments.is_empty() && tail_line && !condition_tail {
             CommentGap::LineComment
         } else {
             self.prepare_comment_boundary(comments, source_end, span.start)
@@ -754,7 +816,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let line = if let Some(last) = comments.last() {
             self.line_breaks(last.span.end, span.start) != 0
         } else {
-            !adjacent || last.is_some_and(|last| self.line_breaks(last.span.end, span.start) != 0)
+            !adjacent
+                || !condition_tail
+                    && last.is_some_and(|last| self.line_breaks(last.span.end, span.start) != 0)
         };
         BodyKeyword {
             span,

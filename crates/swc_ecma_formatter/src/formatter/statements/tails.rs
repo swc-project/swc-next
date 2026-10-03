@@ -205,6 +205,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         None => node.consequent(self.ast),
                     };
                 }
+                StmtData::WhileStatement(node) => {
+                    statement = node.body(self.ast);
+                }
+                StmtData::DoWhileStatement(node) => {
+                    let expression = node.test(self.ast).span(self.ast);
+                    let end = node.span(self.ast).end;
+                    let span = Span::new(expression.end, end);
+                    let closing = self.find_token(span, self.comments.in_range(span), ")");
+                    return Semicolon(closing.map_or(end, |closing| closing + 1));
+                }
+                StmtData::LabeledStatement(node) => {
+                    statement = node.body(self.ast);
+                }
+                StmtData::BreakStatement(node) => {
+                    let end = node
+                        .label(self.ast)
+                        .map_or(node.span(self.ast).start + "break".len() as u32, |label| {
+                            label.span(self.ast).end
+                        });
+                    return Semicolon(end);
+                }
+                StmtData::ContinueStatement(node) => {
+                    let end = node.label(self.ast).map_or(
+                        node.span(self.ast).start + "continue".len() as u32,
+                        |label| label.span(self.ast).end,
+                    );
+                    return Semicolon(end);
+                }
                 StmtData::ExpressionStatement(node) => {
                     return Semicolon(node.expression(self.ast).span(self.ast).end);
                 }
