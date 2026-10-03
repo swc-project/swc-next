@@ -1,7 +1,6 @@
 use super::{super::ReactRefreshOptions, build::*};
 use crate::uid::UidGenerator;
 use rustc_hash::FxHashSet;
-use std::borrow::Cow;
 use swc_next_ecma_ast::{
     Argument, Ast, AstUtf8, CallExpression, DUMMY_SP, Decl, DeclData,
     ExportDefaultDeclarationKindData, Expr, ExprData, GetSpan, JsxElementName, JsxElementNameData,
@@ -14,7 +13,7 @@ use swc_next_ecma_semantic::Semantic;
 
 struct Registration {
     binding: AstUtf8,
-    persistent_id: String,
+    persistent_id: AstUtf8,
 }
 
 pub(super) fn transform<'a>(
@@ -136,7 +135,7 @@ struct ReactRefresh<'visit, 'ast> {
     registrations: Vec<Registration>,
     used_in_jsx: FxHashSet<SymbolId>,
     semantic: &'visit Semantic<'ast>,
-    persistent_prefix: Option<String>,
+    persistent_prefix: Option<AstUtf8>,
 }
 
 impl<'ast> ReactRefresh<'_, 'ast> {
@@ -170,8 +169,9 @@ impl<'ast> ReactRefresh<'_, 'ast> {
                     ExportDefaultDeclarationKindData::Function(function) => {
                         let id = function.id(self.ast)?;
                         let name = self.ast.get_utf8(id.name(self.ast));
-                        is_componentish_name(name)
-                            .then(|| self.registration_assignment(id.name(self.ast), name))
+                        is_componentish_name(name).then(|| {
+                            self.registration_assignment(id.name(self.ast), id.name(self.ast))
+                        })
                     }
                     ExportDefaultDeclarationKindData::Expr(expression) => {
                         let ExprData::CallExpression(_) =
@@ -179,8 +179,9 @@ impl<'ast> ReactRefresh<'_, 'ast> {
                         else {
                             return None;
                         };
+                        let persistent_id = self.ast.add_utf8("%default%");
                         let (replacement, found) =
-                            self.replace_inner_components("%default%", expression, false);
+                            self.replace_inner_components(persistent_id, expression, false);
                         if found {
                             export.set_declaration(
                                 self.ast,
@@ -201,9 +202,11 @@ impl<'ast> ReactRefresh<'_, 'ast> {
             DeclData::Function(function) => {
                 let id = function.id(self.ast)?;
                 let name = self.ast.get_utf8(id.name(self.ast));
-                let persistent_id = self.component_id(name);
-                is_componentish_name(name)
-                    .then(|| self.registration_assignment(id.name(self.ast), &persistent_id))
+                if !is_componentish_name(name) {
+                    return None;
+                }
+                let persistent_id = self.component_id(id.name(self.ast));
+                Some(self.registration_assignment(id.name(self.ast), persistent_id))
             }
             DeclData::VariableDeclaration(variable) => self.process_variable(variable),
             DeclData::TsModuleDeclaration(module) => {
@@ -221,7 +224,7 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         let Some(name) = self.namespace_name(module) else {
             return;
         };
-        let prefix = self.component_id(&name);
+        let prefix = self.component_id(name);
         let Some(body) = module.body(self.ast) else {
             return;
         };
@@ -274,13 +277,12 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         }
     }
 
-    fn namespace_name(&self, module: TsModuleDeclaration) -> Option<Cow<'ast, str>> {
+    fn namespace_name(&mut self, module: TsModuleDeclaration) -> Option<AstUtf8> {
         match self.ast.ts_module_name_data(module.id(self.ast)) {
-            TsModuleNameData::BindingIdentifier(binding) => {
-                Some(Cow::Borrowed(self.ast.get_utf8(binding.name(self.ast))))
-            }
+            TsModuleNameData::BindingIdentifier(binding) => Some(binding.name(self.ast)),
             TsModuleNameData::TsQualifiedName(qualified) => {
-                self.qualified_namespace_name(qualified).map(Cow::Owned)
+                let name = self.qualified_namespace_name(qualified)?;
+                Some(self.ast.add_utf8(&name))
             }
             TsModuleNameData::StringLiteral(_) => None,
         }
@@ -307,10 +309,14 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         Some(name)
     }
 
-    fn component_id(&self, name: &str) -> String {
-        self.persistent_prefix
-            .as_ref()
-            .map_or_else(|| name.to_owned(), |prefix| format!("{prefix}${name}"))
+    fn component_id(&mut self, name: AstUtf8) -> AstUtf8 {
+        let Some(prefix) = self.persistent_prefix else {
+            return name;
+        };
+        let prefix = self.ast.get_utf8(prefix);
+        let name = self.ast.get_utf8(name);
+        let persistent_id = format!("{prefix}${name}");
+        self.ast.add_utf8(&persistent_id)
     }
 
     fn process_variable(&mut self, declaration: VariableDeclaration) -> Option<Stmt> {
@@ -350,20 +356,20 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         if !likely_component && !used_component_factory {
             return None;
         }
-        let persistent_id = self.component_id(name);
-        let (replacement, found) = self.replace_inner_components(&persistent_id, init, true);
+        let persistent_id = self.component_id(binding.name(self.ast));
+        let (replacement, found) = self.replace_inner_components(persistent_id, init, true);
         if !found && !used_component_factory {
             return None;
         }
         if replacement != init {
             declarator.set_init(self.ast, Some(replacement));
         }
-        Some(self.registration_assignment(binding.name(self.ast), &persistent_id))
+        Some(self.registration_assignment(binding.name(self.ast), persistent_id))
     }
 
     fn replace_inner_components(
         &mut self,
-        inferred_name: &str,
+        inferred_name: AstUtf8,
         expression: Expr,
         is_variable_declarator: bool,
     ) -> (Expr, bool) {
@@ -397,8 +403,10 @@ impl<'ast> ReactRefresh<'_, 'ast> {
                 let callee = self
                     .ast
                     .get_utf8(self.ast.source_slice(callee_span.start, callee_span.end));
-                let nested_name = format!("{inferred_name}${callee}");
-                let (first, found) = self.replace_inner_components(&nested_name, first, false);
+                let inferred_name_text = self.ast.get_utf8(inferred_name);
+                let nested_name = format!("{inferred_name_text}${callee}");
+                let nested_name = self.ast.add_utf8(&nested_name);
+                let (first, found) = self.replace_inner_components(nested_name, first, false);
                 if !found {
                     return (expression, false);
                 }
@@ -414,7 +422,7 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         }
     }
 
-    fn wrap_registration(&mut self, expression: Expr, persistent_id: &str) -> Expr {
+    fn wrap_registration(&mut self, expression: Expr, persistent_id: AstUtf8) -> Expr {
         let binding = self.create_registration(persistent_id);
         let left = self
             .ast
@@ -427,7 +435,7 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         )
     }
 
-    fn registration_assignment(&mut self, name: AstUtf8, persistent_id: &str) -> Stmt {
+    fn registration_assignment(&mut self, name: AstUtf8, persistent_id: AstUtf8) -> Stmt {
         let binding = self.create_registration(persistent_id);
         let left = self
             .ast
@@ -442,11 +450,11 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         Stmt::ExpressionStatement(self.ast.expression_statement(DUMMY_SP, assignment))
     }
 
-    fn create_registration(&mut self, persistent_id: &str) -> AstUtf8 {
+    fn create_registration(&mut self, persistent_id: AstUtf8) -> AstUtf8 {
         let binding = self.uid.fresh("_c", self.ast);
         self.registrations.push(Registration {
             binding,
-            persistent_id: persistent_id.to_owned(),
+            persistent_id,
         });
         binding
     }
@@ -471,13 +479,12 @@ impl<'ast> ReactRefresh<'_, 'ast> {
                 .variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false);
         body.push(Stmt::Declaration(Decl::VariableDeclaration(declaration)));
 
-        for index in 0..self.registrations.len() {
-            let registration = &self.registrations[index];
+        for registration in &self.registrations {
             let callee = qualified_name_expression(self.ast, &self.options.refresh_reg);
             let binding = self
                 .ast
                 .expr_identifier_reference(DUMMY_SP, registration.binding);
-            let persistent_id = self.ast.add_utf8(&registration.persistent_id);
+            let persistent_id = registration.persistent_id;
             let persistent_id =
                 self.ast
                     .expr_string_literal(DUMMY_SP, persistent_id.into(), AstUtf8::EMPTY);
