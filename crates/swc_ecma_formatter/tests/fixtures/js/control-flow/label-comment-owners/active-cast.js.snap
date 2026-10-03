@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer:
+/** @type {number} */ (a+b);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+outer:
+  /** @type {number} */ (a + b);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer:
+  /** @type {number} */ (
+    a + b
+  );
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+outer:
+  /** @type {number} */ (
+    a + b
+  )

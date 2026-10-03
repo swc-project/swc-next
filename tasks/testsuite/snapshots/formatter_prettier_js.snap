@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 545/1070 (50.93%)
-Snapshot matched: 545/1070
-AST parity: 577/577
-AST mismatched: 0/577
+Passed: 560/1070 (52.34%)
+Snapshot matched: 560/1070
+AST parity: 593/593
+AST mismatched: 0/593
 AST format errors: 0/1070
-Mismatched: 32/1070
-Format errors: 492/1070
+Mismatched: 33/1070
+Format errors: 476/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
 Ignored files: 298
@@ -107,7 +107,6 @@ Unsupported option sets: 19
 - js/comments/try.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/variable-declarator.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/while-like/switch.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/comments/while-like/while.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments/while-like/with.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/conditional/new-ternary-examples.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/conditional/new-ternary-spec.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -215,8 +214,7 @@ Unsupported option sets: 19
 - js/identifier/for-of/await.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/identifier/for-of/let.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/identifier/parentheses/let.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/if/condition-break/boolean-expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/if/condition-break/unary-expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/if/condition-break/boolean-expression.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/if/issue-15168.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/if/non-block.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/import-assertions/bracket-spacing/dynamic-import.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -259,9 +257,7 @@ Unsupported option sets: 19
 - js/import/long-module-name/import-source.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/import/multiple_standalones.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/import/same-local-and-imported.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/label/block-statement-and-regexp.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/label/comment.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/label/empty_label.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/last-argument-expansion/arrow.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/last-argument-expansion/break-parent.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/last-argument-expansion/edge_case.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -279,15 +275,12 @@ Unsupported option sets: 19
 - js/module-string-names/module-string-names-import.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/new-expression/new-expression.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/new-expression/parentheses.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/no-semi/do-while-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/for-in-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/for-of-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/for-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/imports.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/issue2006.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/no-semi/labeled-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/no-semi.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/no-semi/while-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/no-semi/with-statement.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/object-prop-break-in/test.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/object-property-ignore/issue-5678.js: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
@@ -303,8 +296,6 @@ Unsupported option sets: 19
 - js/sequence-expression/export-default.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized-trailing-comment-unstable.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/sequence-expression/parenthesized.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sloppy-mode/function-declaration-in-while.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sloppy-mode/labeled-function-declaration.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/strings/escaped.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/switch/comments.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/switch/comments2.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -312,7 +303,6 @@ Unsupported option sets: 19
 - js/switch/empty_statement.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/switch/empty_switch.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/switch/switch.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/tab-width/class.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/template-align/indent.js: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/template-literals/binary-exporessions.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/template-literals/conditional-expressions.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -349,7 +339,6 @@ Unsupported option sets: 19
 - js/try/try.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/unicode/nbsp-jsx.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/variable_declarator/multiple.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/while/indent.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/with/indent.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/yield/jsx-without-parenthesis.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/yield/jsx.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

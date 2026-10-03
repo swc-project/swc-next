@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while (ready) continue // body tail
+;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+while (ready)
+  continue; // body tail
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+while (ready) continue; // body tail
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+while (ready) continue // body tail

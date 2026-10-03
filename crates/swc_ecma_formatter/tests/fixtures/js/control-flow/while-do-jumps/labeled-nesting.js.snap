@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer: inner: while (test()) {continue outer;}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+outer: inner: while (test()) {
+  continue outer;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer: inner: while (
+  test()
+) {
+  continue outer;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+outer: inner: while (test()) {
+  continue outer
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+outer: inner: while (
+  test()
+) {
+  continue outer
+}
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+outer: inner: while (
+	test()
+) {
+	continue outer;
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+outer: inner: while (test()) {
+  continue outer;
+}
