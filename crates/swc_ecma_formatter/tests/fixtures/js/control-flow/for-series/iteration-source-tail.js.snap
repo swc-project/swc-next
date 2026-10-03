@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (value of ([1, 2] // tail
+)) { break; }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (value of [1, 2] // tail
+) {
+  break;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (value of [1, 2] // tail
+) {
+  break;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (value of [1, 2] // tail
+) {
+  break
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (value of [1, 2] // tail
+) {
+  break
+}

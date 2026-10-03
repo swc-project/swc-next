@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for ({key:target[key],other=1+2,...rest} in object) {use(key);}
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for ({
+  key: target[key],
+  other = 1 + 2,
+  ...rest
+} in object) {
+  use(key);
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for ({ key: target[key], other = 1 + 2, ...rest } in object) {
+  use(key);
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for ({
+  key: target[key],
+  other = 1 + 2,
+  ...rest
+} in object) {
+  use(key)
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for ({ key: target[key], other = 1 + 2, ...rest } in object) {
+  use(key)
+}

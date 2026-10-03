@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object[// prettier-ignore
+key];
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+object[// prettier-ignore
+  key
+];
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+object[// prettier-ignore
+  key
+];
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+object[// prettier-ignore
+  key
+]
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+object[// prettier-ignore
+  key
+]

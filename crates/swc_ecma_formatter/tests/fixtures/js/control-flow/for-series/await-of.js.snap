@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f(){for await(const value of values){await use(value);}}
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+async function f() {
+  for await (const value of values) {
+    await use(
+      value,
+    );
+  }
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+async function f() {
+  for await (const value of values) {
+    await use(value);
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  for await (const value of values) {
+    await use(value)
+  }
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+async function f() {
+  for await (const value of values) {
+    await use(value)
+  }
+}

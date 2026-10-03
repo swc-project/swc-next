@@ -1,0 +1,1 @@
+for (initialize; condition;) {work();}

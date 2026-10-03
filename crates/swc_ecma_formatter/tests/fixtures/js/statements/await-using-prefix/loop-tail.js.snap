@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { for (await /* head */ using resource = acquire(); /* middle */; /* tail */) release(); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  for (await using /* head */ resource = acquire() /* middle */ /* tail */; ;)
+    release();
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  for (
+    await using /* head */ resource =
+        acquire() /* middle */ /* tail */;
+    ;
+  )
+    release();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  for (
+    await using /* head */ resource =
+        acquire() /* middle */ /* tail */;
+    ;
+  )
+    release()
+}

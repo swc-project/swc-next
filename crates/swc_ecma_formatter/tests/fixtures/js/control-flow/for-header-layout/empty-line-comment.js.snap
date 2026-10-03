@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (initialize; // test
+; advance()) {work();}
+---------- Options ----------
+{"printWidth":25}
+---------- Output ----------
+for (
+  initialize; // test
+  ;
+  advance()
+) {
+  work();
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+for (
+  initialize; // test
+  ;
+  advance()
+) {
+  work();
+}
+
+---------- Options ----------
+{"printWidth":25,"semi":false}
+---------- Output ----------
+for (
+  initialize; // test
+  ;
+  advance()
+) {
+  work()
+}

@@ -1,0 +1,66 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer: while (test()) {break outer
+// prettier-ignore
+;}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+outer: while (test()) {
+  break outer
+  // prettier-ignore
+  ;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer: while (
+  test()
+) {
+  break outer
+  // prettier-ignore
+  ;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+outer: while (test()) {
+  break outer
+  // prettier-ignore
+  ;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+outer: while (
+  test()
+) {
+  break outer
+  // prettier-ignore
+  ;
+}
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+outer: while (
+	test()
+) {
+	break outer
+	// prettier-ignore
+	;
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+outer: while (test()) {
+  break outer
+  // prettier-ignore
+  ;
+}
