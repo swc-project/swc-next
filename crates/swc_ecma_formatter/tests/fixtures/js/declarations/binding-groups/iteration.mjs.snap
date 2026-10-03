@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for ({ alpha, beta: renamed, gamma } of configurations) {}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+for ({
+  alpha,
+  beta: renamed,
+  gamma,
+} of configurations) {
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+for ({ alpha, beta: renamed, gamma } of configurations) {
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+for ({
+  alpha,
+  beta: renamed,
+  gamma
+} of configurations) {
+}

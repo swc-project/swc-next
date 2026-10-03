@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (initialize(); /* prettier-ignore */; /* tail */) consume();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+for (initialize(); /* prettier-ignore */; /* tail */) consume();
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+for (
+  initialize(); /* prettier-ignore */; /* tail */)
+  consume();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  initialize(); /* prettier-ignore */; /* tail */)
+  consume()

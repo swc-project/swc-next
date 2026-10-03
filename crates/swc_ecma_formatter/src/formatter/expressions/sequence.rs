@@ -56,7 +56,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
     ) -> Option<SourceParentheses> {
         if context.content_mode != ContentMode::Formatted
-            || !matches!(context.position, ExpressionPosition::SequenceMember)
+            || !matches!(
+                context.position,
+                ExpressionPosition::SequenceMember | ExpressionPosition::ForSequenceMember
+            )
         {
             return None;
         }
@@ -106,7 +109,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(first) = expressions.next() else {
             return Err(self.unsupported("empty sequence expression", sequence));
         };
-        let item_position = ExpressionPosition::SequenceMember;
+        let item_position = if matches!(
+            context.position,
+            ExpressionPosition::ForInitializer {
+                grammar: super::ForInitializerGrammar::Expression,
+                ..
+            } | ExpressionPosition::ForHead
+        ) {
+            ExpressionPosition::ForSequenceMember
+        } else {
+            ExpressionPosition::SequenceMember
+        };
         let first_content = self.expression_content(first);
         let first_start = if self.sequence_member_pair_is_enclosed(&first_content, item_position) {
             first.span(ast).start
@@ -247,7 +260,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_sequence_trailing(&mut following, tail, writer)?;
                     boundary = following;
                 };
-                if matches!(context.position, ExpressionPosition::Statement) {
+                if matches!(
+                    context.position,
+                    ExpressionPosition::Statement
+                        | ExpressionPosition::ForHead
+                        | ExpressionPosition::ForInitializer {
+                            grammar: super::ForInitializerGrammar::Expression,
+                            ..
+                        }
+                ) {
                     writer.indent(write_rest)
                 } else {
                     write_rest(writer)
