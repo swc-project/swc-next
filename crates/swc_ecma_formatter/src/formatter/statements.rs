@@ -33,6 +33,11 @@ pub(super) enum StatementSequenceKind<'ast> {
         leading: StatementBodyLeading<'ast>,
     },
     Static(Option<IncomingStatement>),
+    Case {
+        leading: StatementBodyLeading<'ast>,
+        incoming: Option<CaseIncoming>,
+        terminator: Option<StatementSourceTerminator>,
+    },
 }
 
 /// A claimed ordinary packet transferred to its actual statement body.
@@ -79,6 +84,15 @@ impl<'ast> StatementBodyLeading<'ast> {
 pub(super) struct IncomingStatement {
     pub(super) span: Span,
     pub(super) mode: ContentMode,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum CaseIncoming {
+    Statement(IncomingStatement),
+    Block {
+        block: BlockStatement,
+        incoming: IncomingStatement,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -291,11 +305,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StatementSequenceKind::Block { incoming, .. }
             | StatementSequenceKind::Function { incoming, .. }
             | StatementSequenceKind::Static(incoming) => incoming,
+            StatementSequenceKind::Case {
+                incoming: Some(CaseIncoming::Statement(incoming)),
+                ..
+            } => Some(incoming),
             _ => None,
         };
         let mut body_leading = match kind {
             StatementSequenceKind::Block { leading, .. }
-            | StatementSequenceKind::Function { leading, .. } => leading,
+            | StatementSequenceKind::Function { leading, .. }
+            | StatementSequenceKind::Case { leading, .. } => leading,
             _ => StatementBodyLeading::empty(),
         };
         let mut previous = previous_end.map(|end| StatementBoundary::SourceEnd {
@@ -385,7 +404,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source_packet = suppression_tail
                 .as_ref()
                 .and_then(|tail| tail.source_packet);
-            let punctuation = if source_packet.is_some() {
+            let punctuation = if let StatementSequenceKind::Case {
+                terminator: Some(terminator),
+                ..
+            } = kind
+                && following.is_none()
+            {
+                StatementPunctuation::Source(terminator)
+            } else if source_packet.is_some() {
                 StatementPunctuation::SourcePacket
             } else {
                 match source_terminator {
@@ -495,27 +521,71 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.finish_statement(expression.span(ast).end, None, punctuation, writer)?
                 }
                 StatementItem::Statement(statement) => {
-                    let content = if mode == ContentMode::Verbatim {
-                        let content = suppression_tail.as_ref().map_or_else(
-                            || self.statement_content(StatementItem::Statement(statement)),
-                            |tail| tail.content,
-                        );
-                        StatementMode::Verbatim(content)
-                    } else {
-                        StatementMode::Formatted
+                    let case_block = match (kind, ast.stmt_data(statement)) {
+                        (
+                            StatementSequenceKind::Case { incoming, .. },
+                            StmtData::BlockStatement(block),
+                        ) if first_statement && mode == ContentMode::Formatted => {
+                            let incoming = match incoming {
+                                Some(CaseIncoming::Block {
+                                    block: target,
+                                    incoming,
+                                }) if target == block => Some(incoming),
+                                _ => None,
+                            };
+                            if incoming.is_some() || !body_leading.comments().is_empty() {
+                                Some((block, incoming))
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
                     };
-                    self.format_prepared_statement(
-                        statement,
-                        statement_span,
-                        StatementLayout {
-                            start: expression_start,
-                            empty_block: EmptyBlock::Expanded,
-                        },
-                        content,
-                        head,
-                        punctuation,
-                        writer,
-                    )?
+                    if let Some((block, incoming)) = case_block {
+                        self.format_node_head(head, expression_start, None, writer)?;
+                        // The case has already claimed this packet; the actual
+                        // braced body consumes it at its typed statement target.
+                        self.format_braced_body(
+                            BodySource::Block {
+                                node: block,
+                                incoming,
+                                leading: std::mem::replace(
+                                    &mut body_leading,
+                                    StatementBodyLeading::empty(),
+                                ),
+                                empty: EmptyBlock::Expanded,
+                            },
+                            mode,
+                            writer,
+                        )?;
+                        StatementBoundary::SourceEnd {
+                            end: block.span(ast).end,
+                            has_terminator: false,
+                        }
+                        .into()
+                    } else {
+                        let content = if mode == ContentMode::Verbatim {
+                            let content = suppression_tail.as_ref().map_or_else(
+                                || self.statement_content(StatementItem::Statement(statement)),
+                                |tail| tail.content,
+                            );
+                            StatementMode::Verbatim(content)
+                        } else {
+                            StatementMode::Formatted
+                        };
+                        self.format_prepared_statement(
+                            statement,
+                            statement_span,
+                            StatementLayout {
+                                start: expression_start,
+                                empty_block: EmptyBlock::Expanded,
+                            },
+                            content,
+                            head,
+                            punctuation,
+                            writer,
+                        )?
+                    }
                 }
             };
             let (mut boundary, pending_tail) =
@@ -596,7 +666,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) => CommentRunLayout::CanonicalDangling,
             (
                 None,
-                StatementSequenceKind::Program {
+                StatementSequenceKind::Case { .. }
+                | StatementSequenceKind::Program {
                     has_source_items: true,
                 },
             ) => CommentRunLayout::Lines,
@@ -978,6 +1049,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StmtData::IfStatement(node) if mode == ContentMode::Formatted => {
                 self.format_if_statement(node, punctuation, writer)
             }
+            StmtData::WithStatement(node) if mode == ContentMode::Formatted => {
+                self.format_with_statement(node, punctuation, writer)
+            }
+            StmtData::SwitchStatement(node) if mode == ContentMode::Formatted => {
+                Ok(self.format_switch_statement(node, writer)?.into())
+            }
+            StmtData::TryStatement(node) if mode == ContentMode::Formatted => {
+                Ok(self.format_try_statement(node, writer)?.into())
+            }
             StmtData::BlockStatement(block) => {
                 if mode == ContentMode::Verbatim {
                     self.format_verbatim(block.span(self.ast), writer)?;
@@ -1003,6 +1083,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | StmtData::ForStatement(_)
                         | StmtData::ForInStatement(_)
                         | StmtData::ForOfStatement(_)
+                        | StmtData::WithStatement(_)
+                        | StmtData::SwitchStatement(_)
+                        | StmtData::TryStatement(_)
                         | StmtData::WhileStatement(_)
                         | StmtData::DoWhileStatement(_)
                         | StmtData::LabeledStatement(_)

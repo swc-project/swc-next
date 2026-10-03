@@ -168,6 +168,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_binding_with_group(pattern, BindingGroup::Auto, mode, writer)
     }
 
+    pub(super) fn format_catch_binding(
+        &mut self,
+        pattern: BindingPattern,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_binding_with_group(pattern, BindingGroup::Auto, mode, writer)
+    }
+
     pub(super) fn parameter_binding(&self, pattern: FormalParameterPattern) -> BindingPattern {
         match self.ast.formal_parameter_pattern_data(pattern) {
             FormalParameterPatternData::BindingIdentifier(node) => {
