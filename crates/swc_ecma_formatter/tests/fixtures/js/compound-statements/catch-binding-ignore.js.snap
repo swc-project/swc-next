@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try {} catch ({ p : x = 1+2, ...rest } /* prettier-ignore */) {f(x);}
+---------- Options ----------
+{}
+---------- Output ----------
+try {
+} catch ({ p : x = 1+2, ...rest } /* prettier-ignore */) {
+  f(x);
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+try {
+} catch ({ p : x = 1+2, ...rest } /* prettier-ignore */) {
+  f(x)
+}
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+try {
+} catch ({ p : x = 1+2, ...rest } /* prettier-ignore */) {
+	f(x);
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+try {
+} catch ({ p : x = 1+2, ...rest } /* prettier-ignore */) {
+  f(
+    x,
+  )
+}
