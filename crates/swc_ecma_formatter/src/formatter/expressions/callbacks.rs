@@ -572,6 +572,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::RegExpLiteral(literal) => {
                     return crate::text_width::width(ast.get_utf8(literal.pattern(ast))) <= 5;
                 }
+                ExprData::ImportExpression(import) => {
+                    let options = import.options(ast);
+                    if options.is_some() && depth < 2
+                        || !self.simple_callback_neighbor(import.source(ast), child_depth)
+                    {
+                        return false;
+                    }
+                    return options
+                        .is_none_or(|options| self.simple_callback_neighbor(options, child_depth));
+                }
                 ExprData::ChainExpression(chain) => chain.expression(ast),
                 ExprData::UnaryExpression(unary)
                     if matches!(
