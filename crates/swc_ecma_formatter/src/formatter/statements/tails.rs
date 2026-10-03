@@ -1,6 +1,6 @@
 //! Statement-owned suppression tails and their actual following relation.
 
-use swc_next_ecma_ast::{Comment, DeclData, GetSpan, Span, StmtData};
+use swc_next_ecma_ast::{Comment, Decl, DeclData, GetSpan, Span, StmtData};
 
 use super::{Formatter, StatementItem, StatementSourceTerminator};
 use crate::formatter::diagnostics::LineConstraint;
@@ -253,14 +253,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return Semicolon(node.argument(self.ast).span(self.ast).end);
                 }
                 StmtData::Declaration(declaration) => {
-                    let DeclData::VariableDeclaration(variable) = self.ast.decl_data(declaration)
-                    else {
-                        return Complete(declaration.span(self.ast).end);
+                    return self.declaration_content(declaration);
+                }
+                StmtData::ImportDeclaration(node) => {
+                    return Semicolon(self.module_source_content_end(
+                        node.source(self.ast),
+                        node.attributes(self.ast),
+                        node.span(self.ast).end,
+                    ));
+                }
+                StmtData::ExportAllDeclaration(node) => {
+                    return Semicolon(self.module_source_content_end(
+                        node.source(self.ast),
+                        node.attributes(self.ast),
+                        node.span(self.ast).end,
+                    ));
+                }
+                StmtData::ExportNamedDeclaration(node) => {
+                    return node.declaration(self.ast).map_or_else(
+                        || Semicolon(self.module_named_content_end(node)),
+                        |declaration| self.declaration_content(declaration),
+                    );
+                }
+                StmtData::ExportDefaultDeclaration(node) => {
+                    let declaration = node.declaration(self.ast);
+                    return match self.ast.export_default_declaration_kind_data(declaration) {
+                        swc_next_ecma_ast::ExportDefaultDeclarationKindData::Expr(expression) => {
+                            Semicolon(expression.span(self.ast).end)
+                        }
+                        _ => Complete(declaration.span(self.ast).end),
                     };
-                    let Some(last) = variable.declarators(self.ast).last() else {
-                        return Complete(variable.span(self.ast).end);
-                    };
-                    return Semicolon(self.ast.get_node_in_sub_range(last).span(self.ast).end);
                 }
                 StmtData::DebuggerStatement(node) => {
                     return Semicolon(node.span(self.ast).start + "debugger".len() as u32);
@@ -268,6 +290,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => return Complete(statement.span(self.ast).end),
             }
         }
+    }
+
+    pub(super) fn declaration_content_end(&self, declaration: Decl) -> u32 {
+        self.declaration_content(declaration).end()
+    }
+
+    fn declaration_content(&self, declaration: Decl) -> StatementContent {
+        use StatementContent::{Complete, Semicolon};
+
+        let DeclData::VariableDeclaration(variable) = self.ast.decl_data(declaration) else {
+            return Complete(declaration.span(self.ast).end);
+        };
+        let Some(last) = variable.declarators(self.ast).last() else {
+            return Complete(variable.span(self.ast).end);
+        };
+        Semicolon(self.ast.get_node_in_sub_range(last).span(self.ast).end)
     }
 
     pub(in crate::formatter) fn statement_source_terminator(

@@ -1,13 +1,14 @@
 //! Basic statement bodies and their enclosing source boundaries.
 
 mod control_flow;
+mod modules;
 mod tails;
 
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 
 use swc_next_ecma_ast::{
-    Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, FunctionBody,
-    GetSpan, Span, StaticBlock, Stmt, StmtData, SubRange,
+    Ast, BlockStatement, Comment, CommentKind, Directive, EmptyStatement, FunctionBody, GetSpan,
+    Span, StaticBlock, Stmt, StmtData, SubRange,
 };
 
 use super::Formatter;
@@ -986,29 +987,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.finish_statement(argument.span(self.ast).end, tail, punctuation, writer)
             }
             StmtData::Declaration(declaration) if mode == ContentMode::Formatted => {
-                match self.ast.decl_data(declaration) {
-                    DeclData::Function(function) => {
-                        self.format_function(function, writer)?;
-                        Ok(StatementBoundary::SourceEnd {
-                            end: function.span(self.ast).end,
-                            has_terminator: false,
-                        }
-                        .into())
-                    }
-                    DeclData::Class(class) => {
-                        self.format_class(class, ExpressionPosition::Statement, writer)?;
-                        Ok(StatementBoundary::SourceEnd {
-                            end: class.span(self.ast).end,
-                            has_terminator: false,
-                        }
-                        .into())
-                    }
-                    DeclData::VariableDeclaration(variable) => {
-                        let (end, tail) = self.format_variable_declaration(variable, writer)?;
-                        self.finish_statement(end, tail, punctuation, writer)
-                    }
-                    _ => Err(self.unsupported("declaration", declaration)),
-                }
+                self.format_declaration(declaration, mode, punctuation, writer)
+            }
+            StmtData::ImportDeclaration(node) if mode == ContentMode::Formatted => {
+                self.format_import_declaration(node, punctuation, writer)
+            }
+            StmtData::ExportNamedDeclaration(node) if mode == ContentMode::Formatted => {
+                self.format_export_named(node, punctuation, writer)
+            }
+            StmtData::ExportAllDeclaration(node) if mode == ContentMode::Formatted => {
+                self.format_export_all(node, punctuation, writer)
+            }
+            StmtData::ExportDefaultDeclaration(node) if mode == ContentMode::Formatted => {
+                self.format_export_default(node, punctuation, writer)
             }
             StmtData::BreakStatement(node) if mode == ContentMode::Formatted => self
                 .format_jump_statement(
@@ -1079,6 +1070,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     StmtData::ReturnStatement(_)
                         | StmtData::ThrowStatement(_)
                         | StmtData::Declaration(_)
+                        | StmtData::ImportDeclaration(_)
+                        | StmtData::ExportNamedDeclaration(_)
+                        | StmtData::ExportAllDeclaration(_)
+                        | StmtData::ExportDefaultDeclaration(_)
                         | StmtData::IfStatement(_)
                         | StmtData::ForStatement(_)
                         | StmtData::ForInStatement(_)

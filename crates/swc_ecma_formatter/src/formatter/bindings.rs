@@ -615,6 +615,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_operator_right(
+            left_end,
+            right,
+            layout,
+            context,
+            FlatSeparator::Space,
+            writer,
+        )
+    }
+
+    pub(super) fn format_operator_right(
+        &mut self,
+        left_end: u32,
+        right: Expr,
+        layout: InitializerLayout<'ast>,
+        context: ExpressionContext,
+        before_operator: FlatSeparator,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (boundary, rhs_layout) = match layout {
             InitializerLayout::Bound { gap, right_mode } => {
                 self.format_verbatim(gap, writer)?;
@@ -637,7 +656,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         boundary
             .before_operator
-            .write(writer, FlatSeparator::Space, Writer::space);
+            .write(writer, before_operator, |writer| {
+                if matches!(before_operator, FlatSeparator::Space) {
+                    writer.space();
+                }
+            });
         writer.text(self.source(boundary.operator_span));
         self.comments.claim(boundary.operator_line)?;
         self.format_comment_run(
