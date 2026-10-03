@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try // prettier-ignore
+{f( 1 ); g(2);} catch {h();}
+---------- Options ----------
+{}
+---------- Output ----------
+try // prettier-ignore
+{
+  f( 1 );
+  g(2);
+} catch {
+  h();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+try // prettier-ignore
+{
+  f( 1 )
+  g(2)
+} catch {
+  h()
+}
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+try // prettier-ignore
+{
+	f( 1 );
+	g(2);
+} catch {
+	h();
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+try // prettier-ignore
+{
+  f( 1 )
+  g(
+    2,
+  )
+} catch {
+  h()
+}

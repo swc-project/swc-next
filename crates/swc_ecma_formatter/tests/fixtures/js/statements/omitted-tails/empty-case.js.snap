@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (value) {
+  case 0: ; /* first */
+  ; /* second */
+
+  case 1: next();
+}
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+switch (value) {
+  case 0: /* first */ /* second */
+
+  case 1:
+    next();
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+switch (value) {
+  case 0: /* first */ /* second */
+
+  case 1:
+    next()
+}
