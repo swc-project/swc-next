@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import data from "data" with { type:
+  /* format */
+  "json" };
+---------- Options ----------
+{}
+---------- Output ----------
+import data from "data" with {
+  type:
+    /* format */
+    "json",
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+import data from "data" with {
+  type:
+    /* format */
+    "json",
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+import data from "data" with {
+  type:
+    /* format */
+    "json",
+}

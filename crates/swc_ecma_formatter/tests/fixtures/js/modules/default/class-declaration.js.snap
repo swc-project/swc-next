@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default class Box {value=1+2;}
+---------- Options ----------
+{}
+---------- Output ----------
+export default class Box {
+  value = 1 + 2;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export default class Box {
+  value = 1 + 2;
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export default class Box {
+  value = 1 + 2
+}
