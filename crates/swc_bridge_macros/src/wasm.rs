@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{FnArg, ItemFn, LitStr, Pat, Type, parse_quote};
+use syn::{FnArg, ItemFn, LitStr, Pat, Safety, Type, parse_quote};
 
 use crate::{is_byte_slice, result_value_type, return_type};
 
@@ -74,8 +74,7 @@ pub(super) fn expand_function(function: &ItemFn) -> syn::Result<TokenStream> {
         &format!("__swc_{}", ident.to_string().trim_start_matches("r#")),
         ident.span(),
     );
-    let unsafety = &function.sig.unsafety;
-    let call = if unsafety.is_some() {
+    let call = if matches!(function.sig.safety, Safety::Unsafe(_)) {
         quote!(unsafe { #ident(#(#call_arguments),*) })
     } else {
         quote!(#ident(#(#call_arguments),*))

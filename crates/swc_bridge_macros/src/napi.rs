@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{FnArg, ItemFn, Meta, Pat};
+use syn::{FnArg, ItemFn, Meta, Pat, Safety};
 
 use crate::{is_byte_slice, napi_function_meta, result_value_type, return_type};
 
@@ -57,10 +57,9 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
 
     let attributes = &function.attrs;
     let visibility = &function.vis;
-    let unsafety = &function.sig.unsafety;
     let ident = &function.sig.ident;
     let native_adapter = format_ident!("__swc_bridge_napi_{ident}");
-    let call = if unsafety.is_some() {
+    let call = if matches!(function.sig.safety, Safety::Unsafe(_)) {
         quote!(unsafe { #ident(#(#call_arguments),*) })
     } else {
         quote!(#ident(#(#call_arguments),*))

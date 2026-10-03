@@ -173,7 +173,7 @@ fn describe_wire_mapping(
             "#[bridge] wire impls cannot be generic",
         ));
     }
-    let Some((_, trait_path, _)) = &implementation.trait_ else {
+    let Some((trait_path, _)) = &implementation.trait_ else {
         return Err(syn::Error::new_spanned(
             implementation,
             "#[bridge] on an impl requires BridgeDecode or BridgeEncode",
