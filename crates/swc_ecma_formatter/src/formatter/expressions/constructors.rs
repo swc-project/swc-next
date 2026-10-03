@@ -84,7 +84,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn new_callee_contains_call(&self, mut data: ExprData, mode: ContentMode) -> bool {
         loop {
             match data {
-                ExprData::CallExpression(_) => return true,
+                ExprData::CallExpression(_) | ExprData::ImportExpression(_) => return true,
                 ExprData::MemberExpression(member) => {
                     let object = member.object(self.ast);
                     data = if mode == ContentMode::Formatted {

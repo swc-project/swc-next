@@ -236,7 +236,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
         )
     }
-    fn prepare_call_argument_item(
+    pub(super) fn prepare_call_argument_item(
         &mut self,
         item_span: Span,
         following: FollowingItem,
