@@ -267,8 +267,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         };
+        let left = if matches!(layout, AssignmentLayout::Ordinary(RhsLayout::Fluid))
+            && boundary.mode == ContentMode::Formatted
+            && matches!(data, ExprData::Class(class) if class.decorators(self.ast).is_empty())
+        {
+            let (left, ()) = writer.record_with_value(|writer| write_left(self, writer))?;
+            if !left.can_break() {
+                layout = AssignmentLayout::Ordinary(RhsLayout::NeverBreakAfterOperator);
+            }
+            Some(left)
+        } else {
+            None
+        };
         let write = |writer: &mut Writer<'ast>| {
-            write_left(self, writer)?;
+            if let Some(left) = left {
+                writer.write_fragment(left);
+            } else {
+                write_left(self, writer)?;
+            }
             boundary
                 .before_operator
                 .write(writer, FlatSeparator::Space, Writer::space);

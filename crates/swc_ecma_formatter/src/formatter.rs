@@ -1,10 +1,12 @@
 //! Formatting context and the program entry point.
 
 mod bindings;
+mod classes;
 mod comments;
 mod diagnostics;
 mod expressions;
 mod functions;
+mod heritage;
 mod literals;
 mod parameters;
 mod restricted;

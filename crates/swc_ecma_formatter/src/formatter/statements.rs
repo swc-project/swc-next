@@ -7,7 +7,7 @@ use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, FunctionBody,
-    GetSpan, Span, Stmt, StmtData, SubRange,
+    GetSpan, Span, StaticBlock, Stmt, StmtData, SubRange,
 };
 
 use super::Formatter;
@@ -32,6 +32,7 @@ pub(super) enum StatementSequenceKind<'ast> {
         incoming: Option<IncomingStatement>,
         leading: StatementBodyLeading<'ast>,
     },
+    Static(Option<IncomingStatement>),
 }
 
 /// A claimed ordinary packet transferred to its actual statement body.
@@ -115,6 +116,11 @@ enum BodySource<'ast> {
         Option<IncomingStatement>,
         StatementBodyLeading<'ast>,
     ),
+    Static {
+        body: StaticBlock,
+        span: Span,
+        incoming: Option<IncomingStatement>,
+    },
 }
 
 struct StatementAnnotationTail<'ast> {
@@ -283,7 +289,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let incoming = match kind {
             StatementSequenceKind::Block { incoming, .. }
-            | StatementSequenceKind::Function { incoming, .. } => incoming,
+            | StatementSequenceKind::Function { incoming, .. }
+            | StatementSequenceKind::Static(incoming) => incoming,
             _ => None,
         };
         let mut body_leading = match kind {
@@ -583,7 +590,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let layout = match (previous, kind) {
             (
                 None,
-                StatementSequenceKind::Block { .. } | StatementSequenceKind::Function { .. },
+                StatementSequenceKind::Block { .. }
+                | StatementSequenceKind::Function { .. }
+                | StatementSequenceKind::Static(_),
             ) => CommentRunLayout::CanonicalDangling,
             (
                 None,
@@ -915,6 +924,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                         .into())
                     }
+                    DeclData::Class(class) => {
+                        self.format_class(class, ExpressionPosition::Statement, writer)?;
+                        Ok(StatementBoundary::SourceEnd {
+                            end: class.span(self.ast).end,
+                            has_terminator: false,
+                        }
+                        .into())
+                    }
                     DeclData::VariableDeclaration(variable) => {
                         let (end, tail) = self.format_variable_declaration(variable, writer)?;
                         self.finish_statement(end, tail, punctuation, writer)
@@ -1137,6 +1154,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_braced_body(BodySource::Function(body, incoming, leading), mode, writer)
     }
 
+    pub(super) fn format_static_block_body(
+        &mut self,
+        body: StaticBlock,
+        span: Span,
+        incoming: Option<IncomingStatement>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_braced_body(
+            BodySource::Static {
+                body,
+                span,
+                incoming,
+            },
+            ContentMode::Formatted,
+            writer,
+        )
+    }
+
     fn format_braced_body(
         &mut self,
         source: BodySource<'ast>,
@@ -1145,6 +1180,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         let ast = self.ast;
         let (span, directives, body, kind, empty_layout, leading) = match source {
+            BodySource::Static {
+                body,
+                span,
+                incoming,
+            } => (
+                span,
+                None,
+                body.body(ast),
+                StatementSequenceKind::Static(incoming),
+                EmptyBlock::Compact,
+                StatementBodyLeading::empty(),
+            ),
             BodySource::Block {
                 node,
                 incoming,

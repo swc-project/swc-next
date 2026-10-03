@@ -2,7 +2,10 @@
 
 use std::ops::ControlFlow;
 
-use swc_next_ecma_ast::{GetSpan, Span, VariableDeclaration, VariableDeclarator, VariableKind};
+use swc_next_ecma_ast::{
+    BindingPatternData, ExprData, GetSpan, Span, VariableDeclaration, VariableDeclarator,
+    VariableKind,
+};
 
 use super::Formatter;
 use super::bindings::{
@@ -12,6 +15,7 @@ use super::comments::{CommentBinding, ExpressionTail};
 use super::diagnostics::FlatSeparator;
 use super::expressions::ExpressionContext;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use super::expressions::assignment::RhsLayout;
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
@@ -210,7 +214,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let initializer_context =
             ExpressionContext::variable_initializer().with_variable_initializer_owner();
-        let rhs_layout = self.ordinary_rhs_layout(content.data, initializer_context, &boundary);
+        let mut rhs_layout = self.ordinary_rhs_layout(content.data, initializer_context, &boundary);
+        if matches!(rhs_layout, RhsLayout::Fluid)
+            && boundary.mode == ContentMode::Formatted
+            && left_mode == ContentMode::Formatted
+            && matches!(
+                ast.binding_pattern_data(left),
+                BindingPatternData::BindingIdentifier(_)
+            )
+            && matches!(content.data, ExprData::Class(class) if class.decorators(ast).is_empty())
+        {
+            rhs_layout = RhsLayout::NeverBreakAfterOperator;
+        }
         let (group, rhs_layout) = if left_mode == ContentMode::Formatted {
             self.binding_initializer_layout(
                 left,

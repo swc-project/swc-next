@@ -462,12 +462,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &CommentBoundary<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        self.comments.claim(boundary.comments)?;
-        self.format_comment_run(
-            boundary.comments,
+        self.format_comment_boundary_with_layout(
+            boundary,
             CommentRunLayout::SourceAfter(boundary.source_end),
             writer,
         )
+    }
+
+    pub(super) fn format_comment_boundary_with_layout(
+        &mut self,
+        boundary: &CommentBoundary<'ast>,
+        layout: CommentRunLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(boundary.comments)?;
+        self.format_comment_run(boundary.comments, layout, writer)
     }
 
     pub(super) fn source_comment_gap_is_run(&self, previous: Comment, next: Comment) -> bool {

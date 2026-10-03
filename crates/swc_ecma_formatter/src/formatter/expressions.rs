@@ -51,6 +51,7 @@ pub(super) enum ExpressionPosition {
     YieldArgument,
     AwaitArgument,
     PropertyValue,
+    Superclass,
     SpreadArgument,
     MemberObject(AccessKind),
     CallCallee {
@@ -526,7 +527,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(data, ExprData::ObjectExpression(_))
                     && (context.expression_start.is_statement()
                         || context.expression_start == ExpressionStart::ArrowBody)
-                || matches!(data, ExprData::Function(_)) && context.expression_start.is_statement())
+                || matches!(data, ExprData::Function(_) | ExprData::Class(_))
+                    && context.expression_start.is_statement())
     }
 
     /// The actual computed receiver owns the lexical pair, not its whole member.
@@ -562,6 +564,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: ExpressionPosition,
         mode: ContentMode,
     ) -> Option<bool> {
+        if matches!(position, ExpressionPosition::Superclass) {
+            let mut operand = data;
+            loop {
+                let expression = match operand {
+                    ExprData::ChainExpression(node) => node.expression(self.ast),
+                    ExprData::ParenthesizedExpression(node) if mode == ContentMode::Formatted => {
+                        node.expression(self.ast)
+                    }
+                    _ => break,
+                };
+                operand = self.ast.expr_data(expression);
+            }
+            self.expression_needs_parentheses(operand, ExpressionPosition::Nested, mode)?;
+            return Some(matches!(
+                operand,
+                ExprData::NewExpression(_)
+                    | ExprData::ArrowFunctionExpression(_)
+                    | ExprData::ObjectExpression(_)
+                    | ExprData::SequenceExpression(_)
+                    | ExprData::AssignmentExpression(_)
+                    | ExprData::ConditionalExpression(_)
+                    | ExprData::UnaryExpression(_)
+                    | ExprData::UpdateExpression(_)
+                    | ExprData::BinaryExpression(_)
+                    | ExprData::LogicalExpression(_)
+                    | ExprData::YieldExpression(_)
+                    | ExprData::AwaitExpression(_)
+            ));
+        }
         if matches!(position, ExpressionPosition::NewCallee)
             && self.new_callee_contains_call(data, mode)
         {
@@ -642,6 +673,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::NewCallee
             )),
             ExprData::MetaProperty(_) => Some(false),
+            ExprData::Class(_) => Some(matches!(
+                position,
+                ExpressionPosition::Statement | ExpressionPosition::NewCallee
+            )),
             ExprData::Function(_) => Some(matches!(
                 position,
                 ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee
@@ -725,7 +760,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 position,
                 ExpressionPosition::MemberObject(_) | ExpressionPosition::MemberAssignmentObject
             )),
-            ExprData::IdentifierReference(_)
+            ExprData::Super(_)
+            | ExprData::PrivateIdentifier(_)
+            | ExprData::IdentifierReference(_)
             | ExprData::BooleanLiteral(_)
             | ExprData::NullLiteral(_)
             | ExprData::BigIntLiteral(_)
@@ -808,6 +845,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::NumericLiteral(node) => self.format_numeric_literal(node, writer),
             ExprData::BigIntLiteral(node) => self.format_bigint_literal(node, writer),
             ExprData::RegExpLiteral(node) => self.format_regexp_literal(node, writer),
+            ExprData::Super(_) => writer.text("super"),
+            ExprData::PrivateIdentifier(identifier) => {
+                writer.text("#");
+                writer.text(self.ast.get_utf8(identifier.name(self.ast)));
+            }
+            ExprData::Class(class) => self.format_class(class, context.position, writer)?,
             ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ChainExpression(chain) => {
                 let child_context = if self
