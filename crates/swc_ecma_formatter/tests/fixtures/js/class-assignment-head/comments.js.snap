@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+registry.Implementation /* target */ = class extends runtime.namespace.BaseConstructor /* base */ {};
+---------- Options ----------
+{"printWidth":50}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+  runtime.namespace.BaseConstructor
+) /* base */ {};
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+  runtime.namespace.BaseConstructor
+) /* base */ {};
+
+---------- Options ----------
+{"printWidth":50,"semi":false}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+  runtime.namespace.BaseConstructor
+) /* base */ {}
+
+---------- Options ----------
+{"printWidth":50,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+registry.Implementation /* target */ = class extends (
+	runtime.namespace.BaseConstructor
+) /* base */ {};

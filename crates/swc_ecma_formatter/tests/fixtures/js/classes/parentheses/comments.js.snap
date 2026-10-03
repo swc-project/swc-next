@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Child extends (/* superclass */ new Base()) {}
+class Ignored extends /* prettier-ignore */ (new   Base(  )) {}
+new (/* callee */ class {})();
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+class Child
+  extends /* superclass */ (new Base()) {}
+class Ignored
+  extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})();
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+class Child
+  extends /* superclass */ (new Base()) {}
+class Ignored
+  extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})()
+
+---------- Options ----------
+{"printWidth":80,"useTabs":true}
+---------- Output ----------
+class Child extends /* superclass */ (new Base()) {}
+class Ignored extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})();
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"none"}
+---------- Output ----------
+class Child extends /* superclass */ (new Base()) {}
+class Ignored extends /* prettier-ignore */ (new   Base(  )) {}
+new /* callee */ (class {})();

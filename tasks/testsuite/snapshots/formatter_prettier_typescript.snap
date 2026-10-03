@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 11/804 (1.37%)
-Snapshot matched: 11/804
-AST parity: 11/11
-AST mismatched: 0/11
+Passed: 19/804 (2.36%)
+Snapshot matched: 19/804
+AST parity: 19/19
+AST mismatched: 0/19
 AST format errors: 0/804
 Mismatched: 0/804
-Format errors: 793/804
+Format errors: 785/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -227,7 +227,6 @@ Unsupported option sets: 7
 - typescript/conformance/ambient/ambientDeclarations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/abstract.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractAccessor.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractAsIdentifier.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractAssignabilityConstructorFunction.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractClinterfaceAssignability.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractConstructorAssignability.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -253,8 +252,6 @@ Unsupported option sets: 7
 - typescript/conformance/classes/classDeclarations/classHeritageSpecification/classExtendingClass.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classHeritageSpecification/classExtendsItselfIndirectly.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classHeritageSpecification/classIsSubtypeOfBaseType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/classes/classDeclarations/classInsideBlock.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/classes/classExpression.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/constructorDeclarations/constructorParameters/constructorDefaultValuesReferencingThis.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/constructorDeclarations/constructorParameters/constructorImplementationWithDefaultValues.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/constructorDeclarations/constructorParameters/constructorImplementationWithDefaultValues2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -298,7 +295,6 @@ Unsupported option sets: 7
 - typescript/conformance/types/functions/functionOverloadCompatibilityWithVoid02.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/functionOverloadCompatibilityWithVoid03.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/functionTypeTypeParameters.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/functions/parameterInitializersForwardReferencing.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/importEqualsDeclaration/importEqualsDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/indexedAccesType/indexedAccesType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/interfaceDeclaration/interfaceDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -375,9 +371,7 @@ Unsupported option sets: 7
 - typescript/declare/declare-var.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/object-type-in-declare-function.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/trailing-comma/function-rest-trailing-comma.ts: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
-- typescript/decorator-auto-accessors/decorator-auto-accessors-new-line.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/decorator-auto-accessors/decorator-auto-accessors-type-annotations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/decorator-auto-accessors/no-semi/decorator-auto-accessor-like-property-name.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/decorators-ts/accessor-decorator.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/decorators-ts/class-decorator.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/decorators-ts/method-decorator.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -574,8 +568,6 @@ Unsupported option sets: 7
 - typescript/satisfies-operators/ternary.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/satisfies-operators/types-comments.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/semi/no-semi.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/static-blocks/multiple.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/static-blocks/nested.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/static-blocks/static-blocks.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/symbol/symbol.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/template-literal-types/template-literal-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
