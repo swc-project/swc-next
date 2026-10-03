@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while (condition);
+
+/* ordinary prefix */
+/** @type {Function} */ (receiver)();
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+while (condition);
+
+/* ordinary prefix */
+;/** @type {Function} */ (receiver)()
+
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+while (condition);
+
+/* ordinary prefix */
+/** @type {Function} */ (receiver)();

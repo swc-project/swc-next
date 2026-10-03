@@ -1,0 +1,3 @@
+while (condition);
+
+[receiver].call();
