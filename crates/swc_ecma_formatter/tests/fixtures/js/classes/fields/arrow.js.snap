@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {f=(a)=>(b)=>({a,b});}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  f = (a) => (b) => ({ a, b });
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  f =
+    (a) => (b) => ({
+      a,
+      b,
+    });
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  f = (a) => (b) => ({ a, b })
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  f =
+    (a) => (b) => ({
+      a,
+      b,
+    })
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	f =
+		(a) => (b) => ({
+			a,
+			b,
+		});
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  f = (a) => (b) => ({ a, b })
+}

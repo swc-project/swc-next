@@ -562,6 +562,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let next = match data {
                 ExprData::IdentifierReference(_)
                 | ExprData::ThisExpression(_)
+                | ExprData::Super(_)
+                | ExprData::PrivateIdentifier(_)
                 | ExprData::StringLiteral(_)
                 | ExprData::NumericLiteral(_)
                 | ExprData::BooleanLiteral(_)
