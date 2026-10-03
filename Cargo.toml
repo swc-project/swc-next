@@ -73,8 +73,7 @@ swc_next_type_strip            = { version = "0.2.0", path = "crates/swc_type_st
 anyhow        = "1.0.104"
 clap          = { version = "4.6.7", features = ["derive"] }
 criterion     = { package = "codspeed-criterion-compat", version = "5.0.2" }
-# Keep in sync with the patched runner in .github/workflows/gungraun.yml.
-gungraun      = "=0.19.4"
+gungraun      = "0.20.0"
 jwalk         = "0.9.0"
 libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"

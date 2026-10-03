@@ -31,39 +31,11 @@ jobs:
       - name: Keep the same Rust toolchain for base and merge
         run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
 
-      - name: Install CodSpeed Valgrind
-        env:
-          VALGRIND_SHA256: ea1788e43cfd75b8af84dd496eb265307c6ab6d048cb7bc8ba4bc564dbbd5aba
-          VALGRIND_URL: >-
-            https://github.com/CodSpeedHQ/valgrind-codspeed/releases/download/3.26.0-0codspeed7/valgrind_3.26.0-0codspeed7_ubuntu-24.04_amd64.deb
+      - name: Install Valgrind
         run: |
-          package="$RUNNER_TEMP/valgrind-codspeed.deb"
-          curl --fail --location --silent --show-error \
-            "$VALGRIND_URL" --output "$package"
-          echo "$VALGRIND_SHA256  $package" | sha256sum --check -
           sudo apt-get update
-          sudo apt-get install --yes "$package"
+          sudo apt-get install --yes valgrind
           valgrind --version
-
-      # Gungraun 0.19.4 predates the CodSpeed Ct/Cl events. Keep the patched
-      # runner protocol-compatible with the 0.19.4 benchmark library.
-      - name: Install cycle-aware gungraun-runner
-        env:
-          GUNGRAUN_RUNNER_SHA256: 47c68c92812da579a2510a2cc702d5aa3251992b9662d4a98502ca46e0cbe16e
-          GUNGRAUN_RUNNER_URL: https://static.crates.io/crates/gungraun-runner/gungraun-runner-0.19.4.crate
-        run: |
-          archive="$RUNNER_TEMP/gungraun-runner-0.19.4.crate"
-          source="$RUNNER_TEMP/gungraun-runner-0.19.4"
-          curl --fail --location --silent --show-error \
-            "$GUNGRAUN_RUNNER_URL" --output "$archive"
-          echo "$GUNGRAUN_RUNNER_SHA256  $archive" | sha256sum --check -
-          mkdir "$source"
-          tar --extract --gzip --strip-components=1 \
-            --file="$archive" --directory="$source"
-          patch --batch --forward --strip=1 --directory="$source" \
-            < .github/patches/gungraun-runner-cycle-estimation.patch
-          cargo install --locked --path "$source"
-          gungraun-runner --version
 
       - name: Save base benchmark
         env:
@@ -85,10 +57,13 @@ jobs:
               tasks/benchmark/benches/gungraun.rs
           fi
 
-          cargo bench --quiet -p benchmark --bench gungraun -- \
+          runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
+          cargo install --locked --version "$runner_version" gungraun-runner
+          gungraun-runner --version
+
+          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
-            --callgrind-args=cycle-estimation=yes \
-            --callgrind-metrics=Ir,Ct \
+            --callgrind-metrics=Ir \
             --save-baseline=base
 
       - name: Compare merge benchmark
@@ -99,14 +74,17 @@ jobs:
         run: |
           git checkout --detach "$COMPARE_SHA"
 
+          runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
+          cargo install --locked --version "$runner_version" gungraun-runner
+          gungraun-runner --version
+
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
           set +e
-          cargo bench --quiet -p benchmark --bench gungraun -- \
+          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
-            --callgrind-args=cycle-estimation=yes \
-            --callgrind-metrics=Ir,Ct \
+            --callgrind-metrics=Ir \
             --save-summary=json 2>&1 | tee "$report"
           benchmark_status="${PIPESTATUS[0]}"
 
@@ -214,15 +192,14 @@ jobs:
                 rustc: $rustc_version,
                 cargo: $cargo_version,
                 gungraun_runner: $gungraun_version,
-                gungraun_runner_patch: "cycle-estimation Ct/Cl support",
                 valgrind: $valgrind_version
               },
               benchmark: {
                 package: "benchmark",
                 bench: "gungraun",
                 baseline: "base",
-                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-baseline=base",
-                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-args=cycle-estimation=yes --callgrind-metrics=Ir,Ct --save-summary=json"
+                base_command: "cargo bench --quiet --locked -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-metrics=Ir --save-baseline=base",
+                compare_command: "cargo bench --quiet --locked -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-metrics=Ir --save-summary=json"
               },
               files: {
                 data_root: "gungraun",

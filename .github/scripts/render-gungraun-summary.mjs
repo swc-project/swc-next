@@ -40,12 +40,7 @@ function benchmarkName(summary) {
   return `${groupName}::${functionName}`;
 }
 
-function integerMetricValue(metric, name, side, benchmark) {
-  if (!metric || typeof metric !== "object" || !hasOwn(metric, "Int")) {
-    throw new Error(`Missing ${side} ${name} value for ${benchmark}`);
-  }
-
-  const value = metric.Int;
+function integerMetricValue(value, name, side, benchmark) {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new Error(`Invalid ${side} ${name} value for ${benchmark}`);
   }
@@ -54,29 +49,24 @@ function integerMetricValue(metric, name, side, benchmark) {
 
 function metricComparison(metrics, event, name, benchmark) {
   const metric = metrics?.[event];
-  const values = metric?.metrics;
+  const values = metric?.values;
   if (!values || typeof values !== "object") {
     throw new Error(`Missing ${name} values for ${benchmark}`);
   }
 
-  if (hasOwn(values, "Both")) {
-    const pair = values.Both;
-    if (!Array.isArray(pair) || pair.length !== 2) {
-      throw new Error(`Invalid merge/base ${name} values for ${benchmark}`);
-    }
-
-    const mergeValue = integerMetricValue(pair[0], name, "merge", benchmark);
-    const baseValue = integerMetricValue(pair[1], name, "base", benchmark);
+  if (hasOwn(values, "new") && hasOwn(values, "old")) {
+    const mergeValue = integerMetricValue(values.new, name, "merge", benchmark);
+    const baseValue = integerMetricValue(values.old, name, "base", benchmark);
     return {
       mergeValue,
       baseValue,
       comparison: "both",
-      change: parseDiff(String(metric.diffs?.diff_pct)),
+      change: parseDiff(String(metric.change?.diff_pct)),
     };
   }
 
-  if (hasOwn(values, "Left")) {
-    const mergeValue = integerMetricValue(values.Left, name, "merge", benchmark);
+  if (hasOwn(values, "new")) {
+    const mergeValue = integerMetricValue(values.new, name, "merge", benchmark);
     return {
       mergeValue,
       baseValue: null,
@@ -85,8 +75,8 @@ function metricComparison(metrics, event, name, benchmark) {
     };
   }
 
-  if (hasOwn(values, "Right")) {
-    const baseValue = integerMetricValue(values.Right, name, "base", benchmark);
+  if (hasOwn(values, "old")) {
+    const baseValue = integerMetricValue(values.old, name, "base", benchmark);
     return {
       mergeValue: null,
       baseValue,
@@ -99,7 +89,7 @@ function metricComparison(metrics, event, name, benchmark) {
 }
 
 function summaryRows(summary) {
-  if (String(summary.version) !== "6") {
+  if (String(summary.version) !== "7") {
     throw new Error(
       `Unsupported Gungraun summary schema version: ${summary.version}`,
     );
@@ -112,7 +102,7 @@ function summaryRows(summary) {
   const callgrind = summary.profiles.find(
     (profile) => profile.tool === "Callgrind",
   );
-  const profile = callgrind?.summaries;
+  const profile = callgrind?.data;
   if (!profile || !Array.isArray(profile.parts)) {
     throw new Error(`Missing Callgrind profile for ${benchmark}`);
   }
@@ -132,22 +122,16 @@ function summaryRows(summary) {
       baseInstructions: instructions.baseValue,
       comparison: instructions.comparison,
       change: instructions.change,
-      throughputCycles: metricComparison(
-        metrics,
-        "Ct",
-        "throughput cycle estimate",
-        benchmark,
-      ),
     };
   };
-  const total = profile.total?.summary?.Callgrind;
+  const total = profile.total?.metrics;
   if (profile.parts.length <= 1) {
     return [row(null, total)];
   }
 
   const parts = profile.parts.map((part) => {
-    const info = part.details.Left ?? part.details.Right ?? part.details.Both[0];
-    return row(`Part ${info.part}`, part.metrics_summary?.Callgrind);
+    const info = part.tool_run.new ?? part.tool_run.old;
+    return row(`Part ${info.part}`, part.metrics);
   });
   parts.push(row("Total", total));
   return parts;
@@ -223,12 +207,6 @@ function formatInstructionCount(value) {
     : countFormatter.format(Math.trunc(value / 1_000));
 }
 
-function formatCycleCount(value) {
-  return value === null
-    ? "—"
-    : countFormatter.format(Math.trunc(value / 100_000));
-}
-
 function formatPair(left, right, formatter) {
   return `${formatter(left)} / ${formatter(right)}`;
 }
@@ -250,8 +228,8 @@ function renderGroupTable(group, rows) {
   const lines = [
     `##### ${groupTitle(group)}`,
     "",
-    "| Benchmark | Ir (K) | Change | Ct (K) | Change |",
-    "| --- | ---: | ---: | ---: | ---: |",
+    "| Benchmark | Ir (K) | Change |",
+    "| --- | ---: | ---: |",
   ];
   for (const row of rows) {
     const label = escapeTableCell(benchmarkLabel(row, includeBenchmark));
@@ -260,13 +238,8 @@ function renderGroupTable(group, rows) {
       row.baseInstructions,
       formatInstructionCount,
     );
-    const throughputCycles = formatPair(
-      row.throughputCycles.mergeValue,
-      row.throughputCycles.baseValue,
-      formatCycleCount,
-    );
     lines.push(
-      `| \`${label}\` | ${instructions} | ${formatChange(row)} | ${throughputCycles} | ${formatChange(row.throughputCycles)} |`,
+      `| \`${label}\` | ${instructions} | ${formatChange(row)} |`,
     );
   }
   lines.push("");
@@ -346,7 +319,7 @@ export function renderSummary(summaries) {
   return [
     "### Callgrind metric changes",
     "",
-    "Callgrind instruction counts (Ir) and CodSpeed throughput cycle estimates (Ct) for the merge and base revisions. Values are shown as merge / base in K (1,000), truncated to whole thousands; Ct is converted from centi-cycles to cycles first. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages are rounded to at most three decimal places. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
+    "Callgrind instruction counts (Ir) for the merge and base revisions. Values are shown as merge / base in K (1,000), truncated to whole thousands. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages are rounded to at most three decimal places. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
