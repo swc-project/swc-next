@@ -97,7 +97,7 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
                 .ok()
                 .context("npm directory name must be UTF-8")?,
             output_dir: PathBuf::default(),
-            cargo_package: package.name.clone(),
+            cargo_package: package.name.to_string(),
             input: PathBuf::from(format!("{}.wasm", library.name)),
             binary_name: config.binary_name,
             version,

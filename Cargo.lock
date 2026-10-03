@@ -137,7 +137,7 @@ dependencies = [
  "indexmap",
  "oxc_index",
  "phf 0.14.0",
- "prettyplease 0.3.0",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "swc_core",
@@ -906,28 +906,21 @@ dependencies = [
 
 [[package]]
 name = "gungraun"
-version = "0.20.0"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c041375e48b8ef7cd2d0e70715598154af627c1a551e41c35fdb4a2b3910831a"
+checksum = "9300d38d30facf6870c15bc9e243edcc47e5ddc270c9d2c1ae824a00b1faea79"
 dependencies = [
  "bincode-next",
  "derive_more",
- "gungraun-common",
  "gungraun-macros",
  "gungraun-runner",
 ]
 
 [[package]]
-name = "gungraun-common"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc270ba55639babb5806b62d4bfbc35e15ca15791e3ec00c7b92b39c62a9d8eb"
-
-[[package]]
 name = "gungraun-macros"
-version = "0.10.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08472a9e996a98a5b4274dd342fb32ebe1a5cfeb2662b6578d0c7bf1dd203129"
+checksum = "d7f3214bae6cfd6739f4f29edb262bae439c6393a7b7b12c4eeb96417c2e50df"
 dependencies = [
  "derive_more",
  "proc-macro-error3",
@@ -936,14 +929,14 @@ dependencies = [
  "rustc_version",
  "serde",
  "serde_json",
- "syn 3.0.3",
+ "syn 2.0.119",
 ]
 
 [[package]]
 name = "gungraun-runner"
-version = "0.20.0"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e1460377fe936c3efbe8e27c422b745fa54ebaea81ffe4a53a6f17c7a478683"
+checksum = "47c68c92812da579a2510a2cc702d5aa3251992b9662d4a98502ca46e0cbe16e"
 dependencies = [
  "either-or-both",
  "serde",
@@ -1964,16 +1957,6 @@ checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
 dependencies = [
  "proc-macro2",
  "syn 2.0.119",
-]
-
-[[package]]
-name = "prettyplease"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bfe0f4c752e450fc2faf62654f1c134747922825d5b04ca717b8874f41a40c0"
-dependencies = [
- "proc-macro2",
- "syn 3.0.3",
 ]
 
 [[package]]
@@ -3491,7 +3474,7 @@ dependencies = [
  "anyhow",
  "heck",
  "indexmap",
- "prettyplease 0.2.37",
+ "prettyplease",
  "syn 2.0.119",
  "wasm-metadata",
  "wit-bindgen-core",
@@ -3505,7 +3488,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c0f9bfd77e6a48eccf51359e3ae77140a7f50b1e2ebfe62422d8afdaffab17a"
 dependencies = [
  "anyhow",
- "prettyplease 0.2.37",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "syn 2.0.119",

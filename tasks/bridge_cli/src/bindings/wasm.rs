@@ -22,6 +22,7 @@ pub(super) fn extract_metadata(bytes: &[u8]) -> Result<(Vec<BridgeDescriptor>, V
         let Some((_, range)) = payload.as_section() else {
             continue;
         };
+        let section_end = usize::try_from(range.end)?;
         if let Payload::CustomSection(section) = &payload
             && section.name() == METADATA_SECTION
         {
@@ -34,9 +35,9 @@ pub(super) fn extract_metadata(bytes: &[u8]) -> Result<(Vec<BridgeDescriptor>, V
             }
             // Preserve all other sections byte-for-byte, including their headers.
             stripped.extend_from_slice(&bytes[retained_start..section_start]);
-            retained_start = range.end;
+            retained_start = section_end;
         }
-        section_start = range.end;
+        section_start = section_end;
     }
 
     ensure!(found_metadata, "missing bridge metadata");
