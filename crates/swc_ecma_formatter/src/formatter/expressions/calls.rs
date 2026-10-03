@@ -55,17 +55,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     head.object
                 }
                 data => {
-                    return matches!(
-                        data,
-                        ExprData::IdentifierReference(_)
-                            | ExprData::ThisExpression(_)
-                            | ExprData::StringLiteral(_)
-                            | ExprData::NumericLiteral(_)
-                            | ExprData::BigIntLiteral(_)
-                            | ExprData::BooleanLiteral(_)
-                            | ExprData::NullLiteral(_)
-                            | ExprData::RegExpLiteral(_)
-                    );
+                    return super::chains::atomic_chain_head(data)
+                        || matches!(data, ExprData::Super(_));
                 }
             };
         }

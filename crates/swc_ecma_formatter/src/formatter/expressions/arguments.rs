@@ -37,6 +37,7 @@ pub(super) struct ArrayArgumentSlot {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum FollowingItem {
     End,
+    ResolvedTerminal(DelimitedSuppression),
     Node(Span),
     Elision { node: Option<Span>, holes: usize },
 }
@@ -44,7 +45,7 @@ pub(in crate::formatter) enum FollowingItem {
 impl FollowingItem {
     fn node(self) -> Option<Span> {
         match self {
-            Self::End => None,
+            Self::End | Self::ResolvedTerminal(_) => None,
             Self::Node(span) => Some(span),
             Self::Elision { node, .. } => node,
         }
@@ -282,16 +283,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         let following_span = following.node();
-        let suppression = self.delimited_suppression(
-            item_span,
-            following_span.map_or(span.end, |span| span.start),
-            match following {
-                FollowingItem::End => DelimitedFollowing::End,
-                FollowingItem::Node(_) => DelimitedFollowing::Node,
-                FollowingItem::Elision { node: Some(_), .. } => DelimitedFollowing::Node,
-                FollowingItem::Elision { node: None, .. } => DelimitedFollowing::End,
-            },
-        );
+        let suppression = if let FollowingItem::ResolvedTerminal(source) = following {
+            Some(source)
+        } else {
+            self.delimited_suppression(
+                item_span,
+                following_span.map_or(span.end, |span| span.start),
+                match following {
+                    FollowingItem::End | FollowingItem::ResolvedTerminal(_) => {
+                        DelimitedFollowing::End
+                    }
+                    FollowingItem::Node(_) => DelimitedFollowing::Node,
+                    FollowingItem::Elision { node: Some(_), .. } => DelimitedFollowing::Node,
+                    FollowingItem::Elision { node: None, .. } => DelimitedFollowing::End,
+                },
+            )
+        };
         let leading = self
             .comments
             .between(Span::new(span.start, item_span.start))?;
@@ -369,7 +376,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ..
         } = item;
         let following_span = following.node();
-        let has_more = !matches!(following, FollowingItem::End);
+        let has_more = !matches!(
+            following,
+            FollowingItem::End | FollowingItem::ResolvedTerminal(_)
+        );
         let content_end = tail.as_ref().map_or(item_span.end, |tail| tail.source_end);
         let following_start = following_span.map(|span| span.start);
         let gap = Span::new(content_end, following_start.unwrap_or(span.end));
@@ -377,8 +387,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .map_or(ContentMode::Formatted, |source| source.following);
         let preceding = suppression.as_ref().and_then(|source| source.preceding);
-        if preceding.is_some()
-            && (following_span.is_some() || matches!(following, FollowingItem::Elision { .. }))
+        if matches!(following, FollowingItem::ResolvedTerminal(_))
+            || preceding.is_some()
+                && (following_span.is_some() || matches!(following, FollowingItem::Elision { .. }))
         {
             let source = self.format_delimited_source_gap(
                 gap,

@@ -313,7 +313,6 @@ impl<'a> Fragment<'a> {
     /// Whether the normal render path contains a line-breaking opportunity.
     /// Alternatives follow their first candidate, while flat views inspect
     /// only the instructions that survive their existing projection.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn can_break(self) -> bool {
         if matches!(self.capabilities, FragmentCapabilities::Neutral) {
             return false;

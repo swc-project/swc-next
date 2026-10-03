@@ -27,9 +27,17 @@ pub(in crate::formatter) enum PropertyKeyQuoting {
 }
 
 #[derive(Clone, Copy)]
+pub(in crate::formatter) enum ConstructorKeyGrammar {
+    Equivalent,
+    DistinctDiagnostics,
+}
+
+#[derive(Clone, Copy)]
 pub(in crate::formatter) enum PropertyKeyContext {
     Ordinary,
     FunctionValueBinding,
+    ClassField,
+    ClassMethod(ConstructorKeyGrammar),
 }
 
 enum SourceObject<'ast> {
@@ -509,7 +517,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
         if property.method(ast) || property.kind(ast) != PropertyKind::Init {
-            let header = self.source_method_header(property, quoting)?;
+            let header = self.source_method_header(
+                super::super::functions::MethodOwner::Object(property),
+                quoting,
+            )?;
             self.format_method_header(header, writer)?;
             return Ok(None);
         }
@@ -830,6 +841,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<&'ast str> {
         if quoting != PropertyKeyQuoting::AsNeeded
             || matches!(context, PropertyKeyContext::FunctionValueBinding)
+            || matches!(context, PropertyKeyContext::ClassField) && self.ast.lang().is_typescript()
+            || self.property_key_quoting_context(
+                PropertyKey::Expr(Expr::StringLiteral(literal)),
+                false,
+                context,
+                PropertyKeyQuoting::AsNeeded,
+            ) == PropertyKeyQuoting::Preserve
         {
             return None;
         }
@@ -842,6 +860,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         (swc_next_ecma_ast::is_identifier_es5_and_esnext(content.as_bytes())
             || !self.ast.lang().is_typescript() && numeric_property_name(content))
         .then_some(content)
+    }
+
+    pub(in crate::formatter) fn property_key_identifier(
+        &self,
+        key: PropertyKey,
+        context: PropertyKeyContext,
+        mode: ContentMode,
+        quoting: PropertyKeyQuoting,
+    ) -> Option<&'ast str> {
+        match self.ast.property_key_data(key) {
+            PropertyKeyData::IdentifierName(identifier) => {
+                Some(self.ast.get_utf8(identifier.name(self.ast)))
+            }
+            PropertyKeyData::Expr(expression) if mode == ContentMode::Formatted => {
+                if let ExprData::StringLiteral(literal) = self.ast.expr_data(expression) {
+                    self.unquoted_string_key(literal, context, quoting)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub(in crate::formatter) fn property_key_quoting_context(
+        &self,
+        key: PropertyKey,
+        computed: bool,
+        context: PropertyKeyContext,
+        quoting: PropertyKeyQuoting,
+    ) -> PropertyKeyQuoting {
+        if !self.ast.lang().is_typescript()
+            || computed
+            || !matches!(
+                context,
+                PropertyKeyContext::ClassMethod(ConstructorKeyGrammar::DistinctDiagnostics)
+            )
+        {
+            return quoting;
+        }
+        let constructor = match self.ast.property_key_data(key) {
+            PropertyKeyData::IdentifierName(identifier) => {
+                self.ast.get_utf8(identifier.name(self.ast)) == "constructor"
+            }
+            PropertyKeyData::Expr(expression) => {
+                if let ExprData::StringLiteral(literal) = self.ast.expr_data(expression) {
+                    let raw = self.ast.get_utf8(literal.raw(self.ast));
+                    &raw[1..raw.len() - 1] == "constructor"
+                } else {
+                    false
+                }
+            }
+        };
+        // Generics/optional markers change TS constructor classification; accessor
+        // and generator names also have identifier-only constructor diagnostics.
+        if constructor {
+            PropertyKeyQuoting::Preserve
+        } else {
+            quoting
+        }
     }
 
     pub(in crate::formatter) fn format_property_key(
@@ -898,6 +976,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::NumericLiteral(literal) => self.format_numeric_literal(literal, writer),
                 ExprData::BigIntLiteral(literal) => self.format_bigint_literal(literal, writer),
+                ExprData::PrivateIdentifier(identifier) => {
+                    writer.text("#");
+                    writer.text(ast.get_utf8(identifier.name(ast)));
+                }
                 _ => return Err(self.unsupported("object property key", key)),
             },
         }

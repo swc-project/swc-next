@@ -7,6 +7,7 @@ use super::parameters::{CallbackParameterShape, SourceParameters};
 use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{FormatError, document::Writer};
+pub(super) use methods::{MethodOwner, SourceMethodHeader};
 use swc_next_ecma_ast::{
     BindingIdentifier, Comment, CommentKind, Function, FunctionBody, GetSpan, PropertyKey, Span,
     Stmt, StmtData,
@@ -25,7 +26,16 @@ pub(super) struct PreparedFunctionSignature<'ast> {
 }
 pub(super) enum FunctionSignatureOwner {
     Function,
-    Method { key: PropertyKey },
+    Method {
+        key: PropertyKey,
+        kind: MethodSignatureKind,
+    },
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum MethodSignatureKind {
+    Public,
+    Private,
 }
 
 #[derive(Clone, Copy)]
@@ -36,6 +46,7 @@ pub(super) enum SignaturePreceding {
 
 pub(super) enum SignatureBoundaryRole {
     Function { has_preceding: bool },
+    PrivateMethod { has_preceding: bool },
     Arrow { has_parameters: bool },
 }
 
@@ -262,28 +273,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let params = function.params(ast);
         let body = function.body(ast);
-        let mut parameters = self.source_function_parameters(params)?;
+        let private = matches!(
+            owner,
+            FunctionSignatureOwner::Method {
+                kind: MethodSignatureKind::Private,
+                ..
+            }
+        );
+        let mut parameters = if private {
+            self.source_private_method_parameters(params, body)?
+        } else {
+            self.source_function_parameters(params)?
+        };
+        let parameter_key_mode = parameters.key_mode();
+        let parameter_body_mode = parameters.body_mode(body);
         let span = params.span(ast);
         let body_span = body.span(ast);
         let comments = self.comments.in_range(Span::new(span.end, body_span.start));
-        let previous = if self.content_mode(comments) == ContentMode::Verbatim {
+        let previous = if parameter_key_mode == ContentMode::Verbatim
+            || self.content_mode(comments) == ContentMode::Verbatim
+        {
             match owner {
                 FunctionSignatureOwner::Function => function.id(ast).map(SignaturePreceding::Name),
-                FunctionSignatureOwner::Method { key } => Some(SignaturePreceding::Key(key)),
+                FunctionSignatureOwner::Method { key, .. } => Some(SignaturePreceding::Key(key)),
             }
         } else {
             None
         };
-        let modes = self.signature_body_modes(
+        let mut modes = self.signature_body_modes(
             body,
             comments,
             body_span.start,
             span.end,
-            SignatureBoundaryRole::Function {
-                has_preceding: parameters.has_parameters() || previous.is_some(),
+            if private {
+                SignatureBoundaryRole::PrivateMethod {
+                    has_preceding: parameters.has_parameters() || previous.is_some(),
+                }
+            } else {
+                SignatureBoundaryRole::Function {
+                    has_preceding: parameters.has_parameters() || previous.is_some(),
+                }
             },
         );
-        let preceding = if modes.preceding == ContentMode::Verbatim {
+        if parameter_body_mode == ContentMode::Verbatim {
+            modes.body = parameter_body_mode;
+        }
+        let preceding = if parameter_key_mode == ContentMode::Verbatim {
+            previous
+        } else if modes.preceding == ContentMode::Verbatim {
             if parameters.has_parameters() {
                 parameters.suppress_last(ast)?;
                 None
@@ -482,6 +519,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     continue;
                 }
                 match role {
+                    SignatureBoundaryRole::PrivateMethod {
+                        has_preceding: true,
+                    } if matches!(position, SuppressionPosition::EndOfLine) => {
+                        modes.preceding = ContentMode::Verbatim;
+                    }
                     SignatureBoundaryRole::Function { .. } if comment.kind == CommentKind::Line => {
                         needs_first_statement = true;
                     }
