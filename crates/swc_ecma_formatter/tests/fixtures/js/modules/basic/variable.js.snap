@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export const value=first+second;
+---------- Options ----------
+{}
+---------- Output ----------
+export const value = first + second;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export const value =
+  first + second;
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export const value =
+  first + second

@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import {first,
+// @ts-ignore
+second as local} from "missing";
+---------- Options ----------
+{}
+---------- Output ----------
+import {
+  first,
+  // @ts-ignore
+  second as local, } from "missing";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import {
+  first,
+  // @ts-ignore
+  second as local, } from "missing";
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+import {
+  first,
+  // @ts-ignore
+  second as local,} from 'missing'
