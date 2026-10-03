@@ -1,0 +1,88 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {static {const x=1+2;if(x){call(x);}else{other();}}}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  static {
+    const x = 1 + 2;
+    if (x) {
+      call(x);
+    } else {
+      other();
+    }
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  static {
+    const x = 1 + 2;
+    if (x) {
+      call(x);
+    } else {
+      other();
+    }
+  }
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  static {
+    const x = 1 + 2
+    if (x) {
+      call(x)
+    } else {
+      other()
+    }
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  static {
+    const x = 1 + 2
+    if (x) {
+      call(x)
+    } else {
+      other()
+    }
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	static {
+		const x = 1 + 2;
+		if (x) {
+			call(x);
+		} else {
+			other();
+		}
+	}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  static {
+    const x = 1 + 2
+    if (x) {
+      call(x)
+    } else {
+      other()
+    }
+  }
+}

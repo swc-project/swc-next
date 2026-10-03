@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example { collectionValueForInitialization = Object.values(value.to.values)?.length; }
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+class Example {
+  collectionValueForInitialization =
+    Object.values(value.to.values)
+      ?.length;
+}

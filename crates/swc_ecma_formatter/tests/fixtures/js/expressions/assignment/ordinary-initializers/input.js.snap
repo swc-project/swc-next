@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const veryLongInitializedVariableName = buildSomethingMeaningful(firstArgument, secondArgument);
+function withDefault(veryLongDefaultParameterName = buildSomethingMeaningful(firstArgument, secondArgument)) { return veryLongDefaultParameterName; }
+class Example { veryLongInitializedFieldName = buildSomethingMeaningful(firstArgument, secondArgument); literal = true; }
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const veryLongInitializedVariableName =
+  buildSomethingMeaningful(
+    firstArgument,
+    secondArgument,
+  );
+function withDefault(
+  veryLongDefaultParameterName = buildSomethingMeaningful(
+    firstArgument,
+    secondArgument,
+  ),
+) {
+  return veryLongDefaultParameterName;
+}
+class Example {
+  veryLongInitializedFieldName =
+    buildSomethingMeaningful(
+      firstArgument,
+      secondArgument,
+    );
+  literal = true;
+}
+
+---------- Options ----------
+{"printWidth":60,"semi":false,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const veryLongInitializedVariableName =
+	buildSomethingMeaningful(firstArgument, secondArgument)
+function withDefault(
+	veryLongDefaultParameterName = buildSomethingMeaningful(
+		firstArgument,
+		secondArgument,
+	),
+) {
+	return veryLongDefaultParameterName
+}
+class Example {
+	veryLongInitializedFieldName = buildSomethingMeaningful(
+		firstArgument,
+		secondArgument,
+	)
+	literal = true
+}
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+const veryLongInitializedVariableName = buildSomethingMeaningful(firstArgument, secondArgument);
+function withDefault(veryLongDefaultParameterName = buildSomethingMeaningful(firstArgument, secondArgument)) {
+  return veryLongDefaultParameterName;
+}
+class Example {
+  veryLongInitializedFieldName = buildSomethingMeaningful(firstArgument, secondArgument);
+  literal = true;
+}

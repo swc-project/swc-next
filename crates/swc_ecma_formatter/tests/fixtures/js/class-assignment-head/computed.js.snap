@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+registry[selectConstructor(namespace.primaryKey, namespace.fallbackKey)] = class extends runtime.namespace.BaseConstructor {};
+---------- Options ----------
+{"printWidth":50}
+---------- Output ----------
+registry[
+  selectConstructor(
+    namespace.primaryKey,
+    namespace.fallbackKey,
+  )
+] = class extends (
+  runtime.namespace.BaseConstructor
+) {};
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+registry[selectConstructor(namespace.primaryKey, namespace.fallbackKey)] = class extends (
+  runtime.namespace.BaseConstructor
+) {};
+
+---------- Options ----------
+{"printWidth":50,"semi":false}
+---------- Output ----------
+registry[
+  selectConstructor(
+    namespace.primaryKey,
+    namespace.fallbackKey,
+  )
+] = class extends (
+  runtime.namespace.BaseConstructor
+) {}
+
+---------- Options ----------
+{"printWidth":50,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+registry[
+	selectConstructor(
+		namespace.primaryKey,
+		namespace.fallbackKey,
+	)
+] = class extends (
+	runtime.namespace.BaseConstructor
+) {};

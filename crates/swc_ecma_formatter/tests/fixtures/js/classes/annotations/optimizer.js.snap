@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {f=/*#__NO_SIDE_EFFECTS__*/ (x)=>x+1; value=/*#__PURE__*/ call();}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  f = /*#__NO_SIDE_EFFECTS__*/ (x) => x + 1;
+  value = /*#__PURE__*/ call();
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  f =
+    /*#__NO_SIDE_EFFECTS__*/ (
+      x,
+    ) => x + 1;
+  value =
+    /*#__PURE__*/ call();
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  f = /*#__NO_SIDE_EFFECTS__*/ (x) => x + 1
+  value = /*#__PURE__*/ call()
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  f =
+    /*#__NO_SIDE_EFFECTS__*/ (
+      x,
+    ) => x + 1
+  value =
+    /*#__PURE__*/ call()
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	f =
+		/*#__NO_SIDE_EFFECTS__*/ (
+			x,
+		) => x + 1;
+	value =
+		/*#__PURE__*/ call();
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  f = /*#__NO_SIDE_EFFECTS__*/ (x) => x + 1
+  value = /*#__PURE__*/ call()
+}

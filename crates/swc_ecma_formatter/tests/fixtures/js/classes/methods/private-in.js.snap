@@ -1,0 +1,70 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {#x;m(value){return #x in value;}}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  #x;
+  m(value) {
+    return #x in value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  #x;
+  m(value) {
+    return (
+      #x in value
+    );
+  }
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  #x
+  m(value) {
+    return #x in value
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  #x
+  m(value) {
+    return (
+      #x in value
+    )
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	#x;
+	m(value) {
+		return (
+			#x in value
+		);
+	}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  #x
+  m(value) {
+    return #x in value
+  }
+}

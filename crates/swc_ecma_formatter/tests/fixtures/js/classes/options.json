@@ -1,0 +1,22 @@
+[
+  {},
+  {
+    "printWidth": 20
+  },
+  {
+    "semi": false
+  },
+  {
+    "semi": false,
+    "printWidth": 20
+  },
+  {
+    "useTabs": true,
+    "tabWidth": 2,
+    "printWidth": 20
+  },
+  {
+    "quoteProps": "preserve",
+    "semi": false
+  }
+]
