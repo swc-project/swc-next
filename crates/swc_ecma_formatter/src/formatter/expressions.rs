@@ -48,6 +48,7 @@ pub(super) enum AccessKind {
 #[derive(Clone, Copy)]
 pub(super) enum ExpressionPosition {
     Statement,
+    ExportDefault,
     Nested,
     ArrowBody,
     RestrictedArgument,
@@ -593,6 +594,74 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::IdentifierReference(node) if node == identifier)
     }
 
+    fn default_export_head_needs_parentheses(&self, mut data: ExprData, mode: ContentMode) -> bool {
+        loop {
+            let (expression, position) = if let Some(binary) = BinaryLike::from_data(data, self.ast)
+            {
+                (
+                    binary.left,
+                    ExpressionPosition::BinaryOperand {
+                        operator: binary.operator,
+                        side: OperandSide::Left,
+                    },
+                )
+            } else {
+                match data {
+                    ExprData::Function(_) | ExprData::Class(_) => return true,
+                    ExprData::CallExpression(call) => (
+                        call.callee(self.ast),
+                        ExpressionPosition::CallCallee {
+                            access: if call.optional(self.ast) {
+                                AccessKind::Optional
+                            } else {
+                                AccessKind::Ordinary
+                            },
+                            curried_call: None,
+                        },
+                    ),
+                    ExprData::MemberExpression(member) => (
+                        member.object(self.ast),
+                        ExpressionPosition::MemberObject(if member.optional(self.ast) {
+                            AccessKind::Optional
+                        } else {
+                            AccessKind::Ordinary
+                        }),
+                    ),
+                    ExprData::ConditionalExpression(conditional) => (
+                        conditional.test(self.ast),
+                        ExpressionPosition::ConditionalTest,
+                    ),
+                    ExprData::ChainExpression(chain) => {
+                        (chain.expression(self.ast), ExpressionPosition::Nested)
+                    }
+                    ExprData::AssignmentExpression(assignment) => {
+                        let swc_next_ecma_ast::AssignmentTargetData::SimpleAssignmentTarget(target) =
+                            self.ast.assignment_target_data(assignment.left(self.ast))
+                        else {
+                            return false;
+                        };
+                        let Ok(target) = self.simple_target_expression(target) else {
+                            return true;
+                        };
+                        (target, ExpressionPosition::AssignmentTarget)
+                    }
+                    ExprData::UpdateExpression(update) if !update.prefix(self.ast) => {
+                        let Ok(target) = self.simple_target_expression(update.argument(self.ast))
+                        else {
+                            return true;
+                        };
+                        (target, ExpressionPosition::UpdateArgument)
+                    }
+                    _ => return false,
+                }
+            };
+            data = self.expression_content(expression).data;
+            if self.expression_needs_parentheses(data, position, mode) == Some(true) {
+                return false;
+            }
+        }
+    }
+
     fn is_nullish_conditional_operand(&self, data: ExprData, position: ExpressionPosition) -> bool {
         matches!(
             position,
@@ -677,6 +746,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             position
         };
+        if matches!(position, ExpressionPosition::ExportDefault)
+            && self.default_export_head_needs_parentheses(data, mode)
+        {
+            return Some(true);
+        }
         if matches!(position, ExpressionPosition::NewCallee)
             && self.new_callee_contains_call(data, mode)
         {
@@ -800,6 +874,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     !matches!(
                         position,
                         ExpressionPosition::AssignmentRight(_)
+                            | ExpressionPosition::ExportDefault
                             | ExpressionPosition::ForHead
                             | ExpressionPosition::ForSequenceMember
                             | ExpressionPosition::ForInitializer { .. }

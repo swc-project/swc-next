@@ -14,6 +14,7 @@ pub(super) enum ContentMode {
 #[derive(Clone, Copy)]
 pub(super) enum DelimitedFollowing {
     Node,
+    ModuleSpecifier,
     End,
 }
 
@@ -183,6 +184,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let next = comments.get(last).map_or(end, |comment| comment.span.start);
                 let end_of_line = self.comment_run_ends_line(after, next);
                 let preceding = matches!(following, DelimitedFollowing::End)
+                    || matches!(following, DelimitedFollowing::ModuleSpecifier) && end_of_line
                     || !self.source_position_starts_line(run[0].span.start)
                         && (end_of_line
                             || self
@@ -220,10 +222,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .last()
             .filter(|comment| comment.span.end == source_end);
         let following = match following {
-            DelimitedFollowing::Node if last.is_some() => {
+            DelimitedFollowing::Node | DelimitedFollowing::ModuleSpecifier if last.is_some() => {
                 self.source_line_constraint(source_end, gap.end)
             }
-            DelimitedFollowing::Node => self.line_constraint(source_end, gap.end),
+            DelimitedFollowing::Node | DelimitedFollowing::ModuleSpecifier => {
+                self.line_constraint(source_end, gap.end)
+            }
             DelimitedFollowing::End => {
                 // The closing delimiter owns its indentation and newline. Literal
                 // source text has no pending suffix to force that closing break.

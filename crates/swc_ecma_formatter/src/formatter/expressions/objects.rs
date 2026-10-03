@@ -37,6 +37,7 @@ pub(in crate::formatter) enum PropertyKeyContext {
     Ordinary,
     FunctionValueBinding,
     ClassField,
+    ModuleAttribute,
     ClassMethod(ConstructorKeyGrammar),
 }
 
@@ -833,14 +834,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_property_key(property.key(self.ast), computed, mode, quoting, writer)
     }
 
+    pub(in crate::formatter) fn format_string_property_name(
+        &self,
+        literal: StringLiteral,
+        context: PropertyKeyContext,
+        quoting: PropertyKeyQuoting,
+        writer: &mut Writer<'ast>,
+    ) {
+        if let Some(content) = self.unquoted_string_key(literal, context, quoting) {
+            writer.text(content);
+        } else {
+            self.format_string_literal(literal, StringContext::Expression, writer);
+        }
+    }
+
     pub(in crate::formatter) fn unquoted_string_key(
         &self,
         literal: swc_next_ecma_ast::StringLiteral,
         context: PropertyKeyContext,
         quoting: PropertyKeyQuoting,
     ) -> Option<&'ast str> {
-        if quoting != PropertyKeyQuoting::AsNeeded
-            || matches!(context, PropertyKeyContext::FunctionValueBinding)
+        if quoting != PropertyKeyQuoting::AsNeeded {
+            return None;
+        }
+        self.unquoted_string_key_content(literal, context)
+    }
+
+    fn unquoted_string_key_content(
+        &self,
+        literal: StringLiteral,
+        context: PropertyKeyContext,
+    ) -> Option<&'ast str> {
+        if matches!(context, PropertyKeyContext::FunctionValueBinding)
             || matches!(context, PropertyKeyContext::ClassField) && self.ast.lang().is_typescript()
             || self.property_key_quoting_context(
                 PropertyKey::Expr(Expr::StringLiteral(literal)),
@@ -851,14 +876,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        self.unquoted_string_key_content(literal)
-    }
-
-    fn unquoted_string_key_content(&self, literal: StringLiteral) -> Option<&'ast str> {
         let raw = self.ast.get_utf8(literal.raw(self.ast));
         let content = &raw[1..raw.len() - 1];
         (swc_next_ecma_ast::is_identifier_es5_and_esnext(content.as_bytes())
-            || !self.ast.lang().is_typescript() && numeric_property_name(content))
+            || !matches!(context, PropertyKeyContext::ModuleAttribute)
+                && !self.ast.lang().is_typescript()
+                && numeric_property_name(content))
         .then_some(content)
     }
 
@@ -968,11 +991,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             PropertyKeyData::Expr(expression) => match ast.expr_data(expression) {
                 ExprData::StringLiteral(literal) => {
-                    if let Some(content) = self.unquoted_string_key(literal, context, quoting) {
-                        writer.text(content);
-                    } else {
-                        self.format_string_literal(literal, StringContext::Expression, writer);
-                    }
+                    self.format_string_property_name(literal, context, quoting, writer)
                 }
                 ExprData::NumericLiteral(literal) => self.format_numeric_literal(literal, writer),
                 ExprData::BigIntLiteral(literal) => self.format_bigint_literal(literal, writer),
