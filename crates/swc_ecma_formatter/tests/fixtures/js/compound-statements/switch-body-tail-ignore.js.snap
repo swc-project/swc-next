@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (x) {case 1: f( 1 ); /* prettier-ignore */ case 2: g( 2 );}
+---------- Options ----------
+{}
+---------- Output ----------
+switch (x) {
+  case 1:
+    f(1); /* prettier-ignore */ case 2: g( 2 );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+switch (x) {
+  case 1:
+    f(
+      1,
+    ); /* prettier-ignore */ case 2: g( 2 );
+}
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+switch (x) {
+	case 1:
+		f(1); /* prettier-ignore */ case 2: g( 2 );
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+switch (
+  x
+) {
+  case 1:
+    f(
+      1,
+    ); /* prettier-ignore */ case 2: g( 2 );
+}

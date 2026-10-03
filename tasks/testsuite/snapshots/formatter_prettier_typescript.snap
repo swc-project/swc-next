@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 19/804 (2.36%)
-Snapshot matched: 19/804
-AST parity: 19/19
-AST mismatched: 0/19
+Passed: 20/804 (2.49%)
+Snapshot matched: 20/804
+AST parity: 20/20
+AST mismatched: 0/20
 AST format errors: 0/804
 Mismatched: 0/804
-Format errors: 785/804
+Format errors: 784/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -568,7 +568,6 @@ Unsupported option sets: 7
 - typescript/satisfies-operators/ternary.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/satisfies-operators/types-comments.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/semi/no-semi.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/static-blocks/static-blocks.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/symbol/symbol.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/template-literal-types/template-literal-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/template-literals/as-expression.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

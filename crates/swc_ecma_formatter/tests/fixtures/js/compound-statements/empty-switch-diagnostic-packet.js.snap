@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch(0){/* @ts-expect-error */ /* packet */
+} insideMissing;
+outsideMissing;
+---------- Options ----------
+{}
+---------- Output ----------
+switch (0) { /* @ts-expect-error */ /* packet */
+} insideMissing;
+outsideMissing;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+switch (
+  0
+) { /* @ts-expect-error */ /* packet */
+}; insideMissing
+outsideMissing
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+switch (0) { /* @ts-expect-error */ /* packet */
+} insideMissing;
+outsideMissing;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+switch (
+  0
+) { /* @ts-expect-error */ /* packet */
+}; insideMissing
+outsideMissing

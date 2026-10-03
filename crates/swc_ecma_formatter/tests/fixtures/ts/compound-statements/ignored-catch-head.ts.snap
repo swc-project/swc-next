@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try {} /* prettier-ignore */ catch(error: unknown){ f( 1 ); }
+---------- Options ----------
+{}
+---------- Output ----------
+try {
+} /* prettier-ignore */ catch(error: unknown){ f( 1 ); }
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+try {
+} /* prettier-ignore */ catch(error: unknown){ f( 1 ); }
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+try {
+} /* prettier-ignore */ catch(error: unknown){ f( 1 ); }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+try {
+} /* prettier-ignore */ catch(error: unknown){ f( 1 ); }

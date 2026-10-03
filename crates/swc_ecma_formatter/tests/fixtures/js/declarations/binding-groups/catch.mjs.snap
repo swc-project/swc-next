@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try {} catch ({ data: { message: { code } } }) {}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+try {
+} catch ({
+  data: {
+    message: { code },
+  },
+}) {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+try {
+} catch ({
+  data: {
+    message: { code },
+  },
+}) {}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+try {
+} catch ({
+  data: {
+    message: {code}
+  }
+}) {}
