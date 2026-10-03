@@ -218,6 +218,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let closing = self.find_token(span, self.comments.in_range(span), ")");
                     return Semicolon(closing.map_or(end, |closing| closing + 1));
                 }
+                StmtData::WithStatement(node) => {
+                    statement = node.body(self.ast);
+                }
                 StmtData::LabeledStatement(node) => {
                     statement = node.body(self.ast);
                 }

@@ -1,5 +1,6 @@
 //! Parent-owned conditions, controlled bodies, and their following keywords.
 
+mod compound;
 mod for_loops;
 pub(super) use for_loops::IterationStatement;
 mod jumps;
@@ -119,7 +120,9 @@ enum ConditionHeader<'ast> {
 struct Condition<'ast> {
     header: ConditionHeader<'ast>,
     expression: Expr,
+    position: ExpressionPosition,
     closing: u32,
+    tail_end: u32,
     leading: &'ast [Comment],
     mode: ContentMode,
     inline: bool,
@@ -291,7 +294,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(Condition {
             header,
             expression,
+            position: ExpressionPosition::ControlCondition,
             closing,
+            tail_end: closing,
             leading,
             mode,
             inline,
@@ -346,7 +351,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Condition {
             header,
             expression,
+            position,
             closing,
+            tail_end,
             leading,
             mode,
             inline,
@@ -410,13 +417,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         layout: CommentRunLayout::GroupedLeading(span.start),
                         gap_end: None,
                     },
-                    ExpressionContext::at(ExpressionPosition::ControlCondition)
+                    ExpressionContext::at(position)
                         .with_content_mode(mode)
                         .with_tail_owner(TailOwner::ParentOperation),
                     None,
                     writer,
                 )?;
-                let tail = self.capture_expression_tail(Span::new(span.end, closing), tail)?;
+                let tail = self.capture_expression_tail(Span::new(span.end, tail_end), tail)?;
                 let last = tail.as_ref().and_then(|tail| tail.comments.last());
                 let end = last.map_or(span.end, |comment| comment.span.end);
                 self.format_expression_tail(tail, writer)?;
