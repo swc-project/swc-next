@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use swc_next_ecma_ast::{
-    BindingPatternData, ExprData, GetSpan, Span, VariableDeclaration, VariableDeclarator,
+    BindingPatternData, Expr, ExprData, GetSpan, Span, VariableDeclaration, VariableDeclarator,
     VariableKind,
 };
 
@@ -13,16 +13,53 @@ use super::bindings::{
 };
 use super::comments::{CommentBinding, ExpressionTail};
 use super::diagnostics::FlatSeparator;
-use super::expressions::ExpressionContext;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::expressions::assignment::RhsLayout;
+use super::expressions::{ExpressionContext, ExpressionPosition, ForInitializerGrammar};
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum VariableContext {
+    Statement,
+    ForInitializer,
+    ForIn,
+    Iteration,
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn variable_initializer_context(
+        &self,
+        expression: Expr,
+        context: VariableContext,
+    ) -> ExpressionContext {
+        let context = match context {
+            VariableContext::ForInitializer => {
+                self.for_initializer_context(expression, ForInitializerGrammar::Assignment)
+            }
+            VariableContext::ForIn => ExpressionContext::at(ExpressionPosition::ForInInitializer),
+            VariableContext::Statement => ExpressionContext::variable_initializer(),
+            VariableContext::Iteration => ExpressionContext::variable_initializer(),
+        };
+        context.with_variable_initializer_owner()
+    }
+
     pub(super) fn format_variable_declaration(
         &mut self,
         declaration: VariableDeclaration,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
+        self.format_variable_declaration_with_context(
+            declaration,
+            VariableContext::Statement,
+            writer,
+        )
+    }
+
+    pub(super) fn format_variable_declaration_with_context(
+        &mut self,
+        declaration: VariableDeclaration,
+        context: VariableContext,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
         let ast = self.ast;
@@ -113,7 +150,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .in_range(Span::new(previous_end, span.start))
                             .first()
                             .map_or(span.start, |comment| comment.span.start);
-                        if has_value && !matches!(separator, Separator::Source(_)) {
+                        if matches!(context, VariableContext::Statement)
+                            && has_value
+                            && !matches!(separator, Separator::Source(_))
+                        {
                             self.line_constraint(previous_end, next).write(
                                 writer,
                                 FlatSeparator::Space,
@@ -137,7 +177,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if let Some(mode) = following_mode {
                         item.set_leading_mode(mode);
                     }
-                    let tail = self.format_variable_declarator(declarator, item.mode, writer)?;
+                    let tail =
+                        self.format_variable_declarator(declarator, item.mode, context, writer)?;
                     if matches!(following, FollowingItem::End) {
                         Ok(ControlFlow::Break(tail))
                     } else {
@@ -167,6 +208,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         declarator: VariableDeclarator,
         mode: ContentMode,
+        context: VariableContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -212,8 +254,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let initializer_context =
-            ExpressionContext::variable_initializer().with_variable_initializer_owner();
+        let initializer_context = self.variable_initializer_context(right, context);
         let mut rhs_layout = self.ordinary_rhs_layout(content.data, initializer_context, &boundary);
         if matches!(rhs_layout, RhsLayout::Fluid)
             && boundary.mode == ContentMode::Formatted

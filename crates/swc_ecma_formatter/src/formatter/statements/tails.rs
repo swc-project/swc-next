@@ -205,6 +205,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         None => node.consequent(self.ast),
                     };
                 }
+                StmtData::ForStatement(node) => statement = node.body(self.ast),
+                StmtData::ForInStatement(node) => statement = node.body(self.ast),
+                StmtData::ForOfStatement(node) => statement = node.body(self.ast),
                 StmtData::WhileStatement(node) => {
                     statement = node.body(self.ast);
                 }

@@ -960,6 +960,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StmtData::DoWhileStatement(node) if mode == ContentMode::Formatted => {
                 self.format_do_while_statement(node, punctuation, writer)
             }
+            StmtData::ForStatement(node) if mode == ContentMode::Formatted => {
+                self.format_for_statement(node, punctuation, writer)
+            }
+            StmtData::ForInStatement(node) if mode == ContentMode::Formatted => self
+                .format_iteration_statement(
+                    control_flow::IterationStatement::In(node),
+                    punctuation,
+                    writer,
+                ),
+            StmtData::ForOfStatement(node) if mode == ContentMode::Formatted => self
+                .format_iteration_statement(
+                    control_flow::IterationStatement::Of(node),
+                    punctuation,
+                    writer,
+                ),
             StmtData::IfStatement(node) if mode == ContentMode::Formatted => {
                 self.format_if_statement(node, punctuation, writer)
             }
@@ -985,6 +1000,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | StmtData::ThrowStatement(_)
                         | StmtData::Declaration(_)
                         | StmtData::IfStatement(_)
+                        | StmtData::ForStatement(_)
+                        | StmtData::ForInStatement(_)
+                        | StmtData::ForOfStatement(_)
                         | StmtData::WhileStatement(_)
                         | StmtData::DoWhileStatement(_)
                         | StmtData::LabeledStatement(_)

@@ -17,12 +17,20 @@ use swc_next_ecma_ast::{
 enum TargetOperator {
     Assignment(AssignmentOperator),
     Update(UpdateOperator),
+    Iteration { of: bool },
 }
 impl TargetOperator {
     fn as_str(self) -> &'static str {
         match self {
             Self::Assignment(operator) => operator.as_str(),
             Self::Update(operator) => operator.as_str(),
+            Self::Iteration { of } => {
+                if of {
+                    "of"
+                } else {
+                    "in"
+                }
+            }
         }
     }
 }
@@ -51,7 +59,7 @@ struct PreparedTarget {
     tail_end: u32,
 }
 
-pub(super) struct SourceTarget {
+pub(in crate::formatter) struct SourceTarget {
     envelope: PreparedTarget,
     operator: TargetOperator,
     pub(super) operator_span: Span,
@@ -72,8 +80,14 @@ impl SourceTarget {
     pub(super) fn operator(&self) -> &'static str {
         self.operator.as_str()
     }
-    pub(super) fn span(&self) -> Span {
+    pub(in crate::formatter) fn span(&self) -> Span {
         self.envelope.span
+    }
+    pub(in crate::formatter) fn simple(&self) -> Option<Expr> {
+        match self.envelope.target {
+            TargetNode::Simple(expression) => Some(expression),
+            TargetNode::Pattern { .. } => None,
+        }
     }
     pub(super) fn binding(&self) -> Option<BindingPattern> {
         match self.envelope.target {
@@ -92,7 +106,7 @@ impl SourceTarget {
     pub(super) fn left_end(&self) -> u32 {
         self.envelope.tail_end
     }
-    pub(super) fn has_retained_parentheses(&self) -> bool {
+    pub(in crate::formatter) fn has_retained_parentheses(&self) -> bool {
         self.envelope
             .layers
             .iter()
@@ -188,6 +202,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionPosition::AssignmentTarget
             }
             TargetOperator::Update(_) => ExpressionPosition::UpdateArgument,
+            TargetOperator::Iteration { .. } => context.position,
         };
         self.expression_needs_asi_guard(expression, context)
     }
@@ -309,6 +324,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    pub(in crate::formatter) fn iteration_source_target(
+        &self,
+        target: SimpleAssignmentTarget,
+        prefix: Span,
+        operator: Span,
+        of: bool,
+    ) -> Result<SourceTarget, FormatError> {
+        self.prepare_source_target(
+            TargetNode::Simple(self.simple_target_expression(target)?),
+            TargetOperator::Iteration { of },
+            prefix,
+            Span::new(target.span(self.ast).end, operator.start),
+            Some(operator),
+        )
+    }
+
     fn prepare_source_target(
         &self,
         target: TargetNode,
@@ -424,7 +455,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_source_target(
+    pub(in crate::formatter) fn format_source_target(
         &mut self,
         target: &SourceTarget,
         mut context: ExpressionContext,
@@ -436,6 +467,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionPosition::AssignmentTarget
             }
             TargetOperator::Update(_) => ExpressionPosition::UpdateArgument,
+            TargetOperator::Iteration { .. } => context.position,
         };
         if target.binding().is_some()
             && context.expression_start.needs_asi_guard()

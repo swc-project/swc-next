@@ -144,7 +144,10 @@ fn member_receiver_context(
     };
     if computed
         && access == AccessKind::Ordinary
-        && context.expression_head == super::ExpressionHead::Statement
+        && matches!(
+            context.expression_head,
+            super::ExpressionHead::Statement | super::ExpressionHead::ForInitializer
+        )
     {
         receiver.computed_receiver = Some(object);
     }

@@ -566,6 +566,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         None
     }
 
+    pub(super) fn claim_prepared_trailing_run(
+        &mut self,
+        run: PreparedTrailingRun<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(run.comments)?;
+        self.format_prepared_trailing_run(run, None, writer)
+    }
+
     pub(super) fn format_prepared_trailing_run(
         &self,
         run: PreparedTrailingRun<'ast>,
