@@ -10,19 +10,22 @@ mod calls;
 pub(super) mod chains;
 mod conditional;
 mod constructors;
+mod for_initializer;
 mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;
 mod sequence;
 mod suspension;
-mod targets;
+pub(super) mod targets;
 mod unary;
 
 use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrayExpression, CallExpression, Expr, ExprData, GetSpan,
-    ObjectExpression, SequenceExpression, Span, UnaryOperator, UpdateOperator,
+    IdentifierReference, ObjectExpression, SequenceExpression, Span, UnaryOperator, UpdateOperator,
 };
+
+pub(in crate::formatter) use self::for_initializer::ForInitializerGrammar;
 
 use self::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use self::assignment::AssignmentParent;
@@ -61,6 +64,7 @@ pub(super) enum ExpressionPosition {
     NewCallee,
     MemberAssignmentObject,
     SequenceMember,
+    ForSequenceMember,
     UnaryArgument(UnaryOperator),
     ParenthesizedUnaryArgument(UnaryOperator),
     UpdateArgument,
@@ -68,6 +72,13 @@ pub(super) enum ExpressionPosition {
     AssignmentRight(AssignmentParent),
     Initializer(AssignmentParent),
     ControlCondition,
+    ForHead,
+    ForTest,
+    ForInitializer {
+        grammar: ForInitializerGrammar,
+        parentheses: bool,
+    },
+    ForInInitializer,
     ConditionalTest,
     ConditionalConsequent,
     ConditionalAlternate,
@@ -86,6 +97,7 @@ pub(super) enum ExpressionStart {
     /// A controlled body cannot insert a leading empty statement.
     StatementBody,
     ArrowBody,
+    ForInitializer,
 }
 
 impl ExpressionStart {
@@ -121,6 +133,8 @@ enum MemberLayout {
 enum ExpressionHead {
     None,
     Statement,
+    ForInitializer,
+    Iteration(IdentifierReference),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -247,6 +261,8 @@ impl ExpressionContext {
             expression_start: match position {
                 ExpressionPosition::Statement => ExpressionStart::StatementPending,
                 ExpressionPosition::ArrowBody => ExpressionStart::ArrowBody,
+                ExpressionPosition::ForInitializer { .. }
+                | ExpressionPosition::ForInInitializer => ExpressionStart::ForInitializer,
                 _ => ExpressionStart::None,
             },
             content_mode: ContentMode::Formatted,
@@ -255,10 +271,13 @@ impl ExpressionContext {
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
-            expression_head: if matches!(position, ExpressionPosition::Statement) {
-                ExpressionHead::Statement
-            } else {
-                ExpressionHead::None
+            expression_head: match position {
+                ExpressionPosition::Statement => ExpressionHead::Statement,
+                ExpressionPosition::ForInitializer {
+                    grammar: ForInitializerGrammar::Expression,
+                    ..
+                } => ExpressionHead::ForInitializer,
+                _ => ExpressionHead::None,
             },
             computed_receiver: None,
             member_layout: if matches!(position, ExpressionPosition::AssignmentRight(_)) {
@@ -284,6 +303,14 @@ impl ExpressionContext {
 
     pub(super) fn with_expression_start(mut self, start: ExpressionStart) -> Self {
         self.expression_start = start;
+        self
+    }
+
+    pub(in crate::formatter) fn with_lexical_head(
+        mut self,
+        identifier: Option<IdentifierReference>,
+    ) -> Self {
+        self.expression_head = identifier.map_or(ExpressionHead::None, ExpressionHead::Iteration);
         self
     }
 
@@ -422,6 +449,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(tail)
     }
 
+    pub(super) fn for_head_grammar_pair_is_enclosed(
+        data: ExprData,
+        position: ExpressionPosition,
+    ) -> bool {
+        matches!(
+            position,
+            ExpressionPosition::ForInitializer {
+                parentheses: true,
+                ..
+            }
+        ) && !matches!(
+            data,
+            ExprData::ParenthesizedExpression(_) | ExprData::SequenceExpression(_)
+        )
+    }
+
     pub(super) fn binary_grammar_pair_owns_indent(position: ExpressionPosition) -> bool {
         matches!(
             position,
@@ -526,9 +569,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
                     && (context.expression_start.is_statement()
-                        || context.expression_start == ExpressionStart::ArrowBody)
+                        || matches!(context.expression_start, ExpressionStart::ArrowBody)
+                        || matches!(context.expression_head, ExpressionHead::Iteration(_)))
                 || matches!(data, ExprData::Function(_) | ExprData::Class(_))
-                    && context.expression_start.is_statement())
+                    && context.expression_start.is_statement()
+                || matches!((data, context.expression_head), (ExprData::IdentifierReference(node), ExpressionHead::Iteration(head)) if node == head))
     }
 
     /// The actual computed receiver owns the lexical pair, not its whole member.
@@ -564,6 +609,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: ExpressionPosition,
         mode: ContentMode,
     ) -> Option<bool> {
+        if let Some(scope) = self.for_initializer_span {
+            if mode == ContentMode::Verbatim && self.opaque_initializer_needs_enclosure(data, scope)
+            {
+                return Some(true);
+            }
+            if let ExprData::BinaryExpression(node) = data
+                && node.operator(self.ast) == swc_next_ecma_ast::BinaryOperator::In
+            {
+                let span = node.span(self.ast);
+                if scope.start <= span.start && span.end <= scope.end {
+                    return Some(true);
+                }
+            }
+        }
+        if mode == ContentMode::Formatted
+            && matches!(
+                position,
+                ExpressionPosition::ForInitializer {
+                    parentheses: true,
+                    ..
+                } | ExpressionPosition::ForInInitializer
+            )
+        {
+            // An opaque source pair already supplies this header's grammar boundary.
+            return Some(match data {
+                ExprData::ParenthesizedExpression(_) => false,
+                ExprData::IdentifierReference(_) => {
+                    !matches!(position, ExpressionPosition::ForInInitializer)
+                }
+                _ => true,
+            });
+        }
         if matches!(position, ExpressionPosition::Superclass) {
             let mut operand = data;
             loop {
@@ -593,6 +670,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExprData::AwaitExpression(_)
             ));
         }
+        let position = if matches!(position, ExpressionPosition::ForSequenceMember)
+            && !matches!(data, ExprData::AssignmentExpression(_))
+        {
+            ExpressionPosition::SequenceMember
+        } else {
+            position
+        };
         if matches!(position, ExpressionPosition::NewCallee)
             && self.new_callee_contains_call(data, mode)
         {
@@ -685,7 +769,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::ObjectExpression(_) => {
                 Some(matches!(position, ExpressionPosition::Statement))
             }
-            ExprData::SequenceExpression(_) => Some(true),
+            ExprData::SequenceExpression(_) => Some(!matches!(
+                position,
+                ExpressionPosition::ForHead
+                    | ExpressionPosition::ForInitializer {
+                        grammar: ForInitializerGrammar::Expression,
+                        parentheses: false
+                    }
+            )),
             ExprData::ConditionalExpression(_) => Some(matches!(
                 position,
                 ExpressionPosition::UnaryArgument(_)
@@ -706,7 +797,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         swc_next_ecma_ast::AssignmentTargetData::ObjectAssignmentTarget(_)
                     )
                 } else {
-                    !matches!(position, ExpressionPosition::AssignmentRight(_))
+                    !matches!(
+                        position,
+                        ExpressionPosition::AssignmentRight(_)
+                            | ExpressionPosition::ForHead
+                            | ExpressionPosition::ForSequenceMember
+                            | ExpressionPosition::ForInitializer { .. }
+                    )
                 })
             }
             ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
@@ -805,8 +902,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let parenthesize =
-            self.expression_is_parenthesized(self.ast.expr_data(expression), context);
+        let parenthesize = self
+            .expression_is_parenthesized(self.ast.expr_data(expression), context)
+            || matches!(context.expression_head, ExpressionHead::Iteration(_));
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
             && self.expression_needs_asi_guard(expression, context)?

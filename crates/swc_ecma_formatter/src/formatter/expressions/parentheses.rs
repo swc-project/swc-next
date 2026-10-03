@@ -125,6 +125,17 @@ struct SourceParenthesesComments<'ast> {
     tail: &'ast [Comment],
 }
 
+pub(in crate::formatter) struct IgnoredSourceParentheses {
+    pub(in crate::formatter) expression: Expr,
+    pub(in crate::formatter) parenthesized: ParenthesizedExpression,
+    pub(in crate::formatter) leading: Span,
+}
+
+pub(in crate::formatter) struct SourceParenthesesContent {
+    pub(super) data: ExprData,
+    pub(in crate::formatter) ignored: Option<IgnoredSourceParentheses>,
+}
+
 enum RetainedParentheses {
     Cast,
     Annotation,
@@ -648,16 +659,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn source_parentheses_rhs_content(
+    pub(in crate::formatter) fn source_parentheses_head_content(
         &self,
         mut data: ExprData,
         mut context: ExpressionContext,
-    ) -> ExprData {
+    ) -> SourceParenthesesContent {
         let original = data;
-        let mut ignored = false;
-        if !self.has_suppression {
-            return data;
-        }
+        let mut ignored = None;
+        let first = match data {
+            ExprData::ParenthesizedExpression(first) if self.has_suppression => first,
+            _ => {
+                return SourceParenthesesContent { data, ignored };
+            }
+        };
+        let start = first.span(self.ast).start;
         while let ExprData::ParenthesizedExpression(parenthesized) = data {
             if context.content_mode == ContentMode::Verbatim
                 && !self.verbatim_parentheses_are_removable(parenthesized, context.position)
@@ -669,13 +684,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     mode,
                     ignored_child: Some(child),
                 } => (mode, child),
+                SourceParenthesesChoice::Content {
+                    mode: ContentMode::Formatted,
+                    ignored_child: None,
+                } if matches!(
+                    context.position,
+                    ExpressionPosition::ForInitializer {
+                        grammar: super::ForInitializerGrammar::Expression,
+                        parentheses: true,
+                    }
+                ) =>
+                {
+                    data = self.ast.expr_data(parenthesized.expression(self.ast));
+                    continue;
+                }
                 _ => break,
             };
             context.content_mode = mode;
-            ignored = true;
+            ignored = Some(IgnoredSourceParentheses {
+                expression: child,
+                parenthesized,
+                leading: Span::new(start, child.span(self.ast).start),
+            });
             data = self.ast.expr_data(child);
         }
-        if ignored { data } else { original }
+        if ignored.is_none() {
+            data = original;
+        }
+        SourceParenthesesContent { data, ignored }
+    }
+
+    pub(in crate::formatter) fn source_parentheses_rhs_content(
+        &self,
+        data: ExprData,
+        context: ExpressionContext,
+    ) -> ExprData {
+        self.source_parentheses_head_content(data, context).data
     }
 
     /// Only the printer that emits this pair can claim its removed source tail.
@@ -955,6 +999,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::CallCallee { .. }
                         | ExpressionPosition::NewCallee
                 )
+                || self.for_initializer_span.is_some_and(|scope| {
+                    self.opaque_initializer_needs_enclosure(self.ast.expr_data(child), scope)
+                })
                 || self.parentheses_separate_diagnostic_lines(boundary)
                 || self
                     .expression_needs_parentheses(
@@ -1150,6 +1197,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if context.content_mode == ContentMode::Verbatim
+            && matches!(context.position, ExpressionPosition::ForInInitializer)
+        {
+            self.format_verbatim(expression.span(self.ast), writer)?;
+            return Ok(None);
+        }
         if let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression) {
             if context.content_mode == ContentMode::Verbatim
                 && !self.verbatim_parentheses_are_removable(parenthesized, context.position)
@@ -1177,6 +1230,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_sequence(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
+        if parenthesize && Self::for_head_grammar_pair_is_enclosed(data, context.position) {
+            return self.format_parenthesized_expression(
+                expression,
+                prepared,
+                NodeHead {
+                    comments: &[],
+                    content_start: expression.span(self.ast).start,
+                    layout: CommentRunLayout::Source,
+                    gap_end: None,
+                },
+                context,
+                array_comments,
+                writer,
+            );
+        }
+
         let binary = super::binary::BinaryLike::from_data(data, self.ast);
         if context.expression_start == ExpressionStart::StatementPending
             && self.options.semicolons == Semicolons::AsNeeded
