@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (; (left(), right() // tail
+) /* after pair */;);
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (
+  ;
+  (left(), right()) // tail
+  /* after pair */;
+);
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (
+  ;
+  (left(), right()) // tail
+  /* after pair */;
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  ;
+  (left(), right()) // tail
+  /* after pair */;
+);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (
+  ;
+  (left(), right()) // tail
+  /* after pair */;
+);

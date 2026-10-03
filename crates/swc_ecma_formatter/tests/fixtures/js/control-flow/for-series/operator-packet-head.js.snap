@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (value
+/* note */
+of // header
+iterable) { consume(); }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (value of /* note */ // header
+iterable) {
+  consume();
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (value of /* note */ // header
+iterable) {
+  consume();
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (value of /* note */ // header
+iterable) {
+  consume()
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (value of /* note */ // header
+iterable) {
+  consume()
+}

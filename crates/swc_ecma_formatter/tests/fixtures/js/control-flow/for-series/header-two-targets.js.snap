@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for(var x=1+2
+/* prettier-ignore */
+; /* prettier-ignore */ test();step()) {}
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (
+  var x = 1 + 2
+/* prettier-ignore */
+; /* prettier-ignore */ test();
+  step()
+) {}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (
+  var x = 1 + 2
+/* prettier-ignore */
+; /* prettier-ignore */ test();
+  step()
+) {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  var x = 1 + 2
+/* prettier-ignore */
+; /* prettier-ignore */ test();
+  step()
+) {}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (
+  var x = 1 + 2
+/* prettier-ignore */
+; /* prettier-ignore */ test();
+  step()
+) {}

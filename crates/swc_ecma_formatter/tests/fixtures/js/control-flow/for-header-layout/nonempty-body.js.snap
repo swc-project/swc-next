@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (let i=0;i<limit;i++) {work(i);}
+---------- Options ----------
+{"printWidth":25}
+---------- Output ----------
+for (
+  let i = 0;
+  i < limit;
+  i++
+) {
+  work(i);
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+for (let i = 0; i < limit; i++) {
+  work(i);
+}
+
+---------- Options ----------
+{"printWidth":25,"semi":false}
+---------- Output ----------
+for (
+  let i = 0;
+  i < limit;
+  i++
+) {
+  work(i)
+}
