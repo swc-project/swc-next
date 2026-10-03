@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+while (condition); // first
+; // second
+
+next();
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+while (condition); // first
+// second
+next();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+while (condition); // first
+// second
+next()

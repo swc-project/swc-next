@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+empty: /* marker
+ continued */ ;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+empty: /* marker
+ continued */ ;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+empty: /* marker
+ continued */ ;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+empty: /* marker
+ continued */ ;
