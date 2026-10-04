@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T=( A . B ) /* prettier-ignore */
+ [];
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type T=( A . B ) /* prettier-ignore */
+[]

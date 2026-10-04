@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const before = 0;
+; /* ordinary */ // @ts-expect-error
+
+const value: string = 1;
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+const before = 0;
+/* ordinary */ // @ts-expect-error
+
+const value: string = 1;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const before = 0
+/* ordinary */ // @ts-expect-error
+
+const value: string = 1

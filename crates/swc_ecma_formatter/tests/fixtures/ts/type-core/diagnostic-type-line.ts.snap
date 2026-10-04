@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+type LongAliasName = MissingTypeName;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+// @ts-expect-error
+type LongAliasName = MissingTypeName;
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+// @ts-expect-error
+type LongAliasName = MissingTypeName;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+type LongAliasName = MissingTypeName
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+type LongAliasName = MissingTypeName
