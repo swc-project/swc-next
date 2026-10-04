@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let Implementation: unknown;
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{};
+const outsideSentinel: number = "outside";
+---------- Options ----------
+{"printWidth":50}
+---------- Output ----------
+let Implementation: unknown;
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{};
+const outsideSentinel: number = "outside";
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+let Implementation: unknown;
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{};
+const outsideSentinel: number = "outside";
+
+---------- Options ----------
+{"printWidth":50,"semi":false}
+---------- Output ----------
+let Implementation: unknown
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{}
+const outsideSentinel: number = "outside"
+
+---------- Options ----------
+{"printWidth":50,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+let Implementation: unknown;
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{};
+const outsideSentinel: number = "outside";

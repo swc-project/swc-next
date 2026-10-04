@@ -11,8 +11,13 @@ use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     ArrayPattern, Ast, BindingPattern, BindingPatternData, BindingProperty, Comment, CommentKind,
     Expr, ExprData, FormalParameterPattern, FormalParameterPatternData, GetSpan, ObjectPattern,
-    Span,
+    Span, TsTypeAnnotation,
 };
+
+pub(super) struct PreparedAnnotatedBinding<'ast> {
+    pattern: BindingPattern,
+    annotation: super::types::PreparedBindingAnnotation<'ast>,
+}
 
 pub(super) enum DefaultOwner<'ast> {
     Whole,
@@ -149,6 +154,30 @@ fn binding_separator(separator: Separator, constraint: LineConstraint, writer: &
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn prepare_annotated_binding(
+        &self,
+        pattern: BindingPattern,
+        annotation: TsTypeAnnotation,
+    ) -> Result<PreparedAnnotatedBinding<'ast>, FormatError> {
+        Ok(PreparedAnnotatedBinding {
+            pattern,
+            annotation: self
+                .prepare_binding_annotation_content(pattern.span(self.ast).end, annotation)?,
+        })
+    }
+
+    pub(super) fn format_annotated_binding(
+        &mut self,
+        binding: PreparedAnnotatedBinding<'ast>,
+        group: BindingGroup,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let tail =
+            self.format_binding_with_group(binding.pattern, group, ContentMode::Formatted, writer)?;
+        self.format_expression_tail(tail, writer)?;
+        self.format_binding_annotation_content(binding.annotation, writer)
+    }
+
     pub(super) fn format_parameter_binding(
         &mut self,
         pattern: FormalParameterPattern,
