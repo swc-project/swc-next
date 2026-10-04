@@ -1103,8 +1103,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing,
             opening,
             hug,
+            preserve_lines,
             ..
         } = union;
+        // Optional parentheses cannot insert a line between a directive and its target.
+        let tuple_element = layout == TypeLayout::MultipleTupleElement && !preserve_lines;
         let content = |writer: &mut Writer<'ast>| {
             if let Some(head) = head {
                 writer.write_fragment(head);
@@ -1126,7 +1129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 Ok(None)
             };
-            if hug {
+            if hug || tuple_element {
                 content(writer)
             } else {
                 writer.group(false, content)
@@ -1136,7 +1139,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return content(writer);
         }
         match layout {
-            TypeLayout::AliasRhs | TypeLayout::CallerIndented => content(writer),
+            TypeLayout::MultipleTupleElement if tuple_element => writer.group(false, |writer| {
+                writer.indent(|writer| {
+                    writer.if_break("(");
+                    writer.soft_line();
+                    content(writer)
+                })?;
+                writer.soft_line();
+                writer.if_break(")");
+                Ok(None)
+            }),
+            TypeLayout::MultipleTupleElement
+            | TypeLayout::AliasRhs
+            | TypeLayout::CallerIndented => content(writer),
             TypeLayout::Root | TypeLayout::OpeningProvided => writer.group(false, |writer| {
                 writer.indent(|writer| {
                     if layout != TypeLayout::OpeningProvided {
