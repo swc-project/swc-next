@@ -110,6 +110,12 @@ statement boundaries, and semantic comment scopes.
 Annotation wrappers, their inner types, and annotated bindings remain separate
 owners with independent source modes.
 
+Type grammar contexts decide parentheses around real children.
+
+Shared printers receive actual AST children and the caller's grammar context.
+The caller retains its enclosing owner, required delimiters, and ending; reuse
+does not widen a child's source interval or change its syntax domain.
+
 Required token separation and statement guards are decided by syntax formatting
 before printing chooses line breaks or removes optional punctuation.
 
