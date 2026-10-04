@@ -1,0 +1,5 @@
+[
+  { "printWidth": 24 },
+  { "printWidth": 80 },
+  { "printWidth": 24, "semi": false, "trailingComma": "none" }
+]

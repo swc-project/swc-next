@@ -7,6 +7,8 @@ pub(super) enum TypeContext {
     Parenthesized,
     PostfixOperand,
     ModifierOperand,
+    RestOperand,
+    JsDocPostfixOperand,
     CompoundMember,
     IntersectionLineContinuation,
 }
@@ -24,7 +26,13 @@ enum TypePrecedence {
 
 impl TypeContext {
     pub(super) fn preserves_union_head(self, mut node: TsType, ast: &Ast<'_>) -> bool {
-        if !matches!(self, Self::PostfixOperand | Self::ModifierOperand) {
+        if !matches!(
+            self,
+            Self::PostfixOperand
+                | Self::ModifierOperand
+                | Self::RestOperand
+                | Self::JsDocPostfixOperand
+        ) {
             return false;
         }
         loop {
@@ -59,6 +67,21 @@ impl TypeContext {
                 TypePrecedence::Postfix
             }
             Self::ModifierOperand => TypePrecedence::Query,
+            Self::RestOperand => {
+                if matches!(data, TsTypeData::TsInferType(_)) {
+                    return false;
+                }
+                TypePrecedence::Query
+            }
+            Self::JsDocPostfixOperand => {
+                if matches!(
+                    data,
+                    TsTypeData::TsJsDocNullableType(_) | TsTypeData::TsJsDocUnknownType(_)
+                ) {
+                    return true;
+                }
+                TypePrecedence::Query
+            }
             Self::CompoundMember | Self::IntersectionLineContinuation => {
                 if matches!(
                     data,
