@@ -3,6 +3,7 @@
 mod compound;
 mod context;
 mod postfix;
+mod tuple;
 
 use self::compound::{PendingTypeHead, PreparedTypeContent};
 use self::context::TypeContext;
@@ -64,6 +65,7 @@ enum TypeLayout {
     OpeningProvided,
     CallerIndented,
     AliasRhs,
+    MultipleTupleElement,
 }
 
 enum TypeBoundaryLayout<'ast> {
@@ -662,6 +664,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn select_delimited_type_head(
+        &self,
+        node: &mut PreparedType,
+        comments: &[Comment],
+        end: u32,
+        first: bool,
+    ) {
+        for (run, position) in self.suppressed_comment_runs(comments, end) {
+            let preceding = !first
+                && !matches!(position, SuppressionPosition::OwnLine)
+                && (matches!(position, SuppressionPosition::EndOfLine)
+                    || run.last().is_some_and(|last| {
+                        self.find_comma(Span::new(last.span.end, end), comments)
+                            .is_some()
+                    }));
+            if !preceding {
+                self.select_type_head(node, position);
+            }
+        }
+    }
+
+    fn format_type_with_context(
+        &mut self,
+        annotation: TsType,
+        mode: ContentMode,
+        context: TypeContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let node = self.prepare_type(annotation, mode);
+        self.format_prepared_type(node, context, writer)
+    }
+
     fn select_type_head(&self, node: &mut PreparedType, position: SuppressionPosition) {
         if node.source_owner == Some(node.node) {
             return;
@@ -829,6 +863,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsTupleType(node) => self.format_tuple_type(node, writer),
+            TsTypeData::TsOptionalType(node) => self.format_optional_type(node, writer),
+            TsTypeData::TsRestType(node) => self.format_rest_type(node, writer),
+
             TsTypeData::TsUnionType(union) => self.format_compound_type(
                 node,
                 union.types(self.ast),

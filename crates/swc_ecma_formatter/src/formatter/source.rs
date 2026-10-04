@@ -42,6 +42,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         line.chars().all(is_source_whitespace)
     }
 
+    pub(super) fn find_comma(&self, span: Span, comments: &[Comment]) -> Option<u32> {
+        self.find_token(span, comments, ",")
+    }
+
     pub(super) fn find_token(&self, span: Span, comments: &[Comment], token: &str) -> Option<u32> {
         let mut start = span.start;
         for comment in comments {

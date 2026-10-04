@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
 use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
-use crate::formatter::comments::{CommentBoundary, ExpressionTail};
+use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
@@ -385,6 +385,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TypePrefixLayout::Formatted(self.prepare_comment_boundary(comments, gap.start, gap.end))
         };
         TypePrefix { mode, layout }
+    }
+
+    pub(super) fn format_prepared_type_after_prefix(
+        &mut self,
+        node: PreparedType,
+        prefix: TypePrefix<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let span = node.node.span(self.ast);
+        if node.source_owner.is_none()
+            && self
+                .comments
+                .first()
+                .is_some_and(|comment| comment.span.start < span.end)
+            && let TypePrefixLayout::Formatted(after) = &prefix.layout
+            && matches!(
+                self.comment_boundary_binding(after, span),
+                CommentBinding::Unbound
+            )
+        {
+            let leading_head = self.type_movable_head(node, context);
+            if !after.is_empty() || leading_head.is_some() {
+                return self.format_prepared_type_with_caller_head(
+                    node,
+                    leading_head,
+                    context,
+                    after,
+                    layout,
+                    writer,
+                );
+            }
+        }
+        self.format_type_prefix(prefix, FlatSeparator::Empty, writer)?;
+        self.format_prepared_type_with_layout(node, context, layout, writer)
     }
 
     pub(super) fn format_type_prefix(
