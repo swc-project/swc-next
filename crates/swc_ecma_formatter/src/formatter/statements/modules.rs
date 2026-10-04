@@ -148,6 +148,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DeclData::VariableDeclaration(_) => {
                     self.finish_statement(end, None, punctuation, writer)
                 }
+                DeclData::TsTypeAliasDeclaration(_) => {
+                    let mut printed = self.finish_statement(end, None, punctuation, writer)?;
+                    printed.boundary = printed.boundary.type_declaration();
+                    Ok(printed)
+                }
                 _ => Ok(StatementBoundary::SourceEnd {
                     end,
                     has_terminator: false,
@@ -175,6 +180,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DeclData::VariableDeclaration(variable) => {
                 let (end, tail) = self.format_variable_declaration(variable, writer)?;
                 self.finish_statement(end, tail, punctuation, writer)
+            }
+            DeclData::TsTypeAliasDeclaration(alias) => {
+                let (end, tail) = self.format_type_alias(alias, writer)?;
+                let mut printed = self.finish_statement(end, tail, punctuation, writer)?;
+                printed.boundary = printed.boundary.type_declaration();
+                Ok(printed)
             }
             _ => Err(self.unsupported("declaration", declaration)),
         }
@@ -368,9 +379,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
-        if node.export_kind(ast) == ImportOrExportKind::Type {
-            return Err(self.unsupported("type-only export", node));
-        }
         let keyword_end = span.start + 6;
         if let Some(declaration) = node.declaration(ast) {
             let mode = self.content_mode(
@@ -380,6 +388,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("export");
             self.format_module_gap(keyword_end, declaration.span(ast).start, true, writer)?;
             return self.format_declaration(declaration, mode, punctuation, writer);
+        }
+        if node.export_kind(ast) == ImportOrExportKind::Type {
+            return Err(self.unsupported("type-only export", node));
         }
         let specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));

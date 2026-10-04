@@ -216,8 +216,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(declarator.span(ast), writer)?;
             return Ok(None);
         }
-        if declarator.type_annotation(ast).is_some() || declarator.definite(ast) {
-            return Err(self.unsupported("typed variable declarator", declarator));
+        if declarator.definite(ast) {
+            return Err(self.unsupported("definite variable declarator", declarator));
+        }
+        if let Some(annotation) = declarator.type_annotation(ast) {
+            return self.format_typed_variable_declarator(declarator, annotation, context, writer);
         }
         let left = declarator.id(ast);
         let Some(right) = declarator.init(ast) else {

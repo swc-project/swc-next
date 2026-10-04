@@ -113,7 +113,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments.partition_point(|comment| comment.span.end <= terminator.start)
         });
         let (before, after) = comments.split_at(split);
-        let modes = self.statement_tail_modes(comments, limit, relation);
+        let child_tail = matches!(statement, StatementItem::Statement(node)
+            if matches!(self.ast.stmt_data(node), StmtData::Declaration(declaration)
+                if matches!(self.ast.decl_data(declaration), DeclData::TsTypeAliasDeclaration(_))));
+        // The alias prepares its own type tail; only packets after its terminator
+        // select the whole statement.
+        let modes =
+            self.statement_tail_modes(if child_tail { after } else { comments }, limit, relation);
         let terminator =
             source_terminator.filter(|_| self.content_mode(before) == ContentMode::Verbatim);
         let following_gap = match (modes.following, after.is_empty(), terminator, relation) {
@@ -299,8 +305,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn declaration_content(&self, declaration: Decl) -> StatementContent {
         use StatementContent::{Complete, Semicolon};
 
-        let DeclData::VariableDeclaration(variable) = self.ast.decl_data(declaration) else {
-            return Complete(declaration.span(self.ast).end);
+        let variable = match self.ast.decl_data(declaration) {
+            DeclData::VariableDeclaration(variable) => variable,
+            DeclData::TsTypeAliasDeclaration(alias) => {
+                return Semicolon(alias.type_annotation(self.ast).span(self.ast).end);
+            }
+            _ => return Complete(declaration.span(self.ast).end),
         };
         let Some(last) = variable.declarators(self.ast).last() else {
             return Complete(variable.span(self.ast).end);
