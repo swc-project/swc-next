@@ -7,6 +7,19 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::source::{lines, split_line};
 use crate::{FormatError, document::Writer};
 
+pub(super) enum PreparedBoundaryComments<'ast> {
+    Preserved(CommentGap),
+    Head {
+        leading: LineConstraint,
+        gap: CommentGap,
+    },
+    Trailing {
+        run: PreparedTrailingRun<'ast>,
+        after: CommentBoundary<'ast>,
+        gap: CommentGap,
+    },
+}
+
 /// A comment can carry more than one tool's annotation.
 pub(super) struct CommentSemantics {
     pub(super) suppression: bool,
@@ -584,6 +597,67 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         None
+    }
+
+    pub(super) fn prepare_bound_comments(
+        &self,
+        boundary: &CommentBoundary<'ast>,
+        target: Span,
+    ) -> PreparedBoundaryComments<'ast> {
+        let gap = if boundary
+            .comments
+            .last()
+            .is_some_and(|comment| self.source_line_starts_line(comment.span.start))
+        {
+            CommentGap::Source(self.source_line_constraint(boundary.end(), target.start))
+        } else {
+            boundary.gap
+        };
+        if boundary.is_empty()
+            || !matches!(
+                self.comment_boundary_binding(boundary, target),
+                CommentBinding::Unbound
+            )
+        {
+            return PreparedBoundaryComments::Preserved(gap);
+        }
+        let mut source_run = None;
+        let mut inline_blocks = true;
+        for (index, &comment) in boundary.comments.iter().enumerate() {
+            let fact = self.prepare_source_comment(comment, &mut source_run);
+            let next_start = boundary
+                .comments
+                .get(index + 1)
+                .map_or(target.start, |next| next.span.start);
+            let standalone = self.source_line_starts_line(comment.span.start)
+                && self.line_breaks(comment.span.end, next_start) != 0;
+            inline_blocks &= comment.kind == CommentKind::Block && !standalone;
+            if let Some(fact) = fact {
+                if !fact.movable() || fact.attachment(true, true) != LineAttachment::Trailing {
+                    return PreparedBoundaryComments::Preserved(gap);
+                }
+                let run = PreparedTrailingRun {
+                    comments: &boundary.comments[..index + 1],
+                    source_end: boundary.source_end,
+                    fact,
+                };
+                let after = CommentBoundary {
+                    comments: &boundary.comments[index + 1..],
+                    source_end: fact.comment.span.end,
+                    gap: boundary.gap,
+                };
+                return PreparedBoundaryComments::Trailing { run, after, gap };
+            }
+        }
+        if inline_blocks {
+            let start = boundary.first_comment_start().unwrap_or(target.start);
+            PreparedBoundaryComments::Head {
+                leading: self.line_constraint(boundary.source_end, start),
+                gap,
+            }
+        } else {
+            PreparedBoundaryComments::Preserved(gap)
+        }
     }
 
     pub(super) fn claim_prepared_trailing_run(

@@ -7,6 +7,7 @@ use swc_next_ecma_ast::{
 
 use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
+use super::generics::TypeArgumentOwner;
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
@@ -354,10 +355,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             name.span(ast).start,
         );
         let prefix = self.prepare_type_prefix(gap);
-        if node.type_arguments(ast).is_some() {
-            return Err(self.unsupported("generic type query", node));
-        }
-        let mode = prefix.mode;
+        let arguments = node.type_arguments(ast).map(|node| {
+            let prefix = self.prepare_type_list_prefix(
+                Span::new(name.span(ast).end, node.span(ast).start),
+                super::generics::TypeListKind::Arguments,
+            );
+            (node, prefix)
+        });
+        let mode = if arguments
+            .as_ref()
+            .is_some_and(|(_, prefix)| prefix.left_mode == ContentMode::Verbatim)
+        {
+            ContentMode::Verbatim
+        } else {
+            prefix.mode
+        };
         writer.text("typeof");
         self.format_type_prefix(prefix, FlatSeparator::Space, writer)?;
         if mode == ContentMode::Verbatim {
@@ -372,6 +384,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return Err(self.unsupported("import type query", import));
                 }
             }
+        }
+        if let Some((arguments, prefix)) = arguments {
+            let mode = prefix.right_mode;
+            self.format_type_list_prefix(prefix, writer)?;
+            self.format_type_arguments_with_owner(
+                arguments,
+                mode,
+                TypeArgumentOwner::TypeQuery,
+                writer,
+            )?;
         }
         Ok(None)
     }

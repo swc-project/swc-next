@@ -2,15 +2,19 @@
 
 mod compound;
 mod context;
+mod generics;
 mod postfix;
 mod tuple;
 
 use self::compound::{PendingTypeHead, PreparedTypeContent};
 use self::context::TypeContext;
+pub(super) use self::generics::TypeArgumentOwner;
 
 use super::Formatter;
 use super::bindings::{BindingGroup, BindingInitializerOwner, InitializerLayout};
-use super::comments::{CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail};
+use super::comments::{
+    CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, PreparedTrailingRun,
+};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::assignment::RhsLayout;
 use super::literals::StringContext;
@@ -21,19 +25,27 @@ use crate::{
     document::{Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    Comment, CommentKind, ExprData, GetSpan, Span, TsLiteralData, TsParenthesizedType,
-    TsQualifiedName, TsQualifiedNameLeft, TsQualifiedNameLeftData, TsType, TsTypeAliasDeclaration,
-    TsTypeAnnotation, TsTypeData, TsTypeName, TsTypeNameData, UnaryOperator, VariableDeclarator,
+    BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan, Span,
+    TsLiteralData, TsParenthesizedType, TsQualifiedName, TsQualifiedNameLeft,
+    TsQualifiedNameLeftData, TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeData,
+    TsTypeName, TsTypeNameData, UnaryOperator, VariableDeclarator,
 };
 
 #[derive(Clone, Copy)]
 enum TypeBoundaryRole {
     Alias,
     Qualified,
+    Constraint(LineConstraint),
+    Default,
 }
 enum TypeBoundaryTarget<'a> {
     Alias(&'a mut PreparedType),
     Qualified,
+    Constraint {
+        name: BindingIdentifier,
+        node: &'a mut PreparedType,
+    },
+    Default(&'a mut PreparedType),
 }
 
 #[derive(Clone, Copy)]
@@ -82,6 +94,16 @@ struct TypeBoundary<'ast> {
     layout: TypeBoundaryLayout<'ast>,
 }
 
+struct PreparedDelimitedType<'ast> {
+    span: Span,
+    content: PreparedTypeContent<'ast>,
+}
+struct TypeBoundaryTail<'ast> {
+    role: TypeBoundaryRole,
+    before: CommentBoundary<'ast>,
+    trailing: PreparedTrailingRun<'ast>,
+}
+
 pub(super) struct PreparedBindingAnnotation<'ast> {
     leading: &'ast [Comment],
     before_leading: LineConstraint,
@@ -89,6 +111,7 @@ pub(super) struct PreparedBindingAnnotation<'ast> {
     colon: u32,
     prefix: BindingAnnotationPrefix<'ast>,
     content: AnnotationContent,
+    type_argument_owner: TypeArgumentOwner,
 }
 enum BindingAnnotationPrefix<'ast> {
     Source(Span),
@@ -112,14 +135,305 @@ enum AnnotationContent {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    fn binding_type_content(&self, mut node: TsType) -> TsTypeData {
+        loop {
+            let data = self.ast.ts_type_data(node);
+            let members = match data {
+                TsTypeData::TsParenthesizedType(parentheses) => {
+                    node = parentheses.type_annotation(self.ast);
+                    continue;
+                }
+                TsTypeData::TsUnionType(union) => union.types(self.ast),
+                TsTypeData::TsIntersectionType(intersection) => intersection.types(self.ast),
+                _ => return data,
+            };
+            if members.len() != 1 {
+                return data;
+            }
+            let Some(member) = members.first() else {
+                return data;
+            };
+            node = self.ast.get_node_in_sub_range(member);
+        }
+    }
+
+    pub(super) fn binding_annotation_breaks_left(&self, annotation: TsTypeAnnotation) -> bool {
+        let ast = self.ast;
+        let TsTypeData::TsTypeReference(reference) =
+            self.binding_type_content(annotation.type_annotation(ast))
+        else {
+            return false;
+        };
+        let Some(arguments) = reference.type_arguments(ast) else {
+            return false;
+        };
+        let params = arguments.params(ast);
+        params.len() > 1
+            && params.iter().any(|id| {
+                let argument = ast.get_node_in_sub_range(id);
+                match self.binding_type_content(argument) {
+                    TsTypeData::TsConditionalType(_) => true,
+                    TsTypeData::TsTypeReference(reference) => reference
+                        .type_arguments(ast)
+                        .is_some_and(|arguments| !arguments.params(ast).is_empty()),
+                    _ => false,
+                }
+            })
+    }
+
+    fn format_annotation_type_content_with_layout(
+        &mut self,
+        content: AnnotationContent,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        match content {
+            AnnotationContent::Source(annotation) => {
+                self.format_verbatim(annotation.span(self.ast), writer)?;
+                Ok(None)
+            }
+            AnnotationContent::Formatted(type_node) => {
+                self.format_prepared_type_with_layout(type_node, TypeContext::Root, layout, writer)
+            }
+        }
+    }
+
+    fn format_binding_annotation_root(
+        &mut self,
+        content: compound::PreparedTypeContent<'ast>,
+        owner: TypeArgumentOwner,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if let compound::PreparedTypeContent::Type(node) = &content
+            && node.source_owner.is_none()
+            && let TsTypeData::TsTypeReference(reference) = node.data
+        {
+            return self.format_type_reference_with_owner(reference, owner, writer);
+        }
+        self.format_prepared_type_content(content, TypeContext::Root, layout, writer)
+    }
+
+    fn format_recorded_binding_annotation_head(
+        &mut self,
+        recorded: RecordedTypeHead<'ast>,
+        owner: TypeArgumentOwner,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if matches!(&recorded.content, compound::PreparedTypeContent::Type(node)
+            if node.source_owner.is_none() && matches!(node.data, TsTypeData::TsTypeReference(_)))
+        {
+            return writer.group(false, |writer| {
+                writer.write_fragment(recorded.head);
+                self.format_binding_annotation_root(recorded.content, owner, layout, writer)
+            });
+        }
+        self.format_recorded_type_head(recorded, TypeContext::Root, layout, writer)
+    }
+
+    fn format_binding_annotation_type_content(
+        &mut self,
+        content: AnnotationContent,
+        owner: TypeArgumentOwner,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if owner == TypeArgumentOwner::ArrowVariableAnnotation
+            && let AnnotationContent::Formatted(node) = content
+            && node.source_owner.is_none()
+            && match node.data {
+                TsTypeData::TsTypeReference(_) | TsTypeData::TsParenthesizedType(_) => true,
+                TsTypeData::TsUnionType(union) => union.types(self.ast).len() == 1,
+                TsTypeData::TsIntersectionType(intersection) => {
+                    intersection.types(self.ast).len() == 1
+                }
+                _ => false,
+            }
+        {
+            let content = if matches!(node.data, TsTypeData::TsTypeReference(_)) {
+                compound::PreparedTypeContent::Type(node)
+            } else {
+                self.format_movable_type_head(
+                    node,
+                    &mut PendingTypeHead::new(&[], node.node.span(self.ast).start, None),
+                    TypeContext::Root,
+                    writer,
+                )?
+            };
+            return self.format_binding_annotation_root(content, owner, layout, writer);
+        }
+        self.format_annotation_type_content_with_layout(content, layout, writer)
+    }
+
+    fn format_type_content_with_boundary_tail(
+        &mut self,
+        content: compound::PreparedTypeContent<'ast>,
+        head: Option<Fragment<'ast>>,
+        context: TypeContext,
+        layout: TypeLayout,
+        tail: Option<TypeBoundaryTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if let compound::PreparedTypeContent::Union(union) = content {
+            return match tail {
+                Some(tail) => self.format_prepared_union_before_boundary(
+                    union, context, layout, head, tail, writer,
+                ),
+                None => self.format_prepared_union(union, context, layout, head, writer),
+            };
+        }
+        if let Some(head) = head {
+            writer.write_fragment(head);
+        }
+        let pending = self.format_prepared_type_content(content, context, layout, writer)?;
+        if let Some(tail) = tail {
+            self.format_expression_tail(pending, writer)?;
+            self.format_type_boundary_tail(tail, writer)?;
+            return Ok(None);
+        }
+        Ok(pending)
+    }
+
+    fn format_recorded_type_head_with_boundary_tail(
+        &mut self,
+        recorded: RecordedTypeHead<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        tail: Option<TypeBoundaryTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_type_content_with_boundary_tail(
+            recorded.content,
+            Some(recorded.head),
+            context,
+            layout,
+            tail,
+            writer,
+        )
+    }
+
+    fn format_prepared_delimited_type_before_boundary(
+        &mut self,
+        body: PreparedDelimitedType<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        tail: TypeBoundaryTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let content = match body.content {
+            compound::PreparedTypeContent::Compound(single) if single.movable() => {
+                self.format_single_compound_head(single, context, writer)?
+            }
+            content => content,
+        };
+        self.format_type_content_with_boundary_tail(
+            content,
+            None,
+            context,
+            layout,
+            Some(tail),
+            writer,
+        )
+    }
+
+    fn format_prepared_delimited_type(
+        &mut self,
+        body: PreparedDelimitedType<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let content = match body.content {
+            compound::PreparedTypeContent::Compound(single) if single.movable() => {
+                self.format_single_compound_head(single, context, writer)?
+            }
+            content => content,
+        };
+        self.format_prepared_type_content(content, context, layout, writer)
+    }
+
+    fn prepare_delimited_type(
+        &self,
+        mut node: PreparedType,
+    ) -> Result<PreparedDelimitedType<'ast>, FormatError> {
+        let span = node.node.span(self.ast);
+        let content = loop {
+            if node.source_owner.is_some() {
+                break compound::PreparedTypeContent::Type(node);
+            }
+            match node.data {
+                TsTypeData::TsParenthesizedType(parentheses) => {
+                    let parentheses =
+                        self.prepare_type_parentheses(parentheses, None, TypeContext::Root);
+                    if parentheses.retained {
+                        break compound::PreparedTypeContent::Parentheses(parentheses);
+                    }
+                    node = parentheses.child;
+                }
+                TsTypeData::TsUnionType(union) => {
+                    let types = union.types(self.ast);
+                    if types.len() > 1 {
+                        break compound::PreparedTypeContent::Union(
+                            self.prepare_union(node, types)?,
+                        );
+                    }
+                    match self.prepare_single_compound(node)?.into_headless_type() {
+                        Ok(child) => node = child,
+                        Err(single) => break compound::PreparedTypeContent::Compound(single),
+                    }
+                }
+                TsTypeData::TsIntersectionType(intersection)
+                    if intersection.types(self.ast).len() == 1 =>
+                {
+                    match self.prepare_single_compound(node)?.into_headless_type() {
+                        Ok(child) => node = child,
+                        Err(single) => break compound::PreparedTypeContent::Compound(single),
+                    }
+                }
+                _ => break compound::PreparedTypeContent::Type(node),
+            }
+        };
+        Ok(PreparedDelimitedType { span, content })
+    }
+
+    fn format_type_boundary_tail(
+        &mut self,
+        tail: TypeBoundaryTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_formatted_type_boundary_operator(tail.role, &tail.before, writer)?;
+        self.claim_prepared_trailing_run(tail.trailing, writer)
+    }
+
+    fn format_type_boundary_operator<'boundary>(
+        &mut self,
+        boundary: &'boundary TypeBoundary<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<(&'boundary CommentBoundary<'ast>, FlatSeparator)>, FormatError> {
+        let space = match boundary.role {
+            TypeBoundaryRole::Qualified => FlatSeparator::Empty,
+            _ => FlatSeparator::Space,
+        };
+        let (before, after) = match &boundary.layout {
+            TypeBoundaryLayout::Source(gap) => {
+                self.format_verbatim(*gap, writer)?;
+                return Ok(None);
+            }
+            TypeBoundaryLayout::Formatted { before, after } => (before, after),
+        };
+        self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
+        Ok(Some((after, space)))
+    }
+
     pub(super) fn format_type_alias(
         &mut self,
         alias: TsTypeAliasDeclaration,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
         let ast = self.ast;
-        if alias.declare(ast) || alias.type_parameters(ast).is_some() {
-            return Err(self.unsupported("ambient or generic type alias", alias));
+        if alias.declare(ast) {
+            return Err(self.unsupported("ambient type alias", alias));
         }
         let span = alias.span(ast);
         let identifier = alias.id(ast);
@@ -128,11 +442,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let annotation_span = annotation.span(ast);
         let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
         let keyword_end = span.start + "type".len() as u32;
+        let parameters = alias.type_parameters(ast).map(|node| {
+            let prefix = self.prepare_type_list_prefix(
+                Span::new(identifier_span.end, node.span(ast).start),
+                generics::TypeListKind::Parameters,
+            );
+            (node, prefix)
+        });
+        let rhs_layout = parameters
+            .as_ref()
+            .map_or(RhsLayout::Fluid, |(parameters, _)| {
+                let parameters = parameters.params(ast);
+                let complex = parameters.len() > 1
+                    && parameters.iter().any(|parameter| {
+                        let parameter = ast.get_node_in_sub_range(parameter);
+                        parameter.constraint(ast).is_some() || parameter.default(ast).is_some()
+                    });
+                if complex {
+                    RhsLayout::NeverBreakAfterOperator
+                } else {
+                    RhsLayout::Fluid
+                }
+            });
+        let head_end = parameters
+            .as_ref()
+            .map_or(identifier_span.end, |(node, _)| node.span(ast).end);
+        let mut name_mode = parameters
+            .as_ref()
+            .map_or(ContentMode::Formatted, |(_, prefix)| prefix.left_mode);
         let boundary = self.prepare_type_boundary(
-            Span::new(identifier_span.end, annotation_span.start),
+            Span::new(head_end, annotation_span.start),
             TypeBoundaryTarget::Alias(&mut type_node),
         )?;
-        let mut name_mode = boundary.left_mode;
         if self.has_suppression {
             let header = self
                 .comments
@@ -147,12 +488,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 type_node.source_owner = Some(annotation);
             }
         }
+        if parameters.is_none() && boundary.left_mode == ContentMode::Verbatim {
+            name_mode = ContentMode::Verbatim;
+        }
         writer.text("type");
         self.format_source_token_gap(keyword_end, identifier_span.start, true, writer)?;
         if name_mode == ContentMode::Verbatim {
             self.format_verbatim(identifier_span, writer)?;
         } else {
             writer.text(ast.get_utf8(identifier.name(ast)));
+        }
+        if let Some((parameters, prefix)) = parameters {
+            let mode = if boundary.left_mode == ContentMode::Verbatim {
+                ContentMode::Verbatim
+            } else {
+                prefix.right_mode
+            };
+            self.format_type_list_prefix(prefix, writer)?;
+            self.format_type_parameters(parameters, mode, writer)?;
         }
         let trailing_comments = self
             .comments
@@ -173,7 +526,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::Unbound
             ))
         .then(|| self.prepare_comment_boundary(trailing_comments, annotation_span.end, span.end));
-        let tail = self.format_type_alias_rhs(&boundary, type_node, writer)?;
+        let tail = self.format_type_alias_rhs(&boundary, type_node, rhs_layout, writer)?;
         if let Some(trailing) = trailing {
             self.format_expression_tail(tail, writer)?;
             self.format_comment_boundary(&trailing, writer)?;
@@ -187,6 +540,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         boundary: &TypeBoundary<'ast>,
         node: PreparedType,
+        rhs_layout: RhsLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (before, after) = match &boundary.layout {
@@ -209,7 +563,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let parentheses =
                 self.prepare_type_parentheses(parentheses, node.source_owner, TypeContext::Root);
             if !parentheses.retained {
-                return self.format_type_alias_rhs(boundary, parentheses.child, writer);
+                return self.format_type_alias_rhs(boundary, parentheses.child, rhs_layout, writer);
             }
             if parentheses.movable {
                 self.format_comment_boundary(before, writer)?;
@@ -258,7 +612,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let single = self.prepare_single_compound(node)?;
             let single = match single.into_headless_type() {
                 Ok(child) => {
-                    return self.format_type_alias_rhs(boundary, child, writer);
+                    return self.format_type_alias_rhs(boundary, child, rhs_layout, writer);
                 }
                 Err(single) => single,
             };
@@ -431,12 +785,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
                 return writer.group(false, |writer| {
-                    RhsLayout::Fluid.write(
+                    rhs_layout.write(
                         writer,
-                        |writer| {
-                            after
-                                .gap()
-                                .write(writer, FlatSeparator::Space, Writer::line)
+                        |writer| match rhs_layout {
+                            RhsLayout::NeverBreakAfterOperator => {
+                                after
+                                    .gap()
+                                    .write(writer, FlatSeparator::Space, Writer::space)
+                            }
+                            RhsLayout::Fluid | RhsLayout::BreakAfterOperator => {
+                                after
+                                    .gap()
+                                    .write(writer, FlatSeparator::Space, Writer::line)
+                            }
                         },
                         |writer| {
                             self.format_prepared_intersection_with_head(
@@ -467,12 +828,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
                 return writer.group(false, |writer| {
-                    RhsLayout::Fluid.write(
+                    rhs_layout.write(
                         writer,
-                        |writer| {
-                            after
-                                .gap()
-                                .write(writer, FlatSeparator::Space, Writer::line)
+                        |writer| match rhs_layout {
+                            RhsLayout::NeverBreakAfterOperator => {
+                                after
+                                    .gap()
+                                    .write(writer, FlatSeparator::Space, Writer::space)
+                            }
+                            RhsLayout::Fluid | RhsLayout::BreakAfterOperator => {
+                                after
+                                    .gap()
+                                    .write(writer, FlatSeparator::Space, Writer::line)
+                            }
                         },
                         |writer| self.format_prepared_type(node, TypeContext::Root, writer),
                     )
@@ -541,9 +909,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
         mut target: TypeBoundaryTarget<'_>,
     ) -> Result<TypeBoundary<'ast>, FormatError> {
-        let (token, role) = match target {
+        let (token, mut role) = match &target {
             TypeBoundaryTarget::Alias(_) => ("=", TypeBoundaryRole::Alias),
             TypeBoundaryTarget::Qualified => (".", TypeBoundaryRole::Qualified),
+            TypeBoundaryTarget::Constraint { name, .. } => {
+                // A modifier-token name before `extends` needs a line terminator
+                // to remain the name. Read the real identifier, including escapes.
+                let leading = if matches!(
+                    self.ast.get_utf8(name.name(self.ast)),
+                    "const" | "in" | "out"
+                ) {
+                    LineConstraint::NewLine(1)
+                } else {
+                    LineConstraint::Unconstrained
+                };
+                ("extends", TypeBoundaryRole::Constraint(leading))
+            }
+            TypeBoundaryTarget::Default(_) => ("=", TypeBoundaryRole::Default),
         };
         let comments = self.comments.in_range(gap);
         let Some(start) = self.find_token(gap, comments, token) else {
@@ -555,7 +937,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let operator = Span::new(start, start + token.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= operator.start);
-        let (before, after) = comments.split_at(split);
+        let (mut before, mut after) = comments.split_at(split);
+        if let TypeBoundaryTarget::Alias(node) = &target
+            && matches!(node.data, TsTypeData::TsUnionType(union) if union.types(self.ast).len() > 1)
+            && before
+                .first()
+                .is_some_and(|comment| self.source_line_starts_line(comment.span.start))
+            && matches!(
+                self.comment_binding(comments, gap, Some(node.node.span(self.ast))),
+                CommentBinding::Unbound
+            )
+        {
+            before = &comments[..0];
+            after = comments;
+        }
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
@@ -568,6 +963,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         TypeBoundaryRole::Qualified => {
                             !matches!(position, SuppressionPosition::OwnLine)
                         }
+                        TypeBoundaryRole::Constraint(_) | TypeBoundaryRole::Default => {
+                            !matches!(position, SuppressionPosition::OwnLine)
+                        }
                         TypeBoundaryRole::Alias => {
                             matches!(position, SuppressionPosition::Inline)
                                 || matches!(position, SuppressionPosition::EndOfLine)
@@ -578,20 +976,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         left_mode = ContentMode::Verbatim;
                     } else {
                         right_mode = ContentMode::Verbatim;
-                        if let TypeBoundaryTarget::Alias(node) = &mut target {
+                        if let TypeBoundaryTarget::Alias(node)
+                        | TypeBoundaryTarget::Constraint { node, .. }
+                        | TypeBoundaryTarget::Default(node) = &mut target
+                        {
                             self.select_type_head(node, position);
                         }
                     }
                 }
             }
             for (_, position) in self.suppressed_comment_runs(after, gap.end) {
-                if matches!(role, TypeBoundaryRole::Qualified)
+                if !matches!(role, TypeBoundaryRole::Alias)
                     && matches!(position, SuppressionPosition::EndOfLine)
                 {
                     left_mode = ContentMode::Verbatim;
                 } else {
                     right_mode = ContentMode::Verbatim;
-                    if let TypeBoundaryTarget::Alias(node) = &mut target {
+                    if let TypeBoundaryTarget::Alias(node)
+                    | TypeBoundaryTarget::Constraint { node, .. }
+                    | TypeBoundaryTarget::Default(node) = &mut target
+                    {
                         self.select_type_head(node, position);
                     }
                 }
@@ -600,6 +1004,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let layout = if left_mode == ContentMode::Verbatim || right_mode == ContentMode::Verbatim {
             TypeBoundaryLayout::Source(gap)
         } else {
+            if matches!(
+                role,
+                TypeBoundaryRole::Constraint(LineConstraint::NewLine(1))
+            ) && before
+                .last()
+                .is_some_and(|comment| self.line_breaks(gap.start, comment.span.end) != 0)
+            {
+                // SourceAfter prints this preceding run's existing line once.
+                role = TypeBoundaryRole::Constraint(LineConstraint::Unconstrained);
+            }
             TypeBoundaryLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, operator.start),
                 after: self.prepare_comment_boundary(after, operator.end, gap.end),
@@ -618,18 +1032,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &TypeBoundary<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let (before, after) = match &boundary.layout {
-            TypeBoundaryLayout::Source(gap) => return self.format_verbatim(*gap, writer),
-            TypeBoundaryLayout::Formatted { before, after } => (before, after),
+        let Some((after, space)) = self.format_type_boundary_operator(boundary, writer)? else {
+            return Ok(());
         };
-        let space = match boundary.role {
-            TypeBoundaryRole::Alias => FlatSeparator::Space,
-            TypeBoundaryRole::Qualified => FlatSeparator::Empty,
-        };
-        self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
         self.format_comment_boundary(after, writer)?;
         after.gap().write(writer, space, |writer| {
-            if matches!(space, FlatSeparator::Space) {
+            if matches!(
+                boundary.role,
+                TypeBoundaryRole::Constraint(_) | TypeBoundaryRole::Default
+            ) {
+                writer.line();
+            } else if matches!(space, FlatSeparator::Space) {
                 writer.space();
             }
         });
@@ -643,15 +1056,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let (token, space) = match role {
-            TypeBoundaryRole::Alias => ("=", FlatSeparator::Space),
+            TypeBoundaryRole::Alias | TypeBoundaryRole::Default => ("=", FlatSeparator::Space),
             TypeBoundaryRole::Qualified => (".", FlatSeparator::Empty),
+            TypeBoundaryRole::Constraint(_) => ("extends", FlatSeparator::Space),
         };
         self.format_comment_boundary(before, writer)?;
-        before.gap().write(writer, space, |writer| {
-            if matches!(space, FlatSeparator::Space) {
-                writer.space();
-            }
-        });
+        if matches!(
+            role,
+            TypeBoundaryRole::Constraint(LineConstraint::NewLine(1))
+        ) && !before.gap().requires_line()
+        {
+            writer.hard_line();
+        } else {
+            before.gap().write(writer, space, |writer| {
+                if matches!(space, FlatSeparator::Space) {
+                    writer.space();
+                }
+            });
+        }
         writer.text(token);
         Ok(())
     }
@@ -811,7 +1233,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TsTypeData::TsIntersectionType(_)
                 | TsTypeData::TsFunctionType(_)
                 | TsTypeData::TsConstructorType(_)
-        ) {
+        ) || matches!(context, TypeContext::TypeConstraint)
+            && matches!(data, TsTypeData::TsConditionalType(_))
+        {
             writer.text("(");
             let tail = print(self, TypeLayout::Root, writer)?;
             self.format_expression_tail(tail, writer)?;
@@ -889,17 +1313,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TsTypeData::TsTypeOperator(node) => self.format_type_operator(node, writer),
             TsTypeData::TsTypeQuery(node) => self.format_type_query(node, writer),
 
-            TsTypeData::TsTypeReference(reference) => {
-                if reference.type_arguments(self.ast).is_some() {
-                    return Err(self.unsupported("generic type reference", reference));
-                }
-                self.format_type_name(
-                    reference.type_name(self.ast),
-                    ContentMode::Formatted,
-                    writer,
-                )?;
-                Ok(None)
-            }
+            TsTypeData::TsTypeReference(reference) => self.format_type_reference(reference, writer),
             TsTypeData::TsLiteralType(literal) => {
                 match self.ast.ts_literal_data(literal.literal(self.ast)) {
                     TsLiteralData::TemplateLiteral(template) => {
@@ -1349,6 +1763,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         preceding_end: u32,
         annotation: TsTypeAnnotation,
+        type_argument_owner: TypeArgumentOwner,
     ) -> Result<PreparedBindingAnnotation<'ast>, FormatError> {
         let node = annotation.type_annotation(self.ast);
         let gap = Span::new(preceding_end, node.span(self.ast).start);
@@ -1414,6 +1829,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
             prefix,
             content,
+            type_argument_owner,
         })
     }
 
@@ -1484,6 +1900,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.type_movable_head(node, TypeContext::Root)
                         };
                         before.write(writer, FlatSeparator::Space, Writer::space);
+                        if annotation.type_argument_owner
+                            == TypeArgumentOwner::ArrowVariableAnnotation
+                        {
+                            let recorded = self.record_type_head(
+                                compound::PreparedTypeContent::Type(node),
+                                PendingTypeHead::new(
+                                    boundary.comments(),
+                                    node.node.span(self.ast).start,
+                                    leading_head,
+                                ),
+                                TypeContext::Root,
+                                writer,
+                            )?;
+                            return self.format_recorded_binding_annotation_head(
+                                recorded,
+                                annotation.type_argument_owner,
+                                TypeLayout::Root,
+                                writer,
+                            );
+                        }
                         return self.format_prepared_type_with_caller_head(
                             node,
                             leading_head,
@@ -1500,15 +1936,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeLayout::Root
             }
         };
-        match annotation.content {
-            AnnotationContent::Source(annotation) => {
-                self.format_verbatim(annotation.span(self.ast), writer)?;
-                Ok(None)
-            }
-            AnnotationContent::Formatted(node) => {
-                self.format_prepared_type_with_layout(node, TypeContext::Root, layout, writer)
-            }
-        }
+        self.format_binding_annotation_type_content(
+            annotation.content,
+            annotation.type_argument_owner,
+            layout,
+            writer,
+        )
     }
 
     pub(super) fn format_typed_variable_declarator(
@@ -1524,7 +1957,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let left_end = annotation.span(ast).end;
         let owner = Span::new(pattern_span.start, left_end);
         let Some(right) = declarator.init(ast) else {
-            let binding = self.prepare_annotated_binding(pattern, annotation)?;
+            let binding =
+                self.prepare_annotated_binding(pattern, annotation, TypeArgumentOwner::Ordinary)?;
             let group = self.declaration_binding_group(pattern);
             return self.format_annotated_binding(binding, group, writer);
         };
@@ -1569,14 +2003,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let context = self.variable_initializer_context(right, context);
-        let (group, layout) =
+        let is_identifier_annotation = matches!(
+            ast.binding_pattern_data(pattern),
+            BindingPatternData::BindingIdentifier(_)
+        );
+        let annotation_owner = |data| {
+            if is_identifier_annotation && matches!(data, ExprData::ArrowFunctionExpression(_)) {
+                TypeArgumentOwner::ArrowVariableAnnotation
+            } else {
+                TypeArgumentOwner::Ordinary
+            }
+        };
+        let (group, layout, type_argument_owner) =
             if left_mode == ContentMode::Verbatim || right_mode == ContentMode::Verbatim {
                 let group = if left_mode == ContentMode::Formatted {
                     self.bound_initializer_binding_group(pattern)
                 } else {
                     BindingGroup::Auto
                 };
-                (group, InitializerLayout::Bound { gap, right_mode })
+                let owner = if left_mode == ContentMode::Formatted && is_identifier_annotation {
+                    let content = self.expression_content(right);
+                    annotation_owner(self.source_parentheses_rhs_content(
+                        content.data,
+                        context.with_content_mode(right_mode),
+                    ))
+                } else {
+                    TypeArgumentOwner::Ordinary
+                };
+                (group, InitializerLayout::Bound { gap, right_mode }, owner)
             } else {
                 let content = self.expression_content(right);
                 let boundary = self.assignment_boundary(
@@ -1585,10 +2039,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Span::new(operator, operator + 1),
                     right.span(ast).end,
                 )?;
+                let data = if is_identifier_annotation {
+                    self.source_parentheses_rhs_content(
+                        content.data,
+                        context.with_content_mode(boundary.mode),
+                    )
+                } else {
+                    content.data
+                };
+                let type_argument_owner = annotation_owner(data);
                 let rhs_layout = self.ordinary_rhs_layout(content.data, context, &boundary);
                 let (group, rhs_layout) = self.binding_initializer_layout(
                     pattern,
-                    BindingInitializerOwner::Variable,
+                    BindingInitializerOwner::Variable {
+                        annotation: Some(annotation),
+                    },
                     content.data,
                     &boundary,
                     rhs_layout,
@@ -1599,13 +2064,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         boundary,
                         rhs_layout,
                     },
+                    type_argument_owner,
                 )
             };
         group.with_initializer_group(writer, |writer| {
             if left_mode == ContentMode::Verbatim {
                 self.format_verbatim(owner, writer)?;
             } else {
-                let binding = self.prepare_annotated_binding(pattern, annotation)?;
+                let binding =
+                    self.prepare_annotated_binding(pattern, annotation, type_argument_owner)?;
                 let tail = self.format_annotated_binding(binding, group, writer)?;
                 self.format_expression_tail(tail, writer)?;
             }
