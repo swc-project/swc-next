@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value=(typeof namespace.value)["key"];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Value = (typeof namespace.value)["key"];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Value = (
+  typeof namespace.value
+)["key"];
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Value =
+  (
+    typeof namespace.value
+  )["key"]
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Value = (
+	typeof namespace.value
+)["key"];
