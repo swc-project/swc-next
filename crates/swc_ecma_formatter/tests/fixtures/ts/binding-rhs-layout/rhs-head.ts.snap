@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const data: Store<Context, Entry<Value>> =
+// note
+produce();
+---------- Options ----------
+{}
+---------- Output ----------
+const data: Store<Context, Entry<Value>> =
+  // note
+  produce();
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+const data: Store<
+  Context,
+  Entry<Value>
+> =
+  // note
+  produce();
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+const data: Store<
+  Context,
+  Entry<Value>
+> =
+  // note
+  produce()
