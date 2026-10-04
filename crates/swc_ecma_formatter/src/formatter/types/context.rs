@@ -7,6 +7,8 @@ pub(super) enum TypeContext {
     Parenthesized,
     PostfixOperand,
     ModifierOperand,
+    CompoundMember,
+    IntersectionLineContinuation,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -57,6 +59,18 @@ impl TypeContext {
                 TypePrecedence::Postfix
             }
             Self::ModifierOperand => TypePrecedence::Query,
+            Self::CompoundMember | Self::IntersectionLineContinuation => {
+                if matches!(
+                    data,
+                    TsTypeData::TsJsDocNullableType(_) | TsTypeData::TsJsDocUnknownType(_)
+                ) {
+                    return true;
+                }
+                if let TsTypeData::TsInferType(node) = data {
+                    return node.type_parameter(ast).constraint(ast).is_some();
+                }
+                TypePrecedence::Operator
+            }
         };
         let precedence = match data {
             TsTypeData::TsConditionalType(_) => TypePrecedence::Conditional,

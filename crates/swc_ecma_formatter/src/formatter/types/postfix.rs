@@ -5,9 +5,9 @@ use swc_next_ecma_ast::{
     TsTypeOperatorKind, TsTypeQuery, TsTypeQueryExprNameData,
 };
 
+use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
-use super::{Formatter, PreparedType, TypeBoundaryLayout};
-use super::{PendingTypeHead, PreparedTypeContent};
+use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
 use crate::formatter::comments::{CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
@@ -170,7 +170,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if matches!(position, SuppressionPosition::EndOfLine) {
                     object_mode = ContentMode::Verbatim;
                 } else {
-                    index_type.source_owner = Some(index);
+                    self.select_type_head(&mut index_type, position);
                 }
             }
         }
@@ -277,32 +277,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         postfix: PreparedPostfixType<'ast>,
         context: TypeContext,
+        layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context(postfix.data, context, writer, |formatter, writer| {
-            let tail = match postfix.operand {
-                PostfixOperand::Type(node) => {
-                    formatter.format_prepared_type(node, TypeContext::PostfixOperand, writer)?
+        self.format_type_in_context(
+            postfix.data,
+            context,
+            layout,
+            writer,
+            |formatter, _, writer| {
+                let tail = match postfix.operand {
+                    PostfixOperand::Type(node) => {
+                        formatter.format_prepared_type(node, TypeContext::PostfixOperand, writer)?
+                    }
+                    PostfixOperand::Prepared(content) => formatter.format_prepared_type_content(
+                        *content,
+                        TypeContext::PostfixOperand,
+                        TypeLayout::Root,
+                        writer,
+                    )?,
+                };
+                formatter.format_expression_tail(tail, writer)?;
+                match postfix.suffix {
+                    PostfixSuffix::Array(suffix) => {
+                        formatter.format_array_suffix(suffix, writer)?
+                    }
+                    PostfixSuffix::Indexed {
+                        index,
+                        prefix,
+                        suffix,
+                    } => {
+                        formatter.format_indexed_suffix(index, prefix, suffix, writer)?;
+                    }
                 }
-                PostfixOperand::Prepared(content) => formatter.format_prepared_type_content(
-                    *content,
-                    TypeContext::PostfixOperand,
-                    writer,
-                )?,
-            };
-            formatter.format_expression_tail(tail, writer)?;
-            match postfix.suffix {
-                PostfixSuffix::Array(suffix) => formatter.format_array_suffix(suffix, writer)?,
-                PostfixSuffix::Indexed {
-                    index,
-                    prefix,
-                    suffix,
-                } => {
-                    formatter.format_indexed_suffix(index, prefix, suffix, writer)?;
-                }
-            }
-            Ok(None)
-        })
+                Ok(None)
+            },
+        )
     }
 
     pub(super) fn format_type_operator(

@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = Left &
+// prettier-ignore
+{value:   string} & Right;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type A = Left &
+// prettier-ignore
+{value:   string} & Right;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type A = Left &
+// prettier-ignore
+{value:   string} & Right;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type A =
+  Left &
+// prettier-ignore
+{value:   string} & Right
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type A = Left &
+// prettier-ignore
+{value:   string} & Right;
