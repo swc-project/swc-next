@@ -102,6 +102,10 @@ pub(super) struct CommentBoundary<'ast> {
 }
 
 impl<'ast> CommentBoundary<'ast> {
+    pub(super) fn first_comment_start(&self) -> Option<u32> {
+        self.comments.first().map(|comment| comment.span.start)
+    }
+
     pub(super) fn comments(&self) -> &'ast [Comment] {
         self.comments
     }
