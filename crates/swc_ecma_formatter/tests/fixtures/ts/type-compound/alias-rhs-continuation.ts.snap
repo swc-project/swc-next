@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type ALongUnionAlias = "a-long-literal-value" | "a-second-long-value" | "third-long-value" | "fourth-long-value";
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type ALongUnionAlias =
+  | "a-long-literal-value"
+  | "a-second-long-value"
+  | "third-long-value"
+  | "fourth-long-value";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type ALongUnionAlias =
+  | "a-long-literal-value"
+  | "a-second-long-value"
+  | "third-long-value"
+  | "fourth-long-value";
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type ALongUnionAlias =
+  | "a-long-literal-value"
+  | "a-second-long-value"
+  | "third-long-value"
+  | "fourth-long-value"
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type ALongUnionAlias =
+	| "a-long-literal-value"
+	| "a-second-long-value"
+	| "third-long-value"
+	| "fourth-long-value";

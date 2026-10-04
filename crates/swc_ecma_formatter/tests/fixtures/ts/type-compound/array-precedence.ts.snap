@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Result=((A&B)|C)[];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Result = ((A & B) | C)[];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Result = (
+  (A & B) | C
+)[];
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Result =
+  (
+    | (A &
+        B)
+    | C
+  )[]
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Result = (
+	(A & B) | C
+)[];
