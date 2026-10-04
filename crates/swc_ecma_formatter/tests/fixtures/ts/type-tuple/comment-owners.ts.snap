@@ -1,0 +1,209 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Empty=[];
+type Single=[/* ordinary block */];
+type Packet=[
+  /* first block */
+
+  /* second block */
+
+  // first line
+
+  // second line
+];
+type Body=[/* keep
+
+literal body
+*/];
+type Ignored=[/* prettier-ignore */ /* first pinned */
+
+  /* second pinned */];
+type Protected=[
+  // @ts-expect-error
+
+  // directive covers the closing line
+] & MissingEmptyTupleType;
+type InlineFirst=[/* prettier-ignore */12.00|13.00,number];
+type InlineLater=[number,/* prettier-ignore */12.00|13.00,string];
+type Adjacent = [
+  /**
+   * first
+   *//**
+   * second
+   */
+];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Empty = [];
+type Single = [/* ordinary block */];
+type Packet = [
+  /* first block */
+  /* second block */
+  // first line
+  // second line
+];
+type Body = [
+  /* keep
+
+literal body
+*/
+];
+type Ignored = [/* prettier-ignore */ /* first pinned */
+
+  /* second pinned */];
+type Protected = [
+  // @ts-expect-error
+
+  // directive covers the closing line
+] & MissingEmptyTupleType;
+type InlineFirst = [/* prettier-ignore */ 12.00|13.00, number];
+type InlineLater = [number, /* prettier-ignore */ 12.00|13.00, string];
+type Adjacent = [
+  /**
+   * first
+   *//**
+   * second
+   */
+];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Empty = [];
+type Single = [
+  /* ordinary block */
+];
+type Packet = [
+  /* first block */
+  /* second block */
+  // first line
+  // second line
+];
+type Body = [
+  /* keep
+
+literal body
+*/
+];
+type Ignored =
+  [/* prettier-ignore */ /* first pinned */
+
+  /* second pinned */];
+type Protected = [
+  // @ts-expect-error
+
+  // directive covers the closing line
+] & MissingEmptyTupleType;
+type InlineFirst =
+  [/* prettier-ignore */ 12.00|13.00,
+    number,
+  ];
+type InlineLater = [
+  number, /* prettier-ignore */ 12.00|13.00,
+  string,
+];
+type Adjacent = [
+  /**
+   * first
+   *//**
+   * second
+   */
+];
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Empty =
+  []
+type Single =
+  [
+    /* ordinary block */
+  ]
+type Packet =
+  [
+    /* first block */
+    /* second block */
+    // first line
+    // second line
+  ]
+type Body =
+  [
+    /* keep
+
+literal body
+*/
+  ]
+type Ignored =
+  [/* prettier-ignore */ /* first pinned */
+
+  /* second pinned */]
+type Protected =
+  [
+    // @ts-expect-error
+
+    // directive covers the closing line
+  ] & MissingEmptyTupleType
+type InlineFirst =
+  [/* prettier-ignore */ 12.00|13.00,
+    number,
+  ]
+type InlineLater =
+  [
+    number, /* prettier-ignore */ 12.00|13.00,
+    string,
+  ]
+type Adjacent =
+  [
+    /**
+     * first
+     *//**
+     * second
+     */
+  ]
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Empty = [];
+type Single = [
+	/* ordinary block */
+];
+type Packet = [
+	/* first block */
+	/* second block */
+	// first line
+	// second line
+];
+type Body = [
+	/* keep
+
+literal body
+*/
+];
+type Ignored =
+	[/* prettier-ignore */ /* first pinned */
+
+  /* second pinned */];
+type Protected = [
+	// @ts-expect-error
+
+	// directive covers the closing line
+] & MissingEmptyTupleType;
+type InlineFirst =
+	[/* prettier-ignore */ 12.00|13.00,
+		number
+	];
+type InlineLater = [
+	number, /* prettier-ignore */ 12.00|13.00,
+	string
+];
+type Adjacent = [
+	/**
+	 * first
+	 *//**
+	 * second
+	 */
+];

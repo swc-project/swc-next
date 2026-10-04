@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = [
+  number,
+  // @ts-expect-error
+  | MissingType | "alpha" | "beta" | "gamma",
+];
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+type Value = [
+  number,
+  // @ts-expect-error
+  | MissingType | "alpha" | "beta" | "gamma",
+];
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Value = [
+  number,
+  // @ts-expect-error
+  | MissingType | "alpha" | "beta" | "gamma",
+];
+
+---------- Options ----------
+{"printWidth":24,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+type Value = [
+  number,
+  // @ts-expect-error
+  | MissingType | "alpha" | "beta" | "gamma",
+]
