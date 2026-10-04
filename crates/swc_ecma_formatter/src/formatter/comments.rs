@@ -101,7 +101,11 @@ pub(super) struct CommentBoundary<'ast> {
     gap: CommentGap,
 }
 
-impl CommentBoundary<'_> {
+impl<'ast> CommentBoundary<'ast> {
+    pub(super) fn comments(&self) -> &'ast [Comment] {
+        self.comments
+    }
+
     pub(super) fn end(&self) -> u32 {
         self.comments
             .last()
@@ -455,6 +459,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_end,
             gap,
         }
+    }
+
+    pub(super) fn comment_boundary_binding(
+        &self,
+        boundary: &CommentBoundary<'ast>,
+        target: Span,
+    ) -> CommentBinding {
+        self.comment_binding(
+            boundary.comments,
+            Span::new(boundary.source_end, target.start),
+            Some(target),
+        )
     }
 
     pub(super) fn format_comment_boundary(

@@ -7,8 +7,8 @@ mod tails;
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 
 use swc_next_ecma_ast::{
-    Ast, BlockStatement, Comment, CommentKind, Directive, EmptyStatement, FunctionBody, GetSpan,
-    Span, StaticBlock, Stmt, StmtData, SubRange,
+    Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, FunctionBody,
+    GetSpan, Span, StaticBlock, Stmt, StmtData, SubRange,
 };
 
 use super::Formatter;
@@ -226,6 +226,11 @@ enum StatementBoundary {
         end: u32,
         has_terminator: bool,
     },
+    /// The real type declaration closes before a following expression on a new line.
+    TypeDeclarationEnd {
+        end: u32,
+        has_terminator: bool,
+    },
 }
 
 /// A compound statement forwards a pending run beyond its own layout group.
@@ -249,23 +254,26 @@ impl StatementBoundary {
         match self {
             Self::Semicolon { end, .. }
             | Self::SourceTerminator { end, .. }
-            | Self::SourceEnd { end, .. } => end,
+            | Self::SourceEnd { end, .. }
+            | Self::TypeDeclarationEnd { end, .. } => end,
         }
     }
 
     fn has_terminator(self) -> bool {
         match self {
             Self::Semicolon { .. } | Self::SourceTerminator { .. } => true,
-            Self::SourceEnd { has_terminator, .. } => has_terminator,
+            Self::SourceEnd { has_terminator, .. }
+            | Self::TypeDeclarationEnd { has_terminator, .. } => has_terminator,
         }
     }
 
     fn guards_expression(self) -> bool {
         // An empty body's semicolon does not consume the next printed head's guard.
-        // Source packets retain their own grammar closure.
+        // Source packets and type declarations retain their own grammar closure.
         matches!(
             self,
-            Self::SourceTerminator { .. }
+            Self::TypeDeclarationEnd { .. }
+                | Self::SourceTerminator { .. }
                 | Self::SourceEnd {
                     has_terminator: true,
                     ..
@@ -281,13 +289,36 @@ impl StatementBoundary {
                 end,
                 has_terminator,
             },
+            Self::TypeDeclarationEnd { has_terminator, .. } => Self::TypeDeclarationEnd {
+                end,
+                has_terminator,
+            },
+        }
+    }
+
+    fn type_declaration(self) -> Self {
+        match self {
+            Self::SourceEnd {
+                end,
+                has_terminator,
+            } => Self::TypeDeclarationEnd {
+                end,
+                has_terminator,
+            },
+            boundary => boundary,
         }
     }
 
     fn with_source_packet(self, end: u32) -> Self {
-        Self::SourceEnd {
-            end,
-            has_terminator: true,
+        match self {
+            Self::TypeDeclarationEnd { .. } => Self::TypeDeclarationEnd {
+                end,
+                has_terminator: true,
+            },
+            _ => Self::SourceEnd {
+                end,
+                has_terminator: true,
+            },
         }
     }
 }
@@ -1089,7 +1120,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ) {
                     return Err(self.unsupported("statement", statement));
                 }
-                self.format_verbatim_statement(span, content, punctuation, writer)
+                let mut printed =
+                    self.format_verbatim_statement(span, content, punctuation, writer)?;
+                let declaration = match data {
+                    StmtData::Declaration(declaration) => Some(declaration),
+                    StmtData::ExportNamedDeclaration(node) => node.declaration(self.ast),
+                    _ => None,
+                };
+                if declaration.is_some_and(|declaration| {
+                    matches!(
+                        self.ast.decl_data(declaration),
+                        DeclData::TsTypeAliasDeclaration(_)
+                    )
+                }) {
+                    printed.boundary = printed.boundary.type_declaration();
+                }
+                Ok(printed)
             }
         }
     }
