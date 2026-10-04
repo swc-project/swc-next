@@ -6,7 +6,10 @@ use swc_next_ecma_ast::{
 };
 
 use super::context::TypeContext;
-use super::{Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeLayout};
+use super::{
+    Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeBoundaryTail,
+    TypeLayout,
+};
 use crate::formatter::comments::{CommentBinding, CommentBoundary, CommentGap, CommentRunLayout};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
@@ -44,6 +47,7 @@ pub(in crate::formatter) struct PreparedUnion<'ast> {
     links: Vec<UnionLink<'ast>>,
     last: PreparedType,
     trailing: Option<CommentBoundary<'ast>>,
+    first_start: u32,
     opening: LineConstraint,
     hug: bool,
     preserve_lines: bool,
@@ -193,6 +197,10 @@ impl UnionHug {
 }
 
 impl<'ast> PreparedUnion<'ast> {
+    pub(super) fn hug_head_start(&self) -> Option<u32> {
+        self.hug.then_some(self.first_start)
+    }
+
     pub(super) fn accepts_inline_head(&self) -> bool {
         !self.preserve_lines
             && match &self.leading {
@@ -320,6 +328,54 @@ impl PreparedTypeContent<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_prepared_union_before_boundary(
+        &mut self,
+        union: PreparedUnion<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        head: Option<Fragment<'ast>>,
+        tail: TypeBoundaryTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
+        self.format_type_in_context(
+            union.data,
+            context,
+            layout,
+            writer,
+            |formatter, layout, writer| {
+                formatter.format_union_members(union, layout, head, Some(tail), writer)
+            },
+        )
+    }
+
+    pub(super) fn prepared_content_head(
+        &self,
+        content: &PreparedTypeContent<'ast>,
+        context: TypeContext,
+    ) -> (bool, Option<MovableTypeHead<'ast>>) {
+        let frontier = match content {
+            PreparedTypeContent::Type(node) => self.type_movable_head(*node, context),
+            PreparedTypeContent::Intersection(intersection) => {
+                self.intersection_movable_head(intersection)
+            }
+            PreparedTypeContent::Compound(single)
+                if single.movable && single.comments.is_empty() =>
+            {
+                self.type_movable_head(single.current, context)
+            }
+            _ => None,
+        };
+        let prepared_packet = match content {
+            PreparedTypeContent::Parentheses(parentheses) => {
+                parentheses.movable
+                    && !context.preserves_union_head(parentheses.child.node, self.ast)
+            }
+            PreparedTypeContent::Compound(single) => single.movable && !single.comments.is_empty(),
+            _ => false,
+        };
+        (prepared_packet || frontier.is_some(), frontier)
+    }
+
     /// Check only the transferable leading spine before preparing optional head state.
     pub(super) fn type_movable_head(
         &self,
@@ -1066,6 +1122,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             links,
             last: current,
             trailing: None,
+            first_start,
             opening: self.line_constraint(span.start, span.start),
             hug,
             preserve_lines,
@@ -1085,7 +1142,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context,
             layout,
             writer,
-            |formatter, layout, writer| formatter.format_union_members(union, layout, head, writer),
+            |formatter, layout, writer| {
+                formatter.format_union_members(union, layout, head, None, writer)
+            },
         )
     }
 
@@ -1094,6 +1153,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         union: PreparedUnion<'ast>,
         layout: TypeLayout,
         head: Option<Fragment<'ast>>,
+        tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
         let PreparedUnion {
@@ -1129,10 +1189,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 Ok(None)
             };
-            if hug || tuple_element {
-                content(writer)
+            let pending = if hug || tuple_element {
+                content(writer)?
             } else {
-                writer.group(false, content)
+                writer.group(false, content)?
+            };
+            if let Some(tail) = tail {
+                self.format_expression_tail(pending, writer)?;
+                self.format_type_boundary_tail(tail, writer)?;
+                Ok(None)
+            } else {
+                Ok(pending)
             }
         };
         if hug {

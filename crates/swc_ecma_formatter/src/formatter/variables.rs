@@ -273,7 +273,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (group, rhs_layout) = if left_mode == ContentMode::Formatted {
             self.binding_initializer_layout(
                 left,
-                BindingInitializerOwner::Variable,
+                BindingInitializerOwner::Variable { annotation: None },
                 content.data,
                 &boundary,
                 rhs_layout,

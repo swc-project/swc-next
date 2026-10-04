@@ -35,7 +35,9 @@ pub(super) enum DefaultOwner<'ast> {
 
 #[derive(Clone, Copy)]
 pub(super) enum BindingInitializerOwner {
-    Variable,
+    Variable {
+        annotation: Option<TsTypeAnnotation>,
+    },
     Assignment,
 }
 
@@ -158,11 +160,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         pattern: BindingPattern,
         annotation: TsTypeAnnotation,
+        type_argument_owner: super::types::TypeArgumentOwner,
     ) -> Result<PreparedAnnotatedBinding<'ast>, FormatError> {
         Ok(PreparedAnnotatedBinding {
             pattern,
-            annotation: self
-                .prepare_binding_annotation_content(pattern.span(self.ast).end, annotation)?,
+            annotation: self.prepare_binding_annotation_content(
+                pattern.span(self.ast).end,
+                annotation,
+                type_argument_owner,
+            )?,
         })
     }
 
@@ -258,6 +264,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &AssignmentBoundary<'ast>,
         rhs_layout: RhsLayout,
     ) -> (BindingGroup, RhsLayout) {
+        if let BindingInitializerOwner::Variable {
+            annotation: Some(annotation),
+        } = owner
+            && self.binding_annotation_breaks_left(annotation)
+            && boundary.mode == ContentMode::Formatted
+            && !boundary.own_line
+            && boundary.operator_line.is_empty()
+            && boundary.trailing.is_empty()
+            && !boundary
+                .before
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line)
+        {
+            return (BindingGroup::Parent, RhsLayout::NeverBreakAfterOperator);
+        }
         let ast = self.ast;
         let Some(object) = pattern.as_object_pattern(ast) else {
             return (BindingGroup::Auto, rhs_layout);
@@ -289,7 +310,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return (group, rhs_layout);
         }
-        let arrow_variable = matches!(owner, BindingInitializerOwner::Variable)
+        let arrow_variable = matches!(owner, BindingInitializerOwner::Variable { .. })
             && shape.nonempty
             && matches!(data, ExprData::ArrowFunctionExpression(_));
         if shape.complex || arrow_variable {

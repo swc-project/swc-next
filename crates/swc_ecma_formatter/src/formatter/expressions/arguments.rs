@@ -76,6 +76,10 @@ pub(in crate::formatter) struct PreparedItem {
 }
 
 impl PreparedItem {
+    pub(in crate::formatter) fn set_trailing_comma(&mut self, policy: TrailingCommaPolicy) {
+        self.trailing_comma = policy;
+    }
+
     pub(in crate::formatter) fn set_leading_mode(&mut self, mode: ContentMode) {
         self.mode = if mode == ContentMode::Verbatim
             || self
