@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Narrow<in T extends string | number = string, out U = T> = [T, U];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Narrow<in T extends string | number = string, out U = T> = [T, U];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Narrow<
+  in T extends
+    | string
+    | number =
+    string,
+  out U = T,
+> = [T, U];
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Narrow<
+  in T extends
+
+      | string
+      | number =
+    string,
+  out U =
+    T,
+> = [
+  T,
+  U,
+]
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Narrow<
+	in T extends
+		| string
+		| number =
+		string,
+	out U = T
+> = [T, U];

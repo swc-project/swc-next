@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+const data: Store<Context, Entry<Value>> = produce();
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+const data: Store<Context, Entry<Value>> = produce();
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+// @ts-expect-error
+const data: Store<Context, Entry<Value>> = produce();
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+const data: Store<Context, Entry<Value>> = produce()
