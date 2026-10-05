@@ -38,6 +38,8 @@ pub(in crate::formatter) enum PropertyKeyContext {
     FunctionValueBinding,
     ClassField,
     ModuleAttribute,
+    TypeProperty,
+    TypeMethod,
     ClassMethod(ConstructorKeyGrammar),
 }
 
@@ -878,6 +880,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let raw = self.ast.get_utf8(literal.raw(self.ast));
         let content = &raw[1..raw.len() - 1];
+        if matches!(context, PropertyKeyContext::TypeMethod) && content == "new" {
+            return None;
+        }
         (swc_next_ecma_ast::is_identifier_es5_and_esnext(content.as_bytes())
             || !matches!(context, PropertyKeyContext::ModuleAttribute)
                 && !self.ast.lang().is_typescript()
@@ -978,7 +983,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let PropertyKeyData::Expr(expression) = ast.property_key_data(key) else {
                 return Err(self.unsupported("computed object key", key));
             };
-            self.prepare_computed_property_key(expression, computed, mode, writer)?
+            self.prepare_computed_property_key(expression, computed, mode, context, writer)?
                 .write(writer);
             return Ok(());
         }
@@ -1010,6 +1015,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         computed: Span,
         mode: ContentMode,
+        context: PropertyKeyContext,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedComputedKey<'ast>, FormatError> {
         let key_span = expression.span(self.ast);
@@ -1049,6 +1055,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.computed_key_scope(expression)
         };
+        let position = match context {
+            PropertyKeyContext::TypeProperty => ExpressionPosition::TypePropertyKey,
+            _ => ExpressionPosition::Nested,
+        };
         let (inner, end) = writer.record_with_value(|writer| {
             let leading = self
                 .comments
@@ -1083,7 +1093,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     binding,
                 },
-                ExpressionContext::at(ExpressionPosition::Nested)
+                ExpressionContext::at(position)
                     .with_operand_indent(operand_indent)
                     .with_content_mode(mode),
                 writer,

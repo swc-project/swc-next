@@ -58,6 +58,13 @@ impl CallableType {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum SignatureIncoming {
+    Parameter(CallableParameter),
+    Return(TsTypeAnnotation),
+    Empty,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum CallableParameter {
     This(TsThisParameter),
@@ -89,6 +96,7 @@ pub(super) struct SignatureReturn<'ast> {
     pub(super) content: AnnotationContent,
     prefix: TypeBoundaryLayout<'ast>,
     pub(super) preceding_mode: ContentMode,
+    delimiter: SignatureReturnDelimiter,
 }
 
 enum FunctionReturnContent<'ast> {
@@ -99,6 +107,7 @@ enum FunctionReturnContent<'ast> {
 pub(super) struct FunctionReturn<'ast> {
     content: FunctionReturnContent<'ast>,
     prefix: TypeBoundaryLayout<'ast>,
+    delimiter: SignatureReturnDelimiter,
 }
 
 impl FunctionReturn<'_> {
@@ -109,6 +118,12 @@ impl FunctionReturn<'_> {
                     swc_next_ecma_ast::TsTypeData::TsTypeLiteral(_)
                         | swc_next_ecma_ast::TsTypeData::TsMappedType(_)))
     }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum SignatureReturnDelimiter {
+    Arrow,
+    Colon,
 }
 
 #[derive(Clone, Copy)]
@@ -124,9 +139,26 @@ pub(super) struct SignatureGenerics<'ast> {
     pub(super) following: TypeGap<'ast>,
 }
 
-enum SignatureReturnEolTarget {
+pub(super) enum SignatureReturnEolTarget<'mode> {
     Parameter,
+    Header(&'mode mut ContentMode),
     Annotation,
+}
+
+impl SignatureReturnDelimiter {
+    fn token(self) -> &'static str {
+        match self {
+            Self::Arrow => "=>",
+            Self::Colon => ":",
+        }
+    }
+
+    fn preceding_space(self) -> FlatSeparator {
+        match self {
+            Self::Arrow => FlatSeparator::Space,
+            Self::Colon => FlatSeparator::Empty,
+        }
+    }
 }
 
 enum CallableHead<'ast> {
@@ -248,6 +280,26 @@ impl PreparedParameterItem<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn signature_incoming(
+        &self,
+        parameters: &CallableParameters,
+        result: Option<TsTypeAnnotation>,
+        selected: &mut Option<SignatureIncoming>,
+    ) -> Result<SignatureIncoming, FormatError> {
+        if let Some(owner) = *selected {
+            return Ok(owner);
+        }
+        let owner = if let Some(first) = self.first_callable_parameter(parameters)? {
+            SignatureIncoming::Parameter(first)
+        } else if let Some(annotation) = result {
+            SignatureIncoming::Return(annotation)
+        } else {
+            SignatureIncoming::Empty
+        };
+        *selected = Some(owner);
+        Ok(owner)
+    }
+
     pub(super) fn format_callable_type(
         &mut self,
         node: CallableType,
@@ -363,12 +415,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             eol_target,
             parts.return_type,
             source_return,
+            SignatureReturnDelimiter::Arrow,
         );
         self.prepare_callable_parameter_tail(&mut parameters, return_type.preceding_mode)?;
         let can_group_parameters = self.signature_parameters_can_group(
             parameters.count() == 1,
             parts.type_parameters,
-            &return_type,
+            Some(&return_type),
         );
         let generics = generic_tail.map(|(node, following)| SignatureGenerics {
             node,
@@ -388,9 +441,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.format_callable_signature_contents(
                 parameters,
-                return_type,
+                Some(return_type),
                 generics,
                 can_group_parameters,
+                false,
                 writer,
             )
         })
@@ -644,12 +698,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
-    fn prepare_signature_return(
+    pub(super) fn prepare_signature_return(
         &self,
         preceding_end: u32,
-        eol_target: SignatureReturnEolTarget,
+        mut eol_target: SignatureReturnEolTarget<'_>,
         annotation: TsTypeAnnotation,
         source_return: Option<TsTypeAnnotation>,
+        delimiter: SignatureReturnDelimiter,
     ) -> SignatureReturn<'ast> {
         let ast = self.ast;
         let delimiter_start = annotation.span(ast).start;
@@ -663,9 +718,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.has_suppression && self.content_mode(before) == ContentMode::Verbatim {
             for (_, position) in self.suppressed_comment_runs(before, delimiter_start) {
                 if matches!(position, SuppressionPosition::EndOfLine) {
-                    match &eol_target {
+                    match &mut eol_target {
                         SignatureReturnEolTarget::Parameter => {
                             preceding_mode = ContentMode::Verbatim;
+                            source_before = true;
+                        }
+                        SignatureReturnEolTarget::Header(mode) => {
+                            **mode = ContentMode::Verbatim;
                             source_before = true;
                         }
                         SignatureReturnEolTarget::Annotation => {
@@ -682,26 +741,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 content: AnnotationContent::Wrapper(source_return.unwrap_or(annotation)),
                 prefix: TypeBoundaryLayout::Source(Span::new(preceding_end, delimiter_start)),
                 preceding_mode,
+                delimiter,
             };
         }
         let mut node = self.prepare_type(annotation.type_annotation(ast), ContentMode::Formatted);
         let type_start = node.node.span(ast).start;
-        let after = self
-            .comments
-            .in_range(Span::new(delimiter_start + 2, type_start));
+        let after = self.comments.in_range(Span::new(
+            delimiter_start + delimiter.token().len() as u32,
+            type_start,
+        ));
         self.select_type_head_comments(&mut node, after, type_start);
         let prefix = if source_before || node.source_owner.is_some() {
             TypeBoundaryLayout::Source(Span::new(preceding_end, type_start))
         } else {
             TypeBoundaryLayout::Formatted {
                 before: self.prepare_comment_boundary(before, preceding_end, delimiter_start),
-                after: self.prepare_comment_boundary(after, delimiter_start + 2, type_start),
+                after: self.prepare_comment_boundary(
+                    after,
+                    delimiter_start + delimiter.token().len() as u32,
+                    type_start,
+                ),
             }
         };
         SignatureReturn {
             content: AnnotationContent::Type(node),
             prefix,
             preceding_mode,
+            delimiter,
         }
     }
 
@@ -718,6 +784,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         FunctionReturn {
             content,
             prefix: result.prefix,
+            delimiter: result.delimiter,
         }
     }
 
@@ -762,6 +829,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             FunctionReturn {
                 content: FunctionReturnContent::Annotation(result.content),
                 prefix: result.prefix,
+                delimiter: result.delimiter,
             },
             context,
             writer,
@@ -772,11 +840,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         has_single_parameter: bool,
         generics: Option<TsTypeParameterDeclaration>,
-        result: &SignatureReturn<'ast>,
+        result: Option<&SignatureReturn<'ast>>,
     ) -> bool {
         if !has_single_parameter {
             return false;
         }
+        let Some(result) = result else {
+            return false;
+        };
         if let AnnotationContent::Type(node) = &result.content
             && node.source_owner.is_none()
             && let TypeBoundaryLayout::Formatted { before, after } = &result.prefix
@@ -823,22 +894,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    fn format_callable_signature_contents(
+    pub(super) fn format_callable_signature_contents(
         &mut self,
         parameters: CallableParameters,
-        result: SignatureReturn<'ast>,
+        result: Option<SignatureReturn<'ast>>,
         generics: Option<SignatureGenerics<'ast>>,
         can_group_parameters: bool,
+        group_return: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if can_group_parameters {
+        if can_group_parameters && let Some(result) = result {
             let (parameters, ()) = writer.record_group_with_value(|writer| {
                 self.format_callable_signature_parameters(parameters, generics, writer)
             })?;
             let result = self.prepare_function_return(result);
             let object_return = result.has_object_type();
-            let (result, tail) =
-                writer.record_with_value(|writer| self.format_function_return(result, writer))?;
+            let (result, tail) = writer.record_with_value(|writer| {
+                if group_return {
+                    writer.group(false, |writer| self.format_function_return(result, writer))
+                } else {
+                    self.format_function_return(result, writer)
+                }
+            })?;
             writer.write_fragment(if object_return || result.preferred_breaks() {
                 parameters.grouped()
             } else {
@@ -847,14 +924,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.write_fragment(result);
             return Ok(tail);
         }
-        if result.preceding_mode == ContentMode::Verbatim {
+        if result
+            .as_ref()
+            .is_some_and(|result| result.preceding_mode == ContentMode::Verbatim)
+        {
             writer.group(false, |writer| {
                 self.format_callable_signature_parameters(parameters, generics, writer)
             })?;
         } else {
             self.format_callable_signature_parameters(parameters, generics, writer)?;
         }
-        self.format_signature_return(result, writer)
+        match result {
+            Some(result) if group_return => {
+                writer.group(false, |writer| self.format_signature_return(result, writer))
+            }
+            Some(result) => self.format_signature_return(result, writer),
+            None => Ok(None),
+        }
     }
 
     fn format_callable_signature_parameters(
@@ -885,8 +971,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_comment_boundary(&before, writer)?;
                 before
                     .gap()
-                    .write(writer, FlatSeparator::Space, Writer::space);
-                writer.text("=>");
+                    .write(writer, result.delimiter.preceding_space(), |writer| {
+                        if matches!(result.delimiter, SignatureReturnDelimiter::Arrow) {
+                            writer.space();
+                        }
+                    });
+                writer.text(result.delimiter.token());
                 if let FunctionReturnContent::Annotation(AnnotationContent::Type(node)) =
                     &result.content
                 {
