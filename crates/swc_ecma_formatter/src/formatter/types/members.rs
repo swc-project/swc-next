@@ -147,6 +147,24 @@ impl MemberHandle {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum TypeMemberBodyKind {
+    Literal,
+    Interface,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct IncomingTypeMember {
+    pub(super) node: TsTypeElement,
+    pub(super) mode: ContentMode,
+}
+
+#[derive(Default)]
+pub(super) struct TypeMemberBodyIncoming<'ast> {
+    pub(super) member: Option<IncomingTypeMember>,
+    pub(super) comments: Option<&'ast [Comment]>,
+}
+
+#[derive(Clone, Copy)]
 enum MemberGapRole {
     Between(Option<Span>),
     Closing,
@@ -188,20 +206,46 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_type_member_body_with_layout(
             node.span(self.ast),
             node.members(self.ast),
+            TypeMemberBodyKind::Literal,
+            TypeMemberBodyIncoming::default(),
             layout,
             writer,
         )?;
         Ok(None)
     }
 
+    pub(super) fn format_type_member_body(
+        &mut self,
+        span: Span,
+        members: SubRange<TsTypeElement>,
+        kind: TypeMemberBodyKind,
+        incoming: TypeMemberBodyIncoming<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_type_member_body_with_layout(
+            span,
+            members,
+            kind,
+            incoming,
+            TypeLayout::Root,
+            writer,
+        )
+    }
+
     fn format_type_member_body_with_layout(
         &mut self,
         span: Span,
         members: SubRange<TsTypeElement>,
+        kind: TypeMemberBodyKind,
+        incoming: TypeMemberBodyIncoming<'ast>,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let ast = self.ast;
+        let TypeMemberBodyIncoming {
+            member: incoming,
+            comments: head_comments,
+        } = incoming;
         let content = Span::new(span.start + 1, span.end - 1);
         let quoting = match self.options.quote_properties {
             QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
@@ -218,7 +262,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .peekable();
         let Some(first) = members.peek().copied() else {
-            let comments = self.comments.in_range(content);
+            let comments = head_comments.unwrap_or_else(|| self.comments.in_range(content));
             if self.content_mode(comments) == ContentMode::Verbatim {
                 return self.format_verbatim(span, writer);
             }
@@ -226,7 +270,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text("{}");
                 return Ok(());
             }
-            let opening_end = content.start;
+            let opening_end =
+                head_comments.map_or(content.start, |comments| comments[0].span.start);
             let boundary = self.prepare_comment_boundary(comments, opening_end, content.end);
             let can_relocate = self
                 .comment_binding(comments, content, None)
@@ -236,9 +281,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 CommentRunLayout::Source
             };
-            let expanded = comments
-                .iter()
-                .any(|comment| comment.kind == CommentKind::Line);
+            let expanded = matches!(kind, TypeMemberBodyKind::Interface)
+                || comments
+                    .iter()
+                    .any(|comment| comment.kind == CommentKind::Line);
             let mut write = |writer: &mut Writer<'ast>| {
                 writer.text("{");
                 writer.indent(|writer| {
@@ -272,13 +318,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let first_start = first.span(ast).start;
         let leading_span = Span::new(content.start, first_start);
-        let leading_comments = self.comments.in_range(leading_span);
-        let mut mode = self.content_mode(leading_comments);
-        let expanded = self.type_body_expands(content.start, first_start);
+        let leading_comments =
+            head_comments.unwrap_or_else(|| self.comments.in_range(leading_span));
+        let mut mode = incoming
+            .filter(|member| member.node == first.node)
+            .map_or_else(|| self.content_mode(leading_comments), |member| member.mode);
+        let opening_start = head_comments.map_or(content.start, |comments| comments[0].span.start);
+        let expanded = matches!(kind, TypeMemberBodyKind::Interface)
+            || self.type_body_expands(content.start, first_start);
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let closing = writer.indent(|writer| {
-                self.format_member_opening(leading_comments, content.start, first_start, writer)?;
+                self.format_member_opening(
+                    leading_comments,
+                    opening_start,
+                    first_start,
+                    kind,
+                    writer,
+                )?;
                 while let Some(node) = members.next() {
                     let span = node.span(ast);
                     let next = members.peek().copied();
@@ -346,7 +403,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             }
                         };
                     }
-                    self.format_member_gap(gap, role, writer)?;
+                    self.format_member_gap(gap, role, kind, writer)?;
                     mode = suppression.map_or(ContentMode::Formatted, |source| source.following);
                 }
                 unreachable!("a nonempty type body retains its final member")
@@ -361,7 +418,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         FlatSeparator::Empty
                     },
                     |writer| {
-                        if self.options.bracket_spacing {
+                        if matches!(kind, TypeMemberBodyKind::Interface) {
+                            writer.hard_line();
+                        } else if self.options.bracket_spacing {
                             writer.line();
                         } else {
                             writer.soft_line();
@@ -384,6 +443,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &'ast [Comment],
         start: u32,
         next_start: u32,
+        kind: TypeMemberBodyKind,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let spaced = self.options.bracket_spacing;
@@ -397,7 +457,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.line_constraint(start, leading_start)
             .write(writer, flat, |writer| {
-                if spaced {
+                if matches!(kind, TypeMemberBodyKind::Interface) {
+                    writer.hard_line();
+                } else if spaced {
                     writer.line();
                 } else {
                     writer.soft_line();
@@ -443,6 +505,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         gap: MemberGap<'ast>,
         role: MemberGapRole,
+        kind: TypeMemberBodyKind,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let spaced = self.options.bracket_spacing || matches!(role, MemberGapRole::Between(_));
@@ -475,7 +538,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     );
                 } else {
                     trailing.gap().write(writer, flat, |writer| {
-                        if spaced {
+                        if matches!(kind, TypeMemberBodyKind::Interface) {
+                            writer.hard_line();
+                        } else if spaced {
                             writer.line();
                         } else {
                             writer.soft_line();

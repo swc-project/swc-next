@@ -7,8 +7,9 @@ mod tails;
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 
 use swc_next_ecma_ast::{
-    Ast, BlockStatement, Comment, CommentKind, DeclData, Directive, EmptyStatement, FunctionBody,
-    GetSpan, Span, StaticBlock, Stmt, StmtData, SubRange,
+    Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
+    ExportDefaultDeclarationKindData, FunctionBody, GetSpan, Span, StaticBlock, Stmt, StmtData,
+    SubRange,
 };
 
 use super::Formatter;
@@ -1125,12 +1126,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let declaration = match data {
                     StmtData::Declaration(declaration) => Some(declaration),
                     StmtData::ExportNamedDeclaration(node) => node.declaration(self.ast),
+                    StmtData::ExportDefaultDeclaration(node) => match self
+                        .ast
+                        .export_default_declaration_kind_data(node.declaration(self.ast))
+                    {
+                        ExportDefaultDeclarationKindData::TsInterfaceDeclaration(interface) => {
+                            Some(Decl::TsInterfaceDeclaration(interface))
+                        }
+                        _ => None,
+                    },
                     _ => None,
                 };
                 if declaration.is_some_and(|declaration| {
                     matches!(
                         self.ast.decl_data(declaration),
-                        DeclData::TsTypeAliasDeclaration(_)
+                        DeclData::TsTypeAliasDeclaration(_) | DeclData::TsInterfaceDeclaration(_)
                     )
                 }) {
                     printed.boundary = printed.boundary.type_declaration();
