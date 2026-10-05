@@ -7099,7 +7099,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let Some(next) = self.peek_ahead() else {
                 break;
             };
-            if !next.tag().is_identifier_like() {
+            if !next.tag().is_identifier_like() || next.has_line_terminator_before() {
                 break;
             }
             if *flag {
@@ -13385,6 +13385,91 @@ mod tests {
         let (raw, cooked) = values("`a\\rb`");
         assert_eq!(raw, "a\\rb");
         assert_eq!(cooked.as_deref(), Some("a\rb"));
+    }
+
+    #[test]
+    fn type_parameter_modifiers() {
+        fn parse_parameter<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+        ) -> (Ast<'a>, TsTypeParameter) {
+            let (ast, declaration) = parse_typescript_declaration(allocator, source);
+            let alias = declaration.as_ts_type_alias_declaration(&ast).unwrap();
+            let parameters = if let Some(parameters) = alias.type_parameters(&ast) {
+                parameters
+            } else {
+                let function = alias
+                    .type_annotation(&ast)
+                    .as_ts_function_type(&ast)
+                    .unwrap();
+                function.type_parameters(&ast).unwrap()
+            };
+            let parameter = parameters.params(&ast).get_node(&ast, 0).unwrap();
+            (ast, parameter)
+        }
+
+        fn has_errors(source: &str) -> bool {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            !parsed.diagnostics.is_empty()
+        }
+
+        let allocator = Allocator::new();
+
+        let (ast, parameter) = parse_parameter(&allocator, "type F = <const T>(x:T) => T;");
+        assert!(parameter.r#const(&ast));
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "T");
+
+        let (ast, parameter) =
+            parse_parameter(&allocator, "type F = <const /* note */ T>(x:T) => T;");
+        assert!(parameter.r#const(&ast));
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "T");
+
+        let (ast, parameter) = parse_parameter(&allocator, r"type F = <const \u0054>(x:T) => T;");
+        assert!(parameter.r#const(&ast));
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "T");
+
+        let (ast, parameter) = parse_parameter(&allocator, "type A<const T> = T;");
+        assert!(parameter.r#const(&ast));
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "T");
+
+        let (ast, parameter) = parse_parameter(&allocator, "type A<out> = string;");
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "out");
+        assert!(!parameter.out(&ast));
+
+        let (ast, parameter) = parse_parameter(&allocator, "type A<in T> = (x:T) => void;");
+        assert!(parameter.r#in(&ast));
+        assert!(!parameter.out(&ast));
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "T");
+
+        let (ast, parameter) = parse_parameter(&allocator, "type A<out T> = () => T;");
+        assert!(parameter.out(&ast));
+        assert!(!parameter.r#in(&ast));
+        assert_eq!(ast.get_utf8(parameter.name(&ast).name(&ast)), "T");
+
+        let (ast, parameter) = parse_parameter(&allocator, "type A<in out T> = (x:T) => T;");
+        assert!(parameter.r#in(&ast));
+        assert!(parameter.out(&ast));
+
+        assert!(has_errors("type F = <const /* note\n */ T>(x:T) => T;"));
+
+        assert!(has_errors("type F = <const // note\n T>(x:T) => T;"));
+
+        assert!(has_errors("type F = <const>() => const;"));
+
+        assert!(has_errors("type A<in> = string;"));
+
+        assert!(has_errors("type F = <const\nT>() => T;"));
+
+        assert!(has_errors("type A<in\nT> = (x:T) => void;"));
+
+        assert!(has_errors("type A<out\nT> = () => T;"));
+
+        assert!(has_errors("type A<in /*\n*/ out T> = (x:T) => T;"));
     }
 
     #[test]
