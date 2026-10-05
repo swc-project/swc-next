@@ -217,6 +217,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(None)
     }
 
+    pub(in crate::formatter) fn format_type_arguments(
+        &mut self,
+        node: TsTypeParameterInstantiation,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_type_arguments_with_owner(node, mode, TypeArgumentOwner::Ordinary, writer)
+    }
+
     pub(super) fn format_type_arguments_with_owner(
         &mut self,
         node: TsTypeParameterInstantiation,

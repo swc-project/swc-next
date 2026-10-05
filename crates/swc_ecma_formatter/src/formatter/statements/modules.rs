@@ -148,6 +148,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DeclData::VariableDeclaration(_) => {
                     self.finish_statement(end, None, punctuation, writer)
                 }
+                DeclData::TsInterfaceDeclaration(_) => Ok(StatementBoundary::SourceEnd {
+                    end,
+                    has_terminator: false,
+                }
+                .type_declaration()
+                .into()),
                 DeclData::TsTypeAliasDeclaration(_) => {
                     let mut printed = self.finish_statement(end, None, punctuation, writer)?;
                     printed.boundary = printed.boundary.type_declaration();
@@ -180,6 +186,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DeclData::VariableDeclaration(variable) => {
                 let (end, tail) = self.format_variable_declaration(variable, writer)?;
                 self.finish_statement(end, tail, punctuation, writer)
+            }
+            DeclData::TsInterfaceDeclaration(interface) => {
+                self.format_interface(interface, writer)?;
+                Ok(StatementBoundary::SourceEnd {
+                    end: interface.span(self.ast).end,
+                    has_terminator: false,
+                }
+                .type_declaration()
+                .into())
             }
             DeclData::TsTypeAliasDeclaration(alias) => {
                 let (end, tail) = self.format_type_alias(alias, writer)?;
@@ -603,6 +618,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         Decl::Function(function)
                     }
                     ExportDefaultDeclarationKindData::Class(class) => Decl::Class(class),
+                    ExportDefaultDeclarationKindData::TsInterfaceDeclaration(interface) => {
+                        Decl::TsInterfaceDeclaration(interface)
+                    }
                     _ => return Err(self.unsupported("default export declaration", declaration)),
                 };
                 if moved_prefix {
