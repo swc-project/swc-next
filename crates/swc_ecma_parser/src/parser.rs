@@ -8094,9 +8094,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // constructor target in `new import.meta()`. Import calls share
             // this parser entry and are rejected by `parse_new_expression`.
             TokenTag::Import => self.parse_import_expression(),
-            TokenTag::Await | TokenTag::Yield if self.ts_context.in_ts_container_body() => {
-                self.parse_ts_container_await_or_yield(minimum)
-            }
+            TokenTag::Await | TokenTag::Yield => self.parse_recovered_await_or_yield(minimum),
             tag if tag.is_identifier_like() => self.parse_identifier(),
             _ => {
                 let found = self.describe_token(token);
@@ -8120,25 +8118,39 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     #[cold]
-    fn parse_ts_container_await_or_yield(&mut self, minimum: Precedence) -> Option<Expr> {
-        debug_assert!(self.ts_context.in_ts_container_body());
-        debug_assert!(!self.boundary_context.can_be_module());
+    fn parse_recovered_await_or_yield(&mut self, minimum: Precedence) -> Option<Expr> {
         let tag = self.current_token.tag();
-        if minimum >= Precedence::Add && tag == TokenTag::Yield {
+        if minimum > Precedence::Prefix || minimum >= Precedence::Add && tag == TokenTag::Yield {
             return self.parse_identifier();
         }
-        if !self.can_recover_ts_await_or_yield_expression()? {
+        let can_recover = self
+            .can_recover_await_or_yield_expression()
+            .unwrap_or(false);
+        if !can_recover {
             return self.parse_identifier();
-        }
-
-        if tag == TokenTag::Yield {
-            return self.parse_yield_expression();
         }
 
         let token = self.current_token;
-        self.advance_without_escape_check()?;
-        self.report_if_escaped_keyword(token);
-        self.parse_await_expression(token.start())
+        let expression = if tag == TokenTag::Yield {
+            self.parse_yield_expression()?
+        } else {
+            self.advance_without_escape_check()?;
+            self.report_if_escaped_keyword(token);
+            self.parse_await_expression(token.start())?
+        };
+        if !self.ts_context.in_ts_container_body() {
+            let message = if tag == TokenTag::Await {
+                "Await expressions are only allowed within async functions and at the top level of modules"
+            } else {
+                "A yield expression is only allowed in a generator body"
+            };
+            self.report(
+                expression.span(&self.ast),
+                message,
+                ReportOptions::default(),
+            );
+        }
+        Some(expression)
     }
 
     // INLINE: This is a small and hot function.
@@ -11774,11 +11786,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    /// TypeScript preserves an await/yield expression in declaration containers
-    /// when the following token makes an identifier interpretation impossible.
+    /// Preserve an await/yield expression when an identifier interpretation is
+    /// impossible. TypeScript declaration containers defer context checks to
+    /// semantic analysis; other recovery paths report a parser error.
     #[cold]
     #[inline(never)]
-    fn can_recover_ts_await_or_yield_expression(&mut self) -> Option<bool> {
+    fn can_recover_await_or_yield_expression(&mut self) -> Option<bool> {
         debug_assert!(matches!(
             self.current_token.tag(),
             TokenTag::Await | TokenTag::Yield
@@ -14410,6 +14423,29 @@ mod tests {
             );
             parser.parse()
         }
+
+        fn first_function_body(ast: &Ast<'_>) -> FunctionBody {
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let declaration = statement.as_declaration(ast).unwrap();
+            let function = declaration.as_function(ast).unwrap();
+            function.body(ast)
+        }
+
+        let allocator = Allocator::new();
+        let result = parse(&allocator, "function f() { await value; }");
+        assert_eq!(result.ast.source_type(), SourceType::Module);
+        assert_eq!(result.diagnostics.len(), 1);
+        assert_eq!(first_function_body(&result.ast).body(&result.ast).len(), 1);
+
+        let result = parse(&allocator, "function f() { yield value; }");
+        assert_eq!(result.ast.source_type(), SourceType::Module);
+        assert_eq!(result.diagnostics.len(), 1);
+        assert_eq!(first_function_body(&result.ast).body(&result.ast).len(), 1);
+
+        let result = parse(&allocator, "return 1; function f() { await value; }");
+        assert_eq!(result.ast.source_type(), SourceType::Module);
+        assert!(!result.diagnostics.is_empty());
+        assert_eq!(result.ast.root_program().body(&result.ast).len(), 2);
 
         let allocator = Allocator::new();
         let result = parse(&allocator, "value + await \"unterminated");

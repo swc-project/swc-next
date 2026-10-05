@@ -1,6 +1,76 @@
 use super::*;
 
 #[test]
+fn contextual_expression_recovery() {
+    fn analyze_recovered_source<'a>(
+        allocator: &'a Allocator,
+        source: &'a str,
+        options: Options,
+    ) -> (Ast<'a>, Semantic<'a>) {
+        let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+        assert_eq!(parsed.diagnostics.len(), 1);
+        let ast = parsed.ast;
+        let result = analyze(&ast, AnalyzeOptions::default());
+        assert!(result.diagnostics.is_empty());
+        (ast, result.semantic)
+    }
+
+    let allocator = Allocator::new();
+    let ts_module = ts_module_options();
+    let js_script = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    let source = "const value = 1; function read() { await value; } read();";
+    let (ast, semantic) = analyze_recovered_source(&allocator, source, ts_module);
+    assert_eq!(
+        reference_symbol(&ast, &semantic, b"value"),
+        Some(symbol_named(&ast, &semantic, b"value"))
+    );
+
+    let source = "const value = 1; function read() { yield value; } read();";
+    let (ast, semantic) = analyze_recovered_source(&allocator, source, ts_module);
+    assert_eq!(
+        reference_symbol(&ast, &semantic, b"value"),
+        Some(symbol_named(&ast, &semantic, b"value"))
+    );
+
+    let source = "function read() { await value; }";
+    let (_, semantic) = analyze_recovered_source(&allocator, source, js_script);
+    assert_eq!(semantic.iter_references().count(), 1);
+
+    let source = "function read() { yield value; }";
+    let (_, semantic) = analyze_recovered_source(&allocator, source, js_script);
+    assert_eq!(semantic.iter_references().count(), 1);
+
+    let valid = has_syntax_diagnostics(
+        &allocator,
+        "function read(await, yield) { await + yield; await(value); yield[value]; }",
+        js_script,
+    );
+    assert!(!valid);
+
+    let valid = has_syntax_diagnostics(
+        &allocator,
+        "function read(await, yield) { await\nvalue; yield\nvalue; }",
+        js_script,
+    );
+    assert!(!valid);
+
+    let valid = has_syntax_diagnostics(
+        &allocator,
+        "async function read() { await value; }",
+        ts_module,
+    );
+    assert!(!valid);
+
+    let valid = has_syntax_diagnostics(&allocator, "function* read() { yield value; }", ts_module);
+    assert!(!valid);
+}
+
+#[test]
 fn access_flags_follow_reference_syntax() {
     let allocator = Allocator::new();
     let js_script = Options {
