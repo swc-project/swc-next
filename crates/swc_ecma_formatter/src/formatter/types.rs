@@ -5,6 +5,7 @@ mod compound;
 mod conditional;
 mod context;
 mod generics;
+mod infer;
 mod interfaces;
 mod members;
 mod postfix;
@@ -49,6 +50,7 @@ enum TypeBoundaryTarget<'a> {
         name: BindingIdentifier,
         node: &'a mut PreparedType,
     },
+    InferConstraint(&'a mut PreparedType),
     Default(&'a mut PreparedType),
 }
 
@@ -706,7 +708,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 prefix.right_mode
             };
             self.format_type_list_prefix(prefix, writer)?;
-            self.format_type_parameters(parameters, mode, writer)?;
+            self.format_type_parameters(
+                parameters,
+                generics::TypeParameterContext::TypeDeclaration,
+                mode,
+                writer,
+            )?;
         }
         let trailing_comments = self
             .comments
@@ -1136,6 +1143,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 ("extends", TypeBoundaryRole::Constraint(leading))
             }
+            TypeBoundaryTarget::InferConstraint(_) => (
+                "extends",
+                TypeBoundaryRole::Constraint(LineConstraint::Unconstrained),
+            ),
             TypeBoundaryTarget::Default(_) => ("=", TypeBoundaryRole::Default),
         };
         let comments = self.comments.in_range(gap);
@@ -1189,6 +1200,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         right_mode = ContentMode::Verbatim;
                         if let TypeBoundaryTarget::Alias(node)
                         | TypeBoundaryTarget::Constraint { node, .. }
+                        | TypeBoundaryTarget::InferConstraint(node)
                         | TypeBoundaryTarget::Default(node) = &mut target
                         {
                             self.select_type_head(node, position);
@@ -1205,6 +1217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     right_mode = ContentMode::Verbatim;
                     if let TypeBoundaryTarget::Alias(node)
                     | TypeBoundaryTarget::Constraint { node, .. }
+                    | TypeBoundaryTarget::InferConstraint(node)
                     | TypeBoundaryTarget::Default(node) = &mut target
                     {
                         self.select_type_head(node, position);
@@ -1498,6 +1511,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsInferType(node) => self.format_infer_type(node, writer),
             TsTypeData::TsConditionalType(node) => {
                 self.format_conditional_type(node, layout, writer)
             }

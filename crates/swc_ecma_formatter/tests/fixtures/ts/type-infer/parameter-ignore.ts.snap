@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Outcome<T> = T extends infer /* prettier-ignore */ R   extends   (string | number) ? R : never;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Outcome<T> =
+  T extends infer /* prettier-ignore */ R   extends   (string | number)
+    ? R
+    : never;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Outcome<T> =
+  T extends infer /* prettier-ignore */ R   extends   (string | number)
+    ? R
+    : never;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Outcome<
+  T,
+> =
+  T extends infer /* prettier-ignore */ R   extends   (string | number)
+    ? R
+    : never
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Outcome<T> =
+	T extends infer /* prettier-ignore */ R   extends   (string | number)
+		? R
+		: never;

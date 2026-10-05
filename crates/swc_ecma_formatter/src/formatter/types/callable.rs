@@ -7,6 +7,7 @@ use swc_next_ecma_ast::{
     TsTypeParameterDeclaration, TsTypePredicate, TsTypePredicateNameData,
 };
 
+use super::generics::TypeParameterContext;
 use super::{
     Formatter, PreparedAnnotation, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout,
     TypeContext, TypeGap, TypeLayout,
@@ -950,7 +951,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         if let Some(generic) = generics {
-            self.format_type_parameters(generic.node, generic.mode, writer)?;
+            self.format_type_parameters(
+                generic.node,
+                TypeParameterContext::Callable,
+                generic.mode,
+                writer,
+            )?;
             self.format_type_gap(generic.following, FlatSeparator::Empty, writer)?;
         }
         self.format_callable_parameters(parameters, writer)
