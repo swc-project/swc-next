@@ -2,6 +2,7 @@
 
 mod callable;
 mod compound;
+mod conditional;
 mod context;
 mod generics;
 mod interfaces;
@@ -82,6 +83,8 @@ enum TypeLayout {
     AliasRhs,
     SignatureParameter,
     MultipleTupleElement,
+    ConditionalConsequent,
+    ConditionalAlternate,
 }
 
 enum TypeBoundaryLayout<'ast> {
@@ -861,7 +864,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let leading_head = if matches!(
             node.data,
-            TsTypeData::TsArrayType(_) | TsTypeData::TsIndexedAccessType(_)
+            TsTypeData::TsArrayType(_)
+                | TsTypeData::TsIndexedAccessType(_)
+                | TsTypeData::TsConditionalType(_)
         ) {
             self.type_movable_head(node, TypeContext::Root)
         } else {
@@ -870,7 +875,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if node.source_owner.is_none()
             && matches!(
                 node.data,
-                TsTypeData::TsArrayType(_) | TsTypeData::TsIndexedAccessType(_)
+                TsTypeData::TsArrayType(_)
+                    | TsTypeData::TsIndexedAccessType(_)
+                    | TsTypeData::TsConditionalType(_)
             )
             && (!after.is_empty() || leading_head.is_some())
             && matches!(
@@ -1024,6 +1031,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && !before.gap().requires_line()
                 && !after.gap().requires_line()
             {
+                let rhs_layout = match node.data {
+                    TsTypeData::TsConditionalType(conditional) => self
+                        .conditional_type_rhs_layout(conditional)
+                        .unwrap_or(rhs_layout),
+                    _ => rhs_layout,
+                };
                 self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
                 return writer.group(false, |writer| {
                     rhs_layout.write(
@@ -1485,6 +1498,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsConditionalType(node) => {
+                self.format_conditional_type(node, layout, writer)
+            }
             TsTypeData::TsTypeLiteral(node) => self.format_type_literal(node, layout, writer),
             TsTypeData::TsFunctionType(node) => {
                 self.format_callable_type(callable::CallableType::Function(node), writer)

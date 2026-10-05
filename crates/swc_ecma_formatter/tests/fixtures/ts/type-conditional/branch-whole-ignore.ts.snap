@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Outcome<T> = T extends string ?
+/* prettier-ignore */
+( 1  | 2 ) : 3;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Outcome<T> = T extends string ?
+/* prettier-ignore */
+( 1  | 2 )
+  : 3;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Outcome<T> =
+  T extends string ?
+/* prettier-ignore */
+( 1  | 2 )
+    : 3;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Outcome<
+  T,
+> =
+  T extends string ?
+/* prettier-ignore */
+( 1  | 2 )
+    : 3
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Outcome<T> =
+	T extends string ?
+/* prettier-ignore */
+( 1  | 2 )
+		: 3;
