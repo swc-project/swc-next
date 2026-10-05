@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Choice<T> = T extends string ? // branch
+ One : Two;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Choice<T> = T extends string // branch
+  ? One
+  : Two;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Choice<T> =
+  T extends string // branch
+    ? One
+    : Two;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Choice<
+  T,
+> =
+  T extends string // branch
+    ? One
+    : Two
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Choice<T> =
+	T extends string // branch
+		? One
+		: Two;
