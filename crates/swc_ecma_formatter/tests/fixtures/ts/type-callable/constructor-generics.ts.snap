@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type C=abstract new<const T extends string=string>(value:T)=>Box<T>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type C = abstract new <const T extends string = string>(value: T) => Box<T>;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type C =
+  abstract new <
+    const T extends
+      string =
+      string,
+  >(
+    value: T,
+  ) => Box<T>;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type C =
+  abstract new <
+    const T extends
+      string =
+      string,
+  >(
+    value: T,
+  ) => Box<T>
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type C =
+	abstract new <
+		const T extends
+			string =
+			string
+	>(
+		value: T
+	) => Box<T>;
