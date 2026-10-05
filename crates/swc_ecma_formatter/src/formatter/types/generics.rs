@@ -386,7 +386,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && self.simple_type_argument(prepared.data);
             let candidate = prepared.source_owner.is_none()
                 && match prepared.data {
-                    TsTypeData::TsTypeLiteral(_) | TsTypeData::TsParenthesizedType(_) => true,
+                    TsTypeData::TsTypeLiteral(_)
+                    | TsTypeData::TsMappedType(_)
+                    | TsTypeData::TsParenthesizedType(_) => true,
                     TsTypeData::TsUnionType(_) => true,
                     TsTypeData::TsIntersectionType(intersection) => {
                         intersection.types(ast).len() == 1
