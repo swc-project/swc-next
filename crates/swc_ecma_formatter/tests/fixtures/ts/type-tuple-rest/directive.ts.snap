@@ -1,0 +1,104 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Tail<T extends unknown[]> = T extends [
+  unknown,
+  ...
+  // @ts-expect-error
+  ( infer R )
+] ? R : never;
+
+type Tail<T extends unknown[]> = T extends [
+  unknown,
+  ...
+  // @ts-ignore
+  ( infer R )
+] ? R : never;
+---------- Options ----------
+{}
+---------- Output ----------
+type Tail<T extends unknown[]> = T extends [
+  unknown,
+  ...
+  // @ts-expect-error
+  ( infer R ),
+]
+  ? R
+  : never;
+
+type Tail<T extends unknown[]> = T extends [
+  unknown,
+  ...
+  // @ts-ignore
+  ( infer R ),
+]
+  ? R
+  : never;
+
+---------- Options ----------
+{"printWidth":32}
+---------- Output ----------
+type Tail<T extends unknown[]> =
+  T extends [
+    unknown,
+    ...
+    // @ts-expect-error
+    ( infer R ),
+  ]
+    ? R
+    : never;
+
+type Tail<T extends unknown[]> =
+  T extends [
+    unknown,
+    ...
+    // @ts-ignore
+    ( infer R ),
+  ]
+    ? R
+    : never;
+
+---------- Options ----------
+{"printWidth":120,"semi":false}
+---------- Output ----------
+type Tail<T extends unknown[]> = T extends [
+  unknown,
+  ...
+  // @ts-expect-error
+  ( infer R ),
+]
+  ? R
+  : never
+
+type Tail<T extends unknown[]> = T extends [
+  unknown,
+  ...
+  // @ts-ignore
+  ( infer R ),
+]
+  ? R
+  : never
+
+---------- Options ----------
+{"printWidth":40,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Tail<T extends unknown[]> =
+	T extends [
+		unknown,
+		...
+		// @ts-expect-error
+		( infer R )
+	]
+		? R
+		: never;
+
+type Tail<T extends unknown[]> =
+	T extends [
+		unknown,
+		...
+		// @ts-ignore
+		( infer R )
+	]
+		? R
+		: never;
