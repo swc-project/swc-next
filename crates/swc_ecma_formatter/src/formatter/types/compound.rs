@@ -280,6 +280,12 @@ pub(super) struct PendingTypeHead<'ast> {
     comments: &'ast [Comment],
     next_start: u32,
     leading: Option<MovableTypeHead<'ast>>,
+    position: TypeHeadPosition,
+}
+
+enum TypeHeadPosition {
+    Leading,
+    Emitted,
 }
 
 impl<'ast> PendingTypeHead<'ast> {
@@ -292,7 +298,14 @@ impl<'ast> PendingTypeHead<'ast> {
             comments,
             next_start,
             leading,
+            position: TypeHeadPosition::Leading,
         }
+    }
+
+    /// The caller's emitted prefix supplies the first comment's inline start.
+    pub(super) fn with_emitted_prefix(mut self) -> Self {
+        self.position = TypeHeadPosition::Emitted;
+        self
     }
 }
 
@@ -301,11 +314,22 @@ pub(super) enum PreparedTypeContent<'ast> {
     Union(PreparedUnion<'ast>),
     Intersection(PreparedIntersection<'ast>),
     Postfix(super::postfix::PreparedPostfixType<'ast>),
+    Conditional(super::conditional::PreparedConditionalType<'ast>),
     Parentheses(PreparedTypeParentheses<'ast>),
     Compound(SingleCompoundHead<'ast>),
 }
 
 impl PreparedTypeContent<'_> {
+    pub(super) fn opening_layout(&self) -> TypeLayout {
+        match self {
+            Self::Union(PreparedUnion {
+                leading: UnionLeading::MemberHead(_),
+                ..
+            }) => TypeLayout::Root,
+            _ => TypeLayout::OpeningProvided,
+        }
+    }
+
     pub(super) fn alias_layout(&self) -> TypeLayout {
         match self {
             Self::Union(union) => union.alias_layout(),
@@ -321,6 +345,7 @@ impl PreparedTypeContent<'_> {
             Self::Type(_)
             | Self::Intersection(_)
             | Self::Postfix(_)
+            | Self::Conditional(_)
             | Self::Parentheses(_)
             | Self::Compound(_) => TypeLayout::Root,
         }
@@ -418,6 +443,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         });
                     }
                     current = child;
+                    continue;
+                }
+                TsTypeData::TsConditionalType(conditional) => {
+                    current = conditional.check_type(ast);
+                    context = TypeContext::ConditionalCheck;
                     continue;
                 }
                 TsTypeData::TsArrayType(array) => {
@@ -1218,7 +1248,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }),
             TypeLayout::MultipleTupleElement
             | TypeLayout::AliasRhs
-            | TypeLayout::CallerIndented => content(writer),
+            | TypeLayout::CallerIndented
+            | TypeLayout::ConditionalConsequent
+            | TypeLayout::ConditionalAlternate => content(writer),
             TypeLayout::Root | TypeLayout::SignatureParameter | TypeLayout::OpeningProvided => {
                 writer.group(false, |writer| {
                     writer.indent(|writer| {
@@ -1596,11 +1628,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         let comments = std::mem::take(&mut pending.comments);
         self.comments.claim(comments)?;
-        self.format_comment_run(
-            comments,
-            CommentRunLayout::GroupedLeading(next_start),
-            writer,
-        )
+        let layout = if matches!(pending.position, TypeHeadPosition::Emitted) {
+            CommentRunLayout::InlineLeading(next_start)
+        } else {
+            CommentRunLayout::GroupedLeading(next_start)
+        };
+        self.format_comment_run(comments, layout, writer)
     }
 
     pub(super) fn union_head_is_inline(&self, comments: &[Comment], next_start: u32) -> bool {
@@ -1681,6 +1714,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     break PreparedTypeContent::Postfix(postfix);
                 }
+                TsTypeData::TsConditionalType(node) => {
+                    if pending.leading.is_none() && pending.comments.is_empty() {
+                        break PreparedTypeContent::Type(current);
+                    }
+                    let conditional = self.format_conditional_head(node, pending, writer)?;
+                    break PreparedTypeContent::Conditional(conditional);
+                }
                 TsTypeData::TsUnionType(union) => {
                     let mut union = self.prepare_union(current, union.types(self.ast))?;
                     if let Some(first) = pending.comments.first()
@@ -1743,6 +1783,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             PreparedTypeContent::Postfix(postfix) => {
                 self.format_prepared_postfix_type(postfix, context, layout, writer)
+            }
+            PreparedTypeContent::Conditional(conditional) => {
+                self.format_prepared_conditional_type(conditional, context, layout, writer)
             }
             PreparedTypeContent::Type(node) => {
                 self.format_prepared_type_with_layout(node, context, layout, writer)
