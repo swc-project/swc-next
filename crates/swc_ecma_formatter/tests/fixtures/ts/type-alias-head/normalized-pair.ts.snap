@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type LayoutWith<T extends string, S extends unknown = { width: string }> = ({ value: T; code: string; state: S });
+---------- Options ----------
+{}
+---------- Output ----------
+type LayoutWith<T extends string, S extends unknown = { width: string }> = {
+  value: T;
+  code: string;
+  state: S;
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type LayoutWith<
+  T extends string,
+  S extends
+    unknown = {
+    width: string;
+  },
+> = {
+  value: T;
+  code: string;
+  state: S;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type LayoutWith<
+  T extends
+    string,
+  S extends
+    unknown =
+    {
+      width: string
+    },
+> = {
+  value: T
+  code: string
+  state: S
+}
