@@ -4,6 +4,7 @@ mod callable;
 mod compound;
 mod context;
 mod generics;
+mod interfaces;
 mod members;
 mod postfix;
 mod tuple;

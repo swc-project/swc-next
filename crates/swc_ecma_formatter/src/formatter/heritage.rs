@@ -1,10 +1,12 @@
 //! Heritage keywords share a prepared continuation owner.
 
-use swc_next_ecma_ast::{Comment, Expr, ExprData, Span};
+use swc_next_ecma_ast::{Comment, Expr, ExprData, Span, TsTypeParameterInstantiation};
 
 use super::Formatter;
 use super::comments::{CommentBinding, CommentBoundary, CommentRunLayout};
 use super::diagnostics::FlatSeparator;
+use super::expressions::arguments::{ArgumentLayout, FollowingItem, ItemBoundary};
+use super::expressions::{ExpressionContext, ExpressionPosition, TailOwner};
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
@@ -12,12 +14,19 @@ use crate::{FormatError, document::Writer};
 pub(super) enum HeritageLayout {
     Inline,
     Single,
+    Multiple,
 }
 
 impl HeritageLayout {
     pub(super) fn grouped(self) -> bool {
         !matches!(self, Self::Inline)
     }
+}
+
+pub(super) struct HeritageItem {
+    pub(super) span: Span,
+    pub(super) expression: Expr,
+    pub(super) arguments: Option<TsTypeParameterInstantiation>,
 }
 
 pub(super) struct HeritageOwners {
@@ -41,9 +50,16 @@ enum HeritagePrefixLayout<'ast> {
     Formatted {
         before: CommentBoundary<'ast>,
         after: CommentBoundary<'ast>,
-        leading: bool,
+        leading: HeritageLeading,
+        inline_target: bool,
         first_start: u32,
     },
+}
+
+#[derive(Clone, Copy)]
+enum HeritageLeading {
+    None,
+    Keyword(CommentBinding),
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -143,7 +159,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     HeritagePrefixLayout::Formatted {
                         before,
                         after,
-                        leading,
+                        leading: if leading {
+                            HeritageLeading::Keyword(after_binding)
+                        } else {
+                            HeritageLeading::None
+                        },
+                        inline_target: first_mode == ContentMode::Verbatim,
                         first_start: first.start,
                     }
                 },
@@ -187,7 +208,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         body: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
-        let (before, after, leading, first_start) = match prefix.layout {
+        let (before, after, leading, inline_target, first_start) = match prefix.layout {
             HeritagePrefixLayout::Source(span) => {
                 self.format_verbatim(span, writer)?;
                 return body(self, writer);
@@ -196,8 +217,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before,
                 after,
                 leading,
+                inline_target,
                 first_start,
-            } => (before, after, leading, first_start),
+            } => (before, after, leading, inline_target, first_start),
         };
         self.format_comment_boundary(&before, writer)?;
         before.gap().write(writer, FlatSeparator::Space, |writer| {
@@ -207,29 +229,118 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.space();
             }
         });
-        if leading {
-            self.format_comment_boundary_with_layout(
-                &after,
-                CommentRunLayout::GroupedLeading(first_start),
-                writer,
-            )?;
+        if matches!(leading, HeritageLeading::Keyword(_)) {
+            if matches!(layout, HeritageLayout::Multiple)
+                && matches!(leading, HeritageLeading::Keyword(CommentBinding::Unbound))
+            {
+                self.format_comment_boundary_with_layout(
+                    &after,
+                    CommentRunLayout::CanonicalDangling,
+                    writer,
+                )?;
+                writer.hard_line();
+            } else {
+                self.format_comment_boundary_with_layout(
+                    &after,
+                    CommentRunLayout::GroupedLeading(first_start),
+                    writer,
+                )?;
+            }
         }
         let write = |formatter: &mut Self, writer: &mut Writer<'ast>| {
             writer.text(keyword);
-            if leading {
-                writer.space();
+            let write_items = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+                match leading {
+                    HeritageLeading::Keyword(_) => {
+                        if matches!(layout, HeritageLayout::Multiple) {
+                            writer.line();
+                        } else {
+                            writer.space();
+                        }
+                    }
+                    HeritageLeading::None => {
+                        formatter.format_comment_boundary(&after, writer)?;
+                        after.gap().write(writer, FlatSeparator::Space, |writer| {
+                            if matches!(layout, HeritageLayout::Multiple) && !inline_target {
+                                writer.line();
+                            } else {
+                                writer.space();
+                            }
+                        });
+                    }
+                }
+                body(formatter, writer)
+            };
+            if matches!(layout, HeritageLayout::Multiple) {
+                writer.group(false, |writer| {
+                    writer.indent(|writer| write_items(formatter, writer))
+                })
             } else {
-                formatter.format_comment_boundary(&after, writer)?;
-                after
-                    .gap()
-                    .write(writer, FlatSeparator::Space, Writer::space);
+                write_items(formatter, writer)
             }
-            body(formatter, writer)
         };
         if matches!(layout, HeritageLayout::Single) {
             writer.group(false, |writer| write(self, writer))
         } else {
             write(self, writer)
         }
+    }
+
+    pub(super) fn format_heritage_items(
+        &mut self,
+        items: impl Iterator<Item = HeritageItem>,
+        first_mode: ContentMode,
+        list_end: u32,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let mut items = items.peekable();
+        let mut previous: Option<ItemBoundary> = None;
+        while let Some(node) = items.next() {
+            let span = node.span;
+            let end = previous.map_or(span.start, |previous| previous.end);
+            if let Some(previous) = previous {
+                let next = self
+                    .comments
+                    .between(Span::new(end, span.start))?
+                    .first()
+                    .map_or(span.start, |comment| comment.span.start);
+                ArgumentLayout::Lines.separator(
+                    previous.separator,
+                    self.line_constraint(end, next),
+                    writer,
+                );
+            }
+            let following = items
+                .peek()
+                .map_or(FollowingItem::End, |next| FollowingItem::Node(next.span));
+            let mut item = self.prepare_delimited_item(
+                span,
+                following,
+                Span::new(end, list_end),
+                false,
+                writer,
+            )?;
+            item.set_leading_mode(previous.map_or(first_mode, |previous| previous.following_mode));
+            let tail = if item.mode == ContentMode::Verbatim {
+                self.format_verbatim(span, writer)?;
+                None
+            } else if let Some(arguments) = node.arguments {
+                let arguments = self.prepare_expression_type_arguments(node.expression, arguments);
+                let context = ExpressionContext::at(ExpressionPosition::Nested)
+                    .with_content_mode(arguments.callee_mode)
+                    .with_tail_owner(TailOwner::ParentOperation);
+                let tail = self.format_expression(node.expression, context, writer)?;
+                self.format_expression_type_arguments(arguments, tail, writer)?;
+                None
+            } else {
+                self.format_expression(
+                    node.expression,
+                    ExpressionContext::at(ExpressionPosition::Nested),
+                    writer,
+                )?
+            };
+            previous = Some(self.finish_delimited_item(item, tail, writer)?);
+        }
+        Ok(())
     }
 }

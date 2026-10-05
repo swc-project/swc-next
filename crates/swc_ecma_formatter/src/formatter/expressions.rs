@@ -18,6 +18,7 @@ pub(super) mod parentheses;
 mod sequence;
 mod suspension;
 pub(super) mod targets;
+mod typescript;
 mod unary;
 
 use self::chains::FluentChainEligibility;
