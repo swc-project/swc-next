@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 97/804 (12.06%)
-Snapshot matched: 97/804
-AST parity: 97/97
-AST mismatched: 0/97
+Passed: 103/804 (12.81%)
+Snapshot matched: 103/804
+AST parity: 103/103
+AST mismatched: 0/103
 AST format errors: 0/804
 Mismatched: 0/804
-Format errors: 707/804
+Format errors: 701/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -78,7 +78,6 @@ Unsupported option sets: 7
 - jsx/text-wrap/issue-16897.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - jsx/text-wrap/test.js: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/abstract-class/export-default.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/abstract-construct-types/abstract-construct-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/abstract-property/semicolon.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/ambient/ambient.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/argument-expansion/argument_expansion.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -170,7 +169,6 @@ Unsupported option sets: 7
 - typescript/comments-2/dangling.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/comments-2/issues.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/comments-2/last-arg.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- typescript/comments/10260.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/11662.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/15707.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/16065-2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -278,7 +276,6 @@ Unsupported option sets: 7
 - typescript/conformance/types/any/anyAsConstructor.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/any/anyAsGenericFunctionCall.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/constKeyword/constKeyword.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/constructorType/cunstructorType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/enumDeclaration/enumDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/firstTypeNode/firstTypeNode.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/TSFunctionTypeNoUnnecessaryParentheses.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -305,7 +302,6 @@ Unsupported option sets: 7
 - typescript/conformance/types/tuple/tupleElementTypes2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/tuple/typeInferenceWithTupleType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/tuple/wideningTuples1.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/tuple/wideningTuples2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/typeParameter/typeParameter.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/typeParameters/typeParameterLists/innerTypeParameterShadowingOuterOne.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/typeParameters/typeParameterLists/innerTypeParameterShadowingOuterOne2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -313,7 +309,6 @@ Unsupported option sets: 7
 - typescript/conformance/types/typeParameters/typeParameterLists/typeParametersAvailableInNestedScope2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/union/unionTypeCallSignatures.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/union/unionTypeCallSignatures3.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/union/unionTypeCallSignatures4.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/union/unionTypeConstructSignatures.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/union/unionTypeFromArrayLiteral.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/union/unionTypeIndexSignature.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -333,7 +328,6 @@ Unsupported option sets: 7
 - typescript/custom/new/newKeyword.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/stability/moduleBlock.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/typeParameters/callAndConstructSignatureLong.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/custom/typeParameters/functionTypeLong.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/typeParameters/interfaceParamsLong.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/typeParameters/variables.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/d-ts-files/const-without-initializer-in-namespace.d.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent

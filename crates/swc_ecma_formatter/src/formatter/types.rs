@@ -1,5 +1,6 @@
 //! Borrowed TypeScript types, aliases, and binding annotation boundaries.
 
+mod callable;
 mod compound;
 mod context;
 mod generics;
@@ -77,6 +78,7 @@ enum TypeLayout {
     OpeningProvided,
     CallerIndented,
     AliasRhs,
+    SignatureParameter,
     MultipleTupleElement,
 }
 
@@ -92,6 +94,15 @@ struct TypeBoundary<'ast> {
     left_mode: ContentMode,
     right_mode: ContentMode,
     layout: TypeBoundaryLayout<'ast>,
+}
+
+enum TypeGap<'ast> {
+    Source(Span),
+    Formatted(CommentBoundary<'ast>),
+}
+struct PreparedAnnotation<'ast> {
+    content: AnnotationContent,
+    prefix: TypeBoundaryLayout<'ast>,
 }
 
 struct PreparedDelimitedType<'ast> {
@@ -135,6 +146,175 @@ enum AnnotationContent {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    fn prepare_annotation_content(
+        &self,
+        preceding_end: u32,
+        annotation: TsTypeAnnotation,
+    ) -> Result<PreparedAnnotation<'ast>, FormatError> {
+        let ast = self.ast;
+        let node = annotation.type_annotation(ast);
+        let gap = Span::new(preceding_end, node.span(ast).start);
+        let comments = self.comments.in_range(gap);
+        let Some(colon_start) = self.find_token(gap, comments, ":") else {
+            return Err(self.unsupported("type annotation colon", annotation));
+        };
+        let colon = Span::new(colon_start, colon_start + 1);
+        let geometry = self.annotation_geometry(gap, colon, comments);
+        let content = if geometry.before_mode == ContentMode::Verbatim {
+            AnnotationContent::Source(annotation)
+        } else {
+            let mut prepared = self.prepare_type(node, ContentMode::Formatted);
+            self.select_type_head_comments(&mut prepared, geometry.after, geometry.gap.end);
+            AnnotationContent::Formatted(prepared)
+        };
+        let prefix =
+            match self.annotation_source_prefix(&content, geometry.gap.end, geometry.gap.start) {
+                Some(span) => TypeBoundaryLayout::Source(span),
+                None => TypeBoundaryLayout::Formatted {
+                    before: self.prepare_comment_boundary(
+                        geometry.before,
+                        geometry.gap.start,
+                        geometry.colon.start,
+                    ),
+                    after: self.prepare_comment_boundary(
+                        geometry.after,
+                        geometry.colon.end,
+                        geometry.gap.end,
+                    ),
+                },
+            };
+        Ok(PreparedAnnotation { content, prefix })
+    }
+
+    fn format_annotation_content_with_layout(
+        &mut self,
+        content: PreparedAnnotation<'ast>,
+        mut layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        match content.prefix {
+            TypeBoundaryLayout::Source(gap) => {
+                self.format_verbatim(gap, writer)?;
+                if layout == TypeLayout::Root {
+                    layout = TypeLayout::OpeningProvided;
+                }
+            }
+            TypeBoundaryLayout::Formatted { before, after } => {
+                self.format_comment_boundary(&before, writer)?;
+                before.gap().write(writer, FlatSeparator::Empty, |_| {});
+                writer.text(":");
+                if let AnnotationContent::Formatted(node) = content.content {
+                    return self.format_prepared_type_after_comments(
+                        node,
+                        TypeContext::Root,
+                        &after,
+                        layout,
+                        writer,
+                    );
+                }
+                self.format_comment_boundary(&after, writer)?;
+                after
+                    .gap()
+                    .write(writer, FlatSeparator::Space, Writer::space);
+            }
+        }
+        self.format_annotation_type_content_with_layout(content.content, layout, writer)
+    }
+
+    fn format_prepared_parentheses_after_comments(
+        &mut self,
+        parentheses: PreparedTypeParentheses<'ast>,
+        after: &CommentBoundary<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if parentheses.movable
+            && !context.preserves_union_head(parentheses.child.node, self.ast)
+            && matches!(
+                self.comment_boundary_binding(after, parentheses.span),
+                CommentBinding::Unbound
+            )
+        {
+            writer.space();
+            let start = parentheses.span.start;
+            let recorded = self.record_type_head(
+                compound::PreparedTypeContent::Parentheses(parentheses),
+                PendingTypeHead::new(after.comments(), start, None),
+                context,
+                writer,
+            )?;
+            return self.format_recorded_type_head(recorded, context, layout, writer);
+        }
+        self.format_type_comment_gap(after, FlatSeparator::Space, writer)?;
+        self.format_prepared_type_parentheses(parentheses, context, layout, writer)
+    }
+
+    fn format_prepared_type_after_comments(
+        &mut self,
+        node: PreparedType,
+        context: TypeContext,
+        after: &CommentBoundary<'ast>,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let compound_head = matches!(
+            node.data,
+            TsTypeData::TsParenthesizedType(_)
+                | TsTypeData::TsUnionType(_)
+                | TsTypeData::TsIntersectionType(_)
+                | TsTypeData::TsArrayType(_)
+                | TsTypeData::TsIndexedAccessType(_)
+        );
+        let leading_head = if compound_head {
+            self.type_movable_head(node, context)
+        } else {
+            None
+        };
+        if node.source_owner.is_none()
+            && compound_head
+            && (!after.is_empty() || leading_head.is_some())
+            && matches!(
+                self.comment_boundary_binding(after, node.node.span(self.ast)),
+                CommentBinding::Unbound
+            )
+        {
+            writer.space();
+            return self.format_prepared_type_with_caller_head(
+                node,
+                leading_head,
+                context,
+                after,
+                layout,
+                writer,
+            );
+        }
+        self.format_type_comment_gap(after, FlatSeparator::Space, writer)?;
+        self.format_prepared_type_with_layout(node, context, layout, writer)
+    }
+
+    fn format_type_gap(
+        &mut self,
+        gap: TypeGap<'ast>,
+        separator: FlatSeparator,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        match gap {
+            TypeGap::Source(span) => self.format_verbatim(span, writer),
+            TypeGap::Formatted(boundary) => {
+                self.format_type_comment_gap(&boundary, separator, writer)
+            }
+        }
+    }
+
+    fn prepare_type_gap(&self, gap: Span, source: bool) -> TypeGap<'ast> {
+        if source {
+            return TypeGap::Source(gap);
+        }
+        let comments = self.comments.in_range(gap);
+        TypeGap::Formatted(self.prepare_comment_boundary(comments, gap.start, gap.end))
+    }
+
     fn binding_type_content(&self, mut node: TsType) -> TsTypeData {
         loop {
             let data = self.ast.ts_type_data(node);
@@ -1287,6 +1467,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsFunctionType(node) => {
+                self.format_callable_type(callable::CallableType::Function(node), writer)
+            }
+            TsTypeData::TsConstructorType(node) => {
+                self.format_callable_type(callable::CallableType::Constructor(node), writer)
+            }
+            TsTypeData::TsTypePredicate(node) => self.format_type_predicate(node, writer),
+
             TsTypeData::TsTupleType(node) => self.format_tuple_type(node, writer),
             TsTypeData::TsOptionalType(node) => self.format_optional_type(node, writer),
             TsTypeData::TsRestType(node) => self.format_rest_type(node, writer),
