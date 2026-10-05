@@ -368,7 +368,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && self.simple_type_argument(prepared.data);
             let candidate = prepared.source_owner.is_none()
                 && match prepared.data {
-                    TsTypeData::TsParenthesizedType(_) => true,
+                    TsTypeData::TsTypeLiteral(_) | TsTypeData::TsParenthesizedType(_) => true,
                     TsTypeData::TsUnionType(_) => true,
                     TsTypeData::TsIntersectionType(intersection) => {
                         intersection.types(ast).len() == 1
@@ -450,7 +450,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         simple_owner && self.simple_type_argument(node.data)
                     });
-                let hug = (simple
+                let hug = (body.is_object_type()
+                    || simple
                     || simple_owner
                         && matches!(&body.content, super::compound::PreparedTypeContent::Union(union)
                         if union.hug_head_start().is_some_and(|start| {
