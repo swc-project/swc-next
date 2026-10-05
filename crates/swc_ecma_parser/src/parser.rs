@@ -11020,7 +11020,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
         let result = (|| {
             let source = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
-            let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
+            let options = if self.eat(TokenTag::Comma)? {
                 let options = if self.current_token.tag() == TokenTag::RightParen {
                     None
                 } else {
