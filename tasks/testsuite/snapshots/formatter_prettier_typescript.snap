@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 206/804 (25.62%)
-Snapshot matched: 206/804
-AST parity: 207/207
-AST mismatched: 0/207
+Passed: 219/804 (27.24%)
+Snapshot matched: 219/804
+AST parity: 220/220
+AST mismatched: 0/220
 AST format errors: 0/804
 Mismatched: 1/804
-Format errors: 597/804
+Format errors: 584/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -197,8 +197,6 @@ Unsupported option sets: 7
 - typescript/compiler/indexSignatureWithInitializer.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/compiler/mappedTypeWithCombinedTypeMappers.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/compiler/privacyGloImport.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conditional-types/conditional-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conditional-types/new-ternary-spec.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/ambient/ambientDeclarations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/abstract.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractAccessor.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -266,7 +264,6 @@ Unsupported option sets: 7
 - typescript/conformance/types/functions/functionOverloadCompatibilityWithVoid03.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/importEqualsDeclaration/importEqualsDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/lastTypeNode/lastTypeNode.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/mappedType/mappedType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/moduleDeclaration/kind-detection.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/moduleDeclaration/moduleDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/namespaceExportDeclaration/exportAsNamespace.d.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -287,9 +284,6 @@ Unsupported option sets: 7
 - typescript/custom/abstract/abstractProperties.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/call/callSignature.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/declare/declareModifier.d.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/custom/modifiers/minustoken.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/custom/modifiers/question.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/custom/modifiers/readonly.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/module/global.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/module/moduleNamespace.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/module/nestedNamespace.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -380,8 +374,6 @@ Unsupported option sets: 7
 - typescript/interface2/comments-ts-only/18278.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/interface2/module.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/intersection/intersection-parens.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- typescript/key-remapping-in-mapped-types/key-remapping.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/keyword-types/conditional-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/keywords/keywords-2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/keywords/keywords.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/keywords/module.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -389,12 +381,7 @@ Unsupported option sets: 7
 - typescript/last-argument-expansion/decorated-function.tsx: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/last-argument-expansion/edge_case.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/last-argument-expansion/forward-ref.tsx: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/mapped-type/break-mode/break-mode.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/mapped-type/break-mode/issue-10571.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/mapped-type/intersection.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/mapped-type/issue-11098.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/mapped-type/issue-17784.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/mapped-type/mapped-type.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/method-chain/18136-typescript/18136.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/method-chain/comment.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/method-chain/issue-17236.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
