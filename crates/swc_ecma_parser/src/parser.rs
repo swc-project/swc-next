@@ -5548,10 +5548,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_identifier_predicate_start(&mut self) -> Option<bool> {
         let current = self.current_token;
-        if current.is_escaped()
-            || current.tag() == TokenTag::This
-            || !current.tag().is_identifier_like()
-        {
+        if current.tag() == TokenTag::This || !current.tag().is_identifier_like() {
             return Some(false);
         }
         let next = self.peek_ahead()?;
@@ -13434,6 +13431,60 @@ mod tests {
             let constructor = constraint(&ast).as_ts_constructor_type(&ast).unwrap();
             assert!(constructor.r#abstract(&ast));
         }
+    }
+
+    #[test]
+    fn predicate_parameter_names() {
+        fn name(source: &str) -> String {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let alias = statement
+                .as_declaration(ast)
+                .unwrap()
+                .as_ts_type_alias_declaration(ast)
+                .unwrap();
+            let function = alias.type_annotation(ast).as_ts_function_type(ast).unwrap();
+            let predicate = function
+                .return_type(ast)
+                .type_annotation(ast)
+                .as_ts_type_predicate(ast)
+                .unwrap();
+            let name = predicate
+                .parameter_name(ast)
+                .as_identifier_name(ast)
+                .unwrap();
+            ast.get_utf8(name.name(ast)).to_owned()
+        }
+
+        fn has_errors(source: &str) -> bool {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            !parsed.diagnostics.is_empty()
+        }
+
+        assert_eq!(name(r"type F = (x: unknown) => \u0078 is string;"), "x");
+
+        assert_eq!(
+            name(r"type F = (x: unknown) => asserts \u0078 is string;"),
+            "x"
+        );
+
+        assert!(has_errors(r"type F = (x: unknown) => x \u0069s string;"));
+
+        assert!(has_errors("type F = (x: unknown) => x\nis string;"));
+
+        assert!(has_errors("type F = (x: unknown) => \\u0078\nis string;"));
     }
 
     fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
