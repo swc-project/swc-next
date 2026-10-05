@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{
     TsInterfaceHeritage, TsTypeElement, TsTypeParameterDeclaration,
 };
 
+use super::generics::TypeParameterContext;
 use super::members::{IncomingTypeMember, TypeMemberBodyIncoming, TypeMemberBodyKind};
 use super::{Formatter, TypeGap};
 use crate::formatter::comments::CommentBinding;
@@ -82,7 +83,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             if let Some(parameters) = parameters {
                 formatter.format_type_gap(parameters.prefix, FlatSeparator::Empty, writer)?;
-                formatter.format_type_parameters(parameters.node, parameters.mode, writer)?;
+                formatter.format_type_parameters(
+                    parameters.node,
+                    TypeParameterContext::TypeDeclaration,
+                    parameters.mode,
+                    writer,
+                )?;
             }
             if let Some(heritage) = heritage {
                 if grouped {
