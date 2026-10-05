@@ -1004,12 +1004,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // Collect tokens
         let diagnostics = self.diagnostics;
         let mut tokens = self.lexer.tokens;
-        if self.lexer.config.tokens() && !diagnostics.iter().any(|d| d.severity == Severity::Error)
+        if self.lexer.config.tokens()
+            && tokens
+                .last()
+                .is_some_and(|token| token.tag() == TokenTag::Eof)
         {
-            let last_token = tokens.pop();
-            debug_assert!(last_token.is_some_and(|token| token.tag() == TokenTag::Eof));
-        } else {
-            tokens.clear();
+            let _ = tokens.pop();
         }
 
         ParseReturn {
@@ -13092,6 +13092,54 @@ mod tests {
     use swc_next_allocator::Allocator;
 
     use super::*;
+    use crate::TokenParserConfig;
+
+    fn parse_tokens<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {
+        let options = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Module,
+            ..Options::default()
+        };
+        Parser::init(allocator, source, options, TokenParserConfig).parse()
+    }
+
+    fn token_texts<'a>(source: &'a str, tokens: &[Token]) -> Vec<&'a str> {
+        tokens
+            .iter()
+            .map(|token| &source[token.start() as usize..token.end() as usize])
+            .collect()
+    }
+
+    #[test]
+    fn recovery_tokens() {
+        let allocator = Allocator::new();
+        let source = "return 1;\nconst after = 1;";
+        let parsed = parse_tokens(&allocator, source);
+        assert!(!parsed.diagnostics.is_empty());
+        assert_eq!(
+            token_texts(source, &parsed.tokens),
+            ["return", "1", ";", "const", "after", "=", "1", ";"]
+        );
+
+        let allocator = Allocator::new();
+        let source = "const before = 1;\nconst text = 'unterminated";
+        let parsed = parse_tokens(&allocator, source);
+        assert!(!parsed.diagnostics.is_empty());
+        assert_eq!(
+            token_texts(source, &parsed.tokens),
+            ["const", "before", "=", "1", ";", "const", "text", "="]
+        );
+
+        let allocator = Allocator::new();
+        let parsed = parse_tokens(&allocator, "'unterminated");
+        assert!(!parsed.diagnostics.is_empty());
+        assert!(parsed.tokens.is_empty());
+
+        let allocator = Allocator::new();
+        let parsed = parse_tokens(&allocator, "");
+        assert!(parsed.diagnostics.is_empty());
+        assert!(parsed.tokens.is_empty());
+    }
 
     fn parse_typescript_declaration<'a>(
         allocator: &'a Allocator,
