@@ -7,6 +7,7 @@ mod context;
 mod generics;
 mod infer;
 mod interfaces;
+mod mapped;
 mod members;
 mod postfix;
 mod tuple;
@@ -120,7 +121,7 @@ impl PreparedDelimitedType<'_> {
     pub(super) fn is_object_type(&self) -> bool {
         matches!(&self.content, compound::PreparedTypeContent::Type(node)
             if node.source_owner.is_none()
-                && matches!(node.data, TsTypeData::TsTypeLiteral(_)))
+                && matches!(node.data, TsTypeData::TsTypeLiteral(_) | TsTypeData::TsMappedType(_)))
     }
 }
 
@@ -1511,6 +1512,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsMappedType(node) => self.format_mapped_type(node, writer),
             TsTypeData::TsInferType(node) => self.format_infer_type(node, writer),
             TsTypeData::TsConditionalType(node) => {
                 self.format_conditional_type(node, layout, writer)
