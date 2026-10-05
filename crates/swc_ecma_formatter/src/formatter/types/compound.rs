@@ -1219,14 +1219,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TypeLayout::MultipleTupleElement
             | TypeLayout::AliasRhs
             | TypeLayout::CallerIndented => content(writer),
-            TypeLayout::Root | TypeLayout::OpeningProvided => writer.group(false, |writer| {
-                writer.indent(|writer| {
-                    if layout != TypeLayout::OpeningProvided {
-                        opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
-                    }
-                    content(writer)
+            TypeLayout::Root | TypeLayout::SignatureParameter | TypeLayout::OpeningProvided => {
+                writer.group(false, |writer| {
+                    writer.indent(|writer| {
+                        if layout != TypeLayout::OpeningProvided {
+                            opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                        }
+                        content(writer)
+                    })
                 })
-            }),
+            }
         }
     }
 
