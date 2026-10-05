@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const state: Registry<Context, Ready extends State ? ActiveState : InactiveState> = fetchState();
+---------- Options ----------
+{}
+---------- Output ----------
+const state: Registry<
+  Context,
+  Ready extends State ? ActiveState : InactiveState
+> = fetchState();
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+const state: Registry<
+  Context,
+  Ready extends State
+    ? ActiveState
+    : InactiveState
+> = fetchState();
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+const state: Registry<
+  Context,
+  Ready extends State
+    ? ActiveState
+    : InactiveState
+> = fetchState()

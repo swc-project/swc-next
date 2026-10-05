@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Layout<T extends string, S = unknown> = Reference<T> extends S ? T : S;
+---------- Options ----------
+{}
+---------- Output ----------
+type Layout<T extends string, S = unknown> = Reference<T> extends S ? T : S;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Layout<
+  T extends string,
+  S = unknown,
+> =
+  Reference<T> extends S
+    ? T
+    : S;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Layout<
+  T extends
+    string,
+  S =
+    unknown,
+> =
+  Reference<T> extends S
+    ? T
+    : S
