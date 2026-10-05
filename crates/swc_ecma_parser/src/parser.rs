@@ -3178,7 +3178,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 FormalParameterKind::UniqueFormalParameters,
                 modifiers.kind == MethodDefinitionKind::Constructor,
             )?;
-            let _ = self.check_accessor_arity(modifiers.kind, params);
+            self.check_accessor_arity(modifiers.kind, params);
             let return_type =
                 if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                     Some(self.parse_return_type_annotation()?)
@@ -3440,16 +3440,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         kind: impl Into<PropertyOrMethodKind>,
         params: FormalParameters,
-    ) -> bool {
+    ) {
         let kind = kind.into();
         let Some((expected, msg, help)) = kind.accessor_arity() else {
-            return true;
+            return;
         };
         let items = params.items(&self.ast);
         let count = items.len();
         let has_rest = params.rest(&self.ast).is_some();
         if count == expected && !has_rest {
-            return true;
+            return;
         }
         self.report(
             params.span(&self.ast),
@@ -3459,7 +3459,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ..ReportOptions::default()
             },
         );
-        false
     }
 
     fn parse_formal_parameters(
@@ -10371,9 +10370,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 };
             let (this_param, params) =
                 self.parse_formal_parameters(FormalParameterKind::UniqueFormalParameters, false)?;
-            if !self.check_accessor_arity(kind, params) {
-                return None;
-            }
+            self.check_accessor_arity(kind, params);
             let return_type =
                 if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                     Some(self.parse_return_type_annotation()?)

@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11322/11509 (98.38%)
+Positive Passed: 11329/11509 (98.44%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
@@ -82,10 +82,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionWithTypeArgument.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es2019/importMeta/importMeta.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/arrowFunction/disallowLineTerminatorBeforeArrow.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames49_ES5.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames49_ES6.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames50_ES5.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames50_ES6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restElementWithInitializer1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restPropertyWithBindingPattern.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression12_es6.ts
@@ -128,9 +124,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxRea
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxReactEmitNesting.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/override/override5.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/override/override7.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Accessors/parserAccessors7.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Accessors/parserAccessors8.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Accessors/parserAccessors9.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ExtendsOrImplementsClauses/parserErrorRecovery_ExtendsOrImplementsClause2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ExtendsOrImplementsClauses/parserErrorRecovery_ExtendsOrImplementsClause5.ts
