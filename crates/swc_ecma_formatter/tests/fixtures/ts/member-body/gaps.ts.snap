@@ -1,0 +1,79 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Calls { first(): void;
+
+second(): void; // trailing
+
+third(): void;
+// leading
+
+fourth(): void; }
+type Properties = { first: number;
+
+second: string;
+
+// leading
+third: boolean; };
+interface InlinePacket { first(): void; /* leading */ second(): void; }
+type InlinePacket = { firstLongProperty: number; /* leading */ secondLongProperty: string };
+---------- Options ----------
+{}
+---------- Output ----------
+interface Calls {
+  first(): void;
+
+  second(): void; // trailing
+
+  third(): void;
+  // leading
+
+  fourth(): void;
+}
+type Properties = {
+  first: number;
+
+  second: string;
+
+  // leading
+  third: boolean;
+};
+interface InlinePacket {
+  first(): void;
+  /* leading */ second(): void;
+}
+type InlinePacket = {
+  firstLongProperty: number;
+  /* leading */ secondLongProperty: string;
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+interface Calls {
+  first(): void
+
+  second(): void // trailing
+
+  third(): void
+  // leading
+
+  fourth(): void
+}
+type Properties = {
+  first: number
+
+  second: string
+
+  // leading
+  third: boolean
+}
+interface InlinePacket {
+  first(): void
+  /* leading */ second(): void
+}
+type InlinePacket = {
+  firstLongProperty: number
+  /* leading */ secondLongProperty: string
+}

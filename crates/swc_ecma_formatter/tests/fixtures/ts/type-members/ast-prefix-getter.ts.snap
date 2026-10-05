@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Methods { readonly /* get [ */ get /* key */ [name](): number; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+interface Methods {
+  /* get [ */
+  get /* key */ [name](): number;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+interface Methods {
+  /* get [ */
+  get /* key */ [name](): number;
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+interface Methods {
+  /* get [ */
+  get /* key */ [name](): number
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+interface Methods {
+	/* get [ */
+	get /* key */ [name](): number;
+}

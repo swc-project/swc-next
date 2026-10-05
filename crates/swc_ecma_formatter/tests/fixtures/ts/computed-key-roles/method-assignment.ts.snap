@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Shape { [key = "name"](): string; }
+---------- Options ----------
+{}
+---------- Output ----------
+interface Shape {
+  [(key = "name")](): string;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+interface Shape {
+  [
+    (key = "name")
+  ](): string;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+interface Shape {
+  [
+    (key = "name")
+  ](): string
+}
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+interface Shape {
+	[
+		(key = "name")
+	](): string;
+}
