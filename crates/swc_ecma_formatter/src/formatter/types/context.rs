@@ -5,6 +5,8 @@ use swc_next_ecma_ast::{Ast, TsType, TsTypeData};
 pub(super) enum TypeContext {
     Root,
     TypeConstraint,
+    ConditionalCheck,
+    ConditionalExtends,
     Parenthesized,
     PostfixOperand,
     ModifierOperand,
@@ -62,6 +64,29 @@ impl TypeContext {
     pub(super) fn needs_parentheses(self, data: TsTypeData, ast: &Ast<'_>) -> bool {
         let minimum = match self {
             Self::Root | Self::Parenthesized => return false,
+            Self::ConditionalCheck => {
+                return matches!(
+                    data,
+                    TsTypeData::TsConditionalType(_)
+                        | TsTypeData::TsFunctionType(_)
+                        | TsTypeData::TsConstructorType(_)
+                        | TsTypeData::TsJsDocNullableType(_)
+                        | TsTypeData::TsJsDocUnknownType(_)
+                );
+            }
+            Self::ConditionalExtends => {
+                return match data {
+                    TsTypeData::TsConditionalType(_) | TsTypeData::TsJsDocUnknownType(_) => true,
+                    TsTypeData::TsJsDocNullableType(node) => node.postfix(ast),
+                    TsTypeData::TsFunctionType(node) => {
+                        return_is_constrained_infer(node.return_type(ast).type_annotation(ast), ast)
+                    }
+                    TsTypeData::TsConstructorType(node) => {
+                        return_is_constrained_infer(node.return_type(ast).type_annotation(ast), ast)
+                    }
+                    _ => false,
+                };
+            }
             Self::TypeConstraint => return matches!(data, TsTypeData::TsConditionalType(_)),
             Self::PostfixOperand => {
                 if matches!(data, TsTypeData::TsJsDocUnknownType(_)) {
@@ -122,5 +147,25 @@ impl TypeContext {
             _ => TypePrecedence::Atomic,
         };
         precedence < minimum
+    }
+}
+
+fn return_is_constrained_infer(mut node: TsType, ast: &Ast<'_>) -> bool {
+    loop {
+        match ast.ts_type_data(node) {
+            TsTypeData::TsParenthesizedType(parentheses) => {
+                node = parentheses.type_annotation(ast);
+            }
+            TsTypeData::TsTypePredicate(predicate) => {
+                let Some(annotation) = predicate.type_annotation(ast) else {
+                    return false;
+                };
+                node = annotation.type_annotation(ast);
+            }
+            TsTypeData::TsInferType(infer) => {
+                return infer.type_parameter(ast).constraint(ast).is_some();
+            }
+            _ => return false,
+        }
     }
 }
