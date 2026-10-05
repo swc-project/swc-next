@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Methods = { readonly /* name */ convert<T>(value: T): T; };
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Methods = { /* name */ convert<T>(value: T): T };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Methods = {
+  /* name */
+  convert<T>(
+    value: T,
+  ): T;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Methods =
+  {
+    /* name */
+    convert<
+      T,
+    >(
+      value: T,
+    ): T
+  }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Methods = {
+	/* name */
+	convert<T>(
+		value: T,
+	): T;
+};

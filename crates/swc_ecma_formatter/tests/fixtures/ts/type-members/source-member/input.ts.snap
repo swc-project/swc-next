@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Record={/* prettier-ignore */ value:12.00
+ next:number};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Record = {
+  /* prettier-ignore */ value:12.00
+ next: number;
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Record = {
+  /* prettier-ignore */ value:12.00
+ next: number;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Record =
+  {
+    /* prettier-ignore */ value:12.00
+ next: number
+  }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Record = {
+	/* prettier-ignore */ value:12.00
+ next: number;
+};

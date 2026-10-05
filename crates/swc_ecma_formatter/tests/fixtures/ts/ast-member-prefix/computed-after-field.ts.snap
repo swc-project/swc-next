@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example { value = 1; readonly [name]() {} }
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+class Example {
+  value = 1;
+  [name]() {}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Example {
+  value = 1;
+  [name]() {}
+}
