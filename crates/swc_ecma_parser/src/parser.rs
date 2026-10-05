@@ -6849,7 +6849,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let computed = self.current_token.tag() == TokenTag::LeftBracket;
         let key = self.parse_property_key(false)?;
-        let mut end = key.span(&self.ast).end;
+        let mut end = self.lexer.state.prev_token_end;
         let optional = if self.current_token.tag() == TokenTag::Question {
             end = self.current_token.end();
             self.advance()?;
