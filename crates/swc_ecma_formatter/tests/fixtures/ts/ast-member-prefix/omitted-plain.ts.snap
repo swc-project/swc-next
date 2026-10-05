@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example { readonly declare method() {} }
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+class Example {
+  method() {}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Example {
+  method() {}
+}

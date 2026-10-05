@@ -56,6 +56,7 @@ pub(super) enum ExpressionPosition {
     YieldArgument,
     AwaitArgument,
     PropertyValue,
+    TypePropertyKey,
     Superclass,
     SpreadArgument,
     MemberObject(AccessKind),
@@ -876,6 +877,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         position,
                         ExpressionPosition::AssignmentRight(_)
                             | ExpressionPosition::ExportDefault
+                            | ExpressionPosition::TypePropertyKey
                             | ExpressionPosition::ForHead
                             | ExpressionPosition::ForSequenceMember
                             | ExpressionPosition::ForInitializer { .. }

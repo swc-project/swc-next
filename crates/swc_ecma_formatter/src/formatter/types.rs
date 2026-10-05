@@ -4,6 +4,7 @@ mod callable;
 mod compound;
 mod context;
 mod generics;
+mod members;
 mod postfix;
 mod tuple;
 
@@ -109,6 +110,14 @@ struct PreparedDelimitedType<'ast> {
     span: Span,
     content: PreparedTypeContent<'ast>,
 }
+impl PreparedDelimitedType<'_> {
+    pub(super) fn is_object_type(&self) -> bool {
+        matches!(&self.content, compound::PreparedTypeContent::Type(node)
+            if node.source_owner.is_none()
+                && matches!(node.data, TsTypeData::TsTypeLiteral(_)))
+    }
+}
+
 struct TypeBoundaryTail<'ast> {
     role: TypeBoundaryRole,
     before: CommentBoundary<'ast>,
@@ -146,6 +155,14 @@ enum AnnotationContent {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    fn format_annotation_content(
+        &mut self,
+        content: PreparedAnnotation<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_annotation_content_with_layout(content, TypeLayout::Root, writer)
+    }
+
     fn prepare_annotation_content(
         &self,
         preceding_end: u32,
@@ -1467,6 +1484,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsTypeLiteral(node) => self.format_type_literal(node, layout, writer),
             TsTypeData::TsFunctionType(node) => {
                 self.format_callable_type(callable::CallableType::Function(node), writer)
             }
