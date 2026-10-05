@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Ignored = {
+// prettier-ignore
+value  :  { inner :number }
+next: string;
+};
+interface Coverage { // @ts-expect-error
+value: Missing; sameLine: Other;
+uncovered: Unknown;
+}
+// @ts-expect-error
+interface Covered { /* leading */ value: Missing; sameLine: Other }
+type EmptyCoverage = { /* @ts-expect-error */ };
+---------- Options ----------
+{}
+---------- Output ----------
+type Ignored = {
+  // prettier-ignore
+  value  :  { inner :number }
+next: string;
+};
+interface Coverage {
+  // @ts-expect-error
+  value: Missing; sameLine: Other;
+  uncovered: Unknown;
+}
+// @ts-expect-error
+interface Covered { /* leading */ value: Missing; sameLine: Other; }
+type EmptyCoverage = {/* @ts-expect-error */};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+type Ignored = {
+  // prettier-ignore
+  value  :  { inner :number }
+next: string
+}
+interface Coverage {
+  // @ts-expect-error
+  value: Missing; sameLine: Other
+  uncovered: Unknown
+}
+// @ts-expect-error
+interface Covered {/* leading */ value: Missing; sameLine: Other}
+type EmptyCoverage = {
+  /* @ts-expect-error */}
