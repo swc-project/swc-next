@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M<T> = { [K in keyof T] /* before */; // after
+};
+---------- Options ----------
+{}
+---------- Output ----------
+type M<T> = {
+  [
+    K in keyof T /* before */ // after
+  ];
+};
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+type M<T> = {
+  [
+    K in keyof T /* before */ // after
+  ];
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":18,"semi":false}
+---------- Output ----------
+type M<T> = {
+  [
+    K in keyof T /* before */ // after
+  ]
+}
