@@ -10,7 +10,7 @@ use crate::{
     schema::{AstStruct, AstType, FieldLocation, Schema, TypeId},
 };
 
-use super::js_minifier::minify;
+use super::js_minifier::minify_encoder;
 
 const OUTPUT_DIR: &str = "packages/encoder";
 
@@ -20,7 +20,7 @@ pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
         let pretty_path = format!("{OUTPUT_DIR}/encode-{suffix}.pretty.js");
         let minified_path = format!("{OUTPUT_DIR}/encode-{suffix}.js");
         let output = encoder_source(schema, is_ts, name);
-        let minified = minify(&output, &pretty_path);
+        let minified = minify_encoder(&output, &pretty_path);
         outputs.push(RawOutput {
             path: pretty_path,
             content: output.into_bytes(),

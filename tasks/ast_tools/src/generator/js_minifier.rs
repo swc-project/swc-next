@@ -5,7 +5,7 @@ use swc_core::{
         codegen::{Config, Emitter, text_writer::JsWriter},
         minifier::{
             optimize,
-            option::{ExtraOptions, MinifyOptions},
+            option::{CompressOptions, ExtraOptions, MinifyOptions},
         },
         parser::{EsSyntax, Parser, StringInput, Syntax, lexer::Lexer},
         transforms::base::{fixer::fixer, resolver},
@@ -14,6 +14,23 @@ use swc_core::{
 };
 
 pub(super) fn minify(source: &str, filename: &str) -> String {
+    minify_with_compress(source, filename, CompressOptions::default())
+}
+
+pub(super) fn minify_encoder(source: &str, filename: &str) -> String {
+    // Keep helpers as calls: inlining ensureNodes can allocate an IIFE per node.
+    minify_with_compress(
+        source,
+        filename,
+        CompressOptions {
+            inline: 0,
+            reduce_vars: false,
+            ..Default::default()
+        },
+    )
+}
+
+fn minify_with_compress(source: &str, filename: &str, compress: CompressOptions) -> String {
     GLOBALS.set(&Globals::new(), || {
         let source_map = Lrc::new(SourceMap::default());
         let source_file =
@@ -44,7 +61,7 @@ pub(super) fn minify(source: &str, filename: &str) -> String {
             None,
             None,
             &MinifyOptions {
-                compress: Some(Default::default()),
+                compress: Some(compress),
                 mangle: Some(Default::default()),
                 ..Default::default()
             },
