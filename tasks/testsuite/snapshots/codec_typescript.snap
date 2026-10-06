@@ -1,5 +1,5 @@
 Cases         : 14501
-Codec Passed  : 14491/14501
+Codec Passed  : 14493/14501
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractAccessor.ts (classAbstractAccessor.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractConstructor.ts (classAbstractConstructor.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractDeclarations.d.ts (classAbstractDeclarations.d.ts)
@@ -8,5 +8,3 @@ Codec output differs from native output: tasks/testsuite/fixtures/typescript/tes
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/templates/templateStringMultiline3.ts (templateStringMultiline3.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings10.ts (unicodeExtendedEscapesInStrings10.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings11.ts (unicodeExtendedEscapesInStrings11.ts)
-RangeError: Maximum call stack size exceeded: tasks/testsuite/fixtures/typescript/tests/cases/compiler/binderBinaryExpressionStress.ts (binderBinaryExpressionStress.ts)
-RangeError: Maximum call stack size exceeded: tasks/testsuite/fixtures/typescript/tests/cases/compiler/binderBinaryExpressionStressJs.ts (file.js)

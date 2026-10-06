@@ -27,6 +27,8 @@ if (typeof binding.nativeParsePrintSync !== "function") {
 
 const pool = new Tinypool({
   filename: path.join(import.meta.dirname, "codec-conformance.worker.js"),
+  // Deep expression fixtures need more stack than the worker default.
+  resourceLimits: { stackSizeMb: 16 },
 });
 
 async function runTestSuite(suite: string, source: string, snapshot: string) {
