@@ -31,7 +31,8 @@
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir src-js",
     "test": "node --test test/*.test.js",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
-    "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts"
+    "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts",
+    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts"
   },
   "keywords": [],
   "author": "",

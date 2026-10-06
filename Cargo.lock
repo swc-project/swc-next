@@ -2755,8 +2755,11 @@ name = "swc_next_core_bridge"
 version = "0.2.3"
 dependencies = [
  "napi-build",
+ "swc_next_allocator",
  "swc_next_bridge",
  "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_parser",
 ]
 
 [[package]]

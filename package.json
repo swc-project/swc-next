@@ -12,7 +12,8 @@
     "test": "pnpm --filter @swc-next/core test",
     "test:wasm": "pnpm --filter @swc-next/core test:wasm",
     "test:browser": "pnpm --filter @swc-next/core-browser test:browser",
-    "test:conformance": "pnpm --filter @swc-next/core test:conformance"
+    "test:conformance": "pnpm --filter @swc-next/core test:conformance",
+    "test:codec": "pnpm --filter @swc-next/core test:codec"
   },
   "keywords": [],
   "author": "",
