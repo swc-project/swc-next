@@ -26,6 +26,7 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::TailOwner;
 use super::expressions::assignment::RhsLayout;
 use super::literals::StringContext;
+use super::statements::DeclarationKeyword;
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use super::variables::VariableContext;
 use crate::{
@@ -656,19 +657,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_type_alias(
         &mut self,
         alias: TsTypeAliasDeclaration,
+        keyword: Option<DeclarationKeyword>,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
         let ast = self.ast;
-        if alias.declare(ast) {
-            return Err(self.unsupported("ambient type alias", alias));
-        }
         let span = alias.span(ast);
         let identifier = alias.id(ast);
         let identifier_span = identifier.span(ast);
         let annotation = alias.type_annotation(ast);
         let annotation_span = annotation.span(ast);
         let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
-        let keyword_end = span.start + "type".len() as u32;
+        let keyword_end = keyword.map_or(span.start + "type".len() as u32, |keyword| {
+            keyword.name_prefix_start()
+        });
         let parameters = alias.type_parameters(ast).map(|node| {
             let prefix = self.prepare_type_list_prefix(
                 Span::new(identifier_span.end, node.span(ast).start),
@@ -697,6 +698,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut name_mode = parameters
             .as_ref()
             .map_or(ContentMode::Formatted, |(_, prefix)| prefix.left_mode);
+        if keyword.is_some_and(|keyword| keyword.suppresses_name(identifier)) {
+            name_mode = ContentMode::Verbatim;
+        }
         let boundary = self.prepare_type_boundary(
             Span::new(head_end, annotation_span.start),
             TypeBoundaryTarget::Alias(&mut type_node),
