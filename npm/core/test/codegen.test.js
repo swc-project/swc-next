@@ -275,3 +275,24 @@ test("encoder UTF-8 fallback matches Node with Unicode, WTF-8 and pool growth", 
   assert.deepEqual(js, utf8);
   assert.deepEqual(ts, utf8);
 });
+
+
+test("encoder reads body and parameter ranges without copying arrays", () => {
+  const { program } = parseSync('function f(a = 1, ...rest) { "custom"; work(); "late"; }');
+  const functionNode = program.body[0];
+  functionNode.params.slice = () => { throw new Error("parameter array copied"); };
+  const initializer = { type: "ArrayExpression", elements: Array(600).fill(null) };
+  functionNode.params[0].right = initializer;
+  const expected = `function f(a=[${",".repeat(600)}],...rest){"custom";work();"late"}`;
+  assert.deepEqual(encodeJs(program), encodeTs(program));
+  assert.equal(printSync(program, { minify: true }).code, expected);
+
+  const typed = parseSync('function f(this: Context, a: number, ...rest: number[]) {}', { lang: "ts" }).program;
+  typed.body[0].params.slice = () => { throw new Error("this parameter array copied"); };
+  assert.equal(printSync(typed, { minify: true }).code, "function f(this:Context,a:number,...rest:number[]){}");
+
+  const empty = parseSync("function f() {}").program;
+  assert.equal(printSync(empty, { minify: true }).code, "function f(){}");
+  const rest = parseSync("function f(...rest) {}").program;
+  assert.equal(printSync(rest, { minify: true }).code, "function f(...rest){}");
+});

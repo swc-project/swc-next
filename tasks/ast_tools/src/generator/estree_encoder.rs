@@ -86,7 +86,12 @@ fn write_struct_encoder(
     dispatch: &EncoderDispatch,
 ) {
     let name = &ast.name;
-    writeln!(output, "  function enc{name}(n) {{").unwrap();
+    let parameters = if name == "FormalParameters" {
+        "n, from = 0"
+    } else {
+        "n"
+    };
+    writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
     if name.starts_with("Ts") {
         output.push_str("    isTs = true;\n");
     }
@@ -123,7 +128,13 @@ fn write_struct_encoder(
         } else {
             source
         };
-        fields.push((ty, local, source, layout.fields[field_index]));
+        fields.push((
+            ty,
+            local,
+            source,
+            range_length(name, &field.name),
+            layout.fields[field_index],
+        ));
     }
 
     if layout.extra_count != 0 {
@@ -143,8 +154,8 @@ fn write_struct_encoder(
     if let Some(offset) = layout.extra_start_offset() {
         writeln!(output, "    setPayloadU32(index, {offset}, extraId);").unwrap();
     }
-    for (ty, local, source, location) in fields {
-        write_value(output, ty, schema, &local, &source, location);
+    for (ty, local, source, length, location) in fields {
+        write_value(output, ty, schema, &local, &source, length, location);
     }
     output.push_str("    return index;\n  }\n\n");
 }
@@ -155,6 +166,7 @@ fn write_value(
     schema: &Schema,
     value: &str,
     source: &str,
+    length: Option<&str>,
     location: FieldLocation,
 ) {
     let setter = |kind: &str, byte_offset: usize, component: &str| match location {
@@ -195,12 +207,17 @@ fn write_value(
         }
         AstType::SubRange(_) => {
             let destination = buffer_destination(location);
-            writeln!(
-                output,
-                "    writeArrayRange({value}, {source}, {destination});"
-            )
-            .unwrap();
+            if let Some(length) = length {
+                writeln!(output, "    writeRange({value}, {length}, {destination});").unwrap();
+            } else {
+                writeln!(
+                    output,
+                    "    writeArrayRange({value}, {source}, {destination});"
+                )
+                .unwrap();
+            }
         }
+
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(_) | AstType::Enum(_) => {
                 writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
@@ -225,6 +242,15 @@ fn write_value(
                 writeln!(output, "    {}", setter(kind, 0, value)).unwrap();
             }
         },
+    }
+}
+
+fn range_length(node: &str, field: &str) -> Option<&'static str> {
+    match (node, field) {
+        ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => Some("_directiveCount"),
+        ("Program" | "FunctionBody" | "TsModuleBlock", "body") => Some("_length - _directiveCount"),
+        ("FormalParameters", "items") => Some("_itemCount"),
+        _ => None,
     }
 }
 
@@ -297,6 +323,12 @@ fn encode_expression(
     source: &str,
 ) -> String {
     match ty {
+        AstType::Struct(ast) if ast.name == "FormalParameters" && has_this_param(node) => {
+            format!(
+                "encFormalParameters(n.params, {})",
+                if dispatch.is_ts { "_paramStart" } else { "0" }
+            )
+        }
         AstType::Struct(ast) => child_expression(node, field, &format!("enc{}", ast.name), source),
         AstType::Enum(ast) => {
             child_expression(node, field, &dispatch.encoder_name(&ast.name), source)
@@ -308,7 +340,16 @@ fn encode_expression(
                 inner => (inner, false),
             };
             let encoder = encoder_name(inner, dispatch);
-            format!("encArray({source}, {encoder}, {holes})")
+            match (node, field) {
+                ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => {
+                    format!("encArraySlice(_body, {encoder}, 0, _directiveCount)")
+                }
+                ("Program" | "FunctionBody" | "TsModuleBlock", "body") => {
+                    format!("encArraySlice(_body, {encoder}, _directiveCount, _length)")
+                }
+                ("FormalParameters", "items") => "_itemsStart".into(),
+                _ => format!("encArray({source}, {encoder}, {holes})"),
+            }
         }
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(ast) => format!(
@@ -470,6 +511,17 @@ fn field_source(node: &str, field: &str) -> String {
     }
 }
 
+fn has_this_param(node: &str) -> bool {
+    matches!(
+        node,
+        "Function"
+            | "TsFunction"
+            | "TsFunctionType"
+            | "TsMethodSignature"
+            | "TsCallSignatureDeclaration"
+    )
+}
+
 fn is_ts_field(node: &str, field: &str, ty: &AstType, schema: &Schema) -> bool {
     let field = field.strip_prefix("r#").unwrap_or(field);
     if let AstType::Option(option) = ty
@@ -507,17 +559,13 @@ fn span_expression(node: &str) -> (&'static str, &'static str) {
 fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
     match name {
         "Program" | "FunctionBody" | "TsModuleBlock" => output.push_str(
-            r#"    const _directives = [];
-    const _body = [];
-    let inDirectivePrologue = true;
-    for (const statement of n.body ?? []) {
-      if (inDirectivePrologue &&
-          statement?.type === "ExpressionStatement" && statement.directive != null) {
-        _directives.push(statement);
-      } else {
-        inDirectivePrologue = false;
-        _body.push(statement);
-      }
+            r#"    const _body = n.body;
+    const _length = _body?.length ?? 0;
+    let _directiveCount = 0;
+    while (_directiveCount < _length) {
+      const statement = _body[_directiveCount];
+      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      _directiveCount++;
     }
 "#,
         ),
@@ -562,18 +610,31 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
         | "TsCallSignatureDeclaration" => output.push_str(
             r#"    const _first = n.params?.[0];
     const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
-    const _params = _thisParam === null ? n.params : n.params.slice(1);
+    const _paramStart = _thisParam === null ? 0 : 1;
 "#,
         ),
         "FormalParameters" => output.push_str(
-            r#"    const _items = [];
+            r#"    const _length = n?.length ?? 0;
+    let _itemCount = _length - from;
     let _rest = null;
-    for (const parameter of n ?? []) {
-      if (parameter?.type === "RestElement") _rest = parameter;
-      else _items.push(parameter);
+    for (let i = from; i < _length; i++) {
+      const parameter = n[i];
+      if (parameter?.type === "RestElement") {
+        _rest = parameter;
+        _itemCount--;
+      }
     }
-    const _start = n?.length ? asStart(n[0]) : 0;
-    const _end = n?.length ? asEnd(n[n.length - 1]) : 0;
+    const _start = _length > from ? asStart(n[from]) : 0;
+    const _end = _length > from ? asEnd(n[_length - 1]) : 0;
+    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+    let slot = _itemsStart;
+    for (let i = from; i < _length; i++) {
+      const parameter = n[i];
+      if (parameter?.type !== "RestElement") {
+        const id = encFormalParameterItem(parameter);
+        setExtraU32(slot++, 0, id);
+      }
+    }
 "#,
         ),
         "ArrayPattern" => output.push_str(
@@ -1054,6 +1115,21 @@ function encode(program) {
       setExtraU32(start + index, 0, id);
     }
     return start;
+  }
+
+  function encArraySlice(values, encoder, from, end) {
+    if (from === end) return 0;
+    const start = allocExtra(end - from);
+    for (let index = from, slot = start; index < end; index++, slot++) {
+      const id = encoder(values[index]);
+      setExtraU32(slot, 0, id);
+    }
+    return start;
+  }
+
+  function writeRange(start, length, view, offset) {
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, start + length, true);
   }
 
   function writeArrayRange(start, values, view, offset) {

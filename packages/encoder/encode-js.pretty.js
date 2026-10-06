@@ -150,6 +150,21 @@ function encodeJs(program) {
     return start;
   }
 
+  function encArraySlice(values, encoder, from, end) {
+    if (from === end) return 0;
+    const start = allocExtra(end - from);
+    for (let index = from, slot = start; index < end; index++, slot++) {
+      const id = encoder(values[index]);
+      setExtraU32(slot, 0, id);
+    }
+    return start;
+  }
+
+  function writeRange(start, length, view, offset) {
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, start + length, true);
+  }
+
   function writeArrayRange(start, values, view, offset) {
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, start + (values?.length ?? 0), true);
@@ -350,26 +365,22 @@ function encodeJs(program) {
   }
 
   function encProgram(n) {
-    const _directives = [];
-    const _body = [];
-    let inDirectivePrologue = true;
-    for (const statement of n.body ?? []) {
-      if (inDirectivePrologue &&
-          statement?.type === "ExpressionStatement" && statement.directive != null) {
-        _directives.push(statement);
-      } else {
-        inDirectivePrologue = false;
-        _body.push(statement);
-      }
+    const _body = n.body;
+    const _length = _body?.length ?? 0;
+    let _directiveCount = 0;
+    while (_directiveCount < _length) {
+      const statement = _body[_directiveCount];
+      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      _directiveCount++;
     }
-    const v_0 = encArray(_directives, encDirective, false);
-    const v_1 = encArray(_body, encNode, false);
+    const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
+    const v_1 = encArraySlice(_body, encNode, _directiveCount, _length);
     const v_2 = n.hashbang == null ? NULL : encHashbang(n.hashbang);
     const extraId = allocExtra(1);
     const index = allocNode(0, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    writeArrayRange(v_0, _directives, payload, index * 16 + 0);
-    writeArrayRange(v_1, _body, extra, (extraId + 0) * 8);
+    writeRange(v_0, _directiveCount, payload, index * 16 + 0);
+    writeRange(v_1, _length - _directiveCount, extra, (extraId + 0) * 8);
     setPayloadU32(index, 8, v_2);
     return index;
   }
@@ -930,7 +941,7 @@ function encodeJs(program) {
     const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
     const v_2 = NULL;
     const v_3 = NULL;
-    const v_4 = encFormalParameters(_params);
+    const v_4 = encFormalParameters(n.params, 0);
     const v_5 = NULL;
     const v_6 = encFunctionBody(n.body);
     const v_7 = n.generator ? 1 : 0;
@@ -951,23 +962,19 @@ function encodeJs(program) {
   }
 
   function encFunctionBody(n) {
-    const _directives = [];
-    const _body = [];
-    let inDirectivePrologue = true;
-    for (const statement of n.body ?? []) {
-      if (inDirectivePrologue &&
-          statement?.type === "ExpressionStatement" && statement.directive != null) {
-        _directives.push(statement);
-      } else {
-        inDirectivePrologue = false;
-        _body.push(statement);
-      }
+    const _body = n.body;
+    const _length = _body?.length ?? 0;
+    let _directiveCount = 0;
+    while (_directiveCount < _length) {
+      const statement = _body[_directiveCount];
+      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      _directiveCount++;
     }
-    const v_0 = encArray(_directives, encDirective, false);
-    const v_1 = encArray(_body, encNode, false);
+    const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
+    const v_1 = encArraySlice(_body, encNode, _directiveCount, _length);
     const index = allocNode(53, asStart(n), asEnd(n));
-    writeArrayRange(v_0, _directives, payload, index * 16 + 0);
-    writeArrayRange(v_1, _body, payload, index * 16 + 8);
+    writeRange(v_0, _directiveCount, payload, index * 16 + 0);
+    writeRange(v_1, _length - _directiveCount, payload, index * 16 + 8);
     return index;
   }
 
@@ -1005,20 +1012,33 @@ function encodeJs(program) {
     return index;
   }
 
-  function encFormalParameters(n) {
-    const _items = [];
+  function encFormalParameters(n, from = 0) {
+    const _length = n?.length ?? 0;
+    let _itemCount = _length - from;
     let _rest = null;
-    for (const parameter of n ?? []) {
-      if (parameter?.type === "RestElement") _rest = parameter;
-      else _items.push(parameter);
+    for (let i = from; i < _length; i++) {
+      const parameter = n[i];
+      if (parameter?.type === "RestElement") {
+        _rest = parameter;
+        _itemCount--;
+      }
     }
-    const _start = n?.length ? asStart(n[0]) : 0;
-    const _end = n?.length ? asEnd(n[n.length - 1]) : 0;
-    const v_0 = encArray(_items, encFormalParameterItem, false);
+    const _start = _length > from ? asStart(n[from]) : 0;
+    const _end = _length > from ? asEnd(n[_length - 1]) : 0;
+    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+    let slot = _itemsStart;
+    for (let i = from; i < _length; i++) {
+      const parameter = n[i];
+      if (parameter?.type !== "RestElement") {
+        const id = encFormalParameterItem(parameter);
+        setExtraU32(slot++, 0, id);
+      }
+    }
+    const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
     const v_2 = enumValue("FormalParameterKind", 0);
     const index = allocNode(58, _start, _end);
-    writeArrayRange(v_0, _items, payload, index * 16 + 0);
+    writeRange(v_0, _itemCount, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     setPayloadU8(index, 12, v_2);
     return index;
