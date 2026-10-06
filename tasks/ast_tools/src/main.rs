@@ -50,8 +50,8 @@ fn main() -> std::io::Result<()> {
         output.write_to_file()?;
     }
 
-    let (estree_encoder_pretty, estree_encoder_minified) = estree_encoder(&schema);
-    estree_encoder_pretty.write_to_file()?;
-    estree_encoder_minified.write_to_file()?;
+    for output in estree_encoder(&schema) {
+        output.write_to_file()?;
+    }
     Ok(())
 }

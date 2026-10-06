@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { encode } from "@swc-next/encoder";
+import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
 import { parseSync, printSync } from "../src-js/index.js";
 
 test("encode writes spans in canonical little-endian order", () => {
@@ -171,4 +171,18 @@ test("printSync rejects unsupported ESTree nodes", () => {
       }),
     /Unsupported ESTree node type Unsupported/,
   );
+});
+
+
+test("encoder language hints select compatible JS and TS variants", () => {
+  const { program } = parseSync("const value = (a) => a;");
+  assert.deepEqual(encodeJs(program), encodeTs(program));
+  assert.deepEqual(encode(program, "js"), encodeJs(program));
+  assert.deepEqual(encode(program, "jsx"), encodeJs(program));
+  assert.deepEqual(encode(program), encodeTs(program));
+
+  const typed = parseSync("const value: string = 'ok';", { lang: "ts" }).program;
+  assert.deepEqual(encode(typed, "ts"), encodeTs(typed));
+  assert.deepEqual(encode(typed, "tsx"), encodeTs(typed));
+  assert.equal(new DataView(encodeTs(typed).buffer).getUint32(32, true) & 1, 1);
 });

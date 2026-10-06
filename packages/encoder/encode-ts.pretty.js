@@ -49,7 +49,7 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-function encode(program) {
+function encodeTs(program) {
   const sizeHint = program.end || 0;
   let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
   let spans = new Uint32Array(nodeCapacity * 2);
@@ -2722,4 +2722,4 @@ function encode(program) {
   return new Uint8Array(buffer);
 }
 
-export { encode };
+export { encodeTs };

@@ -20,6 +20,8 @@
   "files": [
     "index.d.ts",
     "index.js",
+    "encode-js.js",
+    "encode-ts.js",
     "README.md"
   ],
   "publishConfig": {
