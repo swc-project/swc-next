@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  return (
+    // ordinary
+    value++
+  )!;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return (
+    // ordinary
+    (value++)!
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    // ordinary
+    (value++)!
+  )
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f() {
+  return (
+    // ordinary
+    (value++)!
+  );
+}
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+function f() {
+	return (
+		// ordinary
+		(value++)!
+	);
+}
