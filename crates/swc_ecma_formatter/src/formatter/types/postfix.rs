@@ -381,7 +381,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 TsTypeQueryExprNameData::ThisExpression(_) => writer.text("this"),
                 TsTypeQueryExprNameData::TsImportType(import) => {
-                    return Err(self.unsupported("import type query", import));
+                    self.format_import_type(import, writer)?;
                 }
             }
         }

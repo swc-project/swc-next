@@ -11,7 +11,7 @@ pub(super) mod chains;
 mod conditional;
 mod constructors;
 mod for_initializer;
-mod imports;
+pub(super) mod imports;
 mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;

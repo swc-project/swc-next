@@ -5,6 +5,7 @@ mod compound;
 mod conditional;
 mod context;
 mod generics;
+mod imports;
 mod infer;
 mod interfaces;
 mod mapped;
@@ -1512,6 +1513,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsImportType(node) => self.format_import_type(node, writer),
             TsTypeData::TsMappedType(node) => self.format_mapped_type(node, writer),
             TsTypeData::TsInferType(node) => self.format_infer_type(node, writer),
             TsTypeData::TsConditionalType(node) => {
