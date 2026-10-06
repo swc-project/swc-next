@@ -3,6 +3,7 @@
 mod control_flow;
 mod declarations;
 mod modules;
+mod namespaces;
 pub(in crate::formatter) use self::declarations::DeclarationKeyword;
 mod tails;
 
@@ -11,7 +12,7 @@ use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
     ExportDefaultDeclarationKindData, ExprData, FunctionBody, GetSpan, Span, StaticBlock, Stmt,
-    StmtData, SubRange,
+    StmtData, SubRange, TsModuleBlock,
 };
 
 use super::Formatter;
@@ -123,6 +124,7 @@ pub(super) enum StatementItem {
 }
 
 enum BodySource<'ast> {
+    Module(TsModuleBlock),
     Block {
         node: BlockStatement,
         incoming: Option<IncomingStatement>,
@@ -1166,7 +1168,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if declaration.is_some_and(|declaration| {
                     matches!(
                         self.ast.decl_data(declaration),
-                        DeclData::TsTypeAliasDeclaration(_) | DeclData::TsInterfaceDeclaration(_)
+                        DeclData::TsTypeAliasDeclaration(_)
+                            | DeclData::TsInterfaceDeclaration(_)
+                            | DeclData::TsModuleDeclaration(_)
+                            | DeclData::TsGlobalDeclaration(_)
                     )
                 }) {
                     printed.boundary = printed.boundary.type_declaration();
@@ -1409,6 +1414,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 empty,
                 leading,
             ),
+            BodySource::Module(module) => (
+                module.span(ast),
+                Some(module.directives(ast)),
+                module.body(ast),
+                StatementSequenceKind::Block {
+                    incoming: None,
+                    leading: StatementBodyLeading::empty(),
+                },
+                EmptyBlock::Compact,
+                StatementBodyLeading::empty(),
+            ),
             BodySource::Function(function, incoming, leading) => (
                 function.span(ast),
                 Some(function.directives(ast)),
@@ -1463,5 +1479,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         writer.text("}");
         Ok(())
+    }
+
+    pub(super) fn format_module_body(
+        &mut self,
+        body: TsModuleBlock,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_braced_body(BodySource::Module(body), mode, writer)
     }
 }
