@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const invalid: string;
+const result = (
+  // @ts-expect-error
+  invalid() ?? 0 ? 0 : 0
+);
+---------- Options ----------
+{}
+---------- Output ----------
+declare const invalid: string;
+const result = (
+  // @ts-expect-error
+  invalid() ?? 0 ? 0 : 0
+);
+

@@ -1,7 +1,9 @@
 //! Basic statement bodies and their enclosing source boundaries.
 
 mod control_flow;
+mod declarations;
 mod modules;
+pub(in crate::formatter) use self::declarations::DeclarationKeyword;
 mod tails;
 
 use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};

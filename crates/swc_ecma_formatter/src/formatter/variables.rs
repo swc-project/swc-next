@@ -16,6 +16,7 @@ use super::diagnostics::FlatSeparator;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::expressions::assignment::RhsLayout;
 use super::expressions::{ExpressionContext, ExpressionPosition, ForInitializerGrammar};
+use super::statements::DeclarationKeyword;
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
@@ -47,11 +48,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_variable_declaration(
         &mut self,
         declaration: VariableDeclaration,
+        keyword: Option<DeclarationKeyword>,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
-        self.format_variable_declaration_with_context(
+        self.format_variable_declaration_parts(
             declaration,
             VariableContext::Statement,
+            keyword,
             writer,
         )
     }
@@ -62,8 +65,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: VariableContext,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
+        self.format_variable_declaration_parts(declaration, context, None, writer)
+    }
+
+    fn format_variable_declaration_parts(
+        &mut self,
+        declaration: VariableDeclaration,
+        context: VariableContext,
+        keyword: Option<DeclarationKeyword>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
         let ast = self.ast;
-        if declaration.declare(ast) {
+        if declaration.declare(ast) && keyword.is_none() {
             return Err(self.unsupported("ambient variable declaration", declaration));
         }
         let mut nodes = declaration.declarators(ast);
@@ -84,7 +97,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut declarators = std::iter::once(first)
             .chain(remaining.iter().map(|id| ast.get_node_in_sub_range(id)))
             .peekable();
-        let start = declaration.span(ast).start;
+        let start = keyword.map_or(declaration.span(ast).start, |keyword| keyword.span.start);
         let kind = declaration.kind(ast);
         let trivia_start = if kind == VariableKind::AwaitUsing {
             let gap = Span::new(start + 5, first.span(ast).start);
@@ -121,6 +134,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(kind.as_str());
             start + kind.as_str().len() as u32
         };
+        let trivia_start = keyword.map_or(trivia_start, DeclarationKeyword::name_prefix_start);
         let comments = self
             .comments
             .in_range(Span::new(trivia_start, first.span(ast).start));
@@ -176,6 +190,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     if let Some(mode) = following_mode {
                         item.set_leading_mode(mode);
+                    }
+                    if keyword.is_some_and(|keyword| keyword.suppresses_variable(declarator)) {
+                        item.set_leading_mode(ContentMode::Verbatim);
                     }
                     let tail =
                         self.format_variable_declarator(declarator, item.mode, context, writer)?;
