@@ -30,8 +30,8 @@ function checkUnit(file, unit) {
   try {
     parsed = decode(binding.parseSync(sourceBytes, source.length, options), source, sourceBytes);
     if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === "error")) return result;
-  } catch {
-    return result;
+  } catch (error) {
+    return { ...result, error: String(error) };
   }
   result.parsed = true;
   try {

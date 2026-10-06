@@ -41,7 +41,7 @@ async function runTestSuite(suite: string, source: string, snapshot: string) {
     await Promise.all(
       files.map((file) => pool.run({ suite, file: path.join(source, file) })),
     )
-  ).flat().filter((result) => result.parsed);
+  ).flat().filter((result) => result.parsed || result.error !== undefined);
   await writeResults(suite, snapshot, results);
 }
 
