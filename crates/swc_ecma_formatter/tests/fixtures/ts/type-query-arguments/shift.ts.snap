@@ -1,0 +1,51 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const f: number;
+const value = 4;
+const other = 2;
+value as typeof f << other;
+---------- Options ----------
+{}
+---------- Output ----------
+declare const f: number;
+const value = 4;
+const other = 2;
+(value as typeof f) << other;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare const f: number;
+const value = 4;
+const other = 2;
+(value as typeof f) <<
+  other;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare const f: number
+const value = 4
+const other = 2
+;(value as typeof f) <<
+  other
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+declare const f: number
+const value = 4
+const other = 2
+;(value as typeof f) <<
+  other
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+declare const f: number;
+const value = 4;
+const other = 2;
+(value as typeof f) <<
+	other;
