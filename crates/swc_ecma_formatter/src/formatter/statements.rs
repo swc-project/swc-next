@@ -8,8 +8,8 @@ use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
 
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
-    ExportDefaultDeclarationKindData, FunctionBody, GetSpan, Span, StaticBlock, Stmt, StmtData,
-    SubRange,
+    ExportDefaultDeclarationKindData, ExprData, FunctionBody, GetSpan, Span, StaticBlock, Stmt,
+    StmtData, SubRange,
 };
 
 use super::Formatter;
@@ -203,6 +203,12 @@ impl StatementItem {
 #[derive(Clone, Copy)]
 pub(super) struct StatementSourceTerminator {
     start: u32,
+}
+
+impl StatementSourceTerminator {
+    pub(in crate::formatter) fn start(self) -> u32 {
+        self.start
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -961,7 +967,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let data = self.ast.stmt_data(statement);
         if let StmtData::ExpressionStatement(node) = data {
             let expression = node.expression(self.ast);
-            let tail = self.format_expression_with_leading_comments(
+            let const_tail = if mode == ContentMode::Formatted
+                && matches!(punctuation, StatementPunctuation::Canonical(_))
+                && self.content_mode(head.comments) == ContentMode::Formatted
+                && let ExprData::TsAsExpression(assertion) = self.ast.expr_data(expression)
+            {
+                self.prepare_const_assertion_statement_tail(assertion, span)
+            } else {
+                None
+            };
+            let mut tail = self.format_expression_with_leading_comments(
                 expression,
                 head,
                 ExpressionContext::at(ExpressionPosition::Statement)
@@ -970,7 +985,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None,
                 writer,
             )?;
-            let content_end = expression.span(self.ast).end;
+            let mut content_end = expression.span(self.ast).end;
+            if let Some(suffix) = const_tail {
+                content_end = suffix
+                    .comments
+                    .last()
+                    .map_or(content_end, |last| content_end.max(last.span.end));
+                self.format_expression_tail(tail, writer)?;
+                self.format_expression_tail(Some(suffix), writer)?;
+                tail = None;
+            }
             return self.finish_statement(content_end, tail, punctuation, writer);
         }
         self.format_node_head(head, layout.start, None, writer)?;

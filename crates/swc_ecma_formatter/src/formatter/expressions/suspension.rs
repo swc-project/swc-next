@@ -64,17 +64,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let data = self.ast.expr_data(argument);
             argument = match data {
                 ExprData::ParenthesizedExpression(node) => node.expression(self.ast),
-                ExprData::ChainExpression(node) => node.expression(self.ast),
                 ExprData::MemberExpression(node) => node.object(self.ast),
                 ExprData::CallExpression(node) => node.callee(self.ast),
+                ExprData::ChainExpression(node) => node.expression(self.ast),
+                ExprData::TsNonNullExpression(node) => node.expression(self.ast),
+                ExprData::TsAsExpression(node) => node.expression(self.ast),
+                ExprData::TsSatisfiesExpression(node) => node.expression(self.ast),
                 ExprData::ConditionalExpression(node) => node.test(self.ast),
                 ExprData::AssignmentExpression(node) => {
                     match self.ast.assignment_target_data(node.left(self.ast)) {
                         swc_next_ecma_ast::AssignmentTargetData::SimpleAssignmentTarget(target) => {
-                            match self.simple_target_expression(target) {
-                                Ok(expression) => expression,
-                                Err(_) => return false,
-                            }
+                            super::targets::SimpleTarget::new(self.ast, target).expression()
                         }
                         _ => return false,
                     }
@@ -86,10 +86,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.ast.get_node_in_sub_range(first)
                 }
                 ExprData::UpdateExpression(node) if !node.prefix(self.ast) => {
-                    match self.simple_target_expression(node.argument(self.ast)) {
-                        Ok(expression) => expression,
-                        Err(_) => return false,
-                    }
+                    super::targets::SimpleTarget::new(self.ast, node.argument(self.ast))
+                        .expression()
                 }
                 _ => {
                     let Some(binary) = super::binary::BinaryLike::from_data(data, self.ast) else {

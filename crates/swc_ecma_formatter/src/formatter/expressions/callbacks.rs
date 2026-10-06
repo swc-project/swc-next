@@ -245,7 +245,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         };
         let data = self.expression_content(expression).data;
-        if matches!(data, ExprData::ChainExpression(_)) {
+        if matches!(
+            data,
+            ExprData::ChainExpression(_) | ExprData::TsNonNullExpression(_)
+        ) {
             return match self.chain_element_data(data) {
                 data @ ExprData::CallExpression(_) => Some(data),
                 _ => None,
@@ -382,7 +385,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::ConditionalExpression(_) | ExprData::CallExpression(_) => {
                     return child.is_none().then_some(root);
                 }
-                ExprData::ChainExpression(_)
+                ExprData::ChainExpression(_) | ExprData::TsNonNullExpression(_)
                     if matches!(
                         self.chain_element_data(content.data),
                         ExprData::CallExpression(_)
@@ -514,6 +517,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let data = self.expression_content(expression).data;
         match data {
+            ExprData::TsAsExpression(assertion) => {
+                self.short_argument_type(assertion.type_annotation(ast))
+                    && self.simple_callback_neighbor(assertion.expression(ast), 1)
+            }
+            ExprData::TsSatisfiesExpression(assertion) => {
+                self.short_argument_type(assertion.type_annotation(ast))
+                    && self.simple_callback_neighbor(assertion.expression(ast), 1)
+            }
             ExprData::BinaryExpression(binary) => {
                 self.simple_callback_neighbor(binary.left(ast), 1)
                     && self.simple_callback_neighbor(binary.right(ast), 1)
@@ -583,6 +594,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .is_none_or(|options| self.simple_callback_neighbor(options, child_depth));
                 }
                 ExprData::ChainExpression(chain) => chain.expression(ast),
+                ExprData::TsNonNullExpression(assertion) => assertion.expression(ast),
                 ExprData::UnaryExpression(unary)
                     if matches!(
                         unary.operator(ast),

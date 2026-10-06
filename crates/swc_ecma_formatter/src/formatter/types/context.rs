@@ -2,7 +2,7 @@
 use swc_next_ecma_ast::{Ast, TsType, TsTypeData};
 
 #[derive(Clone, Copy)]
-pub(super) enum TypeContext {
+pub(in crate::formatter) enum TypeContext {
     Root,
     TypeConstraint,
     ConditionalCheck,

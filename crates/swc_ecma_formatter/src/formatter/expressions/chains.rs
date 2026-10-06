@@ -14,6 +14,7 @@ use super::members::{
 use super::parentheses::{
     ExpressionContent, ParenthesisInner, RemovedExpressionParentheses, ResolvedExpressionHead,
 };
+use super::typescript::SourceNonNull;
 use super::{
     AccessKind, ExpressionContext, ExpressionLayout, ExpressionPosition, ExpressionStart,
     Formatter, MemberChainLayout, MemberLayout,
@@ -98,6 +99,10 @@ impl RhsChainHead {
         self.following = following;
         self.next_is_member = true;
     }
+
+    fn non_null(&mut self) {
+        self.next_is_member = false;
+    }
 }
 
 pub(super) fn atomic_chain_head(data: ExprData) -> bool {
@@ -128,6 +133,7 @@ enum ChainPart<'ast> {
         call: CallExpression,
         arguments: SourceArguments<'ast>,
     },
+    NonNull(SourceNonNull<'ast>),
     Parentheses(RemovedExpressionParentheses),
 }
 
@@ -181,6 +187,14 @@ impl PreparedChain<'_> {
     pub(super) fn set_expression_start(&mut self, start: ExpressionStart) {
         self.context.expression_start = start;
         self.head_context.expression_start = start;
+    }
+
+    pub(super) fn emitted_head(&self) -> (Expr, ExpressionContext) {
+        let expression = self
+            .prepared_head
+            .as_ref()
+            .map_or(self.head, |head| head.content.expression);
+        (expression, self.head_context)
     }
 }
 
@@ -259,6 +273,7 @@ enum ChainOperation<'ast> {
         call: CallExpression,
         arguments: SourceArguments<'ast>,
     },
+    NonNull(SourceNonNull<'ast>),
 }
 
 enum ChainArgumentLayout {
@@ -429,6 +444,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     member = true;
                     access.object(self.ast)
                 }
+                ExprData::TsNonNullExpression(non_null) => {
+                    bare_members = false;
+                    non_null.expression(self.ast)
+                }
                 ExprData::ParenthesizedExpression(parenthesized) => {
                     bare_members = false;
                     parenthesized.expression(self.ast)
@@ -528,6 +547,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     prefix.call();
                     context = callee.context(context);
                     callee.expression
+                }
+                ExprData::TsNonNullExpression(node) => {
+                    if comments.last().is_some_and(|comment| {
+                        comment.span.end > node.expression(self.ast).span(self.ast).end
+                    }) {
+                        return None;
+                    }
+                    let source = self.source_non_null(node).ok()?;
+                    if source.source_break() {
+                        return None;
+                    }
+                    prefix.non_null();
+                    context = source.operand_context(context);
+                    if self.expression_needs_parentheses(
+                        self.ast.expr_data(source.expression),
+                        context.position,
+                        context.content_mode,
+                    ) == Some(true)
+                    {
+                        return None;
+                    }
+                    source.expression
                 }
                 ExprData::ParenthesizedExpression(node) => {
                     self.chain_parentheses_operand(node, context)?
@@ -677,6 +718,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     next_part_is_member = false;
                     grouping.call();
                 }
+                ExprData::TsNonNullExpression(node) => {
+                    let source = self.source_non_null(node)?;
+                    current = source.expression;
+                    head_content = None;
+                    current_context = source.operand_context(current_context);
+                    parts.push(ChainPart::NonNull(source));
+                    next_part_is_member = false;
+                    // A grammar-required pair still owns its complete operand.
+                    if self.expression_needs_parentheses(
+                        self.ast.expr_data(current),
+                        current_context.position,
+                        current_context.content_mode,
+                    ) == Some(true)
+                    {
+                        break;
+                    }
+                }
                 ExprData::ParenthesizedExpression(parenthesized) => {
                     let Some(mut content) =
                         self.prepare_chain_parentheses_head(parenthesized, current_context)
@@ -806,6 +864,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             calls,
             groups: grouping.groups,
         })
+    }
+
+    /// Assertion alternatives retain the same operation owners and actual head.
+    pub(super) fn prepare_assertion_chain(
+        &self,
+        content: ExpressionContent,
+        context: ExpressionContext,
+        leading_start: u32,
+        binding: CommentBinding,
+    ) -> Result<(PreparedChain<'ast>, ResolvedExpressionHead<'ast>), FormatError> {
+        let mut parts = Vec::new();
+        if let Some(removed) = content.parentheses {
+            parts.push(ChainPart::Parentheses(removed));
+        }
+        // An optional wrapper has no token of its own. Match the real inner
+        // printer's root/context while retaining the envelope tail separately.
+        let mut context = context;
+        let expression = match content.data {
+            ExprData::ChainExpression(chain) => {
+                context.position = ExpressionPosition::Nested;
+                chain.expression(self.ast)
+            }
+            _ => content.expression,
+        };
+        let mut chain = self.prepare_chain(expression, context, parts, Some(binding))?;
+        let (head_expression, _) = chain.emitted_head();
+        let start = head_expression.span(self.ast).start;
+        let comments = self.comments.in_range(Span::new(leading_start, start));
+        if let Some(head) = chain.prepared_head.as_mut() {
+            head.has_comments = !comments.is_empty();
+        }
+        let binding = chain
+            .prepared_head
+            .as_ref()
+            .map_or(binding, |head| head.resolved.binding);
+        Ok((
+            chain,
+            ResolvedExpressionHead {
+                head: NodeHead {
+                    comments,
+                    content_start: start,
+                    layout: CommentRunLayout::FlatLeading(start),
+                    gap_end: None,
+                },
+                binding,
+            },
+        ))
     }
 
     pub(super) fn format_fluent_chain(
@@ -1213,6 +1318,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ChainPart::Call { arguments, .. } => {
                     tail = self.format_source_arguments(arguments, tail.take(), writer)?;
                 }
+                ChainPart::NonNull(source) => {
+                    self.format_source_non_null(source, tail.take(), writer)?;
+                }
             }
         }
         Ok(tail)
@@ -1244,6 +1352,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ChainPart::Call { call, arguments } => {
                     return Ok(Some(ChainOperation::Call { call, arguments }));
                 }
+                ChainPart::NonNull(non_null) => return Ok(Some(ChainOperation::NonNull(non_null))),
             }
         }
         Ok(None)
@@ -1283,6 +1392,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         last_name = None;
                         self.write_chain_call(call, arguments, source, &mut facts, writer)?;
                         head_parts += 1;
+                    }
+                    ChainOperation::NonNull(non_null) => {
+                        self.write_chain_non_null(non_null, source, &mut facts, writer)?;
                     }
                 }
             }
@@ -1341,6 +1453,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         saw_call = true;
                         self.write_chain_call(call, arguments, source, &mut facts, writer)?;
                     }
+                    ChainOperation::NonNull(non_null) => {
+                        self.write_chain_non_null(non_null, source, &mut facts, writer)?;
+                        continue;
+                    }
                 }
                 has_parts = true;
             }
@@ -1364,6 +1480,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             member.separator().write(false, writer);
         }
         self.format_member_access(&member.member.source, member.boundary, writer)
+    }
+
+    fn write_chain_non_null(
+        &mut self,
+        non_null: SourceNonNull<'ast>,
+        source: &mut ChainSource<'ast, '_>,
+        facts: &mut GroupFacts,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        facts.has_boundary_comments |= non_null.has_comments();
+        facts.source_break |= non_null.source_break();
+        self.format_source_non_null(non_null, source.tail.take(), writer)
     }
 
     fn write_chain_call(

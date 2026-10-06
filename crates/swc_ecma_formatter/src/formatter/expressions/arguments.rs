@@ -1198,10 +1198,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.comments.in_range(content).is_empty()
             && !self.diagnostic_range_is_sensitive(content)
             && first.is_some_and(|argument| match ast.argument_data(argument.node) {
-                ArgumentData::Expr(expression) => matches!(
-                    self.expression_content(expression).data,
-                    ExprData::ArrayExpression(_) | ExprData::ObjectExpression(_)
-                ),
+                ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
                 ArgumentData::SpreadElement(_) => false,
             });
         let expand = arguments

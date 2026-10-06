@@ -70,6 +70,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::MemberExpression(_) => return true,
                 ExprData::ParenthesizedExpression(node) => node.expression(self.ast),
                 ExprData::ChainExpression(node) => node.expression(self.ast),
+                ExprData::TsNonNullExpression(node) => node.expression(self.ast),
                 _ => return false,
             };
         }

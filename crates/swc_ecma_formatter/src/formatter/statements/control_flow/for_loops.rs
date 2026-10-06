@@ -496,7 +496,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(target) = target.simple() else {
             return Ok(context);
         };
-        let mut expression = target;
+        let mut expression = target.expression();
         let root_data = self.expression_content(expression).data;
         let bare = matches!(
             root_data,
@@ -508,6 +508,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(
                     data,
                     swc_next_ecma_ast::ExprData::ParenthesizedExpression(_)
+                        | swc_next_ecma_ast::ExprData::TsTypeAssertion(_)
                 )
                 || context.is_verbatim()
             {

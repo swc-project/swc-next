@@ -71,7 +71,6 @@ enum Measurement {
 enum SpaceKind {
     Deferred,
     /// One canonical gap reserves fit width before the next text commits it.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     Reserved,
 }
 

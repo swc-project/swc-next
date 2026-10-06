@@ -97,7 +97,6 @@ impl<'a> Writer<'a> {
     }
 
     /// A canonical separator counts during fit probing and disappears at a break.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn reserved_space(&mut self) {
         self.elements
             .push(FormatElement::Space(SpaceKind::Reserved));
@@ -452,7 +451,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Joins complete scopes with the same optional deferred separator as `space`.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn join_fragments(
         &self,
         left: Fragment<'a>,
@@ -493,7 +491,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Delimiters observe one complete group; the prefix keeps its own outer scope.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn conditional_group_fragment(
         &self,
         prefix: Fragment<'a>,

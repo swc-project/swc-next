@@ -5,6 +5,7 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
 use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
 use super::expressions::objects::PropertyKeyQuoting;
+use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionPosition};
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
@@ -86,15 +87,30 @@ struct DefaultGap<'ast> {
     comments: &'ast [Comment],
 }
 
+impl DefaultGap<'_> {
+    fn after_target(mut self, target_end: u32) -> Self {
+        if self.span.start != target_end {
+            self.span.start = target_end;
+            let consumed = self
+                .comments
+                .partition_point(|comment| comment.span.end <= target_end);
+            self.comments = &self.comments[consumed..];
+        }
+        self
+    }
+}
+
 enum DefaultLeft {
     Binding(BindingPattern),
-    Simple(Expr),
+    Simple(SimpleTarget),
+    Target(PreparedTarget),
 }
 impl DefaultLeft {
     fn span(&self, ast: &Ast<'_>) -> Span {
         match self {
             Self::Binding(pattern) => pattern.span(ast),
-            Self::Simple(expression) => expression.span(ast),
+            Self::Simple(target) => target.expression().span(ast),
+            Self::Target(target) => target.span,
         }
     }
 }
@@ -426,15 +442,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         right: Expr,
         span: Span,
     ) -> Result<PreparedBindingDefault<'ast>, FormatError> {
-        let left = match self.ast.binding_pattern_data(left) {
+        let prepared = match self.ast.binding_pattern_data(left) {
             BindingPatternData::SimpleAssignmentTarget(target) => {
-                DefaultLeft::Simple(self.simple_target_expression(target)?)
+                DefaultLeft::Simple(SimpleTarget::new(self.ast, target))
             }
             _ => DefaultLeft::Binding(left),
         };
-        let owner = self.prepare_default_boundary(left.span(self.ast), right)?;
+        let simple = match prepared {
+            DefaultLeft::Simple(simple) if simple.is_typescript() => simple,
+            left => {
+                let owner = self.prepare_default_boundary(left.span(self.ast), right)?;
+                return Ok(PreparedBindingDefault {
+                    left,
+                    right,
+                    span,
+                    owner,
+                });
+            }
+        };
+        let target_span = simple.expression().span(self.ast);
+        let gap = self.default_gap(target_span.end, right)?;
+        let (target, whole) = self.prepare_default_target(
+            simple,
+            Span::new(span.start, target_span.start),
+            Span::new(target_span.end, gap.operator.start),
+        )?;
+        let owner = if whole {
+            DefaultOwner::Whole
+        } else {
+            self.prepare_default_owner(target.span, right, gap.after_target(target.span.end))?
+        };
         Ok(PreparedBindingDefault {
-            left,
+            left: DefaultLeft::Target(target),
             right,
             span,
             owner,
@@ -618,15 +657,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ),
             DefaultLeft::Simple(left) => {
                 let tail =
-                    self.format_expression(left, context.with_content_mode(left_mode), writer)?;
+                    self.format_pattern_target(left, context.with_content_mode(left_mode), writer)?;
                 self.format_expression_tail(tail, writer)?;
                 self.format_initializer_right(
-                    left.span(self.ast).end,
+                    left.expression().span(self.ast).end,
                     right,
                     layout,
                     context,
                     writer,
                 )
+            }
+            DefaultLeft::Target(left) => {
+                let tail = self.format_prepared_target(
+                    &left,
+                    context.with_content_mode(left_mode),
+                    writer,
+                )?;
+                self.format_expression_tail(tail, writer)?;
+                self.format_initializer_right(left.span.end, right, layout, context, writer)
             }
         }
     }

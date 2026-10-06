@@ -798,19 +798,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     else {
                         return true;
                     };
-                    match self.simple_target_expression(target) {
-                        Ok(target) => target,
-                        Err(_) => return true,
-                    }
+                    super::targets::SimpleTarget::new(ast, target).expression()
                 }
                 ExprData::MemberExpression(node) => node.object(ast),
                 ExprData::CallExpression(node) => node.callee(ast),
                 ExprData::ConditionalExpression(node) => node.test(ast),
                 ExprData::UpdateExpression(node) if !node.prefix(ast) => {
-                    match self.simple_target_expression(node.argument(ast)) {
-                        Ok(target) => target,
-                        Err(_) => return true,
-                    }
+                    super::targets::SimpleTarget::new(ast, node.argument(ast)).expression()
                 }
                 ExprData::SequenceExpression(node) => {
                     let Some(first) = node.expressions(ast).iter().next() else {
@@ -818,6 +812,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     ast.get_node_in_sub_range(first)
                 }
+                ExprData::ChainExpression(node) => node.expression(ast),
+                ExprData::TsNonNullExpression(node) => node.expression(ast),
+                ExprData::TsAsExpression(node) => node.expression(ast),
+                ExprData::TsSatisfiesExpression(node) => node.expression(ast),
                 _ => return true,
             };
         }
