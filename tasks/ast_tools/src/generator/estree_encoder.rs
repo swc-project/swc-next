@@ -575,8 +575,10 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
       typeof _directiveRaw === "string" && _directiveRaw.length >= 2 &&
       (_directiveQuote === "\"" || _directiveQuote === "'") &&
       _directiveRaw[_directiveRaw.length - 1] === _directiveQuote &&
-      _directiveRaw.slice(1, -1) === n.directive &&
-      directiveRawValue(_directiveRaw) === n.expression?.value
+      typeof n.directive === "string" &&
+      _directiveRaw.length === n.directive.length + 2 &&
+      _directiveRaw.startsWith(n.directive, 1) &&
+      directiveRawValue(_directiveRaw, n.directive) === n.expression?.value
         ? n.expression
         : { ...n.expression, raw: "" };
 "#,
@@ -1230,7 +1232,9 @@ function encode(program) {
     return -1;
   }
 
-  function directiveRawValue(raw) {
+  function directiveRawValue(raw, unescaped) {
+    // The caller already matched the raw interior to this existing string.
+    if (raw.indexOf("\\", 1) === -1) return unescaped;
     let result = "";
     for (let index = 1; index < raw.length - 1; index++) {
       let code = raw.charCodeAt(index);
