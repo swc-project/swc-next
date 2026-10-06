@@ -60,8 +60,7 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         }
         write_struct_encoder(&mut output, kind, ast, schema, &dispatch);
     }
-    write_node_encoder(&mut output, &dispatch.global);
-    write_contextual_encoders(&mut output, &dispatch);
+    write_enum_encoders(&mut output, &dispatch);
     output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
     output
 }
@@ -423,7 +422,7 @@ fn child_expression(node: &str, field: &str, encoder: &str, source: &str) -> Str
     let default = || format!("{encoder}({source})");
     match (node, field) {
         ("MemberExpression", "property") => {
-            format!("n.computed ? encNode({source}) : {encoder}({source})")
+            format!("n.computed ? encExpr({source}) : {encoder}({source})")
         }
         (
             "MethodDefinition"
@@ -434,7 +433,7 @@ fn child_expression(node: &str, field: &str, encoder: &str, source: &str) -> Str
             | "TsPropertySignature"
             | "TsMethodSignature",
             "key",
-        ) => format!("n.computed ? encNode({source}) : {encoder}(propertyKeyNode({source}))"),
+        ) => format!("n.computed ? encExpr({source}) : {encoder}(propertyKeyNode({source}))"),
         _ => default(),
     }
 }
@@ -671,22 +670,20 @@ impl Dispatch {
     fn new(type_id: TypeId, schema: &Schema, is_ts: bool) -> Self {
         let mut concrete = Vec::new();
         collect_concrete(type_id, schema, &mut HashSet::new(), &mut concrete);
-        if !is_ts {
-            concrete.retain(|name| !name.starts_with("Ts"));
-        }
-        let mut dispatch = Self::from_concrete(concrete);
-        if !is_ts {
-            dispatch.order.retain(|name| !name.starts_with("TS"));
-            dispatch.groups.retain(|name, _| !name.starts_with("TS"));
-        }
-        dispatch
+        Self::from_concrete(concrete, is_ts)
     }
 
-    fn from_concrete(concrete: Vec<String>) -> Self {
+    fn from_concrete(concrete: Vec<String>, is_ts: bool) -> Self {
         let mut groups: HashMap<String, Vec<String>> = HashMap::new();
         let mut order = Vec::new();
         for concrete_name in concrete {
+            if !is_ts && concrete_name.starts_with("Ts") {
+                continue;
+            }
             for estree in accepted_estree_types(&concrete_name) {
+                if !is_ts && estree.starts_with("TS") {
+                    continue;
+                }
                 if !groups.contains_key(&estree) {
                     order.push(estree.clone());
                 }
@@ -700,11 +697,15 @@ impl Dispatch {
     }
 }
 
+struct EnumDispatch {
+    name: String,
+    direct: Dispatch,
+    nested: Vec<(String, Dispatch)>,
+}
+
 struct EncoderDispatch {
     is_ts: bool,
-    global: Dispatch,
-    enums: Vec<(String, Dispatch)>,
-    contextual: HashSet<String>,
+    enums: Vec<EnumDispatch>,
 }
 
 impl EncoderDispatch {
@@ -712,122 +713,92 @@ impl EncoderDispatch {
         let enums = schema
             .types
             .iter()
-            .filter_map(|ty| match ty {
-                AstType::Enum(ast) if is_ts || !ast.name.starts_with("Ts") => {
-                    Some((ast.name.clone(), Dispatch::new(ast.type_id, schema, is_ts)))
+            .filter_map(|ty| {
+                let AstType::Enum(ast) = ty else {
+                    return None;
+                };
+                if !is_ts && ast.name.starts_with("Ts") {
+                    return None;
                 }
-                _ => None,
-            })
-            .filter(|(_, dispatch)| !dispatch.order.is_empty())
-            .collect::<Vec<_>>();
-
-        let mut order = Vec::new();
-        let mut choices: HashMap<String, Vec<(Vec<String>, usize)>> = HashMap::new();
-        for (_, dispatch) in &enums {
-            for estree in &dispatch.order {
-                let candidates = &dispatch.groups[estree];
-                let entries = choices.entry(estree.clone()).or_insert_with(|| {
-                    order.push(estree.clone());
-                    Vec::new()
-                });
-                if let Some((_, count)) = entries
-                    .iter_mut()
-                    .find(|(existing, _)| same_dispatch(estree, existing, candidates))
-                {
-                    *count += 1;
-                } else {
-                    entries.push((candidates.clone(), 1));
-                }
-            }
-        }
-
-        let groups = choices
-            .into_iter()
-            .map(|(estree, entries)| {
-                let mut selected: Option<(Vec<String>, usize)> = None;
-                for (candidates, count) in entries {
-                    if selected
-                        .as_ref()
-                        .is_none_or(|(_, selected_count)| count > *selected_count)
-                    {
-                        selected = Some((candidates, count));
+                let mut concrete = Vec::new();
+                let mut nested = Vec::new();
+                for variant in &ast.variants {
+                    let Some(type_id) = variant.type_id else {
+                        continue;
+                    };
+                    match &schema.types[type_id] {
+                        AstType::Struct(child) => concrete.push(child.name.clone()),
+                        AstType::Enum(child) => {
+                            let dispatch = Dispatch::new(type_id, schema, is_ts);
+                            if !dispatch.order.is_empty() {
+                                nested.push((child.name.clone(), dispatch));
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                (estree, selected.unwrap().0)
+                let mut direct = Dispatch::from_concrete(concrete, is_ts);
+                // Function and class structs store both forms; the enum supplies
+                // their grammar role at each field boundary.
+                match ast.name.as_str() {
+                    "Expr" => direct.order.retain(|name| {
+                        !matches!(name.as_str(), "FunctionDeclaration" | "ClassDeclaration")
+                    }),
+                    "Decl" | "ExportDefaultDeclarationKind" => direct.order.retain(|name| {
+                        !matches!(
+                            name.as_str(),
+                            "FunctionExpression"
+                                | "ClassExpression"
+                                | "TSEmptyBodyFunctionExpression"
+                        )
+                    }),
+                    _ => {}
+                }
+                Some(EnumDispatch {
+                    name: ast.name.clone(),
+                    direct,
+                    nested,
+                })
             })
             .collect();
-        let global = Dispatch { order, groups };
-
-        let contextual = enums
-            .iter()
-            .filter(|(name, dispatch)| {
-                name == "FormalParameterPattern"
-                    || dispatch.groups.iter().any(|(estree, candidates)| {
-                        !same_dispatch(estree, &global.groups[estree], candidates)
-                    })
-            })
-            .map(|(name, _)| name.clone())
-            .collect();
-
-        Self {
-            is_ts,
-            global,
-            enums,
-            contextual,
-        }
+        Self { is_ts, enums }
     }
 
     fn encoder_name(&self, name: &str) -> String {
-        if self.contextual.contains(name) {
-            format!("enc{name}")
-        } else {
-            "encNode".into()
-        }
+        format!("enc{name}")
     }
 }
 
-fn write_node_encoder(output: &mut String, dispatch: &Dispatch) {
-    output.push_str("  function encNode(n) {\n    switch (n.type) {\n");
-    for estree in &dispatch.order {
-        writeln!(output, "      case \"{estree}\":").unwrap();
-        write_dispatch(output, estree, &dispatch.groups[estree]);
-    }
-    output.push_str(
-        "      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);\n    }\n  }\n\n",
-    );
-}
-
-fn write_contextual_encoders(output: &mut String, dispatch: &EncoderDispatch) {
-    for (name, current) in &dispatch.enums {
-        if !dispatch.contextual.contains(name) {
-            continue;
-        }
-
+fn write_enum_encoders(output: &mut String, dispatch: &EncoderDispatch) {
+    for current in &dispatch.enums {
+        let name = &current.name;
         writeln!(output, "  function enc{name}(n) {{").unwrap();
         if name == "JsxAttributeValue" {
-            output.push_str(
-                "    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n",
-            );
+            output.push_str("    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n");
         }
         output.push_str("    switch (n.type) {\n");
-        for estree in &current.order {
-            let candidates = &current.groups[estree];
-            if same_dispatch(estree, &dispatch.global.groups[estree], candidates) {
-                continue;
-            }
+        for estree in &current.direct.order {
             writeln!(output, "      case \"{estree}\":").unwrap();
-            write_dispatch(output, estree, candidates);
+            write_dispatch(output, estree, &current.direct.groups[estree]);
         }
-        output.push_str("      default: return encNode(n);\n    }\n  }\n\n");
+        if let [(nested, _)] = current.nested.as_slice() {
+            writeln!(output, "      default: return enc{nested}(n);").unwrap();
+        } else {
+            let mut emitted = current.direct.order.iter().cloned().collect::<HashSet<_>>();
+            for (nested, inner) in &current.nested {
+                for estree in &inner.order {
+                    if emitted.insert(estree.clone()) {
+                        writeln!(output, "      case \"{estree}\": return enc{nested}(n);")
+                            .unwrap();
+                    }
+                }
+            }
+            output.push_str(
+                "      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);\n",
+            );
+        }
+        output.push_str("    }\n  }\n\n");
     }
-}
-
-fn same_dispatch(estree: &str, left: &[String], right: &[String]) -> bool {
-    let mut left_output = String::new();
-    let mut right_output = String::new();
-    write_dispatch(&mut left_output, estree, left);
-    write_dispatch(&mut right_output, estree, right);
-    left_output == right_output
 }
 
 fn write_dispatch(output: &mut String, estree: &str, candidates: &[String]) {

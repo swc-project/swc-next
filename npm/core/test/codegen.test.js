@@ -296,3 +296,19 @@ test("encoder reads body and parameter ranges without copying arrays", () => {
   const rest = parseSync("function f(...rest) {}").program;
   assert.equal(printSync(rest, { minify: true }).code, "function f(...rest){}");
 });
+
+
+test("encoder dispatch preserves identifier roles at FFI field boundaries", () => {
+  const { program } = parseSync("let bound = source; bound = object.key;");
+  const bytes = encodeJs(program);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = view.getUint32(0, true);
+  const kinds = bytes.subarray(40 + count * 8, 40 + count * 9);
+  assert.deepEqual([...kinds].filter(kind => kind === 11 || kind === 13 || kind === 14),
+    [13, 11, 11, 11, 14]);
+  assert.deepEqual(bytes, encodeTs(program));
+
+  program.body[1].expression.right = { type: "EmptyStatement" };
+  assert.throws(() => encodeJs(program), /Unsupported ESTree node type EmptyStatement/);
+  assert.throws(() => encodeTs(program), /Unsupported ESTree node type EmptyStatement/);
+});
