@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume(1 as /* marker */ const, 2 as /* named type */ Number);
+---------- Options ----------
+{}
+---------- Output ----------
+consume(1 /* marker */ as const, 2 as /* named type */ Number);
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+consume(
+  1 /* marker */ as const,
+  2 as /* named type */ Number,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+consume(1 /* marker */ as const, 2 as /* named type */ Number)

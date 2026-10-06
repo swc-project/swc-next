@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left << (/** @type {number} */ (/* prettier-ignore */ <T> ( value )));
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+left << /** @type {number} */ (/* prettier-ignore */ (<T> ( value )));
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+left <<
+  /** @type {number} */ (/* prettier-ignore */ (<T> ( value ))
+  );
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+left <<
+  /** @type {number} */ (/* prettier-ignore */ (<T> ( value ))
+  )
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+left <<
+	/** @type {number} */ (/* prettier-ignore */ (<T> ( value ))
+	);

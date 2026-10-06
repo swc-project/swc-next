@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const chosen = input satisfies
+// choose type
+First & Second & Third;
+---------- Options ----------
+{}
+---------- Output ----------
+const chosen = input satisfies
+  // choose type
+  First & Second & Third;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const chosen =
+  input satisfies
+    // choose type
+    First &
+      Second &
+      Third
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const chosen = input satisfies
+	// choose type
+	First & Second & Third;
+
+---------- Options ----------
+{"printWidth":100,"semi":false}
+---------- Output ----------
+const chosen = input satisfies
+  // choose type
+  First & Second & Third

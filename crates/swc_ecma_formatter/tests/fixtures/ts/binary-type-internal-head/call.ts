@@ -1,0 +1,3 @@
+(input as(
+// callable
+Fn))();

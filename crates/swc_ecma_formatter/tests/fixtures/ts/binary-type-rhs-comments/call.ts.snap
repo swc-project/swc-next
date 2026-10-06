@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(input as
+// callable
+Fn)();
+---------- Options ----------
+{}
+---------- Output ----------
+(
+  input as
+    // callable
+    Fn
+)();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(
+  input as
+    // callable
+    Fn
+)()
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(
+	input as
+		// callable
+		Fn
+)();
+
+---------- Options ----------
+{"printWidth":100,"semi":false}
+---------- Output ----------
+;(
+  input as
+    // callable
+    Fn
+)()

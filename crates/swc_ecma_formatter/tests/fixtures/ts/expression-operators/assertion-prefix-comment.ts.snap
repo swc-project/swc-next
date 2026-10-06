@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function read() { void /* operand */ <Result>(await source); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function read() {
+  void (/* operand */ <Result>await source);
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function read() {
+  void (
+    /* operand */ <
+      Result
+    >await source
+  );
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+async function read() {
+  void (
+    /* operand */ <
+      Result
+    >await source
+  )
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+async function read() {
+	void (
+		/* operand */ <
+			Result
+		>await source
+	);
+}

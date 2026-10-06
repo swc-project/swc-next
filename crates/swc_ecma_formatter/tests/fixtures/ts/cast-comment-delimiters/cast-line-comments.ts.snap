@@ -1,0 +1,98 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const inline = (1 // comment
+) as number;
+const own = (1
+// comment
+) as number;
+const packet = (1 /* first
+second */ // comment
+) satisfies number;
+const following = (1 // comment
+/* after */) as number;
+---------- Options ----------
+{}
+---------- Output ----------
+const inline = 1 as number; // comment
+const own = (
+  1
+  // comment
+) as number;
+const packet = (
+  1 /* first
+second */ // comment
+) satisfies number;
+const following = (
+  1 // comment
+  /* after */
+) as number;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const inline = 1 as number // comment
+const own = (
+  1
+  // comment
+) as number
+const packet = (
+  1 /* first
+second */ // comment
+) satisfies number
+const following = (
+  1 // comment
+  /* after */
+) as number
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const inline = 1 as number; // comment
+const own = (
+  1
+  // comment
+) as number;
+const packet = (
+  1 /* first
+second */ // comment
+) satisfies number;
+const following = (
+  1 // comment
+  /* after */
+) as number;
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+const inline = 1 as number; // comment
+const own = (
+  1
+  // comment
+) as number;
+const packet = (
+  1 /* first
+second */ // comment
+) satisfies number;
+const following = (
+  1 // comment
+  /* after */
+) as number;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+const inline = 1 as number // comment
+const own = (
+  1
+  // comment
+) as number
+const packet = (
+  1 /* first
+second */ // comment
+) satisfies number
+const following = (
+  1 // comment
+  /* after */
+) as number

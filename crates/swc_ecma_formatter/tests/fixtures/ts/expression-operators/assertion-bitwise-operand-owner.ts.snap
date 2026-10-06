@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left << <T> (// prettier-ignore
+receiver . method( firstArgument , secondArgument )
+);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+left <<
+  ((<T>// prettier-ignore
+  receiver . method( firstArgument , secondArgument )));
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+left <<
+  ((<
+    T
+  >// prettier-ignore
+  receiver . method( firstArgument , secondArgument )));
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+left <<
+  ((<
+    T
+  >// prettier-ignore
+  receiver . method( firstArgument , secondArgument )))
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+left <<
+	((<
+		T
+	>// prettier-ignore
+	receiver . method( firstArgument , secondArgument )));

@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (1 /* first
+second */) as number;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = (
+  1 /* first
+second */
+) as number;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = (
+  1 /* first
+second */
+) as number
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const value = (
+  1 /* first
+second */
+) as number;
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+const value = (
+  1 /* first
+second */
+) as number;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+const value = (
+  1 /* first
+second */
+) as number

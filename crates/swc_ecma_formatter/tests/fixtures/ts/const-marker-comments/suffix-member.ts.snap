@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(1 as // marker
+const).toFixed();
+---------- Options ----------
+{}
+---------- Output ----------
+(1 as const) // marker
+.toFixed();
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+(1 as const) // marker
+.toFixed();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(1 as const) // marker
+.toFixed()

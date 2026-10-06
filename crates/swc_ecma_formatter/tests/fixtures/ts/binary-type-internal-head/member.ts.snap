@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(input satisfies(
+// receiver
+Shape)).field;
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(
+	input satisfies
+		// receiver
+		Shape
+).field;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(
+  input satisfies
+    // receiver
+    Shape
+).field
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(
+  input satisfies
+    // receiver
+    Shape
+).field;
