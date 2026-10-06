@@ -310,6 +310,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DeclData::TsTypeAliasDeclaration(alias) => {
                 return Semicolon(alias.type_annotation(self.ast).span(self.ast).end);
             }
+            DeclData::TsModuleDeclaration(mut node) => loop {
+                let Some(body) = node.body(self.ast) else {
+                    return Semicolon(node.id(self.ast).span(self.ast).end);
+                };
+                match self.ast.ts_module_body_data(body) {
+                    swc_next_ecma_ast::TsModuleBodyData::TsModuleBlock(body) => {
+                        return Complete(body.span(self.ast).end);
+                    }
+                    swc_next_ecma_ast::TsModuleBodyData::TsModuleDeclaration(nested) => {
+                        node = nested
+                    }
+                }
+            },
+            DeclData::TsGlobalDeclaration(node) => {
+                return Complete(node.body(self.ast).span(self.ast).end);
+            }
             _ => return Complete(declaration.span(self.ast).end),
         };
         let Some(last) = variable.declarators(self.ast).last() else {

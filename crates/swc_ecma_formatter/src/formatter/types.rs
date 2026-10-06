@@ -121,14 +121,14 @@ enum TypeBoundaryLayout<'ast> {
         after: CommentBoundary<'ast>,
     },
 }
-struct TypeBoundary<'ast> {
+pub(super) struct TypeBoundary<'ast> {
     role: TypeBoundaryRole,
-    left_mode: ContentMode,
-    right_mode: ContentMode,
+    pub(super) left_mode: ContentMode,
+    pub(super) right_mode: ContentMode,
     layout: TypeBoundaryLayout<'ast>,
 }
 
-enum TypeGap<'ast> {
+pub(super) enum TypeGap<'ast> {
     Source(Span),
     Formatted(CommentBoundary<'ast>),
 }
@@ -341,7 +341,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_prepared_type_with_layout(node, context, layout, writer)
     }
 
-    fn format_type_gap(
+    pub(super) fn format_type_gap(
         &mut self,
         gap: TypeGap<'ast>,
         separator: FlatSeparator,
@@ -355,7 +355,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn prepare_type_gap(&self, gap: Span, source: bool) -> TypeGap<'ast> {
+    pub(super) fn prepare_type_gap(&self, gap: Span, source: bool) -> TypeGap<'ast> {
         if source {
             return TypeGap::Source(gap);
         }
@@ -1279,7 +1279,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    fn format_type_boundary(
+    pub(super) fn format_type_boundary(
         &mut self,
         boundary: &TypeBoundary<'ast>,
         writer: &mut Writer<'ast>,
@@ -2559,5 +2559,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.format_recorded_type_head(recorded, context, TypeLayout::CallerIndented, writer)
         })
+    }
+
+    pub(super) fn prepare_qualified_name_boundary(
+        &self,
+        gap: Span,
+    ) -> Result<TypeBoundary<'ast>, FormatError> {
+        self.prepare_type_boundary(gap, TypeBoundaryTarget::Qualified)
     }
 }
