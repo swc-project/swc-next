@@ -1,6 +1,9 @@
 //! Ambient prefixes retain the real keyword and the actual following declaration owner.
 
-use swc_next_ecma_ast::{BindingIdentifier, Decl, DeclData, GetSpan, Span, VariableDeclarator};
+use swc_next_ecma_ast::{
+    BindingIdentifier, Decl, DeclData, GetSpan, IdentifierName, Span, TsModuleDeclarationKind,
+    TsModuleName, VariableDeclarator,
+};
 
 use super::Formatter;
 use crate::formatter::comments::CommentBoundary;
@@ -12,6 +15,8 @@ use crate::{FormatError, document::Writer};
 enum DeclarationLeading {
     Name(BindingIdentifier),
     Variable(VariableDeclarator),
+    ModuleName(TsModuleName),
+    Global(IdentifierName),
 }
 
 impl DeclarationLeading {
@@ -19,6 +24,8 @@ impl DeclarationLeading {
         match self {
             Self::Name(node) => node.span(formatter.ast),
             Self::Variable(node) => node.span(formatter.ast),
+            Self::ModuleName(node) => node.span(formatter.ast),
+            Self::Global(node) => node.span(formatter.ast),
         }
     }
 }
@@ -37,6 +44,14 @@ impl DeclarationKeyword {
 
     pub(in crate::formatter) fn suppresses_name(self, name: BindingIdentifier) -> bool {
         matches!(self.incoming, Some(DeclarationLeading::Name(owner)) if owner == name)
+    }
+
+    pub(in crate::formatter) fn suppresses_module_name(self, node: TsModuleName) -> bool {
+        matches!(self.incoming, Some(DeclarationLeading::ModuleName(owner)) if owner == node)
+    }
+
+    pub(in crate::formatter) fn suppresses_global(self, node: IdentifierName) -> bool {
+        matches!(self.incoming, Some(DeclarationLeading::Global(owner)) if owner == node)
     }
 
     pub(in crate::formatter) fn suppresses_variable(self, node: VariableDeclarator) -> bool {
@@ -76,11 +91,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     DeclarationLeading::Variable(self.ast.get_node_in_sub_range(first)),
                 )
             }
+            DeclData::TsModuleDeclaration(node) => (
+                match node.kind(self.ast) {
+                    TsModuleDeclarationKind::Namespace => "namespace",
+                    TsModuleDeclarationKind::Module => "module",
+                },
+                DeclarationLeading::ModuleName(node.id(self.ast)),
+            ),
+            DeclData::TsGlobalDeclaration(node) => {
+                ("global", DeclarationLeading::Global(node.id(self.ast)))
+            }
             _ => return Err(self.unsupported("ambient declaration prefix", declaration)),
         };
         let start = declaration.span(self.ast).start + "declare".len() as u32;
         let following_span = following.span(self);
-        let search_end = following_span.start;
+        let search_end = if matches!(following, DeclarationLeading::Global(_)) {
+            following_span.end
+        } else {
+            following_span.start
+        };
         let gap = Span::new(start, search_end);
         let comments = self.comments.in_range(gap);
         let keyword_start = self
@@ -93,6 +122,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let keyword_end = keyword_start + keyword.len() as u32;
         let head_span = Span::new(start, following_span.start);
         let name_prefix = !prefix_comments.is_empty()
+            && !matches!(following, DeclarationLeading::Global(_))
             && self
                 .comment_binding(self.comments.in_range(head_span), head_span, None)
                 .allows_relocation(None);
