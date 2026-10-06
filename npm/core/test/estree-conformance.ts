@@ -33,8 +33,14 @@ async function runTestSuite(oracle: string, source: string, snapshot: string) {
       .sort()
       .map((file) => pool.run({ oracle, source, file })),
   );
+  const output = toSnapshot(results);
+  const expected = await fs.readFile(snapshot, "utf8");
   await fs.mkdir(path.dirname(snapshot), { recursive: true });
-  await fs.writeFile(snapshot, toSnapshot(results));
+  await fs.writeFile(snapshot, output);
+  if (output !== expected) {
+    console.error(`Snapshot changed: ${snapshot}`);
+    process.exitCode = 1;
+  }
 }
 
 try {

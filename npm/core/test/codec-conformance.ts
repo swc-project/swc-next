@@ -65,10 +65,13 @@ async function writeResults(suite: string, snapshot: string, results: TestResult
     const file = path.relative(ROOT_DIR, result.file).split(path.sep).join("/");
     failures.push(`${result.error ?? "Mismatch"}: ${file} (${result.name})`);
   }
+  const output = [...lines, ...failures.sort(), ""].join("\n");
+  const expected = await fs.readFile(snapshot, "utf8");
   await fs.mkdir(SNAPSHOT_DIR, { recursive: true });
-  await fs.writeFile(snapshot, [...lines, ...failures.sort(), ""].join("\n"));
+  await fs.writeFile(snapshot, output);
   console.log(`${suite}: ${passed}/${results.length} passed, ${failed.length} failed cases`);
-  if (failed.length) {
+  if (output !== expected) {
+    console.error(`Snapshot changed: ${snapshot}`);
     process.exitCode = 1;
   }
 }
