@@ -1042,7 +1042,7 @@ function encode(program) {
   let extra = new DataView(extraBuffer);
   let extraCount = 0;
 
-  let poolCapacity = Math.max(4096, sizeHint);
+  let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
   let firstNonAsciiPos = NULL;
