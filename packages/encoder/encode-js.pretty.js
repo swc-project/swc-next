@@ -124,17 +124,17 @@ function encodeJs(program) {
   function setExtraF64(i, o, v) { extra.setFloat64(i * 8 + o, v, true); }
 
   function encArray(values, encoder, holes) {
-    if (!values?.length) return { start: 0, end: 0 };
-    const ids = new Uint32Array(values.length);
-    for (let index = 0; index < values.length; index++) {
+    const length = values?.length ?? 0;
+    if (!length) return { start: 0, end: 0 };
+    // Reserve the contiguous range before children allocate their own extra data.
+    const start = allocExtra(length);
+    for (let index = 0; index < length; index++) {
       const value = values[index];
-      ids[index] = holes && value == null ? NULL : encoder(value);
+      const id = holes && value == null ? NULL : encoder(value);
+      // A child may grow extraBuffer, so use the current DataView.
+      setExtraU32(start + index, 0, id);
     }
-    const start = allocExtra(ids.length);
-    for (let index = 0; index < ids.length; index++) {
-      setExtraU32(start + index, 0, ids[index]);
-    }
-    return { start, end: start + ids.length };
+    return { start, end: start + length };
   }
 
   function encUtf8(value) {

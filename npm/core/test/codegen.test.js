@@ -222,3 +222,18 @@ test("encoder retains adjacent strings and empty optional ranges during pool gro
   assert.deepEqual(encodeJs(program), encodeTs(program));
   assert.equal(printSync(program).code, `"${"雪🌍".repeat(4096)}";\n"";\n17;\n`);
 });
+
+
+test("encoder writes nested array references through storage growth", () => {
+  const identifier = name => ({ type: "Identifier", name });
+  const inner = { type: "ArrayExpression", elements: Array(600).fill(null) };
+  const wide = { type: "ArrayExpression", elements:
+    Array.from({ length: 600 }, (_, index) => identifier(`i${index}`)) };
+  const program = { type: "Program", sourceType: "module", body: [
+    { type: "ExpressionStatement", expression: { type: "ArrayExpression",
+      elements: [inner, null, wide, { type: "ArrayExpression", elements: [] }, identifier("tail")] } },
+  ] };
+  const expected = `[[${",".repeat(600)}],,[${wide.elements.map(node => node.name).join(",")}],[],tail];`;
+  assert.deepEqual(encodeJs(program), encodeTs(program));
+  assert.equal(printSync(program, { minify: true }).code, expected);
+});
