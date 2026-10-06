@@ -138,7 +138,7 @@ function encodeTs(program) {
 
   function encArray(values, encoder, holes) {
     const length = values?.length ?? 0;
-    if (!length) return { start: 0, end: 0 };
+    if (!length) return 0;
     // Reserve the contiguous range before children allocate their own extra data.
     const start = allocExtra(length);
     for (let index = 0; index < length; index++) {
@@ -147,7 +147,12 @@ function encodeTs(program) {
       // A child may grow extraBuffer, so use the current DataView.
       setExtraU32(start + index, 0, id);
     }
-    return { start, end: start + length };
+    return start;
+  }
+
+  function writeArrayRange(start, values, view, offset) {
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, start + (values?.length ?? 0), true);
   }
 
   function encUtf8(value, view, offset) {
@@ -363,10 +368,8 @@ function encodeTs(program) {
     const extraId = allocExtra(1);
     const index = allocNode(0, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
-    setExtraU32(extraId + 0, 0, v_1.start);
-    setExtraU32(extraId + 0, 4, v_1.end);
+    writeArrayRange(v_0, _directives, payload, index * 16 + 0);
+    writeArrayRange(v_1, _body, extra, (extraId + 0) * 8);
     setPayloadU32(index, 8, v_2);
     return index;
   }
@@ -448,10 +451,8 @@ function encodeTs(program) {
     const v_0 = encArray(n.quasis, encTemplateElement, false);
     const v_1 = encArray(n.expressions, encNode, false);
     const index = allocNode(9, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
-    setPayloadU32(index, 8, v_1.start);
-    setPayloadU32(index, 12, v_1.end);
+    writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
+    writeArrayRange(v_1, n.expressions, payload, index * 16 + 8);
     return index;
   }
 
@@ -531,8 +532,7 @@ function encodeTs(program) {
     const v_0 = encArray(_elements, encBindingPattern, true);
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
     const index = allocNode(18, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, _elements, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     return index;
   }
@@ -547,8 +547,7 @@ function encodeTs(program) {
     const v_0 = encArray(_properties, encBindingProperty, false);
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
     const index = allocNode(19, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, _properties, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     return index;
   }
@@ -636,8 +635,7 @@ function encodeTs(program) {
     const v_2 = n.declare ? 1 : 0;
     const index = allocNode(27, asStart(n), asEnd(n));
     setPayloadU8(index, 8, v_0);
-    setPayloadU32(index, 0, v_1.start);
-    setPayloadU32(index, 4, v_1.end);
+    writeArrayRange(v_1, n.declarations, payload, index * 16 + 0);
     setPayloadU8(index, 9, v_2);
     return index;
   }
@@ -671,8 +669,7 @@ function encodeTs(program) {
     const v_1 = encArray(n.cases, encSwitchCase, false);
     const index = allocNode(30, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
-    setPayloadU32(index, 0, v_1.start);
-    setPayloadU32(index, 4, v_1.end);
+    writeArrayRange(v_1, n.cases, payload, index * 16 + 0);
     return index;
   }
 
@@ -681,8 +678,7 @@ function encodeTs(program) {
     const v_1 = encArray(n.consequent, encNode, false);
     const index = allocNode(31, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
-    setPayloadU32(index, 0, v_1.start);
-    setPayloadU32(index, 4, v_1.end);
+    writeArrayRange(v_1, n.consequent, payload, index * 16 + 0);
     return index;
   }
 
@@ -840,14 +836,12 @@ function encodeTs(program) {
     const index = allocNode(47, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU8(index, 8, v_0);
-    setExtraU32(extraId + 0, 0, v_1.start);
-    setExtraU32(extraId + 0, 4, v_1.end);
+    writeArrayRange(v_1, n.decorators, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_2);
     setPayloadU32(index, 4, v_3);
     setExtraU32(extraId + 1, 0, v_4);
     setExtraU32(extraId + 2, 0, v_5);
-    setExtraU32(extraId + 3, 0, v_6.start);
-    setExtraU32(extraId + 3, 4, v_6.end);
+    writeArrayRange(v_6, n.implements, extra, (extraId + 3) * 8);
     setExtraU32(extraId + 4, 0, v_7);
     setPayloadU8(index, 9, v_8);
     setPayloadU8(index, 10, v_9);
@@ -857,8 +851,7 @@ function encodeTs(program) {
   function encClassBody(n) {
     const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(48, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
 
@@ -876,8 +869,7 @@ function encodeTs(program) {
     const extraId = allocExtra(2);
     const index = allocNode(49, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
+    writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
     setExtraU32(extraId + 1, 0, v_2);
     setPayloadU8(index, 4, v_3);
@@ -908,8 +900,7 @@ function encodeTs(program) {
     const extraId = allocExtra(4);
     const index = allocNode(50, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
+    writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setExtraU32(extraId + 1, 0, v_1);
     setExtraU32(extraId + 2, 0, v_2);
     setExtraU32(extraId + 3, 0, v_3);
@@ -929,8 +920,7 @@ function encodeTs(program) {
   function encStaticBlock(n) {
     const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(51, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
 
@@ -978,18 +968,15 @@ function encodeTs(program) {
     const v_0 = encArray(_directives, encDirective, false);
     const v_1 = encArray(_body, encNode, false);
     const index = allocNode(53, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
-    setPayloadU32(index, 8, v_1.start);
-    setPayloadU32(index, 12, v_1.end);
+    writeArrayRange(v_0, _directives, payload, index * 16 + 0);
+    writeArrayRange(v_1, _body, payload, index * 16 + 8);
     return index;
   }
 
   function encBlockStatement(n) {
     const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(54, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
 
@@ -1033,8 +1020,7 @@ function encodeTs(program) {
     const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
     const v_2 = enumValue("FormalParameterKind", 0);
     const index = allocNode(58, _start, _end);
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, _items, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     setPayloadU8(index, 12, v_2);
     return index;
@@ -1052,8 +1038,7 @@ function encodeTs(program) {
     const extraId = allocExtra(2);
     const index = allocNode(59, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
+    writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
     setPayloadU32(index, 4, v_2);
     setExtraU32(extraId + 1, 0, v_3);
@@ -1066,8 +1051,7 @@ function encodeTs(program) {
     const v_1 = encFormalParameterPattern(n.argument);
     const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
     const index = allocNode(60, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     setPayloadU32(index, 12, v_2);
     return index;
@@ -1076,16 +1060,14 @@ function encodeTs(program) {
   function encArrayExpression(n) {
     const v_0 = encArray(n.elements, encNode, true);
     const index = allocNode(61, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.elements, payload, index * 16 + 0);
     return index;
   }
 
   function encObjectExpression(n) {
     const v_0 = encArray(n.properties, encNode, false);
     const index = allocNode(62, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.properties, payload, index * 16 + 0);
     return index;
   }
 
@@ -1142,8 +1124,7 @@ function encodeTs(program) {
   function encSequenceExpression(n) {
     const v_0 = encArray(n.expressions, encNode, false);
     const index = allocNode(67, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.expressions, payload, index * 16 + 0);
     return index;
   }
 
@@ -1170,8 +1151,7 @@ function encodeTs(program) {
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
-    setExtraU32(extraId + 0, 0, v_2.start);
-    setExtraU32(extraId + 0, 4, v_2.end);
+    writeArrayRange(v_2, n.arguments, extra, (extraId + 0) * 8);
     setPayloadU8(index, 8, v_3);
     return index;
   }
@@ -1201,8 +1181,7 @@ function encodeTs(program) {
     const index = allocNode(72, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 12, v_1);
-    setPayloadU32(index, 0, v_2.start);
-    setPayloadU32(index, 4, v_2.end);
+    writeArrayRange(v_2, n.arguments, payload, index * 16 + 0);
     return index;
   }
 
@@ -1255,11 +1234,9 @@ function encodeTs(program) {
     const extraId = allocExtra(3);
     const index = allocNode(77, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
+    writeArrayRange(v_0, n.specifiers, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
-    setExtraU32(extraId + 1, 0, v_2.start);
-    setExtraU32(extraId + 1, 4, v_2.end);
+    writeArrayRange(v_2, n.attributes, extra, (extraId + 1) * 8);
     setExtraU8(extraId + 2, 0, v_3);
     setPayloadU8(index, 4, v_4);
     return index;
@@ -1309,11 +1286,9 @@ function encodeTs(program) {
     const index = allocNode(82, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
-    setExtraU32(extraId + 0, 0, v_1.start);
-    setExtraU32(extraId + 0, 4, v_1.end);
+    writeArrayRange(v_1, n.specifiers, extra, (extraId + 0) * 8);
     setPayloadU32(index, 4, v_2);
-    setExtraU32(extraId + 1, 0, v_3.start);
-    setExtraU32(extraId + 1, 4, v_3.end);
+    writeArrayRange(v_3, n.attributes, extra, (extraId + 1) * 8);
     setPayloadU8(index, 8, v_4);
     return index;
   }
@@ -1335,8 +1310,7 @@ function encodeTs(program) {
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
-    setExtraU32(extraId + 0, 0, v_2.start);
-    setExtraU32(extraId + 0, 4, v_2.end);
+    writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 8);
     setPayloadU8(index, 8, v_3);
     return index;
   }
@@ -1401,8 +1375,7 @@ function encodeTs(program) {
     const extraId = allocExtra(2);
     const index = allocNode(88, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
-    setExtraU32(extraId + 0, 0, v_0.start);
-    setExtraU32(extraId + 0, 4, v_0.end);
+    writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
     setExtraU32(extraId + 1, 0, v_2);
     setPayloadU8(index, 4, v_3);
@@ -1573,8 +1546,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.params, encTsTypeParameter, false);
     const index = allocNode(109, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.params, payload, index * 16 + 0);
     return index;
   }
 
@@ -1582,8 +1554,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.params, encNode, false);
     const index = allocNode(110, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.params, payload, index * 16 + 0);
     return index;
   }
 
@@ -1600,10 +1571,8 @@ function encodeTs(program) {
     const v_0 = encArray(n.quasis, encTemplateElement, false);
     const v_1 = encArray(n.types, encNode, false);
     const index = allocNode(112, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
-    setPayloadU32(index, 8, v_1.start);
-    setPayloadU32(index, 12, v_1.end);
+    writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
+    writeArrayRange(v_1, n.types, payload, index * 16 + 8);
     return index;
   }
 
@@ -1629,8 +1598,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.elementTypes, encNode, false);
     const index = allocNode(115, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.elementTypes, payload, index * 16 + 0);
     return index;
   }
 
@@ -1692,8 +1660,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.types, encNode, false);
     const index = allocNode(122, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.types, payload, index * 16 + 0);
     return index;
   }
 
@@ -1701,8 +1668,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.types, encNode, false);
     const index = allocNode(123, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.types, payload, index * 16 + 0);
     return index;
   }
 
@@ -1793,8 +1759,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.members, encNode, false);
     const index = allocNode(131, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.members, payload, index * 16 + 0);
     return index;
   }
 
@@ -1897,8 +1862,7 @@ function encodeTs(program) {
     const v_2 = n.readonly ? 1 : 0;
     const v_3 = n.static ? 1 : 0;
     const index = allocNode(137, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.parameters, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     setPayloadU8(index, 12, v_2);
     setPayloadU8(index, 13, v_3);
@@ -1931,8 +1895,7 @@ function encodeTs(program) {
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
-    setExtraU32(extraId + 0, 0, v_2.start);
-    setExtraU32(extraId + 0, 4, v_2.end);
+    writeArrayRange(v_2, n.extends, extra, (extraId + 0) * 8);
     setExtraU32(extraId + 1, 0, v_3);
     setPayloadU8(index, 8, v_4);
     return index;
@@ -1942,8 +1905,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.body, encNode, false);
     const index = allocNode(140, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
 
@@ -1985,8 +1947,7 @@ function encodeTs(program) {
     isTs = true;
     const v_0 = encArray(n.members, encTsEnumMember, false);
     const index = allocNode(144, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.members, payload, index * 16 + 0);
     return index;
   }
 
@@ -2033,10 +1994,8 @@ function encodeTs(program) {
     const v_0 = encArray(_directives, encDirective, false);
     const v_1 = encArray(_body, encNode, false);
     const index = allocNode(147, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
-    setPayloadU32(index, 8, v_1.start);
-    setPayloadU32(index, 12, v_1.end);
+    writeArrayRange(v_0, _directives, payload, index * 16 + 0);
+    writeArrayRange(v_1, _body, payload, index * 16 + 8);
     return index;
   }
 
@@ -2060,8 +2019,7 @@ function encodeTs(program) {
     const v_3 = n.readonly ? 1 : 0;
     const v_4 = enumValue("Accessibility", n.accessibility);
     const index = allocNode(149, asStart(n), asEnd(n));
-    setPayloadU32(index, 0, v_0.start);
-    setPayloadU32(index, 4, v_0.end);
+    writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     setPayloadU8(index, 12, v_2);
     setPayloadU8(index, 13, v_3);
@@ -2177,8 +2135,7 @@ function encodeTs(program) {
     const v_2 = n.closingElement == null ? NULL : encJsxClosingElement(n.closingElement);
     const index = allocNode(161, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
-    setPayloadU32(index, 0, v_1.start);
-    setPayloadU32(index, 4, v_1.end);
+    writeArrayRange(v_1, n.children, payload, index * 16 + 0);
     setPayloadU32(index, 12, v_2);
     return index;
   }
@@ -2193,8 +2150,7 @@ function encodeTs(program) {
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
-    setExtraU32(extraId + 0, 0, v_2.start);
-    setExtraU32(extraId + 0, 4, v_2.end);
+    writeArrayRange(v_2, n.attributes, extra, (extraId + 0) * 8);
     setPayloadU8(index, 8, v_3);
     return index;
   }
@@ -2212,8 +2168,7 @@ function encodeTs(program) {
     const v_2 = encJsxClosingFragment(n.closingFragment);
     const index = allocNode(164, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
-    setPayloadU32(index, 0, v_1.start);
-    setPayloadU32(index, 4, v_1.end);
+    writeArrayRange(v_1, n.children, payload, index * 16 + 0);
     setPayloadU32(index, 12, v_2);
     return index;
   }

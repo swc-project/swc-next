@@ -109,7 +109,7 @@ fn write_struct_encoder(
         let value = if !dispatch.is_ts && is_ts_field(name, &field.name, ty, schema) {
             match ty {
                 AstType::Option(_) => "NULL".into(),
-                AstType::SubRange(_) => "{ start: 0, end: 0 }".into(),
+                AstType::SubRange(_) => "0".into(),
                 _ => "0".into(),
             }
         } else {
@@ -118,7 +118,12 @@ fn write_struct_encoder(
         let local = format!("v_{field_index}");
         writeln!(output, "    const {local} = {value};").unwrap();
 
-        fields.push((ty, local, layout.fields[field_index]));
+        let source = if !dispatch.is_ts && is_ts_field(name, &field.name, ty, schema) {
+            "null".into()
+        } else {
+            source
+        };
+        fields.push((ty, local, source, layout.fields[field_index]));
     }
 
     if layout.extra_count != 0 {
@@ -138,8 +143,8 @@ fn write_struct_encoder(
     if let Some(offset) = layout.extra_start_offset() {
         writeln!(output, "    setPayloadU32(index, {offset}, extraId);").unwrap();
     }
-    for (ty, local, location) in fields {
-        write_value(output, ty, schema, &local, location);
+    for (ty, local, source, location) in fields {
+        write_value(output, ty, schema, &local, &source, location);
     }
     output.push_str("    return index;\n  }\n\n");
 }
@@ -149,6 +154,7 @@ fn write_value(
     ty: &AstType,
     schema: &Schema,
     value: &str,
+    source: &str,
     location: FieldLocation,
 ) {
     let setter = |kind: &str, byte_offset: usize, component: &str| match location {
@@ -169,10 +175,7 @@ fn write_value(
         } else {
             "encStr"
         };
-        let destination = match location {
-            FieldLocation::Payload { offset, .. } => format!("payload, index * 16 + {offset}"),
-            FieldLocation::Extra { index } => format!("extra, (extraId + {index}) * 8"),
-        };
+        let destination = buffer_destination(location);
         if optional {
             writeln!(output, "    if ({value} == null) {{").unwrap();
             writeln!(output, "      {}", setter("U32", 0, "NULL")).unwrap();
@@ -191,13 +194,12 @@ fn write_value(
             writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
         }
         AstType::SubRange(_) => {
+            let destination = buffer_destination(location);
             writeln!(
                 output,
-                "    {}",
-                setter("U32", 0, &format!("{value}.start"))
+                "    writeArrayRange({value}, {source}, {destination});"
             )
             .unwrap();
-            writeln!(output, "    {}", setter("U32", 4, &format!("{value}.end"))).unwrap();
         }
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(_) | AstType::Enum(_) => {
@@ -223,6 +225,13 @@ fn write_value(
                 writeln!(output, "    {}", setter(kind, 0, value)).unwrap();
             }
         },
+    }
+}
+
+fn buffer_destination(location: FieldLocation) -> String {
+    match location {
+        FieldLocation::Payload { offset, .. } => format!("payload, index * 16 + {offset}"),
+        FieldLocation::Extra { index } => format!("extra, (extraId + {index}) * 8"),
     }
 }
 
@@ -1035,7 +1044,7 @@ function encode(program) {
 
   function encArray(values, encoder, holes) {
     const length = values?.length ?? 0;
-    if (!length) return { start: 0, end: 0 };
+    if (!length) return 0;
     // Reserve the contiguous range before children allocate their own extra data.
     const start = allocExtra(length);
     for (let index = 0; index < length; index++) {
@@ -1044,7 +1053,12 @@ function encode(program) {
       // A child may grow extraBuffer, so use the current DataView.
       setExtraU32(start + index, 0, id);
     }
-    return { start, end: start + length };
+    return start;
+  }
+
+  function writeArrayRange(start, values, view, offset) {
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, start + (values?.length ?? 0), true);
   }
 
   function encUtf8(value, view, offset) {
