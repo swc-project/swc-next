@@ -272,7 +272,11 @@ impl fmt::Display for DeserializeError {
 
 impl std::error::Error for DeserializeError {}
 
-/// Decode a source-less AST produced by the generated JavaScript encoder.
+/// Decode an AST produced by the generated JavaScript encoder.
+///
+/// The source section holds concatenated UTF-8 field values, not original source
+/// text. Transfers containing lone surrogates use the extra WTF-8 pool instead.
+/// Node spans remain independent UTF-16 positions in the original source.
 pub fn deserialize_from<'a>(
     buf: &[u8],
     allocator: &'a Allocator,
@@ -285,18 +289,13 @@ pub fn deserialize_from<'a>(
     let node_count = read_u32(buf, 0) as usize;
     let extra_count = read_u32(buf, 4) as usize;
     let string_pool_len = read_u32(buf, 8) as usize;
-    let source_len = read_u32(buf, 12);
+    let source_len = read_u32(buf, 12) as usize;
     let comment_count = read_u32(buf, 16) as usize;
     let attached_comment_count = read_u32(buf, 20);
     let diagnostic_count = read_u32(buf, 24);
     let program_index = read_u32(buf, 28) as usize;
     let flags = read_u32(buf, 32);
 
-    if source_len != 0 {
-        return Err(DeserializeError(
-            "JavaScript-encoded ASTs cannot reference source text",
-        ));
-    }
     if comment_count != 0 || attached_comment_count != 0 || diagnostic_count != 0 {
         return Err(DeserializeError("unsupported AST buffer sections"));
     }
@@ -307,7 +306,9 @@ pub fn deserialize_from<'a>(
     let payloads = align_to_four(checked_section_end(kinds, node_count, NODE_KIND_SIZE)?);
     let extra = checked_section_end(payloads, node_count, NODE_PAYLOAD_SIZE)?;
     let strings = checked_section_end(extra, extra_count, EXTRA_DATA_SIZE)?;
-    let comments = checked_add(strings, align_to_four(string_pool_len))?;
+    let source_end = checked_add(strings, source_len)?;
+    let pool_end = checked_add(source_end, string_pool_len)?;
+    let comments = align_to_four(pool_end);
     let end = checked_section_end(comments, comment_count, COMMENT_SIZE)?;
     if end != buf.len() {
         return Err(DeserializeError(
@@ -326,8 +327,11 @@ pub fn deserialize_from<'a>(
     if kind_bytes[program_index] != NodeKind::Program as u8 {
         return Err(DeserializeError("AST root is not a Program"));
     }
-    // TODO: Use `sourceMap.source` when optional source-map generation is enabled.
-    let mut tree = Ast::new("", allocator);
+    // Own the field bytes in the arena: the caller's transfer buffer may be
+    // released immediately after deserialization.
+    let source = std::str::from_utf8(&buf[strings..source_end])
+        .map_err(|_| DeserializeError("AST string source contains invalid UTF-8"))?;
+    let mut tree = Ast::new(allocator.alloc_str(source), allocator);
     tree.reserve(node_count, extra_count);
 
     // SAFETY: `reserve` allocated each destination for `node_count` elements.
@@ -395,8 +399,7 @@ pub fn deserialize_from<'a>(
     }
 
     // =================== String Pool ====================
-    tree.strings
-        .initialize_extra(&buf[strings..strings + string_pool_len]);
+    tree.strings.initialize_extra(&buf[source_end..pool_end]);
 
     // ================= Source Metadata =================
     let source_type = match (flags >> FLAG_SOURCE_TYPE_SHIFT) & 3 {
@@ -694,6 +697,51 @@ mod tests {
         assert_eq!(decoded_program.span(&decoded), Span::new(1, 4));
         assert_eq!(decoded_statement.span(&decoded), Span::new(2, 3));
         assert!(decoded_statement.is_empty_statement(&decoded));
+    }
+
+    fn string_source_buffer() -> Vec<u8> {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let name = ast.add_utf8("name");
+        let expression = ast.expr_identifier_reference(Span::new(0, 4), name);
+        let statement = ast.stmt_expression_statement(Span::new(0, 4), expression);
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(Span::new(0, 4), SubRange::empty(), body, None);
+        ast.set_root_program(program);
+        let mut buffer = vec![0; buffer_size(&ast, &[])];
+        serialize_into(&ast, &[], &mut buffer, 0);
+        buffer[8..12].copy_from_slice(&0u32.to_le_bytes());
+        buffer[12..16].copy_from_slice(&4u32.to_le_bytes());
+        buffer
+    }
+
+    #[test]
+    fn deserialize_string_source() {
+        let allocator = Allocator::new();
+        let buffer = string_source_buffer();
+        let decoded = deserialize_from(&buffer, &allocator).unwrap();
+        drop(buffer);
+        let body = decoded.root_program().body(&decoded);
+        let statement = body
+            .get_node(&decoded, 0)
+            .unwrap()
+            .as_expression_statement(&decoded)
+            .unwrap();
+        let identifier = statement
+            .expression(&decoded)
+            .as_identifier_reference(&decoded)
+            .unwrap();
+        assert_eq!(decoded.get_utf8(identifier.name(&decoded)), "name");
+        assert_eq!(decoded.source(), "name");
+
+        let mut truncated = string_source_buffer();
+        truncated[12..16].copy_from_slice(&8u32.to_le_bytes());
+        assert!(deserialize_from(&truncated, &allocator).is_err());
+
+        let mut invalid = string_source_buffer();
+        let end = invalid.len();
+        invalid[end - 4] = 0xff;
+        assert!(deserialize_from(&invalid, &allocator).is_err());
     }
 
     #[test]

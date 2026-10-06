@@ -17,3 +17,9 @@ The generator emits separate JavaScript/JSX and TypeScript/TSX encoders.
 `encode(program, "js")` and `encode(program, "jsx")` use the JavaScript encoder;
 `encode(program)` retains full TypeScript support. Use `encodeJs` or `encodeTs`
 when the AST language is already known. Regenerate with `cargo run -p ast_tools`.
+
+String values are appended without deduplication. Well-formed strings use a
+UTF-8 field source section; transfers containing lone surrogates retain the
+extra WTF-8 pool. UTF-8-only AST fields continue to reject lone surrogates.
+The field source is not the original source text; node spans still describe
+the original UTF-16 positions.

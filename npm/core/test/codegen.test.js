@@ -186,3 +186,39 @@ test("encoder language hints select compatible JS and TS variants", () => {
   assert.deepEqual(encode(typed, "tsx"), encodeTs(typed));
   assert.equal(new DataView(encodeTs(typed).buffer).getUint32(32, true) & 1, 1);
 });
+
+
+test("encoder appends repeated UTF-8 fields to the string source", () => {
+  const expression = name => ({ type: "Identifier", name });
+  const bytes = encodeJs({ type: "Program", sourceType: "module", body: [
+    { type: "ExpressionStatement", expression: expression("same") },
+    { type: "ExpressionStatement", expression: expression("same") },
+    { type: "ExpressionStatement", expression: expression("ab雪🌍") },
+  ] });
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const nodes = view.getUint32(0, true);
+  const kinds = 40 + nodes * 8;
+  const payloads = kinds + ((nodes + 3) & ~3);
+  const strings = payloads + nodes * 16 + view.getUint32(4, true) * 8;
+  const ranges = [];
+  for (let index = 0; index < nodes; index++) {
+    if (bytes[kinds + index] === 11) {
+      ranges.push([view.getUint32(payloads + index * 16, true),
+        view.getUint32(payloads + index * 16 + 4, true)]);
+    }
+  }
+  assert.deepEqual(ranges, [[0, 4], [4, 8], [8, 17]]);
+  assert.equal(view.getUint32(8, true), 0);
+  assert.equal(view.getUint32(12, true), 17);
+  assert.equal(view.getUint32(36, true), 10);
+  assert.equal(new TextDecoder().decode(bytes.subarray(strings, strings + 17)), "samesameab雪🌍");
+});
+
+test("encoder retains adjacent strings and empty optional ranges during pool growth", () => {
+  const { program } = parseSync('"prefix"; ""; 17;');
+  program.body[0].expression.value = "雪🌍".repeat(4096);
+  program.body[0].expression.raw = null;
+  program.body[2].expression.raw = null;
+  assert.deepEqual(encodeJs(program), encodeTs(program));
+  assert.equal(printSync(program).code, `"${"雪🌍".repeat(4096)}";\n"";\n17;\n`);
+});
