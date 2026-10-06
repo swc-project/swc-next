@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* body */ global {}
+---------- Options ----------
+{}
+---------- Output ----------
+declare /* body */ global {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare /* body */ global {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare /* body */ global {}

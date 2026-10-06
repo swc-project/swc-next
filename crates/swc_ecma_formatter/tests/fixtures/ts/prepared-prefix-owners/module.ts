@@ -1,0 +1,1 @@
+declare /* name */ module "library" {}

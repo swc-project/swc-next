@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace N{ // first
+
+/* second */
+}
+---------- Options ----------
+{}
+---------- Output ----------
+namespace N {
+  // first
+  /* second */
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+namespace N {
+  // first
+  /* second */
+}
+
+---------- Options ----------
+{"printWidth":28,"semi":false}
+---------- Output ----------
+namespace N {
+  // first
+  /* second */
+}

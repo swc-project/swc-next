@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* before */ namespace /* after */ Alpha {}
+---------- Options ----------
+{}
+---------- Output ----------
+declare namespace /* before */ /* after */ Alpha {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare namespace /* before */ /* after */ Alpha {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare namespace /* before */ /* after */ Alpha {}

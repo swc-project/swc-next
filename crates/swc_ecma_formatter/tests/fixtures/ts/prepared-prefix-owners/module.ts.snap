@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* name */ module "library" {}
+---------- Options ----------
+{}
+---------- Output ----------
+declare module /* name */ "library" {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare module /* name */ "library" {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare module /* name */ "library" {}
