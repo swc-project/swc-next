@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
 import { parseSync, printSync } from "../src-js/index.js";
@@ -236,4 +237,41 @@ test("encoder writes nested array references through storage growth", () => {
   const expected = `[[${",".repeat(600)}],,[${wide.elements.map(node => node.name).join(",")}],[],tail];`;
   assert.deepEqual(encodeJs(program), encodeTs(program));
   assert.equal(printSync(program, { minify: true }).code, expected);
+});
+
+
+function encodeWithBufferMode(program, mode) {
+  const script = `
+    import { Buffer as NodeBuffer } from "node:buffer";
+    import { readFileSync } from "node:fs";
+    const { program, mode } = JSON.parse(readFileSync(0, "utf8"));
+    globalThis.Buffer = mode === "absent" ? undefined
+      : mode === "missing" ? { prototype: {} }
+      : { prototype: { write() { throw new TypeError("unsupported receiver"); } } };
+    const { encodeJs, encodeTs } = await import(${JSON.stringify(new URL("../../../packages/encoder/index.js", import.meta.url).href)});
+    console.log(JSON.stringify([encodeJs(program), encodeTs(program)].map(bytes =>
+      NodeBuffer.from(bytes).toString("base64"))));
+  `;
+  const output = execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+    input: JSON.stringify({ program, mode }), encoding: "utf8", maxBuffer: 4 * 1024 * 1024,
+  });
+  return JSON.parse(output).map(value => Uint8Array.from(Buffer.from(value, "base64")));
+}
+
+test("encoder UTF-8 fallback matches Node with Unicode, WTF-8 and pool growth", () => {
+  const { program } = parseSync('"prefix"; "value"; "tail";');
+  program.body[1].expression.value = "ab雪🌍\uD800x\uDFFF".repeat(2048);
+  program.body[1].expression.raw = null;
+  const expected = encodeJs(program);
+  for (const mode of ["absent", "missing", "incompatible"]) {
+    const [js, ts] = encodeWithBufferMode(program, mode);
+    assert.deepEqual(js, expected);
+    assert.deepEqual(ts, expected);
+  }
+
+  program.body[1].expression.value = "ab雪🌍".repeat(2048);
+  const utf8 = encodeJs(program);
+  const [js, ts] = encodeWithBufferMode(program, "absent");
+  assert.deepEqual(js, utf8);
+  assert.deepEqual(ts, utf8);
 });
