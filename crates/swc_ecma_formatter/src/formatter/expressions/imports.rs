@@ -22,6 +22,7 @@ pub(in crate::formatter) struct ImportArguments {
     pub(in crate::formatter) options: Option<Expr>,
     pub(in crate::formatter) content: Span,
     pub(in crate::formatter) opening: u32,
+    pub(in crate::formatter) last_mode: ContentMode,
 }
 
 struct ImportSlot {
@@ -119,6 +120,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 options,
                 content,
                 opening,
+                last_mode: ContentMode::Formatted,
             },
             writer,
         )?;
@@ -135,6 +137,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             options,
             content,
             opening,
+            last_mode,
         } = arguments;
         let source = self.prepare_import_slot(source);
         let options = options.map(|expression| self.prepare_import_slot(expression));
@@ -150,6 +153,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if option.expression != option.content.expression
                 || matches!(source.content.data, ExprData::ObjectExpression(_))
                 || expand
+                || last_mode == ContentMode::Verbatim
                 || self.diagnostic_range_is_sensitive(content)
             {
                 return None;
@@ -214,6 +218,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     if let Some(boundary) = previous {
                         item.set_leading_mode(boundary.following_mode);
+                    }
+                    if expressions.peek().is_none() && last_mode == ContentMode::Verbatim {
+                        item.set_leading_mode(last_mode);
                     }
                     let tail = self.format_import_slot(expression, item.mode, writer)?;
                     previous = Some(self.finish_delimited_item(item, tail, writer)?);
