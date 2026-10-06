@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare module "x";
+declare module "y"
+(next());
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+declare module "x";
+declare module "y";
+next();
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+declare module "x";
+declare module "y";
+next();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare module "x"
+declare module "y"
+next()
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+declare module "x"
+declare module "y"
+next()
