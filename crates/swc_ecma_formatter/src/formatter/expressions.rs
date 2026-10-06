@@ -58,6 +58,9 @@ pub(super) enum ExpressionPosition {
     AwaitArgument,
     PropertyValue,
     TypePropertyKey,
+    TypeBinaryOperand,
+    TypeAssertionOperand,
+    NonNullOperand,
     Superclass,
     SpreadArgument,
     MemberObject(AccessKind),
@@ -233,6 +236,42 @@ impl ExpressionContext {
             .with_arrow_layout(arrows::ArrowLayout::Assignment(
                 arrows::ArrowHeadGap::Expression,
             ))
+    }
+
+    fn with_member_layout(mut self, layout: MemberLayout) -> Self {
+        self.member_layout = layout;
+        self
+    }
+
+    fn with_member_chain_layout(mut self, layout: MemberChainLayout) -> Self {
+        self.member_chain_layout = layout;
+        self
+    }
+
+    fn with_conditional_envelope(mut self, envelope: ConditionalEnvelope) -> Self {
+        self.conditional_envelope = envelope;
+        self
+    }
+
+    fn type_operand(
+        self,
+        position: ExpressionPosition,
+        mode: ContentMode,
+        tail_owner: TailOwner,
+    ) -> Self {
+        Self::at(position)
+            .with_parent_head(self)
+            .with_content_mode(mode)
+            .with_tail_owner(tail_owner)
+            .with_target_member_intent(self)
+    }
+
+    fn with_target_member_intent(mut self, outer: Self) -> Self {
+        if outer.member_chain_layout == MemberChainLayout::Local {
+            self.member_layout = outer.member_layout;
+            self.member_chain_layout = outer.member_chain_layout;
+        }
+        self
     }
 
     /// The real variable declarator owns its complete call/member RHS scope.
@@ -480,6 +519,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    pub(super) fn conditional_grammar_pair_is_enclosed(context: ExpressionContext) -> bool {
+        context.conditional_envelope == ConditionalEnvelope::OperationHead
+            || matches!(
+                context.position,
+                ExpressionPosition::MemberObject(_)
+                    | ExpressionPosition::MemberAssignmentObject
+                    | ExpressionPosition::CallCallee { .. }
+                    | ExpressionPosition::NewCallee
+                    | ExpressionPosition::NonNullOperand
+                    | ExpressionPosition::TypeBinaryOperand
+            )
+    }
+
+    pub(super) fn conditional_test_pair_is_enclosed(position: ExpressionPosition) -> bool {
+        matches!(position, ExpressionPosition::ConditionalTest)
+    }
+
     pub(super) fn expression_needs_asi_guard(
         &self,
         mut expression: Expr,
@@ -487,44 +543,55 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<bool, FormatError> {
         loop {
             if context.content_mode == ContentMode::Verbatim {
+                let data = self.ast.expr_data(expression);
                 let source = self.source(expression.span(self.ast));
-                return Ok(self
-                    .expression_is_parenthesized(self.ast.expr_data(expression), context)
-                    || source.starts_with(['(', '[', '/', '`', '<'])
-                    || source.starts_with(['+', '-'])
-                        && !(source.starts_with("++") || source.starts_with("--")));
+                let update = matches!(data, ExprData::UpdateExpression(node) if node.prefix(self.ast))
+                    && (source.starts_with("++") || source.starts_with("--"));
+                return Ok(self.expression_is_parenthesized(data, context)
+                    || matches!(
+                        data,
+                        ExprData::TsTypeAssertion(_)
+                            | ExprData::JsxElement(_)
+                            | ExprData::JsxFragment(_)
+                    )
+                    || !update && source.starts_with(['(', '[', '/', '+', '-', '`']));
             }
             let data = self.expression_content(expression).data;
             if self.expression_is_parenthesized(data, context)
                 || matches!(
                     data,
                     ExprData::ParenthesizedExpression(_)
-                        | ExprData::RegExpLiteral(_)
                         | ExprData::SequenceExpression(_)
                         | ExprData::ArrayExpression(_)
+                        | ExprData::TemplateLiteral(_)
+                        | ExprData::RegExpLiteral(_)
+                        | ExprData::TsTypeAssertion(_)
+                        | ExprData::JsxElement(_)
+                        | ExprData::JsxFragment(_)
                 )
                 || matches!(data, ExprData::UnaryExpression(node) if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
             {
                 return Ok(true);
-            }
-            if let ExprData::ArrowFunctionExpression(arrow) = data {
-                return self.arrow_needs_asi_guard(arrow);
-            }
-            if let ExprData::AssignmentExpression(assignment) = data {
-                return self
-                    .source_target_needs_asi_guard(&self.assignment_source_target(assignment)?);
-            }
-            if let ExprData::UpdateExpression(update) = data
-                && !update.prefix(self.ast)
-            {
-                return self.source_target_needs_asi_guard(&self.update_source_target(update)?);
             }
             if let Some((child, child_context)) = self.expression_head_operand(data, context)? {
                 expression = child;
                 context = child_context;
                 continue;
             }
-            return Ok(false);
+            match data {
+                ExprData::ArrowFunctionExpression(arrow) => {
+                    return self.arrow_needs_asi_guard(arrow);
+                }
+                ExprData::AssignmentExpression(assignment) => {
+                    let target = self.assignment_source_target(assignment)?;
+                    return self.source_target_needs_asi_guard(&target);
+                }
+                ExprData::UpdateExpression(update) if !update.prefix(self.ast) => {
+                    let target = self.update_source_target(update)?;
+                    return self.source_target_needs_asi_guard(&target);
+                }
+                _ => return Ok(false),
+            }
         }
     }
 
@@ -550,6 +617,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::MemberExpression(member) => {
                     self.source_member_receiver(member, context)?
                 }
+                ExprData::TsAsExpression(node) => (
+                    node.expression(self.ast),
+                    context.type_operand(
+                        ExpressionPosition::TypeBinaryOperand,
+                        context.content_mode,
+                        context.tail_owner,
+                    ),
+                ),
+                ExprData::TsSatisfiesExpression(node) => (
+                    node.expression(self.ast),
+                    context.type_operand(
+                        ExpressionPosition::TypeBinaryOperand,
+                        context.content_mode,
+                        context.tail_owner,
+                    ),
+                ),
+                ExprData::TsNonNullExpression(node) => (
+                    node.expression(self.ast),
+                    context.type_operand(
+                        ExpressionPosition::NonNullOperand,
+                        context.content_mode,
+                        context.tail_owner,
+                    ),
+                ),
                 ExprData::ChainExpression(chain) => (chain.expression(self.ast), context),
                 ExprData::ConditionalExpression(conditional) => {
                     let mut child_context = context;
@@ -570,6 +661,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context.parentheses_owner == ParenthesesOwner::Expression
             && (self.expression_needs_parentheses(data, context.position, context.content_mode)
                 == Some(true)
+                || matches!(context.position, ExpressionPosition::TypeBinaryOperand)
+                    && context.expression_start.is_statement()
+                    && self.type_binary_head_needs_parentheses(data)
                 || self.lexical_identifier_head_needs_parentheses(data, context)
                 || matches!(data, ExprData::ObjectExpression(_))
                     && (context.expression_start.is_statement()
@@ -634,6 +728,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         conditional.test(self.ast),
                         ExpressionPosition::ConditionalTest,
                     ),
+                    ExprData::TsAsExpression(node) => (
+                        node.expression(self.ast),
+                        ExpressionPosition::TypeBinaryOperand,
+                    ),
+                    ExprData::TsSatisfiesExpression(node) => (
+                        node.expression(self.ast),
+                        ExpressionPosition::TypeBinaryOperand,
+                    ),
+                    ExprData::TsNonNullExpression(node) => (
+                        node.expression(self.ast),
+                        ExpressionPosition::NonNullOperand,
+                    ),
                     ExprData::ChainExpression(chain) => {
                         (chain.expression(self.ast), ExpressionPosition::Nested)
                     }
@@ -643,17 +749,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         else {
                             return false;
                         };
-                        let Ok(target) = self.simple_target_expression(target) else {
-                            return true;
-                        };
-                        (target, ExpressionPosition::AssignmentTarget)
+                        let target = targets::SimpleTarget::new(self.ast, target);
+                        (target.expression(), ExpressionPosition::AssignmentTarget)
                     }
                     ExprData::UpdateExpression(update) if !update.prefix(self.ast) => {
-                        let Ok(target) = self.simple_target_expression(update.argument(self.ast))
-                        else {
-                            return true;
-                        };
-                        (target, ExpressionPosition::UpdateArgument)
+                        let target =
+                            targets::SimpleTarget::new(self.ast, update.argument(self.ast));
+                        (target.expression(), ExpressionPosition::UpdateArgument)
                     }
                     _ => return false,
                 }
@@ -713,35 +815,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => true,
             });
         }
-        if matches!(position, ExpressionPosition::Superclass) {
+        let data = if matches!(position, ExpressionPosition::Superclass) {
             let mut operand = data;
             loop {
                 let expression = match operand {
                     ExprData::ChainExpression(node) => node.expression(self.ast),
+                    ExprData::TsNonNullExpression(node) => node.expression(self.ast),
                     ExprData::ParenthesizedExpression(node) if mode == ContentMode::Formatted => {
                         node.expression(self.ast)
                     }
-                    _ => break,
+                    _ => break operand,
                 };
                 operand = self.ast.expr_data(expression);
             }
-            self.expression_needs_parentheses(operand, ExpressionPosition::Nested, mode)?;
-            return Some(matches!(
-                operand,
-                ExprData::NewExpression(_)
-                    | ExprData::ArrowFunctionExpression(_)
-                    | ExprData::ObjectExpression(_)
-                    | ExprData::SequenceExpression(_)
-                    | ExprData::AssignmentExpression(_)
-                    | ExprData::ConditionalExpression(_)
-                    | ExprData::UnaryExpression(_)
-                    | ExprData::UpdateExpression(_)
-                    | ExprData::BinaryExpression(_)
-                    | ExprData::LogicalExpression(_)
-                    | ExprData::YieldExpression(_)
-                    | ExprData::AwaitExpression(_)
-            ));
-        }
+        } else {
+            data
+        };
         let position = if matches!(position, ExpressionPosition::ForSequenceMember)
             && !matches!(data, ExprData::AssignmentExpression(_))
         {
@@ -754,31 +843,114 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Some(true);
         }
-        if matches!(position, ExpressionPosition::NewCallee)
-            && self.new_callee_contains_call(data, mode)
+        if let Some(needed) = typescript::type_expression_needs_parentheses(data, position) {
+            let exposed_tail = match (data, position) {
+                (
+                    ExprData::TsTypeAssertion(_),
+                    ExpressionPosition::BinaryOperand {
+                        operator,
+                        side: OperandSide::Left,
+                    },
+                ) if !needed && self.ast.is_ts() => {
+                    self.instantiation_tail_needs_parentheses(data, operator, mode)
+                }
+                _ => false,
+            };
+            return Some(needed || exposed_tail);
+        }
+        if matches!(position, ExpressionPosition::NonNullOperand)
+            && matches!(
+                data,
+                ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
+            )
         {
             return Some(true);
         }
-        if self.is_nullish_conditional_operand(data, position) {
+        if matches!(
+            position,
+            ExpressionPosition::TypeBinaryOperand
+                | ExpressionPosition::TypeAssertionOperand
+                | ExpressionPosition::NonNullOperand
+        ) && matches!(
+            data,
+            ExprData::ArrowFunctionExpression(_)
+                | ExprData::AssignmentExpression(_)
+                | ExprData::ConditionalExpression(_)
+                | ExprData::LogicalExpression(_)
+                | ExprData::BinaryExpression(_)
+                | ExprData::YieldExpression(_)
+        ) {
             return Some(true);
         }
-        if let Some(child) = BinaryOperatorKind::from_data(data, self.ast) {
-            return Some(match position {
-                ExpressionPosition::UnaryArgument(_)
-                | ExpressionPosition::AwaitArgument
-                | ExpressionPosition::SpreadArgument
-                | ExpressionPosition::CallCallee { .. }
-                | ExpressionPosition::NewCallee
-                | ExpressionPosition::MemberObject(_)
-                | ExpressionPosition::MemberAssignmentObject => true,
-                ExpressionPosition::BinaryOperand { operator, side } => {
-                    operator.needs_parentheses(child, side)
-                }
-                _ => false,
-            });
-        }
         match data {
+            ExprData::SequenceExpression(_) => {
+                return Some(!matches!(
+                    position,
+                    ExpressionPosition::ForHead
+                        | ExpressionPosition::ForInitializer {
+                            grammar: ForInitializerGrammar::Expression,
+                            parentheses: false,
+                        }
+                ));
+            }
+            ExprData::ArrowFunctionExpression(_) => {
+                return Some(matches!(
+                    position,
+                    ExpressionPosition::UnaryArgument(_)
+                        | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                        | ExpressionPosition::AwaitArgument
+                        | ExpressionPosition::BinaryOperand { .. }
+                        | ExpressionPosition::MemberObject(_)
+                        | ExpressionPosition::MemberAssignmentObject
+                        | ExpressionPosition::CallCallee { .. }
+                        | ExpressionPosition::NewCallee
+                        | ExpressionPosition::Superclass
+                        | ExpressionPosition::ConditionalTest
+                ));
+            }
+            ExprData::AwaitExpression(_) | ExprData::YieldExpression(_) => {
+                let low_precedence_parent = matches!(
+                    position,
+                    ExpressionPosition::UnaryArgument(_)
+                        | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                        | ExpressionPosition::BinaryOperand { .. }
+                        | ExpressionPosition::SpreadArgument
+                        | ExpressionPosition::MemberObject(_)
+                        | ExpressionPosition::MemberAssignmentObject
+                        | ExpressionPosition::CallCallee { .. }
+                        | ExpressionPosition::NewCallee
+                        | ExpressionPosition::Superclass
+                        | ExpressionPosition::ConditionalTest
+                        | ExpressionPosition::TypeBinaryOperand
+                        | ExpressionPosition::NonNullOperand
+                );
+                let awaited_yield = matches!(data, ExprData::YieldExpression(_))
+                    && matches!(position, ExpressionPosition::AwaitArgument);
+                return Some(low_precedence_parent || awaited_yield);
+            }
+            ExprData::ChainExpression(_) => {
+                return Some(match position {
+                    ExpressionPosition::MemberObject(AccessKind::Ordinary)
+                    | ExpressionPosition::CallCallee {
+                        access: AccessKind::Ordinary,
+                        ..
+                    }
+                    | ExpressionPosition::MemberAssignmentObject
+                    | ExpressionPosition::NewCallee
+                    | ExpressionPosition::NonNullOperand => true,
+                    ExpressionPosition::BinaryOperand {
+                        operator,
+                        side: OperandSide::Left,
+                    } if self.ast.is_ts() => {
+                        self.instantiation_tail_needs_parentheses(data, operator, mode)
+                    }
+                    _ => false,
+                });
+            }
             ExprData::NewExpression(constructor) => {
+                if matches!(position, ExpressionPosition::Superclass) {
+                    return Some(true);
+                }
                 if mode == ContentMode::Formatted
                     || !matches!(
                         position,
@@ -794,173 +966,174 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || constructor.callee(self.ast).span(self.ast).end,
                     |arguments| arguments.span(self.ast).end,
                 );
-                Some(constructor.span(self.ast).end == suffix_end)
+                return Some(constructor.span(self.ast).end == suffix_end);
             }
-            ExprData::ArrowFunctionExpression(_) => Some(matches!(
-                position,
-                ExpressionPosition::UnaryArgument(_)
-                    | ExpressionPosition::ParenthesizedUnaryArgument(_)
-                    | ExpressionPosition::AwaitArgument
-                    | ExpressionPosition::BinaryOperand { .. }
-                    | ExpressionPosition::MemberObject(_)
-                    | ExpressionPosition::MemberAssignmentObject
-                    | ExpressionPosition::CallCallee { .. }
-                    | ExpressionPosition::NewCallee
-                    | ExpressionPosition::ConditionalTest
-            )),
-            ExprData::AwaitExpression(_) | ExprData::YieldExpression(_) => Some(
-                matches!(
-                    position,
-                    ExpressionPosition::UnaryArgument(_)
-                        | ExpressionPosition::ParenthesizedUnaryArgument(_)
-                        | ExpressionPosition::BinaryOperand { .. }
-                        | ExpressionPosition::SpreadArgument
-                        | ExpressionPosition::MemberObject(_)
-                        | ExpressionPosition::MemberAssignmentObject
-                        | ExpressionPosition::CallCallee { .. }
-                        | ExpressionPosition::NewCallee
-                        | ExpressionPosition::ConditionalTest
-                ) || matches!(data, ExprData::YieldExpression(_))
-                    && matches!(position, ExpressionPosition::AwaitArgument),
-            ),
-            ExprData::ChainExpression(_) => Some(matches!(
-                position,
-                ExpressionPosition::MemberObject(AccessKind::Ordinary)
-                    | ExpressionPosition::CallCallee {
-                        access: AccessKind::Ordinary,
-                        ..
-                    }
-                    | ExpressionPosition::MemberAssignmentObject
-                    | ExpressionPosition::NewCallee
-            )),
-            ExprData::MetaProperty(_) | ExprData::ImportExpression(_) => Some(false),
-            ExprData::Class(_) => Some(matches!(
-                position,
-                ExpressionPosition::Statement | ExpressionPosition::NewCallee
-            )),
-            ExprData::Function(_) => Some(matches!(
-                position,
-                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee
-            )),
-            ExprData::ArrayExpression(_) => Some(false),
-            ExprData::ObjectExpression(_) => {
-                Some(matches!(position, ExpressionPosition::Statement))
-            }
-            ExprData::SequenceExpression(_) => Some(!matches!(
-                position,
-                ExpressionPosition::ForHead
-                    | ExpressionPosition::ForInitializer {
-                        grammar: ForInitializerGrammar::Expression,
-                        parentheses: false
-                    }
-            )),
-            ExprData::ConditionalExpression(_) => Some(matches!(
-                position,
-                ExpressionPosition::UnaryArgument(_)
-                    | ExpressionPosition::ParenthesizedUnaryArgument(_)
-                    | ExpressionPosition::AwaitArgument
-                    | ExpressionPosition::SpreadArgument
-                    | ExpressionPosition::BinaryOperand { .. }
-                    | ExpressionPosition::ConditionalTest
-                    | ExpressionPosition::CallCallee { .. }
-                    | ExpressionPosition::NewCallee
-                    | ExpressionPosition::MemberObject(_)
-                    | ExpressionPosition::MemberAssignmentObject
-            )),
-            ExprData::AssignmentExpression(assignment) => {
-                Some(if matches!(position, ExpressionPosition::Statement) {
-                    matches!(
-                        self.ast.assignment_target_data(assignment.left(self.ast)),
-                        swc_next_ecma_ast::AssignmentTargetData::ObjectAssignmentTarget(_)
-                    )
-                } else {
-                    !matches!(
-                        position,
-                        ExpressionPosition::AssignmentRight(_)
-                            | ExpressionPosition::ExportDefault
-                            | ExpressionPosition::TypePropertyKey
-                            | ExpressionPosition::ForHead
-                            | ExpressionPosition::ForSequenceMember
-                            | ExpressionPosition::ForInitializer { .. }
-                    )
-                })
-            }
-            ExprData::StringLiteral(_) => Some(matches!(position, ExpressionPosition::Statement)),
-            ExprData::UnaryExpression(unary) => Some(match position {
-                ExpressionPosition::MemberObject(_)
-                | ExpressionPosition::MemberAssignmentObject
-                | ExpressionPosition::CallCallee { .. }
-                | ExpressionPosition::NewCallee => true,
-                ExpressionPosition::UnaryArgument(parent)
-                | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
-                    matches!(parent, UnaryOperator::Positive | UnaryOperator::Negate)
-                        && unary.operator(self.ast) == parent
-                }
-                ExpressionPosition::BinaryOperand { operator, side } => matches!(
-                    (side, operator),
-                    (
-                        OperandSide::Left,
-                        BinaryOperatorKind::Binary(
-                            swc_next_ecma_ast::BinaryOperator::Exponent
-                                | swc_next_ecma_ast::BinaryOperator::In
-                                | swc_next_ecma_ast::BinaryOperator::Instanceof
-                        )
-                    )
-                ),
-                _ => false,
-            }),
-            ExprData::UpdateExpression(update) => Some(match position {
-                ExpressionPosition::MemberObject(_)
-                | ExpressionPosition::MemberAssignmentObject
-                | ExpressionPosition::CallCallee { .. }
-                | ExpressionPosition::NewCallee => true,
-                ExpressionPosition::UnaryArgument(parent)
-                | ExpressionPosition::ParenthesizedUnaryArgument(parent) => {
-                    update.prefix(self.ast)
-                        && matches!(
-                            (parent, update.operator(self.ast)),
-                            (UnaryOperator::Positive, UpdateOperator::Increment)
-                                | (UnaryOperator::Negate, UpdateOperator::Decrement)
-                        )
-                }
-                ExpressionPosition::BinaryOperand { operator, side } => matches!(
-                    (side, operator),
-                    (
-                        OperandSide::Left,
-                        BinaryOperatorKind::Binary(swc_next_ecma_ast::BinaryOperator::Exponent)
-                    )
-                ),
-                _ => false,
-            }),
-            ExprData::NumericLiteral(_) => Some(matches!(
-                position,
-                ExpressionPosition::MemberObject(_) | ExpressionPosition::MemberAssignmentObject
-            )),
-            ExprData::Super(_)
+            ExprData::IdentifierReference(_)
+            | ExprData::Function(_)
+            | ExprData::Class(_)
+            | ExprData::Super(_)
             | ExprData::PrivateIdentifier(_)
-            | ExprData::IdentifierReference(_)
+            | ExprData::MetaProperty(_)
+            | ExprData::ThisExpression(_)
+            | ExprData::StringLiteral(_)
+            | ExprData::TemplateLiteral(_)
+            | ExprData::TaggedTemplateExpression(_)
             | ExprData::BooleanLiteral(_)
             | ExprData::NullLiteral(_)
+            | ExprData::NumericLiteral(_)
             | ExprData::BigIntLiteral(_)
             | ExprData::RegExpLiteral(_)
-            | ExprData::ThisExpression(_)
-            | ExprData::ParenthesizedExpression(_)
+            | ExprData::ArrayExpression(_)
+            | ExprData::ObjectExpression(_)
             | ExprData::MemberExpression(_)
-            | ExprData::CallExpression(_) => Some(false),
-            _ => None,
+            | ExprData::CallExpression(_)
+            | ExprData::ImportExpression(_)
+            | ExprData::UnaryExpression(_)
+            | ExprData::UpdateExpression(_)
+            | ExprData::BinaryExpression(_)
+            | ExprData::LogicalExpression(_)
+            | ExprData::ConditionalExpression(_)
+            | ExprData::AssignmentExpression(_)
+            | ExprData::ParenthesizedExpression(_)
+            | ExprData::TsNonNullExpression(_)
+            | ExprData::TsInstantiationExpression(_) => {}
+            _ => return None,
         }
+        if matches!(position, ExpressionPosition::NewCallee)
+            && self.new_callee_contains_call(data, mode)
+        {
+            return Some(true);
+        }
+        if matches!(position, ExpressionPosition::Superclass) {
+            return Some(matches!(
+                data,
+                ExprData::ArrowFunctionExpression(_)
+                    | ExprData::ObjectExpression(_)
+                    | ExprData::TaggedTemplateExpression(_)
+                    | ExprData::SequenceExpression(_)
+                    | ExprData::AssignmentExpression(_)
+                    | ExprData::ConditionalExpression(_)
+                    | ExprData::UnaryExpression(_)
+                    | ExprData::UpdateExpression(_)
+                    | ExprData::BinaryExpression(_)
+                    | ExprData::LogicalExpression(_)
+                    | ExprData::YieldExpression(_)
+                    | ExprData::AwaitExpression(_)
+            ));
+        }
+        Some(match (position, data) {
+            (ExpressionPosition::NewCallee, ExprData::Class(_)) => true,
+            (
+                ExpressionPosition::NewCallee | ExpressionPosition::CallCallee { .. },
+                ExprData::Function(_),
+            ) => true,
+            (
+                ExpressionPosition::MemberObject(_) | ExpressionPosition::MemberAssignmentObject,
+                ExprData::NumericLiteral(_)
+                | ExprData::UnaryExpression(_)
+                | ExprData::UpdateExpression(_)
+                | ExprData::BinaryExpression(_)
+                | ExprData::LogicalExpression(_)
+                | ExprData::ConditionalExpression(_),
+            ) => true,
+            (
+                ExpressionPosition::CallCallee { .. } | ExpressionPosition::NewCallee,
+                ExprData::UnaryExpression(_)
+                | ExprData::UpdateExpression(_)
+                | ExprData::BinaryExpression(_)
+                | ExprData::LogicalExpression(_)
+                | ExprData::ConditionalExpression(_),
+            ) => true,
+            (ExpressionPosition::Statement, ExprData::AssignmentExpression(node)) => matches!(
+                self.ast.assignment_target_data(node.left(self.ast)),
+                swc_next_ecma_ast::AssignmentTargetData::ObjectAssignmentTarget(_)
+            ),
+            (position, ExprData::AssignmentExpression(_)) => !matches!(
+                position,
+                ExpressionPosition::Statement
+                    | ExpressionPosition::ExportDefault
+                    | ExpressionPosition::AssignmentRight(_)
+                    | ExpressionPosition::TypePropertyKey
+                    | ExpressionPosition::ForHead
+                    | ExpressionPosition::ForSequenceMember
+                    | ExpressionPosition::ForInitializer { .. }
+            ),
+            (
+                ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::ParenthesizedUnaryArgument(_)
+                | ExpressionPosition::AwaitArgument
+                | ExpressionPosition::SpreadArgument
+                | ExpressionPosition::BinaryOperand { .. }
+                | ExpressionPosition::ConditionalTest,
+                ExprData::ConditionalExpression(_),
+            ) => true,
+            (
+                ExpressionPosition::UnaryArgument(parent)
+                | ExpressionPosition::ParenthesizedUnaryArgument(parent),
+                ExprData::UnaryExpression(unary),
+            ) => {
+                matches!(parent, UnaryOperator::Positive | UnaryOperator::Negate)
+                    && unary.operator(self.ast) == parent
+            }
+            (
+                ExpressionPosition::UnaryArgument(parent)
+                | ExpressionPosition::ParenthesizedUnaryArgument(parent),
+                ExprData::UpdateExpression(update),
+            ) => {
+                update.prefix(self.ast)
+                    && matches!(
+                        (parent, update.operator(self.ast)),
+                        (UnaryOperator::Positive, UpdateOperator::Increment)
+                            | (UnaryOperator::Negate, UpdateOperator::Decrement)
+                    )
+            }
+            (
+                ExpressionPosition::UnaryArgument(_)
+                | ExpressionPosition::AwaitArgument
+                | ExpressionPosition::SpreadArgument,
+                ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_),
+            ) => true,
+            (position, _) if self.is_nullish_conditional_operand(data, position) => true,
+            (ExpressionPosition::BinaryOperand { operator, side }, _) => {
+                let required = match BinaryOperatorKind::from_data(data, self.ast) {
+                    Some(child) => operator.needs_parentheses(child, side),
+                    None => matches!(
+                        (side, operator, data),
+                        (
+                            OperandSide::Left,
+                            BinaryOperatorKind::Binary(swc_next_ecma_ast::BinaryOperator::Exponent),
+                            ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
+                        ) | (
+                            OperandSide::Left,
+                            BinaryOperatorKind::Binary(
+                                swc_next_ecma_ast::BinaryOperator::In
+                                    | swc_next_ecma_ast::BinaryOperator::Instanceof
+                            ),
+                            ExprData::UnaryExpression(_)
+                        )
+                    ),
+                };
+                required
+                    || matches!(
+                        data,
+                        ExprData::UnaryExpression(_)
+                            | ExprData::BinaryExpression(_)
+                            | ExprData::LogicalExpression(_)
+                    ) && matches!(side, OperandSide::Left)
+                        && self.ast.is_ts()
+                        && self.instantiation_tail_needs_parentheses(data, operator, mode)
+            }
+            (
+                ExpressionPosition::Statement,
+                ExprData::StringLiteral(_)
+                | ExprData::ObjectExpression(_)
+                | ExprData::Function(_)
+                | ExprData::Class(_),
+            ) => true,
+            _ => false,
+        })
     }
 
-    pub(super) fn chain_element_data(&self, mut data: ExprData) -> ExprData {
-        loop {
-            match data {
-                ExprData::ChainExpression(chain) => {
-                    data = self.expression_content(chain.expression(self.ast)).data
-                }
-                _ => return data,
-            }
-        }
-    }
     fn expression_layout(&self, expression: Expr) -> ExpressionLayout {
         if self.diagnostic_lines.is_empty() {
             return ExpressionLayout::Normal;
@@ -981,19 +1154,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let parenthesize = self
-            .expression_is_parenthesized(self.ast.expr_data(expression), context)
+        let data = self.ast.expr_data(expression);
+        let span = expression.span(self.ast);
+        let source = self.source(span);
+        let parenthesize = self.expression_is_parenthesized(data, context)
             || matches!(context.expression_head, ExpressionHead::Iteration(_));
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
-            && self.expression_needs_asi_guard(expression, context)?
+        let grammar_barrier = if matches!(
+            data,
+            ExprData::TsTypeAssertion(_) | ExprData::ParenthesizedExpression(_)
+        ) {
+            self.source_type_assertion_needs_grammar_barrier(data, context)?
+        } else {
+            false
+        };
+        let starts_update = matches!(data, ExprData::UpdateExpression(update) if update.prefix(self.ast))
+            && (source.starts_with("++") || source.starts_with("--"));
+        if self.options.semicolons == Semicolons::AsNeeded
+            && context.expression_start.needs_asi_guard()
+            && (parenthesize
+                || matches!(
+                    data,
+                    ExprData::TsTypeAssertion(_)
+                        | ExprData::JsxElement(_)
+                        | ExprData::JsxFragment(_)
+                )
+                || !starts_update && source.starts_with(['(', '[', '/', '+', '-', '`']))
         {
             writer.text(";");
         }
         if parenthesize {
             writer.text("(");
         }
-        self.format_verbatim(expression.span(self.ast), writer)?;
+        if grammar_barrier {
+            writer.text("(");
+        }
+        self.format_verbatim(span, writer)?;
+        if grammar_barrier {
+            writer.text(")");
+        }
         if parenthesize {
             writer.text(")");
         }
@@ -1007,6 +1205,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match self.ast.expr_data(expression) {
+            ExprData::TsAsExpression(node) => {
+                return self.format_binary_type_expression(
+                    node.expression(self.ast),
+                    node.type_annotation(self.ast),
+                    typescript::TypeBinaryOperator::As,
+                    context,
+                    writer,
+                );
+            }
+            ExprData::TsSatisfiesExpression(node) => {
+                return self.format_binary_type_expression(
+                    node.expression(self.ast),
+                    node.type_annotation(self.ast),
+                    typescript::TypeBinaryOperator::Satisfies,
+                    context,
+                    writer,
+                );
+            }
+            ExprData::TsTypeAssertion(node) => {
+                return self.format_type_assertion(node, context, writer);
+            }
+            ExprData::TsNonNullExpression(node) => {
+                return self.format_non_null(node, context, writer);
+            }
+
             ExprData::IdentifierReference(node) => {
                 writer.text(self.ast.get_utf8(node.name(self.ast)))
             }

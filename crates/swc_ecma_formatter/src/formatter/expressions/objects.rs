@@ -1123,14 +1123,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::UnaryExpression(unary) => {
                     self.expression_content(unary.argument(self.ast)).data
                 }
-                ExprData::AwaitExpression(node) => {
-                    self.expression_content(node.argument(self.ast)).data
+                ExprData::AwaitExpression(awaited) => {
+                    self.expression_content(awaited.argument(self.ast)).data
                 }
-                ExprData::YieldExpression(node) => {
-                    let Some(argument) = node.argument(self.ast) else {
+                ExprData::YieldExpression(yielded) => {
+                    let Some(argument) = yielded.argument(self.ast) else {
                         return ComputedKeyScope::Text;
                     };
                     self.expression_content(argument).data
+                }
+                ExprData::TsNonNullExpression(assertion) => {
+                    self.expression_content(assertion.expression(self.ast)).data
                 }
                 ExprData::UpdateExpression(update) => {
                     match self
@@ -1139,6 +1142,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     {
                         SimpleAssignmentTargetData::IdentifierReference(identifier) => {
                             ExprData::IdentifierReference(identifier)
+                        }
+                        SimpleAssignmentTargetData::TsNonNullExpression(assertion) => {
+                            ExprData::TsNonNullExpression(assertion)
                         }
                         _ => return ComputedKeyScope::Expression,
                     }

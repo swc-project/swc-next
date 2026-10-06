@@ -900,6 +900,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::StringLiteral(_) if !chain => return true,
                 ExprData::ChainExpression(chain) => chain.expression(self.ast),
+                ExprData::TsNonNullExpression(assertion) => assertion.expression(self.ast),
                 _ => {
                     if !chain
                         || !matches!(

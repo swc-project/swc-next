@@ -14,7 +14,7 @@ mod postfix;
 mod tuple;
 
 use self::compound::{PendingTypeHead, PreparedTypeContent};
-use self::context::TypeContext;
+pub(super) use self::context::TypeContext;
 pub(super) use self::generics::TypeArgumentOwner;
 
 use super::Formatter;
@@ -23,6 +23,7 @@ use super::comments::{
     CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, PreparedTrailingRun,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
+use super::expressions::TailOwner;
 use super::expressions::assignment::RhsLayout;
 use super::literals::StringContext;
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
@@ -32,10 +33,10 @@ use crate::{
     document::{Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan, Span,
-    TsLiteralData, TsParenthesizedType, TsQualifiedName, TsQualifiedNameLeft,
-    TsQualifiedNameLeftData, TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeData,
-    TsTypeName, TsTypeNameData, UnaryOperator, VariableDeclarator,
+    BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan,
+    IdentifierReference, Span, TsLiteralData, TsParenthesizedType, TsQualifiedName,
+    TsQualifiedNameLeft, TsQualifiedNameLeftData, TsType, TsTypeAliasDeclaration, TsTypeAnnotation,
+    TsTypeData, TsTypeName, TsTypeNameData, UnaryOperator, VariableDeclarator,
 };
 
 #[derive(Clone, Copy)]
@@ -57,10 +58,10 @@ enum TypeBoundaryTarget<'a> {
 }
 
 #[derive(Clone, Copy)]
-struct PreparedType {
-    node: TsType,
-    data: TsTypeData,
-    source_owner: Option<TsType>,
+pub(super) struct PreparedType {
+    pub(super) node: TsType,
+    pub(super) data: TsTypeData,
+    pub(super) source_owner: Option<TsType>,
 }
 
 struct PreparedTypeParentheses<'ast> {
@@ -74,13 +75,34 @@ struct PreparedTypeParentheses<'ast> {
     source: bool,
 }
 
+/// Only an unbound caller packet or an escaped type packet can supply this opening.
+pub(super) struct BinaryTypeHead<'ast>(BinaryTypeHeadLayout<'ast>);
+
+enum BinaryTypeHeadLayout<'ast> {
+    Direct,
+    /// Block packets with no separator breaks need no transferable type frontier.
+    InlineNamed,
+    /// A named RHS owns its complete block head without a continuation scope.
+    Named,
+    /// An atomic name can hand its ordinary operator-line packet to its caller.
+    TrailingNamed {
+        name: IdentifierReference,
+        tail: ExpressionTail<'ast>,
+    },
+    Caller {
+        leading: Option<compound::MovableTypeHead<'ast>>,
+        own_line: Option<LineConstraint>,
+    },
+}
+
 struct RecordedTypeHead<'ast> {
     head: Fragment<'ast>,
     content: PreparedTypeContent<'ast>,
+    riding: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum TypeLayout {
+pub(super) enum TypeLayout {
     Root,
     OpeningProvided,
     CallerIndented,
@@ -114,7 +136,7 @@ struct PreparedAnnotation<'ast> {
     prefix: TypeBoundaryLayout<'ast>,
 }
 
-struct PreparedDelimitedType<'ast> {
+pub(super) struct PreparedDelimitedType<'ast> {
     span: Span,
     content: PreparedTypeContent<'ast>,
 }
@@ -275,7 +297,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_prepared_type_parentheses(parentheses, context, layout, writer)
     }
 
-    fn format_prepared_type_after_comments(
+    pub(super) fn format_prepared_type_after_comments(
         &mut self,
         node: PreparedType,
         context: TypeContext,
@@ -542,7 +564,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    fn format_prepared_delimited_type(
+    pub(super) fn format_prepared_delimited_type(
         &mut self,
         body: PreparedDelimitedType<'ast>,
         context: TypeContext,
@@ -558,7 +580,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_prepared_type_content(content, context, layout, writer)
     }
 
-    fn prepare_delimited_type(
+    pub(super) fn prepare_delimited_type(
         &self,
         mut node: PreparedType,
     ) -> Result<PreparedDelimitedType<'ast>, FormatError> {
@@ -1304,7 +1326,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
-    fn prepare_type(&self, node: TsType, mode: ContentMode) -> PreparedType {
+    pub(super) fn prepare_type(&self, node: TsType, mode: ContentMode) -> PreparedType {
         PreparedType {
             node,
             data: self.ast.ts_type_data(node),
@@ -1393,7 +1415,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_prepared_type_with_layout(node, context, TypeLayout::Root, writer)
     }
 
-    fn format_prepared_type_with_layout(
+    pub(super) fn format_prepared_type_with_layout(
         &mut self,
         node: PreparedType,
         context: TypeContext,
@@ -1920,7 +1942,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (head, content) = writer.record_with_value(|writer| {
             self.format_prepared_type_content_head(content, &mut pending, context, writer)
         })?;
-        Ok(RecordedTypeHead { head, content })
+        Ok(RecordedTypeHead {
+            head,
+            content,
+            riding: pending.has_riding_prefix(),
+        })
     }
 
     fn format_recorded_type_head(
@@ -2318,6 +2344,216 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_expression_tail(tail, writer)?;
             }
             self.format_initializer_right(left_end, right, layout, context, writer)
+        })
+    }
+
+    pub(super) fn format_prepared_delimited_type_after_comments(
+        &mut self,
+        body: PreparedDelimitedType<'ast>,
+        after: &CommentBoundary<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let (movable_head, leading) = self.prepared_content_head(&body.content, context);
+        if ((!after.is_empty() && self.prepared_content_accepts_caller_head(&body.content))
+            || movable_head)
+            && matches!(
+                self.comment_boundary_binding(after, body.span),
+                CommentBinding::Unbound
+            )
+        {
+            let recorded = self.record_type_head(
+                body.content,
+                PendingTypeHead::new(after.comments(), body.span.start, leading),
+                context,
+                writer,
+            )?;
+            return self.format_recorded_type_head(recorded, context, layout, writer);
+        }
+        self.format_comment_boundary(after, writer)?;
+        after
+            .gap()
+            .write(writer, FlatSeparator::Empty, Writer::soft_line);
+        self.format_prepared_delimited_type(body, context, layout, writer)
+    }
+
+    pub(super) fn prepare_binary_type_head(
+        &self,
+        node: PreparedType,
+        after: &CommentBoundary<'ast>,
+        operator_end: u32,
+        tail_owner: TailOwner,
+    ) -> BinaryTypeHead<'ast> {
+        if node.source_owner.is_some() {
+            return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+        }
+        let compound = matches!(
+            node.data,
+            TsTypeData::TsParenthesizedType(_)
+                | TsTypeData::TsUnionType(_)
+                | TsTypeData::TsIntersectionType(_)
+                | TsTypeData::TsArrayType(_)
+                | TsTypeData::TsIndexedAccessType(_)
+                | TsTypeData::TsConditionalType(_)
+        );
+        if !compound && after.is_empty() {
+            return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+        }
+        let target = node.node.span(self.ast);
+        if !matches!(
+            self.comment_boundary_binding(after, target),
+            CommentBinding::Unbound
+        ) {
+            return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+        }
+        let leading = if compound {
+            self.type_movable_head(node, TypeContext::Root)
+        } else {
+            None
+        };
+        let (comments, next_start) = if after.is_empty() {
+            let Some(head) = leading else {
+                return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+            };
+            (head.comments, head.next_start)
+        } else {
+            (after.comments(), target.start)
+        };
+        if let TsTypeData::TsTypeReference(reference) = node.data {
+            let blocks = comments
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Block);
+            if blocks {
+                let continuous = comments
+                    .windows(2)
+                    .all(|pair| self.line_breaks(pair[0].span.end, pair[1].span.start) == 0)
+                    && comments
+                        .last()
+                        .is_some_and(|last| self.line_breaks(last.span.end, next_start) == 0);
+                return BinaryTypeHead(if continuous {
+                    BinaryTypeHeadLayout::InlineNamed
+                } else {
+                    BinaryTypeHeadLayout::Named
+                });
+            }
+            // A continuing operation owns another token/comment boundary. Keep
+            // this complete head here rather than leasing a queued line across it.
+            if tail_owner == TailOwner::Expression
+                && reference.type_arguments(self.ast).is_none()
+                && let TsTypeNameData::IdentifierReference(name) =
+                    self.ast.ts_type_name_data(reference.type_name(self.ast))
+                && comments
+                    .first()
+                    .is_some_and(|first| self.line_breaks(operator_end, first.span.start) == 0)
+            {
+                return BinaryTypeHead(BinaryTypeHeadLayout::TrailingNamed {
+                    name,
+                    tail: ExpressionTail {
+                        source_end: operator_end,
+                        comments,
+                    },
+                });
+            }
+        }
+        let starts_line = comments.first().is_some_and(|first| {
+            self.source_line_starts_line(first.span.start)
+                || self.line_breaks(first.span.start, first.span.end) != 0
+        });
+        let ends_line = starts_line
+            && comments.iter().enumerate().any(|(index, comment)| {
+                let next = comments
+                    .get(index + 1)
+                    .map_or(next_start, |next| next.span.start);
+                self.line_breaks(comment.span.end, next) != 0
+            });
+        let own_line = comments.first().filter(|_| ends_line);
+        if own_line.is_none()
+            && !compound
+            && comments
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Block)
+        {
+            return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+        }
+        BinaryTypeHead(BinaryTypeHeadLayout::Caller {
+            leading,
+            own_line: own_line.map(|first| self.line_constraint(operator_end, first.span.start)),
+        })
+    }
+
+    pub(super) fn format_binary_type_rhs_head(
+        &mut self,
+        node: PreparedType,
+        after: &CommentBoundary<'ast>,
+        head: BinaryTypeHead<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let context = TypeContext::Root;
+        if matches!(head.0, BinaryTypeHeadLayout::InlineNamed) {
+            writer.space();
+            self.format_comment_boundary_with_layout(
+                after,
+                CommentRunLayout::FlatLeading(node.node.span(self.ast).start),
+                writer,
+            )?;
+            return self.format_prepared_type_with_layout(node, context, TypeLayout::Root, writer);
+        }
+        if matches!(head.0, BinaryTypeHeadLayout::Named) {
+            let comments = after.comments();
+            if let Some(first) = comments.first() {
+                self.format_comment_boundary_with_layout(
+                    after,
+                    CommentRunLayout::SourceAfter(first.span.start),
+                    writer,
+                )?;
+            }
+            if let Some(last) = comments.last() {
+                self.comment_gap(last.span.end, node.node.span(self.ast).start, writer);
+            }
+            return self.format_prepared_type_with_layout(node, context, TypeLayout::Root, writer);
+        }
+        if let BinaryTypeHeadLayout::TrailingNamed { name, tail } = head.0 {
+            // This name has no nested token boundary to consume the leased packet.
+            writer.space();
+            writer.text(self.ast.get_utf8(name.name(self.ast)));
+            return Ok(Some(tail));
+        }
+        let BinaryTypeHead(BinaryTypeHeadLayout::Caller { leading, own_line }) = head else {
+            self.format_type_comment_gap(after, FlatSeparator::Space, writer)?;
+            return self.format_prepared_type_with_layout(node, context, TypeLayout::Root, writer);
+        };
+        let mut pending =
+            PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, leading);
+        if own_line.is_none() {
+            pending = pending.with_inline_prefix();
+        }
+        let recorded = self.record_type_head(
+            compound::PreparedTypeContent::Type(node),
+            pending,
+            context,
+            writer,
+        )?;
+        let opening = match own_line {
+            _ if recorded.riding => {
+                writer.space();
+                None
+            }
+            Some(opening)
+                if !matches!(recorded.content, compound::PreparedTypeContent::Union(_)) =>
+            {
+                Some(opening)
+            }
+            _ => {
+                writer.space();
+                return self.format_recorded_type_head(recorded, context, TypeLayout::Root, writer);
+            }
+        };
+        writer.indent(|writer| {
+            if let Some(opening) = opening {
+                opening.write(writer, FlatSeparator::Space, Writer::hard_line);
+            }
+            self.format_recorded_type_head(recorded, context, TypeLayout::CallerIndented, writer)
         })
     }
 }

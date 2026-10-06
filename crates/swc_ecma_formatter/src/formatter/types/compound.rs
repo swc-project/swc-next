@@ -273,6 +273,7 @@ impl SingleCompoundHead<'_> {
 pub(super) struct MovableTypeHead<'ast> {
     owner: TsTypeData,
     pub(super) comments: &'ast [Comment],
+    pub(super) next_start: u32,
 }
 
 /// Pending packets share one resolved frontier and one first-output rendering role.
@@ -285,6 +286,8 @@ pub(super) struct PendingTypeHead<'ast> {
 
 enum TypeHeadPosition {
     Leading,
+    Inline,
+    Riding,
     Emitted,
 }
 
@@ -302,10 +305,19 @@ impl<'ast> PendingTypeHead<'ast> {
         }
     }
 
+    pub(super) fn with_inline_prefix(mut self) -> Self {
+        self.position = TypeHeadPosition::Inline;
+        self
+    }
+
     /// The caller's emitted prefix supplies the first comment's inline start.
     pub(super) fn with_emitted_prefix(mut self) -> Self {
         self.position = TypeHeadPosition::Emitted;
         self
+    }
+
+    pub(super) fn has_riding_prefix(&self) -> bool {
+        matches!(self.position, TypeHeadPosition::Riding)
     }
 }
 
@@ -440,6 +452,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return Some(MovableTypeHead {
                             owner: data,
                             comments: before,
+                            next_start: child_span.start,
                         });
                     }
                     current = child;
@@ -479,6 +492,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(MovableTypeHead {
                     owner: data,
                     comments,
+                    next_start: first_span.start,
                 });
             }
             if types.len() > 1 {
@@ -551,12 +565,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if matches!(intersection.leading, IntersectionPrefix::Source(_)) {
             return None;
         }
-        if let IntersectionPrefix::Leading { boundary, .. } = &intersection.leading
+        if let IntersectionPrefix::Leading {
+            boundary,
+            member_start,
+        } = &intersection.leading
             && !boundary.is_empty()
         {
             return Some(MovableTypeHead {
                 owner: intersection.data,
                 comments: boundary.comments(),
+                next_start: *member_start,
             });
         }
         let IntersectionMember::Type(first) = intersection.first_member() else {
@@ -1627,7 +1645,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let comments = std::mem::take(&mut pending.comments);
+        let Some(first) = comments.first() else {
+            return Ok(());
+        };
         self.comments.claim(comments)?;
+        let mut riding = &[][..];
+        if matches!(pending.position, TypeHeadPosition::Inline) {
+            let mut end = first.span.start;
+            for (index, comment) in comments.iter().enumerate() {
+                if self.line_breaks(end, comment.span.start) != 0
+                    || self.line_breaks(comment.span.start, comment.span.end) != 0
+                {
+                    pending.position = TypeHeadPosition::Leading;
+                    break;
+                }
+                if comment.kind == CommentKind::Line {
+                    riding = &comments[..=index];
+                    pending.position = TypeHeadPosition::Riding;
+                    break;
+                }
+                end = comment.span.end;
+            }
+            if matches!(pending.position, TypeHeadPosition::Inline)
+                && self.line_breaks(end, next_start) != 0
+            {
+                pending.position = TypeHeadPosition::Leading;
+            }
+        }
+        let comments = if let Some(last) = riding.last() {
+            let (_, remaining) = comments.split_at(riding.len());
+            self.format_inline_trailing_comments(riding, writer)?;
+            let next = remaining
+                .first()
+                .map_or(next_start, |comment| comment.span.start);
+            writer.hard_line();
+            if self.next_line_is_empty(last.span.end, next) {
+                writer.hard_line();
+            }
+            remaining
+        } else {
+            comments
+        };
         let layout = if matches!(pending.position, TypeHeadPosition::Emitted) {
             CommentRunLayout::InlineLeading(next_start)
         } else {
@@ -2066,5 +2124,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CompoundTypeKind::Intersection => writer.line(),
             });
         Ok(())
+    }
+
+    pub(super) fn prepared_content_accepts_caller_head(
+        &self,
+        content: &PreparedTypeContent<'ast>,
+    ) -> bool {
+        match content {
+            PreparedTypeContent::Type(node) => {
+                node.source_owner.is_none()
+                    && matches!(
+                        node.data,
+                        TsTypeData::TsParenthesizedType(_)
+                            | TsTypeData::TsUnionType(_)
+                            | TsTypeData::TsIntersectionType(_)
+                            | TsTypeData::TsArrayType(_)
+                            | TsTypeData::TsIndexedAccessType(_)
+                            | TsTypeData::TsConditionalType(_)
+                    )
+            }
+            PreparedTypeContent::Union(_)
+            | PreparedTypeContent::Intersection(_)
+            | PreparedTypeContent::Postfix(_)
+            | PreparedTypeContent::Conditional(_) => true,
+            PreparedTypeContent::Parentheses(parentheses) => parentheses.movable,
+            PreparedTypeContent::Compound(single) => single.movable,
+        }
     }
 }

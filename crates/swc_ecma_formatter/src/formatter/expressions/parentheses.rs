@@ -133,7 +133,14 @@ pub(in crate::formatter) struct IgnoredSourceParentheses {
 
 pub(in crate::formatter) struct SourceParenthesesContent {
     pub(super) data: ExprData,
+    pub(in crate::formatter) mode: ContentMode,
     pub(in crate::formatter) ignored: Option<IgnoredSourceParentheses>,
+}
+
+impl SourceParenthesesContent {
+    pub(super) fn leading(&self) -> Option<Span> {
+        self.ignored.as_ref().map(|ignored| ignored.leading)
+    }
 }
 
 enum RetainedParentheses {
@@ -669,7 +676,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let first = match data {
             ExprData::ParenthesizedExpression(first) if self.has_suppression => first,
             _ => {
-                return SourceParenthesesContent { data, ignored };
+                return SourceParenthesesContent {
+                    data,
+                    mode: context.content_mode,
+                    ignored,
+                };
             }
         };
         let start = first.span(self.ast).start;
@@ -711,7 +722,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if ignored.is_none() {
             data = original;
         }
-        SourceParenthesesContent { data, ignored }
+        SourceParenthesesContent {
+            data,
+            mode: context.content_mode,
+            ignored,
+        }
     }
 
     pub(in crate::formatter) fn source_parentheses_rhs_content(
@@ -908,7 +923,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn source_parentheses_choice(
         &self,
         parenthesized: ParenthesizedExpression,
-        context: ExpressionContext,
+        mut context: ExpressionContext,
     ) -> SourceParenthesesChoice {
         let span = parenthesized.span(self.ast);
         let child = parenthesized.expression(self.ast);
@@ -918,11 +933,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             inner: child_span,
             inner_target: ParenthesisInner::Expression(child),
         };
-        let comments = self.source_parentheses_comments(boundary);
+        let comments = if self.has_suppression {
+            self.source_parentheses_comments(boundary)
+        } else {
+            SourceParenthesesComments {
+                head: &[],
+                tail: &[],
+            }
+        };
         let trailing = Span::new(child_span.end, span.end - 1);
+        let tail_end = comments
+            .tail
+            .partition_point(|comment| comment.span.end <= trailing.end);
         let trailing_suppression =
-            self.trailing_suppression_from_comments(trailing, comments.tail, true);
-        if matches!(trailing_suppression, Some(TrailingSuppression::Inline))
+            self.trailing_suppression_from_comments(trailing, &comments.tail[..tail_end], true);
+        let trailing_binding = match trailing_suppression {
+            None => CommentBinding::Unbound,
+            Some(_) => CommentBinding::BoundTo(child_span),
+        };
+        // Inline trailing suppression can own the complete source pair.
+        let inline = matches!(trailing_suppression, Some(TrailingSuppression::Inline));
+        if inline
             && (matches!(context.position, ExpressionPosition::Statement)
                 || context.tail_owner == TailOwner::ParentOperation
                 || self.expression_needs_parentheses(
@@ -933,44 +964,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return SourceParenthesesChoice::Verbatim;
         }
-        let mode =
-            if context.content_mode == ContentMode::Verbatim || trailing_suppression.is_some() {
+        if context.content_mode == ContentMode::Formatted && self.has_suppression {
+            context.content_mode = if trailing_suppression.is_some() {
                 ContentMode::Verbatim
             } else {
                 self.content_mode(comments.head)
             };
+        }
         if self.parenthesis_has_type_cast(span.start) {
             return SourceParenthesesChoice::Retained {
                 kind: RetainedParentheses::Cast,
-                mode,
+                mode: context.content_mode,
             };
         }
         if context.parentheses_owner == ParenthesesOwner::Expression
             && matches!(context.position, ExpressionPosition::CallCallee { .. })
         {
-            let receiver = if mode == ContentMode::Formatted {
-                self.expression_content(child).expression
-            } else {
-                child
+            let receiver = match context.content_mode {
+                ContentMode::Formatted => self.expression_content(child).expression,
+                ContentMode::Verbatim => child,
             };
             if matches!(
                 self.ast.expr_data(receiver),
                 ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
             ) {
-                let packet = self.source_parentheses_comments(SourceParentheses {
+                let comments = self.source_parentheses_comments(SourceParentheses {
                     outer: span,
                     inner: receiver.span(self.ast),
                     inner_target: ParenthesisInner::Expression(receiver),
                 });
-                if !packet.head.is_empty() || !packet.tail.is_empty() {
+                if !comments.head.is_empty() || !comments.tail.is_empty() {
                     return SourceParenthesesChoice::Retained {
                         kind: RetainedParentheses::FunctionReceiver,
-                        mode,
+                        mode: context.content_mode,
                     };
                 }
             }
         }
-        if matches!(context.position, ExpressionPosition::ConditionalTest)
+        if Self::conditional_test_pair_is_enclosed(context.position)
             && matches!(
                 self.ast.expr_data(child),
                 ExprData::ConditionalExpression(_)
@@ -981,26 +1012,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode: context.content_mode,
             };
         }
-        if mode == ContentMode::Verbatim
-            && (matches!(context.position, ExpressionPosition::Statement)
-                || trailing_suppression.is_some()
-                    && context.tail_owner == TailOwner::ParentOperation
-                || matches!(context.position, ExpressionPosition::BinaryOperand { operator, side: super::binary::OperandSide::Left } if super::binary::BinaryLike::from_data(self.ast.expr_data(child), self.ast).is_none_or(|binary| !operator.flattens(binary.operator)))
+        let ignored_child =
+            self.ignored_parentheses_child_with_comments(child, context.content_mode, comments);
+        if let Some(ignored) = ignored_child
+            && (!trailing_binding.allows_relocation(None)
+                && context.tail_owner == TailOwner::ParentOperation
+                || self.ignored_operand_owns_operation_head(ignored, context.position)
                 || matches!(
                     context.position,
-                    ExpressionPosition::UnaryArgument(_)
-                        | ExpressionPosition::ConditionalTest
-                        | ExpressionPosition::ArrowBody
-                        | ExpressionPosition::RestrictedArgument
-                        | ExpressionPosition::AwaitArgument
-                        | ExpressionPosition::YieldArgument
+                    ExpressionPosition::Statement
+                        | ExpressionPosition::UnaryArgument(_)
                         | ExpressionPosition::MemberObject(_)
                         | ExpressionPosition::MemberAssignmentObject
                         | ExpressionPosition::CallCallee { .. }
                         | ExpressionPosition::NewCallee
+                        | ExpressionPosition::ArrowBody
+                        | ExpressionPosition::RestrictedArgument
+                        | ExpressionPosition::YieldArgument
+                        | ExpressionPosition::AwaitArgument
                 )
+                || context.expression_start == ExpressionStart::ArrowBody
                 || self.for_initializer_span.is_some_and(|scope| {
-                    self.opaque_initializer_needs_enclosure(self.ast.expr_data(child), scope)
+                    self.opaque_initializer_needs_enclosure(self.ast.expr_data(ignored), scope)
                 })
                 || self.parentheses_separate_diagnostic_lines(boundary)
                 || self
@@ -1013,17 +1046,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return SourceParenthesesChoice::Retained {
                 kind: RetainedParentheses::Operand,
-                mode,
+                mode: ContentMode::Verbatim,
             };
         }
-        let ignored_child = (mode == ContentMode::Verbatim
-            && comments.head.iter().chain(comments.tail).all(|&comment| {
-                let semantics = self.comment_semantics(comment);
-                semantics.is_ordinary() || semantics.suppression
-            }))
-        .then_some(child);
         SourceParenthesesChoice::Content {
-            mode,
+            mode: context.content_mode,
             ignored_child,
         }
     }
@@ -1252,7 +1279,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             let mut asi_guard = parenthesize
                 || match data {
-                    ExprData::ArrayExpression(_) | ExprData::RegExpLiteral(_) => true,
+                    ExprData::ArrayExpression(_)
+                    | ExprData::RegExpLiteral(_)
+                    | ExprData::TsTypeAssertion(_) => true,
                     ExprData::UnaryExpression(unary) => matches!(
                         unary.operator(self.ast),
                         swc_next_ecma_ast::UnaryOperator::Positive
@@ -1307,18 +1336,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let ExprData::ConditionalExpression(conditional) = data
             && parenthesize
-            && matches!(
-                context.position,
-                ExpressionPosition::CallCallee { .. }
-                    | ExpressionPosition::NewCallee
-                    | ExpressionPosition::MemberObject(_)
-                    | ExpressionPosition::MemberAssignmentObject
-            )
+            && Self::conditional_grammar_pair_is_enclosed(context)
         {
             return self.format_conditional_enclosed(conditional, context, writer);
         }
         if let ExprData::ConditionalExpression(conditional) = data
-            && matches!(context.position, ExpressionPosition::ConditionalTest)
+            && Self::conditional_test_pair_is_enclosed(context.position)
         {
             return writer.group(false, |writer| {
                 writer.text("(");
@@ -1485,7 +1508,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         if ignored_child.is_none()
             && let Some(boundary) = self
-                .protected_grammar_parentheses(&content, context)
+                .type_binary_operand_parentheses(&content, context)
+                .or_else(|| self.protected_grammar_parentheses(&content, context))
                 .or_else(|| self.sequence_member_parentheses(&content, context))
         {
             return self.format_protected_grammar_parentheses(
@@ -1774,28 +1798,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 array_comments.as_deref_mut(),
                 writer,
             )?;
-            let position =
-                if let (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(operator)) =
-                    (mode, context.position)
-                {
-                    ExpressionPosition::ParenthesizedUnaryArgument(operator)
-                } else {
+            let position = match boundary.inner_target {
+                ParenthesisInner::Expression(expression) => {
+                    self.type_assertion_parentheses_position(expression, None, context.position)
+                }
+                ParenthesisInner::SourcePair | ParenthesisInner::Unresolved => {
                     ExpressionPosition::Nested
-                };
+                }
+            };
             let mut inner_context = if matches!(kind, RetainedParentheses::FunctionReceiver) {
                 context.inside_parentheses()
             } else {
-                ExpressionContext::at(position)
+                match (mode, context.position) {
+                    (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(operator)) => {
+                        ExpressionContext::at(ExpressionPosition::ParenthesizedUnaryArgument(
+                            operator,
+                        ))
+                    }
+                    (
+                        _,
+                        position @ (ExpressionPosition::MemberAssignmentObject
+                        | ExpressionPosition::AssignmentTarget
+                        | ExpressionPosition::UpdateArgument),
+                    ) => ExpressionContext::at(position).inside_parentheses(),
+                    _ => ExpressionContext::at(position).inside_parentheses(),
+                }
             }
             .with_content_mode(mode)
             .with_operand_indent(operand_indent)
             .with_tail_owner(context.tail_owner);
-            if !matches!(
-                (mode, context.position),
-                (ContentMode::Verbatim, ExpressionPosition::UnaryArgument(_))
-            ) {
-                inner_context = inner_context.inside_parentheses();
-            }
             inner_context.member_chain_layout = context.member_chain_layout;
             if context.member_chain_layout == super::MemberChainLayout::Local {
                 inner_context.member_layout = context.member_layout;
@@ -2133,7 +2164,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    fn format_parenthesized_expression(
+    pub(super) fn format_parenthesized_expression(
         &mut self,
         expression: Expr,
         mut prepared: Option<ExpressionContent>,
@@ -2147,6 +2178,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             writer.text(";");
         }
+        let position = self.type_assertion_parentheses_position(
+            expression,
+            prepared.as_ref(),
+            context.position,
+        );
         let operand_indent = if self.is_nullish_conditional_operand(
             prepared
                 .get_or_insert_with(|| self.expression_content(expression))
@@ -2163,17 +2199,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.soft_line();
                 self.format_comment_run_with_array_comments(
                     head.comments,
-                    CommentRunLayout::FlatLeading(head.content_start),
+                    if matches!(
+                        self.ast.expr_data(expression),
+                        ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
+                    ) {
+                        CommentRunLayout::GroupedLeading(head.content_start)
+                    } else {
+                        CommentRunLayout::FlatLeading(head.content_start)
+                    },
                     array_comments.as_deref_mut(),
                     writer,
                 )?;
                 let tail = self.format_expression_prepared_with_array_comments(
                     expression,
                     prepared,
-                    ExpressionContext::at(ExpressionPosition::Nested)
+                    ExpressionContext::at(position)
                         .with_operand_indent(operand_indent)
                         .with_content_mode(context.content_mode)
                         .with_tail_owner(context.tail_owner)
+                        .with_member_chain_layout(context.member_chain_layout)
+                        .with_target_member_intent(context)
                         .inside_parentheses(),
                     array_comments.as_deref_mut(),
                     writer,
@@ -2265,5 +2310,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             },
         )
+    }
+
+    fn type_binary_operand_parentheses(
+        &self,
+        content: &ExpressionContent,
+        context: ExpressionContext,
+    ) -> Option<SourceParentheses> {
+        if context.content_mode != ContentMode::Formatted
+            || !matches!(context.position, ExpressionPosition::TypeBinaryOperand)
+        {
+            return None;
+        }
+        let removed = content.parentheses?;
+        let tail = removed.tail?;
+        let comments = self.source_parentheses_comments(removed.source).tail;
+        let last = comments.last()?;
+        // Source-separated or multiline tail packets must close before `as`/`satisfies`.
+        // An inline line suffix can remain pending through the type operator.
+        (self.line_breaks(tail.span.start, last.span.end) != 0).then_some(removed.source)
+    }
+
+    fn ignored_operand_owns_operation_head(
+        &self,
+        expression: Expr,
+        position: ExpressionPosition,
+    ) -> bool {
+        match position {
+            ExpressionPosition::BinaryOperand {
+                operator,
+                side: super::binary::OperandSide::Left,
+            } => super::binary::BinaryLike::from_data(self.ast.expr_data(expression), self.ast)
+                .is_none_or(|child| !operator.flattens(child.operator)),
+            ExpressionPosition::ConditionalTest
+            | ExpressionPosition::TypeBinaryOperand
+            | ExpressionPosition::NonNullOperand => true,
+            _ => false,
+        }
     }
 }
