@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value satisfies // explanation
+Result;
+---------- Options ----------
+{}
+---------- Output ----------
+value satisfies Result; // explanation
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+value satisfies Result; // explanation
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+value satisfies Result // explanation

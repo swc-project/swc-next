@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = (source as Shape)
+// lookup
+.field;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = (source as Shape)
+  // lookup
+  .field;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const value = (
+  source as Shape
+)
+  // lookup
+  .field;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = (source as Shape)
+  // lookup
+  .field

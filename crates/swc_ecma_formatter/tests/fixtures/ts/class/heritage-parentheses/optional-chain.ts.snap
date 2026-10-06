@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Derived extends ((factory?.())!.Base) {}
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+class Derived
+  extends (factory?.())!.Base {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+class Derived
+  extends (factory?.())!.Base {}
+
+---------- Options ----------
+{"printWidth":80,"useTabs":true}
+---------- Output ----------
+class Derived extends (factory?.())!.Base {}
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"none"}
+---------- Output ----------
+class Derived extends (factory?.())!.Base {}

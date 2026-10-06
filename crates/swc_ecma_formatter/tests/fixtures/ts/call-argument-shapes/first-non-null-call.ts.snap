@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(() => { a(); b(); }, g(x, y)!);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+f(() => {
+  a();
+  b();
+}, g(x, y)!);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+f(() => {
+  a();
+  b();
+}, g(x, y)!);

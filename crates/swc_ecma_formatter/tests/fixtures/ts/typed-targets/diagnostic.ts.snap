@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let target = 1;
+(
+// @ts-expect-error
+target as string
+) = "text";
+---------- Options ----------
+{}
+---------- Output ----------
+let target = 1;
+(
+  // @ts-expect-error
+  target as string
+) = "text";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+let target = 1;
+(
+  // @ts-expect-error
+  target as string
+) = "text";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+let target = 1
+;(
+  // @ts-expect-error
+  target as string
+) = "text"

@@ -44,7 +44,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         loop {
             expression = match self.expression_content(expression).data {
-                ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 ExprData::MemberExpression(member) => {
                     let Ok(head) = self.prepare_member_head(member) else {
                         return false;
@@ -54,6 +53,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     head.object
                 }
+                ExprData::TsNonNullExpression(node) => node.expression(self.ast),
+                ExprData::ChainExpression(node) => node.expression(self.ast),
                 data => {
                     return super::chains::atomic_chain_head(data)
                         || matches!(data, ExprData::Super(_));

@@ -479,11 +479,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         break;
                     };
                     context = ExpressionContext::at(ExpressionPosition::AssignmentTarget);
-                    self.simple_target_expression(target)?
+                    super::expressions::targets::SimpleTarget::new(self.ast, target).expression()
                 }
                 ExprData::UpdateExpression(update) if !update.prefix(self.ast) => {
                     context = ExpressionContext::at(ExpressionPosition::UpdateArgument);
-                    self.simple_target_expression(update.argument(self.ast))?
+                    super::expressions::targets::SimpleTarget::new(
+                        self.ast,
+                        update.argument(self.ast),
+                    )
+                    .expression()
                 }
                 _ => {
                     let Some((child, child_context)) =

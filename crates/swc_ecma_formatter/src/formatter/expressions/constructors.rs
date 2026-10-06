@@ -85,6 +85,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         loop {
             match data {
                 ExprData::CallExpression(_) | ExprData::ImportExpression(_) => return true,
+                ExprData::TsNonNullExpression(assertion) => {
+                    let expression = assertion.expression(self.ast);
+                    data = if mode == ContentMode::Formatted {
+                        self.expression_content(expression).data
+                    } else {
+                        self.ast.expr_data(expression)
+                    };
+                }
                 ExprData::MemberExpression(member) => {
                     let object = member.object(self.ast);
                     data = if mode == ContentMode::Formatted {

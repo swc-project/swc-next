@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const chosen = input as
+// choose type
+number;
+---------- Options ----------
+{}
+---------- Output ----------
+const chosen = input as
+  // choose type
+  number;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const chosen =
+  input as
+    // choose type
+    number
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const chosen = input as
+	// choose type
+	number;
+
+---------- Options ----------
+{"printWidth":100,"semi":false}
+---------- Output ----------
+const chosen = input as
+  // choose type
+  number
