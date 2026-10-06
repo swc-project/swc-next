@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 305/804 (37.94%)
-Snapshot matched: 305/804
-AST parity: 309/309
-AST mismatched: 0/309
+Passed: 311/804 (38.68%)
+Snapshot matched: 311/804
+AST parity: 315/315
+AST mismatched: 0/315
 AST format errors: 0/804
 Mismatched: 4/804
-Format errors: 495/804
+Format errors: 489/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -160,7 +160,6 @@ Unsupported option sets: 7
 - typescript/compiler/es5ExportDefaultClassDeclaration4.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/compiler/globalIsContextualKeyword.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/compiler/indexSignatureWithInitializer.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/compiler/mappedTypeWithCombinedTypeMappers.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/compiler/privacyGloImport.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/ambient/ambientDeclarations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/classes/abstract.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -256,11 +255,9 @@ Unsupported option sets: 7
 - typescript/declare/declare-enum.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-function.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-get-set-field.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/declare/declare-interface.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-module-empty/empty.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-module.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-namespace.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/declare/declare-var.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/object-type-in-declare-function.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/trailing-comma/function-rest-trailing-comma.ts: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
 - typescript/decorator-auto-accessors/decorator-auto-accessors-type-annotations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -308,7 +305,6 @@ Unsupported option sets: 7
 - typescript/import-require/comments.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-require/import-require.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-require/type-imports.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/import-type/long-module-name/long-module-name3.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-type/long-module-name/long-module-name4.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/index-signature/index-signature.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/index-signature/static.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -322,7 +318,6 @@ Unsupported option sets: 7
 - typescript/interface/long-extends.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/interface/separator.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/interface2/break/break.ts: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
-- typescript/interface2/comments-declare.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/interface2/comments-ts-and-flow/18216-mutiple-clauses.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/interface2/comments-ts-and-flow/18216-type-parameters-mutiple-clauses.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/interface2/comments-ts-and-flow/18216-type-parameters.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -373,7 +368,6 @@ Unsupported option sets: 7
 - typescript/predicate-types/predicate-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/private-fields-in-in/basic.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/quote-props/enums.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
-- typescript/readonly/array.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/readonly/readonly.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/satisfies-operators/comments-unstable.ts: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/satisfies-operators/template-literal.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent

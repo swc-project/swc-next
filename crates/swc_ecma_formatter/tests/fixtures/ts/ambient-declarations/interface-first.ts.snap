@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare interface A
+/* prettier-ignore */
+{ x : number; y: string; }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+declare interface A
+/* prettier-ignore */
+{
+  x : number;
+  y: string;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+declare interface A
+/* prettier-ignore */
+{
+  x : number;
+  y: string;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare interface A
+/* prettier-ignore */
+{
+  x : number;
+  y: string
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+declare interface A
+/* prettier-ignore */
+{
+  x : number;
+  y: string
+}
