@@ -166,6 +166,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into()),
             };
         }
+        let ambient = match data {
+            DeclData::VariableDeclaration(node) => node.declare(self.ast),
+            DeclData::TsTypeAliasDeclaration(node) => node.declare(self.ast),
+            DeclData::TsInterfaceDeclaration(node) => node.declare(self.ast),
+            _ => false,
+        };
+        let keyword = if ambient {
+            let head = self.prepare_ambient_declaration_keyword(declaration)?;
+            self.format_ambient_declaration_prefix(&head, writer)?;
+            Some(head.keyword)
+        } else {
+            None
+        };
         match data {
             DeclData::Function(function) => {
                 self.format_function(function, writer)?;
@@ -184,11 +197,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::VariableDeclaration(variable) => {
-                let (end, tail) = self.format_variable_declaration(variable, writer)?;
+                let (end, tail) = self.format_variable_declaration(variable, keyword, writer)?;
                 self.finish_statement(end, tail, punctuation, writer)
             }
             DeclData::TsInterfaceDeclaration(interface) => {
-                self.format_interface(interface, writer)?;
+                self.format_interface(interface, keyword, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: interface.span(self.ast).end,
                     has_terminator: false,
@@ -197,7 +210,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::TsTypeAliasDeclaration(alias) => {
-                let (end, tail) = self.format_type_alias(alias, writer)?;
+                let (end, tail) = self.format_type_alias(alias, keyword, writer)?;
                 let mut printed = self.finish_statement(end, tail, punctuation, writer)?;
                 printed.boundary = printed.boundary.type_declaration();
                 Ok(printed)
