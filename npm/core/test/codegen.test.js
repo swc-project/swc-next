@@ -312,3 +312,22 @@ test("encoder dispatch preserves identifier roles at FFI field boundaries", () =
   assert.throws(() => encodeJs(program), /Unsupported ESTree node type EmptyStatement/);
   assert.throws(() => encodeTs(program), /Unsupported ESTree node type EmptyStatement/);
 });
+
+
+test("encoder preserves binding ranges with holes, defaults, rest and storage growth", () => {
+  const { program } = parseSync("let [first, , ...tail] = source; let { x: item = 1, ...other } = source;");
+  const array = program.body[0].declarations[0].id;
+  array.elements[0] = { type: "AssignmentPattern", left: array.elements[0],
+    right: { type: "ArrayExpression", elements: Array(600).fill(null) } };
+  const expected = `let[first=[${",".repeat(600)}],,...tail]=source;let{x:item=1,...other}=source;`;
+  assert.deepEqual(encodeJs(program), encodeTs(program));
+  assert.equal(printSync(program, { minify: true }).code, expected);
+
+  const typed = parseSync("let [first, , ...tail]: number[] = source;", { lang: "ts" }).program;
+  assert.equal(printSync(typed, { minify: true }).code, "let[first,,...tail]:number[]=source;");
+
+  const empty = parseSync("let [] = source; let {} = source;").program;
+  assert.equal(printSync(empty, { minify: true }).code, "let[]=source;let{}=source;");
+  const rest = parseSync("let [...tail] = source; let {...other} = source;").program;
+  assert.equal(printSync(rest, { minify: true }).code, "let[...tail]=source;let{...other}=source;");
+});

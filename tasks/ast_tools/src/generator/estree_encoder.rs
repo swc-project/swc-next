@@ -248,7 +248,9 @@ fn range_length(node: &str, field: &str) -> Option<&'static str> {
     match (node, field) {
         ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => Some("_directiveCount"),
         ("Program" | "FunctionBody" | "TsModuleBlock", "body") => Some("_length - _directiveCount"),
-        ("FormalParameters", "items") => Some("_itemCount"),
+        ("FormalParameters", "items")
+        | ("ArrayPattern", "elements")
+        | ("ObjectPattern", "properties") => Some("_itemCount"),
         _ => None,
     }
 }
@@ -346,7 +348,9 @@ fn encode_expression(
                 ("Program" | "FunctionBody" | "TsModuleBlock", "body") => {
                     format!("encArraySlice(_body, {encoder}, _directiveCount, _length)")
                 }
-                ("FormalParameters", "items") => "_itemsStart".into(),
+                ("FormalParameters", "items")
+                | ("ArrayPattern", "elements")
+                | ("ObjectPattern", "properties") => "_itemsStart".into(),
                 _ => format!("encArray({source}, {encoder}, {holes})"),
             }
         }
@@ -449,7 +453,7 @@ fn field_source(node: &str, field: &str) -> String {
     };
 
     match (node, raw) {
-        ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => "_directives".into(),
+        ("Program" | "FunctionBody" | "TsModuleBlock", "directives") => "_body".into(),
         ("Program" | "FunctionBody" | "TsModuleBlock", "body") => "_body".into(),
         ("FormalParameter", "pattern") => "_pattern".into(),
         ("FormalParameter", "initializer") => "_initializer".into(),
@@ -472,13 +476,13 @@ fn field_source(node: &str, field: &str) -> String {
             | "TsMethodSignature"
             | "TsCallSignatureDeclaration",
             "params",
-        ) => "_params".into(),
-        ("FormalParameters", "items") => "_items".into(),
+        ) => "n.params".into(),
+        ("FormalParameters", "items") => "_values".into(),
         ("FormalParameters", "rest") => "_rest".into(),
         ("FormalParameters", "kind") => "0".into(),
-        ("ArrayPattern", "elements") => "_elements".into(),
+        ("ArrayPattern", "elements") => "_values".into(),
         ("ArrayPattern", "rest") => "_rest".into(),
-        ("ObjectPattern", "properties") => "_properties".into(),
+        ("ObjectPattern", "properties") => "_values".into(),
         ("ObjectPattern", "rest") => "_rest".into(),
         ("Function", "function_type") => {
             "n.type === \"FunctionExpression\" ? \"FunctionExpression\" : \"FunctionDeclaration\""
@@ -603,7 +607,7 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
     const _initializer = _hasInitializer ? n.right : null;
 "#,
         ),
-        "Function" if !is_ts => output.push_str("    const _params = n.params;\n"),
+        "Function" if !is_ts => {}
         "Function"
         | "TsFunction"
         | "TsFunctionType"
@@ -614,53 +618,73 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
     const _paramStart = _thisParam === null ? 0 : 1;
 "#,
         ),
-        "FormalParameters" => output.push_str(
-            r#"    const _length = n?.length ?? 0;
-    let _itemCount = _length - from;
-    let _rest = null;
-    for (let i = from; i < _length; i++) {
-      const parameter = n[i];
-      if (parameter?.type === "RestElement") {
-        _rest = parameter;
-        _itemCount--;
-      }
-    }
-    const _start = _length > from ? asStart(n[from]) : 0;
-    const _end = _length > from ? asEnd(n[_length - 1]) : 0;
-    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
-    let slot = _itemsStart;
-    for (let i = from; i < _length; i++) {
-      const parameter = n[i];
-      if (parameter?.type !== "RestElement") {
-        const id = encFormalParameterItem(parameter);
-        setExtraU32(slot++, 0, id);
-      }
-    }
-"#,
-        ),
-        "ArrayPattern" => output.push_str(
-            r#"    const _elements = [];
-    let _rest = null;
-    for (const element of n.elements ?? []) {
-      if (element?.type === "RestElement") _rest = element;
-      else _elements.push(element);
-    }
-"#,
-        ),
-        "ObjectPattern" => output.push_str(
-            r#"    const _properties = [];
-    let _rest = null;
-    for (const property of n.properties ?? []) {
-      if (property?.type === "RestElement") _rest = property;
-      else _properties.push(property);
-    }
-"#,
+        "FormalParameters" => {
+            write_rest_array_prelude(output, "n", "from", "encFormalParameterItem", false, true)
+        }
+        "ArrayPattern" => {
+            write_rest_array_prelude(output, "n.elements", "0", "encBindingPattern", true, false)
+        }
+        "ObjectPattern" => write_rest_array_prelude(
+            output,
+            "n.properties",
+            "0",
+            "encBindingProperty",
+            false,
+            false,
         ),
         "NumericLiteral" => {
             output.push_str("    const _numericRaw = n.raw == null ? null : numericRaw(n);\n")
         }
         _ => {}
     }
+}
+
+fn write_rest_array_prelude(
+    output: &mut String,
+    values: &str,
+    from: &str,
+    encoder: &str,
+    holes: bool,
+    spans: bool,
+) {
+    writeln!(output, "    const _values = {values};").unwrap();
+    output.push_str("    const _length = _values?.length ?? 0;\n");
+    writeln!(output, "    let _itemCount = _length - {from};").unwrap();
+    output.push_str("    let _rest = null;\n");
+    writeln!(output, "    for (let i = {from}; i < _length; i++) {{").unwrap();
+    output.push_str(
+        r#"      const value = _values[i];
+      if (value?.type === "RestElement") {
+        _rest = value;
+        _itemCount--;
+      }
+    }
+"#,
+    );
+    if spans {
+        writeln!(
+            output,
+            "    const _start = _length > {from} ? asStart(_values[{from}]) : 0;"
+        )
+        .unwrap();
+        writeln!(
+            output,
+            "    const _end = _length > {from} ? asEnd(_values[_length - 1]) : 0;"
+        )
+        .unwrap();
+    }
+    output.push_str("    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;\n    let slot = _itemsStart;\n");
+    writeln!(output, "    for (let i = {from}; i < _length; i++) {{").unwrap();
+    output.push_str(
+        "      const value = _values[i];\n      if (value?.type !== \"RestElement\") {\n",
+    );
+    let id = if holes {
+        format!("value == null ? NULL : {encoder}(value)")
+    } else {
+        format!("{encoder}(value)")
+    };
+    writeln!(output, "        const id = {id};").unwrap();
+    output.push_str("        setExtraU32(slot++, 0, id);\n      }\n    }\n");
 }
 
 struct Dispatch {

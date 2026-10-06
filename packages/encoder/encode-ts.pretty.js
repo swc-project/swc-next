@@ -536,31 +536,59 @@ function encodeTs(program) {
   }
 
   function encArrayPattern(n) {
-    const _elements = [];
+    const _values = n.elements;
+    const _length = _values?.length ?? 0;
+    let _itemCount = _length - 0;
     let _rest = null;
-    for (const element of n.elements ?? []) {
-      if (element?.type === "RestElement") _rest = element;
-      else _elements.push(element);
+    for (let i = 0; i < _length; i++) {
+      const value = _values[i];
+      if (value?.type === "RestElement") {
+        _rest = value;
+        _itemCount--;
+      }
     }
-    const v_0 = encArray(_elements, encBindingPattern, true);
+    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+    let slot = _itemsStart;
+    for (let i = 0; i < _length; i++) {
+      const value = _values[i];
+      if (value?.type !== "RestElement") {
+        const id = value == null ? NULL : encBindingPattern(value);
+        setExtraU32(slot++, 0, id);
+      }
+    }
+    const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
     const index = allocNode(18, asStart(n), asEnd(n));
-    writeArrayRange(v_0, _elements, payload, index * 16 + 0);
+    writeRange(v_0, _itemCount, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     return index;
   }
 
   function encObjectPattern(n) {
-    const _properties = [];
+    const _values = n.properties;
+    const _length = _values?.length ?? 0;
+    let _itemCount = _length - 0;
     let _rest = null;
-    for (const property of n.properties ?? []) {
-      if (property?.type === "RestElement") _rest = property;
-      else _properties.push(property);
+    for (let i = 0; i < _length; i++) {
+      const value = _values[i];
+      if (value?.type === "RestElement") {
+        _rest = value;
+        _itemCount--;
+      }
     }
-    const v_0 = encArray(_properties, encBindingProperty, false);
+    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+    let slot = _itemsStart;
+    for (let i = 0; i < _length; i++) {
+      const value = _values[i];
+      if (value?.type !== "RestElement") {
+        const id = encBindingProperty(value);
+        setExtraU32(slot++, 0, id);
+      }
+    }
+    const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
     const index = allocNode(19, asStart(n), asEnd(n));
-    writeArrayRange(v_0, _properties, payload, index * 16 + 0);
+    writeRange(v_0, _itemCount, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     return index;
   }
@@ -1019,24 +1047,25 @@ function encodeTs(program) {
   }
 
   function encFormalParameters(n, from = 0) {
-    const _length = n?.length ?? 0;
+    const _values = n;
+    const _length = _values?.length ?? 0;
     let _itemCount = _length - from;
     let _rest = null;
     for (let i = from; i < _length; i++) {
-      const parameter = n[i];
-      if (parameter?.type === "RestElement") {
-        _rest = parameter;
+      const value = _values[i];
+      if (value?.type === "RestElement") {
+        _rest = value;
         _itemCount--;
       }
     }
-    const _start = _length > from ? asStart(n[from]) : 0;
-    const _end = _length > from ? asEnd(n[_length - 1]) : 0;
+    const _start = _length > from ? asStart(_values[from]) : 0;
+    const _end = _length > from ? asEnd(_values[_length - 1]) : 0;
     const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
     let slot = _itemsStart;
     for (let i = from; i < _length; i++) {
-      const parameter = n[i];
-      if (parameter?.type !== "RestElement") {
-        const id = encFormalParameterItem(parameter);
+      const value = _values[i];
+      if (value?.type !== "RestElement") {
+        const id = encFormalParameterItem(value);
         setExtraU32(slot++, 0, id);
       }
     }
