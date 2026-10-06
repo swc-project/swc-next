@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type C = typeof import("./m").f<<T>(v: T) => T>;
+---------- Options ----------
+{}
+---------- Output ----------
+type C = typeof import("./m").f<<T>(v: T) => T>;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type C =
+  typeof import("./m").f<
+    <T>(v: T) => T
+  >;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+type C =
+  typeof import("./m").f<
+    <T>(v: T) => T
+  >
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type C =
+  typeof import("./m").f<
+    <
+      T,
+    >(
+      v: T,
+    ) => T
+  >
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type C =
+	typeof import("./m").f<
+		<T>(v: T) => T
+	>;
