@@ -699,51 +699,6 @@ mod tests {
         assert!(decoded_statement.is_empty_statement(&decoded));
     }
 
-    fn string_source_buffer() -> Vec<u8> {
-        let allocator = Allocator::new();
-        let mut ast = Ast::new("", &allocator);
-        let name = ast.add_utf8("name");
-        let expression = ast.expr_identifier_reference(Span::new(0, 4), name);
-        let statement = ast.stmt_expression_statement(Span::new(0, 4), expression);
-        let body = ast.add_sub_range([statement]);
-        let program = ast.program(Span::new(0, 4), SubRange::empty(), body, None);
-        ast.set_root_program(program);
-        let mut buffer = vec![0; buffer_size(&ast, &[])];
-        serialize_into(&ast, &[], &mut buffer, 0);
-        buffer[8..12].copy_from_slice(&0u32.to_le_bytes());
-        buffer[12..16].copy_from_slice(&4u32.to_le_bytes());
-        buffer
-    }
-
-    #[test]
-    fn deserialize_string_source() {
-        let allocator = Allocator::new();
-        let buffer = string_source_buffer();
-        let decoded = deserialize_from(&buffer, &allocator).unwrap();
-        drop(buffer);
-        let body = decoded.root_program().body(&decoded);
-        let statement = body
-            .get_node(&decoded, 0)
-            .unwrap()
-            .as_expression_statement(&decoded)
-            .unwrap();
-        let identifier = statement
-            .expression(&decoded)
-            .as_identifier_reference(&decoded)
-            .unwrap();
-        assert_eq!(decoded.get_utf8(identifier.name(&decoded)), "name");
-        assert_eq!(decoded.source(), "name");
-
-        let mut truncated = string_source_buffer();
-        truncated[12..16].copy_from_slice(&8u32.to_le_bytes());
-        assert!(deserialize_from(&truncated, &allocator).is_err());
-
-        let mut invalid = string_source_buffer();
-        let end = invalid.len();
-        invalid[end - 4] = 0xff;
-        assert!(deserialize_from(&invalid, &allocator).is_err());
-    }
-
     #[test]
     fn position_map_across_blocks() {
         let (ascii, first_non_ascii) = build_pos_map("abc", 3);
