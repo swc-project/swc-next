@@ -149,25 +149,26 @@ function encodeTs(program) {
     if (value == null || value === "") return { start: 0, end: 0, isUtf8: true };
     if (typeof value !== "string") value = String(value);
     const start = poolLength;
+    const length = value.length;
     // Copy short ASCII strings directly; use the native encoder for other UTF-8.
-    if (value.length <= 64) {
-      ensurePool(value.length);
+    if (length <= 12) {
+      ensurePool(length);
       let index = 0;
-      for (; index < value.length; index++) {
+      for (; index < length; index++) {
         const code = value.charCodeAt(index);
         if (code >= 0x80) break;
         pool[start + index] = code;
       }
-      if (index === value.length) {
+      if (index === length) {
         poolLength += index;
         return { start, end: poolLength, isUtf8: true };
       }
     }
-    ensurePool(value.length * 3);
+    ensurePool(length * 3);
     if (!/[\uD800-\uDFFF]/u.test(value)) {
       const { written } = textEncoder.encodeInto(value, pool.subarray(start));
       poolLength += written;
-      if (firstNonAsciiPos === NULL && written !== value.length) {
+      if (firstNonAsciiPos === NULL && written !== length) {
         let index = 0;
         while (value.charCodeAt(index) < 0x80) index++;
         firstNonAsciiPos = start + index;
