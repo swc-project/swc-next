@@ -163,6 +163,29 @@ fn write_value(
         }
     };
 
+    if let Some((name, optional)) = string_type(ty, schema) {
+        let encoder = if name == "AstUtf8" {
+            "encUtf8"
+        } else {
+            "encStr"
+        };
+        let destination = match location {
+            FieldLocation::Payload { offset, .. } => format!("payload, index * 16 + {offset}"),
+            FieldLocation::Extra { index } => format!("extra, (extraId + {index}) * 8"),
+        };
+        if optional {
+            writeln!(output, "    if ({value} == null) {{").unwrap();
+            writeln!(output, "      {}", setter("U32", 0, "NULL")).unwrap();
+            writeln!(output, "      {}", setter("U32", 4, "0")).unwrap();
+            writeln!(output, "    }} else {{").unwrap();
+            writeln!(output, "      {encoder}({value}, {destination});").unwrap();
+            output.push_str("    }\n");
+        } else {
+            writeln!(output, "    {encoder}({value}, {destination});").unwrap();
+        }
+        return;
+    }
+
     match ty {
         AstType::Struct(_) | AstType::Enum(_) => {
             writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
@@ -180,15 +203,6 @@ fn write_value(
             AstType::Struct(_) | AstType::Enum(_) => {
                 writeln!(output, "    {}", setter("U32", 0, value)).unwrap();
             }
-            AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
-                writeln!(
-                    output,
-                    "    {}",
-                    setter("U32", 0, &format!("{value}.start"))
-                )
-                .unwrap();
-                writeln!(output, "    {}", setter("U32", 4, &format!("{value}.end"))).unwrap();
-            }
             AstType::Primitive(primitive) if primitive.name == "Span" => {
                 writeln!(output, "    {}", setter("U32", 0, &format!("{value}[0]"))).unwrap();
                 writeln!(output, "    {}", setter("U32", 4, &format!("{value}[1]"))).unwrap();
@@ -200,20 +214,28 @@ fn write_value(
             inner => panic!("unsupported optional encoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
-            "AstUtf8" | "AstWtf8" | "Span" => {
-                let (start, end) = if primitive.name == "Span" {
-                    (format!("{value}[0]"), format!("{value}[1]"))
-                } else {
-                    (format!("{value}.start"), format!("{value}.end"))
-                };
-                writeln!(output, "    {}", setter("U32", 0, &start)).unwrap();
-                writeln!(output, "    {}", setter("U32", 4, &end)).unwrap();
+            "Span" => {
+                writeln!(output, "    {}", setter("U32", 0, &format!("{value}[0]"))).unwrap();
+                writeln!(output, "    {}", setter("U32", 4, &format!("{value}[1]"))).unwrap();
             }
             name => {
                 let kind = primitive_setter(name, schema);
                 writeln!(output, "    {}", setter(kind, 0, value)).unwrap();
             }
         },
+    }
+}
+
+fn string_type<'a>(ty: &'a AstType, schema: &'a Schema) -> Option<(&'a str, bool)> {
+    let (inner, optional) = match ty {
+        AstType::Option(option) => (&schema.types[option.inner_type_id], true),
+        ty => (ty, false),
+    };
+    match inner {
+        AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
+            Some((primitive.name, optional))
+        }
+        _ => None,
     }
 }
 
@@ -295,12 +317,7 @@ fn encode_expression(
                 "0".into()
             }
             AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
-                let encoder = if primitive.name == "AstUtf8" {
-                    "encUtf8"
-                } else {
-                    "encStr"
-                };
-                format!("{source} == null ? {{ start: NULL, end: 0 }} : {encoder}({source})")
+                source.into()
             }
             AstType::Primitive(primitive) if primitive.name == "Span" => {
                 format!("{source} == null ? [0, 0] : [asStart({source}), asEnd({source})]")
@@ -308,8 +325,7 @@ fn encode_expression(
             inner => panic!("unsupported optional encoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
-            "AstUtf8" => format!("encUtf8({source})"),
-            "AstWtf8" => format!("encStr({source})"),
+            "AstUtf8" | "AstWtf8" => source.into(),
             "bool" => format!("{source} ? 1 : 0"),
             "Span" => format!("[asStart({source}), asEnd({source})]"),
             "ScopeId" | "SymbolId" => "0".into(),
@@ -1018,16 +1034,16 @@ function encode(program) {
     return { start, end: start + length };
   }
 
-  function encUtf8(value) {
-    const result = encStr(value);
-    if (!result.isUtf8) {
-      throw new TypeError("AST UTF-8 field contains an unpaired surrogate");
-    }
-    return result;
+  function encUtf8(value, view, offset) {
+    encStr(value, view, offset, true);
   }
 
-  function encStr(value) {
-    if (value == null || value === "") return { start: 0, end: 0, isUtf8: true };
+  function encStr(value, view, offset, utf8 = false) {
+    if (value == null || value === "") {
+      view.setUint32(offset, 0, true);
+      view.setUint32(offset + 4, 0, true);
+      return;
+    }
     if (typeof value !== "string") value = String(value);
     const start = poolLength;
     const length = value.length;
@@ -1042,7 +1058,9 @@ function encode(program) {
       }
       if (index === length) {
         poolLength += index;
-        return { start, end: poolLength, isUtf8: true };
+        view.setUint32(offset, start, true);
+        view.setUint32(offset + 4, poolLength, true);
+        return;
       }
     }
     ensurePool(length * 3);
@@ -1054,11 +1072,14 @@ function encode(program) {
         while (value.charCodeAt(index) < 0x80) index++;
         firstNonAsciiPos = start + index;
       }
-      return { start, end: poolLength, isUtf8: true };
+      view.setUint32(offset, start, true);
+      view.setUint32(offset + 4, poolLength, true);
+      return;
     }
     // WTF-8 literals must retain lone surrogates. Use the legacy extra pool
     // for this entire transfer so every string keeps the same byte offsets.
-    let isUtf8 = true;
+    if (utf8) throw new TypeError("AST UTF-8 field contains an unpaired surrogate");
+    poolIsUtf8 = false;
     for (let index = 0; index < value.length; index++) {
       let code = value.charCodeAt(index);
       if (code < 0x80) pool[poolLength++] = code;
@@ -1073,13 +1094,13 @@ function encode(program) {
         pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
         pool[poolLength++] = 0x80 | (code & 0x3f);
       } else {
-        if (code >= 0xd800 && code <= 0xdfff) { isUtf8 = false; poolIsUtf8 = false; }
         pool[poolLength++] = 0xe0 | (code >> 12);
         pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
         pool[poolLength++] = 0x80 | (code & 0x3f);
       }
     }
-    return { start, end: poolLength, isUtf8 };
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, poolLength, true);
   }
 
   function ensurePool(additionalBytes) {
