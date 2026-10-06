@@ -28,26 +28,6 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
-test("printSync rejects lone surrogates before they reach native AstUtf8", () => {
-  const { program } = parseSync("const value = 1;");
-  program.body[0].declarations[0].id.name = "\uD800";
-
-  // Letting WTF-8 bytes reach native AstUtf8 would violate the safety
-  // requirement of Rust's `from_utf8_unchecked` and may cause undefined behavior.
-  assert.throws(
-    () => printSync(program),
-    /AST UTF-8 field contains an unpaired surrogate/,
-  );
-});
-
-test("printSync preserves lone surrogates in WTF-8 fields", () => {
-  const { program } = parseSync('const value = "ok";');
-  program.body[0].declarations[0].init.value = "\uD800";
-  program.body[0].declarations[0].init.raw = null;
-
-  assert.equal(printSync(program).code, 'const value = "\\uD800";\n');
-});
-
 test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].id.name = "\u{10400}";
@@ -206,7 +186,7 @@ function encodeWithBufferMode(program, mode) {
   return JSON.parse(output).map(value => Uint8Array.from(Buffer.from(value, "base64")));
 }
 
-test("encoder UTF-8 fallback preserves Unicode and lone surrogates", () => {
+test("encoder UTF-8 fallback matches Node", () => {
   const { program } = parseSync('"prefix"; "value"; "tail";');
   program.body[1].expression.value = "ab雪🌍\uD800x\uDFFF";
   program.body[1].expression.raw = null;

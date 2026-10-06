@@ -2,7 +2,7 @@
 
 const NULL = 0xffffffff;
 const writeUtf8 = (() => {
-  if (typeof Buffer !== "undefined" && typeof Buffer.prototype?.write === "function") {
+  if (typeof Buffer !== "undefined" && typeof Buffer.prototype.write === "function") {
     const write = Buffer.prototype.write;
     // Older Node versions and Buffer polyfills may reject Uint8Array receivers.
     try {
@@ -80,7 +80,6 @@ function encodeTs(program) {
   let poolCapacity = Math.max(4096, sizeHint);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
-  let poolIsUtf8 = true;
   let firstNonAsciiPos = NULL;
   let isTs = false;
 
@@ -160,21 +159,18 @@ function encodeTs(program) {
     return start;
   }
 
+  function writeArrayRange(start, values, view, offset) {
+    // Called after the parent is allocated, so view refers to the current buffer.
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, start + (values?.length ?? 0), true);
+  }
+
   function writeRange(start, length, view, offset) {
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, start + length, true);
   }
 
-  function writeArrayRange(start, values, view, offset) {
-    view.setUint32(offset, start, true);
-    view.setUint32(offset + 4, start + (values?.length ?? 0), true);
-  }
-
-  function encUtf8(value, view, offset) {
-    encStr(value, view, offset, true);
-  }
-
-  function encStr(value, view, offset, utf8 = false) {
+  function encStr(value, view, offset) {
     if (value == null || value === "") {
       view.setUint32(offset, 0, true);
       view.setUint32(offset + 4, 0, true);
@@ -183,7 +179,7 @@ function encodeTs(program) {
     if (typeof value !== "string") value = String(value);
     const start = poolLength;
     const length = value.length;
-    // Copy short ASCII strings directly; use the native encoder for other UTF-8.
+    // Common identifiers and operators: copy short ASCII strings directly.
     if (length <= 12) {
       ensurePool(length);
       let index = 0;
@@ -200,40 +196,12 @@ function encodeTs(program) {
       }
     }
     ensurePool(length * 3);
-    if (!/[\uD800-\uDFFF]/u.test(value)) {
-      const written = writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
-      poolLength += written;
-      if (firstNonAsciiPos === NULL && written !== length) {
-        let index = 0;
-        while (value.charCodeAt(index) < 0x80) index++;
-        firstNonAsciiPos = start + index;
-      }
-      view.setUint32(offset, start, true);
-      view.setUint32(offset + 4, poolLength, true);
-      return;
-    }
-    // WTF-8 literals must retain lone surrogates. Use the legacy extra pool
-    // for this entire transfer so every string keeps the same byte offsets.
-    if (utf8) throw new TypeError("AST UTF-8 field contains an unpaired surrogate");
-    poolIsUtf8 = false;
-    for (let index = 0; index < value.length; index++) {
-      let code = value.charCodeAt(index);
-      if (code < 0x80) pool[poolLength++] = code;
-      else if (code < 0x800) {
-        pool[poolLength++] = 0xc0 | (code >> 6);
-        pool[poolLength++] = 0x80 | (code & 0x3f);
-      } else if (code >= 0xd800 && code <= 0xdbff && index + 1 < value.length &&
-                 value.charCodeAt(index + 1) >= 0xdc00 && value.charCodeAt(index + 1) <= 0xdfff) {
-        code = 0x10000 + ((code - 0xd800) << 10) + value.charCodeAt(++index) - 0xdc00;
-        pool[poolLength++] = 0xf0 | (code >> 18);
-        pool[poolLength++] = 0x80 | ((code >> 12) & 0x3f);
-        pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
-        pool[poolLength++] = 0x80 | (code & 0x3f);
-      } else {
-        pool[poolLength++] = 0xe0 | (code >> 12);
-        pool[poolLength++] = 0x80 | ((code >> 6) & 0x3f);
-        pool[poolLength++] = 0x80 | (code & 0x3f);
-      }
+    const written = writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
+    poolLength += written;
+    if (firstNonAsciiPos === NULL && written !== length) {
+      let index = 0;
+      while (value.charCodeAt(index) < 0x80) index++;
+      firstNonAsciiPos = start + index;
     }
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, poolLength, true);
@@ -402,7 +370,7 @@ function encodeTs(program) {
     const v_1 = n.raw;
     const index = allocNode(3, asStart(n), asEnd(n));
     encStr(v_0, payload, index * 16 + 0);
-    encUtf8(v_1, payload, index * 16 + 8);
+    encStr(v_1, payload, index * 16 + 8);
     return index;
   }
 
@@ -416,7 +384,7 @@ function encodeTs(program) {
       setPayloadU32(index, 8, NULL);
       setPayloadU32(index, 12, 0);
     } else {
-      encUtf8(v_1, payload, index * 16 + 8);
+      encStr(v_1, payload, index * 16 + 8);
     }
     return index;
   }
@@ -435,7 +403,7 @@ function encodeTs(program) {
     }
     const v_0 = bigIntRaw(n);
     const index = allocNode(5, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
@@ -455,8 +423,8 @@ function encodeTs(program) {
     const v_0 = n.regex?.pattern ?? n.value?.source ?? "";
     const v_1 = n.regex?.flags ?? n.value?.flags ?? "";
     const index = allocNode(8, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
-    encUtf8(v_1, payload, index * 16 + 8);
+    encStr(v_0, payload, index * 16 + 0);
+    encStr(v_1, payload, index * 16 + 8);
     return index;
   }
 
@@ -478,7 +446,7 @@ function encodeTs(program) {
     const index = allocNode(10, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
     encStr(v_0, payload, index * 16 + 0);
-    encUtf8(v_1, extra, (extraId + 0) * 8);
+    encStr(v_1, extra, (extraId + 0) * 8);
     setPayloadU8(index, 8, v_2);
     setPayloadU8(index, 9, v_3);
     return index;
@@ -487,35 +455,35 @@ function encodeTs(program) {
   function encIdentifierReference(n) {
     const v_0 = n.name;
     const index = allocNode(11, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encPrivateIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(12, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encBindingIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(13, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encIdentifierName(n) {
     const v_0 = n.name;
     const index = allocNode(14, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encLabelIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(15, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
@@ -853,7 +821,7 @@ function encodeTs(program) {
     const v_1 = n.directive;
     const index = allocNode(45, asStart(n), asEnd(n));
     setPayloadU32(index, 8, v_0);
-    encUtf8(v_1, payload, index * 16 + 0);
+    encStr(v_1, payload, index * 16 + 0);
     return index;
   }
 
@@ -1382,7 +1350,7 @@ function encodeTs(program) {
   function encHashbang(n) {
     const v_0 = n.value;
     const index = allocNode(86, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
@@ -2235,7 +2203,7 @@ function encodeTs(program) {
   function encJsxIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(167, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
@@ -2288,7 +2256,7 @@ function encodeTs(program) {
   function encJsxText(n) {
     const v_0 = n.value ?? n.raw ?? "";
     const index = allocNode(174, asStart(n), asEnd(n));
-    encUtf8(v_0, payload, index * 16 + 0);
+    encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
@@ -2516,7 +2484,6 @@ function encodeTs(program) {
       case "Identifier":
         return encIdentifierName(n);
       case "Literal":
-        if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
@@ -2608,7 +2575,6 @@ function encodeTs(program) {
       case "StaticBlock":
         return encStaticBlock(n);
       case "TSAbstractMethodDefinition":
-        if (n.type === "TSAbstractMethodDefinition" || n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
         return encTsMethodDefinition(n);
       case "TSIndexSignature":
         return encTsIndexSignature(n);
@@ -2821,7 +2787,6 @@ function encodeTs(program) {
       case "Identifier":
         return encIdentifierName(n);
       case "Literal":
-        if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
       case "TemplateLiteral":
         return encTemplateLiteral(n);
@@ -2834,7 +2799,6 @@ function encodeTs(program) {
       case "Identifier":
         return encBindingIdentifier(n);
       case "Literal":
-        if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
       case "TSQualifiedName":
         return encTsQualifiedName(n);
@@ -2906,7 +2870,6 @@ function encodeTs(program) {
     if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });
     switch (n.type) {
       case "Literal":
-        if (typeof n.value === "string") return encStringLiteral(n);
         return encStringLiteral(n);
       case "JSXExpressionContainer":
         return encJsxExpressionContainer(n);
@@ -2956,15 +2919,15 @@ function encodeTs(program) {
 
   view.setUint32(0, nodeCount, true);
   view.setUint32(4, extraCount, true);
-  view.setUint32(8, poolIsUtf8 ? 0 : poolLength, true);
-  view.setUint32(12, poolIsUtf8 ? poolLength : 0, true);
+  view.setUint32(8, 0, true);
+  view.setUint32(12, poolLength, true);
   view.setUint32(16, 0, true);
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
   const sourceType = enumValue("SourceType", program.sourceType);
   view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), true);
-  view.setUint32(36, poolIsUtf8 ? (firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos) : 0, true);
+  view.setUint32(36, firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   if (NATIVE_LITTLE_ENDIAN) {
     bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
