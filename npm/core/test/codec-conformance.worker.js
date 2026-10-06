@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { decode, encodeOptions } from "@swc-next/decoder";
 import { encode as encodeTs } from "@swc-next/encoder";
@@ -9,7 +8,7 @@ import * as binding from "./binding/index.js";
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
 const FIXTURE_DIR = path.join(ROOT_DIR, "tasks/testsuite/fixtures");
 const { makeUnitsFromTest } = await import(
-  pathToFileURL(path.join(FIXTURE_DIR, "estree-conformance/src/utils/typescript-make-units-from-test.cjs")).href
+  path.join(FIXTURE_DIR, "estree-conformance/src/utils/typescript-make-units-from-test.cjs")
 );
 const textEncoder = new TextEncoder();
 const options = encodeOptions({ lang: "ts", comments: "none" });

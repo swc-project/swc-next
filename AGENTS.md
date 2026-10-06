@@ -60,9 +60,6 @@ the parser language.
 | ESTree    | Test262, TypeScript               | N-API AST matches `estree-conformance`                         | `pnpm test:conformance`                                          |
 | Codec     | Test262, TypeScript               | JS decode/encode codegen output matches native parse/codegen   | `pnpm test:codec`                                                |
 
-Codec conformance runs on Linux in CI. It records output differences
-in snapshots; CI fails when the snapshots change.
-
 Debug one fixture with:
 
 ```sh

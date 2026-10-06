@@ -30,16 +30,15 @@ const pool = new Tinypool({
 });
 
 async function runTestSuite(suite: string, source: string, snapshot: string) {
-  const files = (await fs.readdir(source, { recursive: true }))
-    .map((file) => file.replaceAll("\\", "/"))
-    .filter((file) => suite === "test262"
-      ? file.endsWith(".js") && !file.includes("_FIXTURE") && !file.startsWith("staging/")
-      : /^(?:compiler|conformance)\//.test(file) && /\.(?:[cm]?[jt]s|[jt]sx)$/.test(file))
-    .sort();
-  if (files.length === 0) throw new Error(`No ${suite} codec fixtures found in ${source}`);
+  const files = await fs.readdir(source, { recursive: true });
   const results: TestResult[] = (
     await Promise.all(
-      files.map((file) => pool.run({ suite, file: path.join(source, file) })),
+      files
+        .filter((file) => suite === "test262"
+          ? file.endsWith(".js") && !file.includes("_FIXTURE") && !file.startsWith("staging/")
+          : /^(?:compiler|conformance)\//.test(file) && /\.(?:[cm]?[jt]s|[jt]sx)$/.test(file))
+        .sort()
+        .map((file) => pool.run({ suite, file: path.join(source, file) })),
     )
   ).flat().filter((result) => result.parsed || result.error !== undefined);
   await writeResults(suite, snapshot, results);
@@ -69,4 +68,7 @@ async function writeResults(suite: string, snapshot: string, results: TestResult
   await fs.mkdir(SNAPSHOT_DIR, { recursive: true });
   await fs.writeFile(snapshot, [...lines, ...failures.sort(), ""].join("\n"));
   console.log(`${suite}: ${passed}/${results.length} passed, ${failed.length} failed cases`);
+  if (failed.length) {
+    process.exitCode = 1;
+  }
 }
