@@ -1639,10 +1639,14 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
+    // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
     let mut position = start as usize;
 
     while source.len() - position >= IDENTIFIER_BATCH_SIZE {
-        let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
+        let batch_end = position + IDENTIFIER_BATCH_SIZE;
+        // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
+        // guarantees that `batch_end` is within `source`.
+        let batch = unsafe { source.get_unchecked(position..batch_end) };
         for (offset, byte) in batch.iter().enumerate() {
             if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
                 return (position + offset) as u32;
