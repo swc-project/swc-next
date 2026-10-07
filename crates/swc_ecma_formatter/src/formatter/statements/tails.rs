@@ -287,6 +287,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         swc_next_ecma_ast::ExportDefaultDeclarationKindData::Expr(expression) => {
                             Semicolon(expression.span(self.ast).end)
                         }
+                        swc_next_ecma_ast::ExportDefaultDeclarationKindData::TsFunction(
+                            function,
+                        ) => self.declaration_content(Decl::TsFunction(function)),
                         _ => Complete(declaration.span(self.ast).end),
                     };
                 }
@@ -312,6 +315,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         use StatementContent::{Complete, Semicolon};
 
         let variable = match self.ast.decl_data(declaration) {
+            DeclData::TsFunction(function) => {
+                let end = function
+                    .return_type(self.ast)
+                    .map_or(function.params(self.ast).span(self.ast).end, |annotation| {
+                        annotation.span(self.ast).end
+                    });
+                return Semicolon(end);
+            }
             DeclData::VariableDeclaration(variable) => variable,
             DeclData::TsTypeAliasDeclaration(alias) => {
                 return Semicolon(alias.type_annotation(self.ast).span(self.ast).end);

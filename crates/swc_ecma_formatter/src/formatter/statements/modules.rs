@@ -144,7 +144,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let span = declaration.span(self.ast);
             let end = if matches!(
                 data,
-                DeclData::TsModuleDeclaration(_)
+                DeclData::TsFunction(_)
+                    | DeclData::TsModuleDeclaration(_)
                     | DeclData::TsGlobalDeclaration(_)
                     | DeclData::TsEnumDeclaration(_)
             ) {
@@ -157,7 +158,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DeclData::VariableDeclaration(_) => {
                     self.finish_statement(end, None, punctuation, writer)
                 }
-                DeclData::TsModuleDeclaration(_)
+                DeclData::TsFunction(_)
+                | DeclData::TsModuleDeclaration(_)
                 | DeclData::TsGlobalDeclaration(_)
                 | DeclData::TsImportEqualsDeclaration(_)
                 | DeclData::TsEnumDeclaration(_) => Ok(StatementBoundary::SourceEnd {
@@ -185,6 +187,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         }
         let ambient = match data {
+            DeclData::TsFunction(node) => node.declare(self.ast),
             DeclData::VariableDeclaration(node) => node.declare(self.ast),
             DeclData::TsTypeAliasDeclaration(node) => node.declare(self.ast),
             DeclData::TsInterfaceDeclaration(node) => node.declare(self.ast),
@@ -206,6 +209,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             .type_declaration()
             .into());
+        }
+        if let DeclData::TsFunction(node) = data {
+            return self.format_bodyless_function(node, head, punctuation, writer);
         }
         let keyword = if let Some(head) = head {
             self.format_ambient_declaration_prefix(&head, writer)?;
@@ -674,6 +680,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         Decl::Function(function)
                     }
                     ExportDefaultDeclarationKindData::Class(class) => Decl::Class(class),
+                    ExportDefaultDeclarationKindData::TsFunction(function) => {
+                        Decl::TsFunction(function)
+                    }
                     ExportDefaultDeclarationKindData::TsInterfaceDeclaration(interface) => {
                         Decl::TsInterfaceDeclaration(interface)
                     }

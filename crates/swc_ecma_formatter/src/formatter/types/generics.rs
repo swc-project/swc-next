@@ -27,7 +27,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy)]
-pub(super) enum TypeListKind {
+pub(in crate::formatter) enum TypeListKind {
     Arguments,
     Parameters,
 }
@@ -86,9 +86,9 @@ enum TypeListPrefixLayout<'ast> {
     Formatted(CommentBoundary<'ast>),
 }
 
-pub(super) struct TypeListPrefix<'ast> {
-    pub(super) left_mode: ContentMode,
-    pub(super) right_mode: ContentMode,
+pub(in crate::formatter) struct TypeListPrefix<'ast> {
+    pub(in crate::formatter) left_mode: ContentMode,
+    pub(in crate::formatter) right_mode: ContentMode,
     layout: TypeListPrefixLayout<'ast>,
 }
 
@@ -193,7 +193,7 @@ impl<'source> Visit<'source> for RequiredTypeBreak<'_, '_, 'source> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn prepare_type_list_prefix(
+    pub(in crate::formatter) fn prepare_type_list_prefix(
         &self,
         gap: Span,
         kind: TypeListKind,
@@ -232,7 +232,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_type_list_prefix(
+    pub(in crate::formatter) fn format_type_list_prefix(
         &mut self,
         prefix: TypeListPrefix<'ast>,
         writer: &mut Writer<'ast>,
