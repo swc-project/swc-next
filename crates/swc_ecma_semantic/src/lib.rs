@@ -138,7 +138,6 @@ pub struct Semantic<'a> {
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
     node_scopes: Vec<Option<ScopeId>>,
-    direct_eval_calls: rustc_hash::FxHashMap<NodeId, ScopeId>,
 
     module_record: ModuleRecord<'a>,
     ts_members: TsMemberIndex<'a>,

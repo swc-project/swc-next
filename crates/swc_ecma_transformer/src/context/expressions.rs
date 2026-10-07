@@ -77,30 +77,6 @@ impl Mutation<'_, '_, '_> {
                 .semantic
                 .replace_export_target(self.ast, parent, replacement.node_id());
         }
-        // Only a callee's transparent wrappers can change direct-eval status.
-        let mut child = replacement.node_id();
-        for index in (0..self.depth()).rev() {
-            let ancestor = self.path()[index];
-            let expression = match self.ast.kind_data(ancestor) {
-                NodeKindData::ParenthesizedExpression(node) => node.expression(self.ast),
-                NodeKindData::TsAsExpression(node) => node.expression(self.ast),
-                NodeKindData::TsSatisfiesExpression(node) => node.expression(self.ast),
-                NodeKindData::TsTypeAssertion(node) => node.expression(self.ast),
-                NodeKindData::TsNonNullExpression(node) => node.expression(self.ast),
-                NodeKindData::TsInstantiationExpression(node) => node.expression(self.ast),
-                NodeKindData::CallExpression(call) => {
-                    if call.callee(self.ast).node_id() == child {
-                        self.state.semantic.refresh_node(self.ast, ancestor);
-                    }
-                    break;
-                }
-                _ => break,
-            };
-            if expression.node_id() != child {
-                break;
-            }
-            child = ancestor;
-        }
         old
     }
 }

@@ -22,7 +22,6 @@ pub(crate) struct SemanticContext<'a> {
     pub class: ClassSemantic<'a>,
     pub features: SemanticFeatureFlags,
     node_scopes: Vec<Option<swc_next_ecma_ast::ScopeId>>,
-    pub direct_eval_calls: rustc_hash::FxHashMap<NodeId, swc_next_ecma_ast::ScopeId>,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
 }
@@ -42,7 +41,6 @@ impl<'a> SemanticContext<'a> {
             } else {
                 Vec::new()
             },
-            direct_eval_calls: Default::default(),
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
         }
@@ -245,7 +243,6 @@ impl<'a> SemanticContext<'a> {
             self.class,
         );
         semantic.node_scopes = self.node_scopes;
-        semantic.direct_eval_calls = self.direct_eval_calls;
         semantic
     }
 }

@@ -148,7 +148,9 @@ impl Mutation<'_, '_, '_> {
             .collect();
         elements.insert(index, element);
         self.attach_class_elements(body, &elements);
-        self.state.semantic.refresh_node(self.ast, body.node_id());
+        self.state
+            .semantic
+            .invalidate_static_block_layout(body.node_id());
     }
 
     pub fn set_property_computed(&mut self, owner: NodeId, computed: bool) {

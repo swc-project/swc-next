@@ -169,6 +169,19 @@ impl<'a> ScopeTree<'a> {
         self.list[id.index()]
     }
 
+    /// Marks the scope and its lexical ancestors as observable by direct eval.
+    pub(crate) fn mark_direct_eval(&mut self, scope: ScopeId) {
+        let mut current = Some(scope);
+        while let Some(id) = current {
+            let scope = &mut self.list[id.index()];
+            if scope.flags.direct_eval {
+                break;
+            }
+            scope.flags.direct_eval = true;
+            current = scope.parent;
+        }
+    }
+
     /// Walks from `start` up to the root, yielding `start` first.
     pub fn ancestors(&self, start: Option<ScopeId>) -> AncestorIterator<'_> {
         AncestorIterator {

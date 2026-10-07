@@ -36,71 +36,8 @@ impl<'a> Semantic<'a> {
     #[doc(hidden)]
     pub fn register_nodes(&mut self, ast: &Ast<'a>, start: usize, scope: ScopeId) {
         self.grow_node_indexes(ast.node_count());
-        let mut eval_changed = false;
-        for index in start..ast.node_count() {
-            let node = NodeId::from_usize(index);
-            if let Some(slot) = self.node_scopes.get_mut(index) {
-                *slot = Some(scope);
-            }
-            eval_changed |= self.update_eval_call(ast, node, scope);
-        }
-        if eval_changed {
-            self.refresh_direct_eval();
-        }
-    }
-
-    /// Refresh metadata determined by a call's immediate children after an edge edit.
-    #[doc(hidden)]
-    pub fn refresh_node(&mut self, ast: &Ast<'_>, node: NodeId) {
-        if matches!(ast.kind_data(node), NodeKindData::ClassBody(_)) {
-            self.invalidate_static_block_layout(node);
-            return;
-        }
-        if !matches!(
-            ast.kind_data(node),
-            swc_next_ecma_ast::NodeKindData::CallExpression(_)
-        ) {
-            return;
-        }
-        if let Some(scope) = self
-            .scope_at(node)
-            .or_else(|| self.direct_eval_calls.get(&node).copied())
-            && self.update_eval_call(ast, node, scope)
-        {
-            self.refresh_direct_eval();
-        }
-    }
-
-    /// Returns whether the indexed call or its evaluation scope changed.
-    fn update_eval_call(&mut self, ast: &Ast<'_>, node: NodeId, scope: ScopeId) -> bool {
-        let swc_next_ecma_ast::NodeKindData::CallExpression(call) = ast.kind_data(node) else {
-            return false;
-        };
-        if crate::builder::is_direct_eval_call(ast, call) {
-            if self.direct_eval_calls.get(&node) == Some(&scope) {
-                return false;
-            }
-            self.direct_eval_calls.insert(node, scope);
-            true
-        } else {
-            self.direct_eval_calls.remove(&node).is_some()
-        }
-    }
-
-    fn refresh_direct_eval(&mut self) {
-        for scope in &mut self.scopes.list {
-            scope.flags.direct_eval = false;
-        }
-        for &scope in self.direct_eval_calls.values() {
-            let mut ancestor = Some(scope);
-            while let Some(id) = ancestor {
-                let scope = &mut self.scopes.list[id.index()];
-                if scope.flags.direct_eval {
-                    break;
-                }
-                scope.flags.direct_eval = true;
-                ancestor = scope.parent;
-            }
+        if let Some(nodes) = self.node_scopes.get_mut(start..) {
+            nodes.fill(Some(scope));
         }
     }
 
@@ -319,7 +256,8 @@ impl<'a> Semantic<'a> {
         self.invalidate_static_block_layout(old.node_id());
     }
 
-    fn invalidate_static_block_layout(&mut self, node: NodeId) {
+    #[doc(hidden)]
+    pub fn invalidate_static_block_layout(&mut self, node: NodeId) {
         if !self
             .features
             .contains(crate::SemanticFeatureFlags::STATIC_BLOCK_LAYOUT)
@@ -441,7 +379,8 @@ impl<'a> Semantic<'a> {
         }
         self.scopes.list[scope.index()].parent = Some(parent);
         if self.scope(scope).flags.direct_eval {
-            self.refresh_direct_eval();
+            // Current lowering retains the old ancestors and may add a closure scope.
+            self.scopes.mark_direct_eval(parent);
         }
     }
 
@@ -569,16 +508,11 @@ impl<'a> Semantic<'a> {
                 reference.scope = parent;
             }
         }
-        for eval_scope in self.direct_eval_calls.values_mut() {
-            if *eval_scope == source {
-                *eval_scope = parent;
-            }
-        }
         self.scopes.list[source.index()].active = false;
         self.scopes.list[source.index()].flags.direct_eval = false;
         self.hoisting_variables[source.index()] = None;
-        if scope.flags.direct_eval && scope.parent != Some(parent) {
-            self.refresh_direct_eval();
+        if scope.flags.direct_eval {
+            self.scopes.mark_direct_eval(parent);
         }
     }
 }

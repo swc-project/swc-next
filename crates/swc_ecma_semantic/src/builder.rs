@@ -427,9 +427,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             && self.state.default_reference_flags().is_read()
             && is_direct_eval_call(self.ast, node)
         {
-            self.state
-                .direct_eval_calls
-                .insert(node.node_id(), self.state.scope.current);
             self.state.scope.mark_direct_eval();
         }
         node.visit_children_with(self);
@@ -1744,7 +1741,7 @@ fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace
     }
 }
 
-pub(crate) fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
+fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
     if call.optional(tree) {
         return false;
     }
