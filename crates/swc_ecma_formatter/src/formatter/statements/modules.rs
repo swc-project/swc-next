@@ -144,7 +144,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let span = declaration.span(self.ast);
             let end = if matches!(
                 data,
-                DeclData::TsModuleDeclaration(_) | DeclData::TsGlobalDeclaration(_)
+                DeclData::TsModuleDeclaration(_)
+                    | DeclData::TsGlobalDeclaration(_)
+                    | DeclData::TsEnumDeclaration(_)
             ) {
                 span.end
             } else {
@@ -157,7 +159,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 DeclData::TsModuleDeclaration(_)
                 | DeclData::TsGlobalDeclaration(_)
-                | DeclData::TsImportEqualsDeclaration(_) => Ok(StatementBoundary::SourceEnd {
+                | DeclData::TsImportEqualsDeclaration(_)
+                | DeclData::TsEnumDeclaration(_) => Ok(StatementBoundary::SourceEnd {
                     end,
                     has_terminator: self.source(span).ends_with(';'),
                 }
@@ -187,10 +190,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DeclData::TsInterfaceDeclaration(node) => node.declare(self.ast),
             DeclData::TsModuleDeclaration(node) => node.declare(self.ast),
             DeclData::TsGlobalDeclaration(node) => node.declare(self.ast),
+            DeclData::TsEnumDeclaration(node) => node.declare(self.ast),
             _ => false,
         };
-        let keyword = if ambient {
-            let head = self.prepare_ambient_declaration_keyword(declaration)?;
+        let head = if ambient {
+            Some(self.prepare_ambient_declaration_keyword(declaration)?)
+        } else {
+            None
+        };
+        if let DeclData::TsEnumDeclaration(node) = data {
+            self.format_enum(node, head, writer)?;
+            return Ok(StatementBoundary::SourceEnd {
+                end: node.body(self.ast).span(self.ast).end,
+                has_terminator: false,
+            }
+            .type_declaration()
+            .into());
+        }
+        let keyword = if let Some(head) = head {
             self.format_ambient_declaration_prefix(&head, writer)?;
             Some(head.keyword)
         } else {

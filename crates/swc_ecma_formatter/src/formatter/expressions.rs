@@ -58,6 +58,7 @@ pub(super) enum ExpressionPosition {
     AwaitArgument,
     PropertyValue,
     TypePropertyKey,
+    EnumInitializer,
     TypeBinaryOperand,
     TypeAssertionOperand,
     NonNullOperand,
@@ -1054,6 +1055,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::ExportDefault
                     | ExpressionPosition::AssignmentRight(_)
                     | ExpressionPosition::TypePropertyKey
+                    | ExpressionPosition::EnumInitializer
                     | ExpressionPosition::ForHead
                     | ExpressionPosition::ForSequenceMember
                     | ExpressionPosition::ForInitializer { .. }

@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{
 
 use super::Formatter;
 use super::bindings::{
-    BindingGroup, BindingInitializerOwner, InitializerLayout, PreparedInitializer,
+    BindingGroup, BindingInitializerOwner, InitializerLayout, InitializerLeft, PreparedInitializer,
 };
 use super::comments::{CommentBinding, ExpressionTail};
 use super::diagnostics::FlatSeparator;
@@ -300,8 +300,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.format_initializer(
             PreparedInitializer {
-                pattern: left,
-                group,
+                left: InitializerLeft::Binding {
+                    pattern: left,
+                    group,
+                },
                 right,
                 layout: InitializerLayout::Formatted {
                     boundary,
