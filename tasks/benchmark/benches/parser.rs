@@ -62,6 +62,11 @@ fn bench_files(c: &mut Criterion) {
             include_str!("../files/cal.com.tsx"),
             Lang::Tsx,
         ),
+        (
+            "hono-types",
+            include_str!("../files/hono-types.ts"),
+            Lang::Ts,
+        ),
     ];
 
     for (name, source, lang) in bench_cases {

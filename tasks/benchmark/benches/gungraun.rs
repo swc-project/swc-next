@@ -41,6 +41,7 @@ const HONO_TYPES: &str = include_str!("../files/hono-types.ts");
 #[bench::yui(YUI, Lang::Js)]
 #[bench::typescript(TYPESCRIPT, Lang::Js)]
 #[bench::cal_com_tsx(CAL_COM_TSX, Lang::Tsx)]
+#[bench::hono_types(HONO_TYPES, Lang::Ts)]
 fn bench_parser(source: &str, lang: Lang) {
     let source = black_box(source);
     let allocator = Allocator::new();
