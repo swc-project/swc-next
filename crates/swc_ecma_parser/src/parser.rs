@@ -2794,15 +2794,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             SubRange::empty()
         };
 
-        if let Some(block) = self.try_static_block(decorators) {
-            return Some(block);
-        }
-
         let mut modifiers = ClassElementModifiers::default();
         let mut key = None;
+        let mut has_modifiers = false;
         loop {
+            let modifier_end = self.current_token.start();
+            if self.current_token.tag() == TokenTag::Static
+                && let Some(block) = self.try_static_block(decorators)
+            {
+                if has_modifiers {
+                    self.report(
+                        Span::new(element_start, modifier_end),
+                        "Static blocks cannot have modifiers",
+                        ReportOptions::default(),
+                    );
+                    let end = block.span(&self.ast).end;
+                    block.set_span(&mut self.ast, Span::new(element_start, end));
+                }
+                return Some(block);
+            }
             match self.consume_modifier(&mut modifiers)? {
-                ClassModifierStep::Consumed => {}
+                ClassModifierStep::Consumed => has_modifiers = true,
                 ClassModifierStep::Key(property_key) => {
                     key = Some(property_key);
                     break;
@@ -2948,20 +2960,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         modifiers: &mut ClassElementModifiers,
     ) -> Option<ClassModifierStep> {
         let token = self.current_token;
+        if token.is_escaped() {
+            return Some(ClassModifierStep::None);
+        }
+
+        let tag = token.tag();
         let is_typescript = self.lang.is_typescript();
-        if token.is_escaped() || !is_modifier(token.tag(), is_typescript) {
+        let is_valid_modifier = is_modifier(tag, is_typescript);
+        let invalid_modifier = !is_valid_modifier
+            && is_typescript
+            && matches!(tag, TokenTag::Const | TokenTag::Export);
+        if !is_valid_modifier && !invalid_modifier {
             return Some(ClassModifierStep::None);
         }
 
         let Some(next) = self.peek_ahead() else {
             return Some(ClassModifierStep::None);
         };
+        let next_tag = next.tag();
         let accessor_before_star =
-            next.tag() == TokenTag::Star && matches!(token.tag(), TokenTag::Get | TokenTag::Set);
-        let consume_as_modifier = can_start_element_key(next.tag())
+            next_tag == TokenTag::Star && matches!(tag, TokenTag::Get | TokenTag::Set);
+        let can_start_modifier = can_start_element_key(next_tag)
             && !accessor_before_star
-            && !(requires_same_line(token.tag()) && next.has_line_terminator_before())
-            && !modifiers.conflicts(token.tag());
+            && !(requires_same_line(tag) && next.has_line_terminator_before());
+        let conflicting_modifier =
+            can_start_modifier && !invalid_modifier && modifiers.conflicts(tag);
+        let consume_as_modifier =
+            can_start_modifier && !(conflicting_modifier && next.has_line_terminator_before());
 
         if !consume_as_modifier {
             self.advance_without_escape_check()?;
@@ -2971,8 +2996,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ));
         }
 
+        if invalid_modifier {
+            self.report(
+                token.span(),
+                "Invalid class member modifier",
+                ReportOptions::default(),
+            );
+        } else {
+            if conflicting_modifier {
+                self.report(
+                    token.span(),
+                    "Duplicate or incompatible class member modifier",
+                    ReportOptions::default(),
+                );
+            }
+            modifiers.set(tag);
+        }
         self.advance_without_escape_check()?;
-        modifiers.set(token.tag());
         Some(ClassModifierStep::Consumed)
     }
 
