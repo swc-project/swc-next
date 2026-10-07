@@ -2,6 +2,7 @@
 
 mod control_flow;
 mod declarations;
+mod enums;
 mod modules;
 mod namespaces;
 mod typescript_modules;
@@ -1183,6 +1184,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 | DeclData::TsModuleDeclaration(_)
                                 | DeclData::TsGlobalDeclaration(_)
                                 | DeclData::TsImportEqualsDeclaration(_)
+                                | DeclData::TsEnumDeclaration(_)
                         )
                     })
                 {

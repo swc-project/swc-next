@@ -12,7 +12,7 @@ use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     ArrayPattern, Ast, BindingPattern, BindingPatternData, BindingProperty, Comment, CommentKind,
     Expr, ExprData, FormalParameterPattern, FormalParameterPatternData, GetSpan, ObjectPattern,
-    Span, TsTypeAnnotation,
+    Span, TsEnumMemberName, TsTypeAnnotation,
 };
 
 pub(super) struct PreparedAnnotatedBinding<'ast> {
@@ -62,6 +62,19 @@ impl BindingGroup {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum InitializerLeft {
+    Binding {
+        pattern: BindingPattern,
+        group: BindingGroup,
+    },
+    Enum {
+        name: TsEnumMemberName,
+        computed: Option<Span>,
+        quoting: PropertyKeyQuoting,
+    },
+}
+
 pub(super) enum InitializerLayout<'ast> {
     Formatted {
         boundary: AssignmentBoundary<'ast>,
@@ -74,8 +87,7 @@ pub(super) enum InitializerLayout<'ast> {
 }
 
 pub(super) struct PreparedInitializer<'ast> {
-    pub(super) pattern: BindingPattern,
-    pub(super) group: BindingGroup,
+    pub(super) left: InitializerLeft,
     pub(super) right: Expr,
     pub(super) layout: InitializerLayout<'ast>,
     pub(super) left_mode: ContentMode,
@@ -646,8 +658,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match left {
             DefaultLeft::Binding(left) => self.format_initializer(
                 PreparedInitializer {
-                    pattern: left,
-                    group: BindingGroup::Auto,
+                    left: InitializerLeft::Binding {
+                        pattern: left,
+                        group: BindingGroup::Auto,
+                    },
                     right,
                     layout,
                     left_mode,
@@ -685,23 +699,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let PreparedInitializer {
-            pattern,
-            group,
+            left,
             right,
             layout,
             left_mode,
             context,
         } = initializer;
+        let group = match left {
+            InitializerLeft::Binding { group, .. } => group,
+            InitializerLeft::Enum { .. } => BindingGroup::Auto,
+        };
         group.with_initializer_group(writer, |writer| {
-            let tail = self.format_binding_with_group(pattern, group, left_mode, writer)?;
-            self.format_expression_tail(tail, writer)?;
-            self.format_initializer_right(
-                pattern.span(self.ast).end,
-                right,
-                layout,
-                context,
-                writer,
-            )
+            let left_end = match left {
+                InitializerLeft::Enum {
+                    name,
+                    computed,
+                    quoting,
+                } => {
+                    self.format_enum_member_key(name, computed, left_mode, quoting, writer)?;
+                    computed.map_or(name.span(self.ast).end, |span| span.end)
+                }
+                InitializerLeft::Binding { pattern, group } => {
+                    let tail = self.format_binding_with_group(pattern, group, left_mode, writer)?;
+                    self.format_expression_tail(tail, writer)?;
+                    pattern.span(self.ast).end
+                }
+            };
+            self.format_initializer_right(left_end, right, layout, context, writer)
         })
     }
 
