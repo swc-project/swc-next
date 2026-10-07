@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 359/804 (44.65%)
-Snapshot matched: 359/804
-AST parity: 365/365
-AST mismatched: 0/365
+Passed: 366/804 (45.52%)
+Snapshot matched: 366/804
+AST parity: 372/372
+AST mismatched: 0/372
 AST format errors: 0/804
 Mismatched: 6/804
-Format errors: 439/804
+Format errors: 432/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -208,8 +208,6 @@ Unsupported option sets: 7
 - typescript/conformance/internalModules/importDeclarations/shadowedInternalModule.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/ambient/ambientDeclarations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/any/anyAsGenericFunctionCall.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/constKeyword/constKeyword.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/enumDeclaration/enumDeclaration.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/firstTypeNode/firstTypeNode.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/TSFunctionTypeNoUnnecessaryParentheses.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/functionImplementationErrors.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -234,7 +232,6 @@ Unsupported option sets: 7
 - typescript/custom/declare/declareModifier.d.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/typeParameters/variables.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-class-fields.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/declare/declare-enum.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-function.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/declare-get-set-field.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/declare/object-type-in-declare-function.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -264,8 +261,6 @@ Unsupported option sets: 7
 - typescript/definite/without-annotation.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/destructuring/destructuring.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/end-of-line/multiline.ts: 0/3 mismatched, 3/3 format errors, 0/3 panicked, 0/3 not idempotent
-- typescript/enum/enum.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/enum/multiline.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/export/comment.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/export/export-class.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/export/export-type-star-from-2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -327,7 +322,6 @@ Unsupported option sets: 7
 - typescript/parentheses/yield.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/predicate-types/predicate-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/private-fields-in-in/basic.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/quote-props/enums.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/readonly/readonly.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/satisfies-operators/comments-unstable.ts: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/satisfies-operators/template-literal.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent

@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export declare const enum E { A = 1 }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+export declare const enum E {
+  A = 1,
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export declare const enum E {
+  A = 1,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+export declare const enum E {
+  A = 1,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+export declare const enum E {
+  A = 1,
+}
