@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11387/11509 (98.94%)
+Positive Passed: 11389/11509 (98.96%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
@@ -20,7 +20,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatur
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatureTypeCheck.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatureTypeCheck2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatureWithInitializer1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatureWithTrailingComma.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatureWithoutTypeAnnotation1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexTypeCheck.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexWithoutParamType.ts
@@ -92,7 +91,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexSignatures/parserIndexSignature6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexSignatures/parserIndexSignature7.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexSignatures/parserIndexSignature8.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexSignatures/parserIndexSignature9.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ObjectTypes/parserObjectType6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList10.ts

@@ -6951,6 +6951,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let Some(name) = peek.next() else {
             return Some(false);
         };
+        if name.tag() == TokenTag::RightBracket {
+            return Some(
+                peek.next()
+                    .is_some_and(|token| token.tag() == TokenTag::Colon),
+            );
+        }
         if !name.tag().is_identifier_like() {
             return Some(false);
         }
@@ -6968,19 +6974,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<TsTypeElement> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBracket);
         self.advance()?;
-        let parameter = self.parse_index_signature_parameter()?;
-        if self.current_token.tag() == TokenTag::Comma {
-            return {
-                let span = self.current_token.span();
-                self.report(
-                    span,
-                    "An index signature must have exactly one parameter",
-                    ReportOptions::default(),
-                );
-                None
-            };
-        }
-        let parameters = self.ast.add_sub_range([parameter]);
+        let parameters = self.parse_index_signature_parameters()?;
         if !self.expect(
             TokenTag::RightBracket,
             "Expected ']' to close an index signature parameter list",
@@ -7010,6 +7004,40 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             readonly,
             r#static,
         ))
+    }
+
+    fn parse_index_signature_parameters(&mut self) -> Option<SubRange<TsIndexSignatureParameter>> {
+        if self.current_token.tag() == TokenTag::RightBracket {
+            self.report(
+                self.current_token.span(),
+                "An index signature must have exactly one parameter",
+                ReportOptions::default(),
+            );
+            return Some(SubRange::empty());
+        }
+        let first = self.parse_index_signature_parameter()?;
+        if self.current_token.tag() != TokenTag::Comma {
+            return Some(self.ast.add_sub_range([first]));
+        }
+        self.report(
+            self.current_token.span(),
+            "An index signature must have exactly one parameter",
+            ReportOptions::default(),
+        );
+        let checkpoint = self.scratch_a.begin();
+        self.scratch_a.append(first);
+        let result = (|| {
+            while self.eat(TokenTag::Comma)? {
+                if self.current_token.tag() == TokenTag::RightBracket {
+                    break;
+                }
+                let parameter = self.parse_index_signature_parameter()?;
+                self.scratch_a.append(parameter);
+            }
+            Some(self.add_extra_from_scratch_a(checkpoint))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_index_signature_parameter(&mut self) -> Option<TsIndexSignatureParameter> {
