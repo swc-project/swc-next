@@ -2,8 +2,8 @@
 
 use swc_next_ecma_ast::{
     BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan, Span, TsAsExpression,
-    TsNonNullExpression, TsType, TsTypeAssertion, TsTypeData, TsTypeNameData,
-    TsTypeParameterInstantiation,
+    TsInstantiationExpression, TsNonNullExpression, TsType, TsTypeAssertion, TsTypeData,
+    TsTypeNameData, TsTypeParameterInstantiation,
 };
 
 use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
@@ -388,6 +388,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         self.format_type_arguments(arguments.node, arguments.mode, writer)
+    }
+
+    pub(super) fn format_instantiation(
+        &mut self,
+        node: TsInstantiationExpression,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let expression = node.expression(self.ast);
+        let arguments = self.prepare_expression_type_arguments(
+            expression,
+            node.type_arguments(self.ast),
+            AccessKind::Ordinary,
+        )?;
+        let tail = self.format_expression(
+            expression,
+            context.type_operand(
+                ExpressionPosition::InstantiationOperand,
+                arguments.callee_mode,
+                TailOwner::ParentOperation,
+            ),
+            writer,
+        )?;
+        self.format_expression_type_arguments(arguments, tail, writer)?;
+        Ok(None)
     }
 
     pub(super) fn instantiation_tail_needs_parentheses(
@@ -1431,6 +1456,7 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::ConditionalTest
                 | ExpressionPosition::TypeAssertionOperand
                 | ExpressionPosition::NonNullOperand
+                | ExpressionPosition::InstantiationOperand
         )),
         ExprData::TsTypeAssertion(_) => Some(matches!(
             position,
@@ -1447,6 +1473,7 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::Superclass
                 | ExpressionPosition::TypeBinaryOperand
                 | ExpressionPosition::NonNullOperand
+                | ExpressionPosition::InstantiationOperand
                 | ExpressionPosition::BinaryOperand {
                     operator: BinaryOperatorKind::Binary(
                         BinaryOperator::BitwiseOr
@@ -1472,6 +1499,7 @@ pub(super) fn type_expression_needs_parentheses(
                     | ExpressionPosition::NewCallee
                     | ExpressionPosition::Superclass
                     | ExpressionPosition::NonNullOperand
+                    | ExpressionPosition::InstantiationOperand
                     | ExpressionPosition::BinaryOperand {
                         operator: BinaryOperatorKind::Binary(_),
                         side: OperandSide::Left,
