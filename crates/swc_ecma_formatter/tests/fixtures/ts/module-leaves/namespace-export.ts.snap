@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export /* note */ as
+/* prettier-ignore */
+namespace n\u0061me;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+export /* note */ as
+/* prettier-ignore */
+namespace n\u0061me;
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+export /* note */ as
+/* prettier-ignore */
+namespace n\u0061me;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export /* note */ as
+/* prettier-ignore */
+namespace n\u0061me
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+export /* note */ as
+/* prettier-ignore */
+namespace n\u0061me
