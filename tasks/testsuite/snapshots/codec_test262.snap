@@ -1,5 +1,5 @@
-Cases         : 49070
-Codec Passed  : 48992/49070
+Cases         : 46967
+Codec Passed  : 46889/46967
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/annexB/built-ins/RegExp/prototype/compile/flags-string-invalid.js (flags-string-invalid.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/annexB/built-ins/RegExp/prototype/compile/flags-undefined.js (flags-undefined.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/annexB/built-ins/RegExp/prototype/compile/pattern-regexp-props.js (pattern-regexp-props.js)

@@ -4,8 +4,11 @@ import Tinypool from "tinypool";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
 const FIXTURE_DIR = path.join(ROOT_DIR, "tasks/testsuite/fixtures");
+const ORACLE_DIR = path.join(FIXTURE_DIR, "estree-conformance/tests");
 const SNAPSHOT_DIR = path.join(ROOT_DIR, "tasks/testsuite/snapshots");
 
+const ORACLE_TEST262 = path.join(ORACLE_DIR, "test262/test");
+const ORACLE_TS = path.join(ORACLE_DIR, "typescript/tests/cases");
 const SOURCE_TEST262 = path.join(FIXTURE_DIR, "test262/test");
 const SOURCE_TS = path.join(FIXTURE_DIR, "typescript/tests/cases");
 const SNAPSHOT_TEST262 = path.join(SNAPSHOT_DIR, "codec_test262.snap");
@@ -31,15 +34,16 @@ const pool = new Tinypool({
   resourceLimits: { stackSizeMb: 16 },
 });
 
-async function runTestSuite(suite: string, source: string, snapshot: string) {
-  const files = await fs.readdir(source, { recursive: true });
+async function runTestSuite(suite: string, oracle: string, source: string, snapshot: string) {
+  const files = await fs.readdir(oracle, { recursive: true });
   const results: TestResult[] = (
     await Promise.all(
       files
-        .filter((file) => suite === "test262"
-          ? file.endsWith(".js") && !file.includes("_FIXTURE") && !file.startsWith("staging/")
-          : /^(?:compiler|conformance)\//.test(file) && /\.(?:[cm]?[jt]s|[jt]sx)$/.test(file))
+        .filter((file) => file.endsWith(".json") || file.endsWith(".md"))
         .sort()
+        .map((file) => file.endsWith(".json")
+          ? file.slice(0, -".json".length) + ".js"
+          : file.slice(0, -".md".length))
         .map((file) => pool.run({ suite, file: path.join(source, file) })),
     )
   ).flat().filter((result) => result.parsed || result.error !== undefined);
@@ -48,8 +52,8 @@ async function runTestSuite(suite: string, source: string, snapshot: string) {
 
 try {
   await Promise.all([
-    runTestSuite("test262", SOURCE_TEST262, SNAPSHOT_TEST262),
-    runTestSuite("typescript", SOURCE_TS, SNAPSHOT_TS),
+    runTestSuite("test262", ORACLE_TEST262, SOURCE_TEST262, SNAPSHOT_TEST262),
+    runTestSuite("typescript", ORACLE_TS, SOURCE_TS, SNAPSHOT_TS),
   ]);
 } finally {
   await pool.destroy();

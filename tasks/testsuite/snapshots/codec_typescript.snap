@@ -1,10 +1,5 @@
-Cases         : 14501
-Codec Passed  : 14493/14501
-Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractAccessor.ts (classAbstractAccessor.ts)
-Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractConstructor.ts (classAbstractConstructor.ts)
-Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractDeclarations.d.ts (classAbstractDeclarations.d.ts)
-Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractMethodInNonAbstractClass.ts (classAbstractMethodInNonAbstractClass.ts)
-Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classDeclarations/classAbstractKeyword/classAbstractMethodWithImplementation.ts (classAbstractMethodWithImplementation.ts)
+Cases         : 14185
+Codec Passed  : 14182/14185
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/templates/templateStringMultiline3.ts (templateStringMultiline3.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings10.ts (unicodeExtendedEscapesInStrings10.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings11.ts (unicodeExtendedEscapesInStrings11.ts)
