@@ -4305,6 +4305,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.enter_module_context();
         let start = self.current_token.start();
         self.advance()?;
+        let mut declaration_start = None;
+        while self.current_token.tag() == TokenTag::Export {
+            declaration_start.get_or_insert(self.current_token.start());
+            self.report(
+                self.current_token.span(),
+                "Duplicate export modifier",
+                ReportOptions::default(),
+            );
+            self.advance()?;
+        }
         if self.lang.is_typescript() {
             match self.current_token.tag() {
                 TokenTag::Assign => return self.parse_ts_export_assignment(start),
@@ -4324,14 +4334,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 _ => {}
             }
         }
-        match self.current_token.tag() {
+        let statement = match self.current_token.tag() {
             TokenTag::Default => self.parse_export_default_declaration(start),
             TokenTag::Star => self.parse_export_all_declaration(start, ImportOrExportKind::Value),
             TokenTag::LeftBrace => {
                 self.parse_export_named_from_clause(start, ImportOrExportKind::Value)
             }
             _ => self.parse_export_with_declaration(start),
+        }?;
+        if let Some(declaration_start) = declaration_start {
+            match self.ast.stmt_data(statement) {
+                StmtData::ExportNamedDeclaration(export) => {
+                    if let Some(declaration) = export.declaration(&self.ast) {
+                        let span = declaration.span(&self.ast);
+                        declaration.set_span(&mut self.ast, Span::new(declaration_start, span.end));
+                    }
+                }
+                StmtData::ExportDefaultDeclaration(export) => {
+                    let declaration = export.declaration(&self.ast);
+                    if !declaration.is_expr(&self.ast) {
+                        let span = declaration.span(&self.ast);
+                        declaration.set_span(&mut self.ast, Span::new(declaration_start, span.end));
+                    }
+                }
+                _ => {}
+            }
         }
+        Some(statement)
     }
 
     fn parse_ts_export_assignment(&mut self, start: u32) -> Option<Stmt> {
