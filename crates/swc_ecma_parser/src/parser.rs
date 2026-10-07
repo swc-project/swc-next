@@ -7009,49 +7009,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let name = self.identifier_name(token);
-        let mut type_name = self
-            .ast
-            .ts_type_name_identifier_reference(token.span(), name);
+        let identifier = self.ast.identifier_reference(token.span(), name);
         self.advance_without_escape_check()?;
-        while self.current_token.tag() == TokenTag::Dot {
-            type_name = self.parse_qualified_segment(type_name)?;
+        if self.current_token.tag() == TokenTag::Dot {
+            self.extend_qualified_name(
+                TsQualifiedNameLeft::IdentifierReference(identifier),
+                token.start(),
+            )
+        } else {
+            Some(TsTypeName::IdentifierReference(identifier))
         }
-        Some(type_name)
-    }
-
-    fn parse_qualified_segment(&mut self, left: TsTypeName) -> Option<TsTypeName> {
-        let start = left.span(&self.ast).start;
-        self.advance()?;
-        let token = self.current_token;
-        if !token.tag().is_identifier_like() {
-            self.report_expected(
-                self.current_token.span(),
-                "Expected an identifier after '.'",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "A qualified name must end with an identifier",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
-        }
-        let name = self.identifier_name(token);
-        let right = self.ast.identifier_name(token.span(), name);
-        self.advance_without_escape_check()?;
-        let left = match self.ast.ts_type_name_data(left) {
-            TsTypeNameData::IdentifierReference(identifier) => {
-                TsQualifiedNameLeft::IdentifierReference(identifier)
-            }
-            TsTypeNameData::TsQualifiedName(qualified) => {
-                TsQualifiedNameLeft::TsQualifiedName(qualified)
-            }
-        };
-        Some(TsTypeName::TsQualifiedName(self.ast.ts_qualified_name(
-            Span::new(start, token.end()),
-            left,
-            right,
-        )))
     }
 
     fn parse_type_arguments_after_entity_name(
