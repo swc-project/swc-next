@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11379/11509 (98.87%)
+Positive Passed: 11382/11509 (98.90%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
@@ -31,7 +31,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/jsxAttributeW
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-invalidContexts.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-scopes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-validContexts.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/misspelledNewMetaProperty.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/narrowingUnionToUnion.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/noCrashOnMixin2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectBindingPattern_restElementWithPropertyName.ts
@@ -73,14 +72,12 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/externalMo
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/functions/functionOverloadErrorsSyntax.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importAttributes/importAttributes6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/dynamicImportDefer.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/dynamicImportDeferInvalidStandalone.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferComments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferFromInvalid.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferInvalidDefault.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferInvalidNamed.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importDeferNamespace.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/importDefer/importMetaPropertyInvalidInCall.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/jsxReactTestSuite.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxReactEmitEntities.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/jsx/tsxReactEmitNesting.tsx

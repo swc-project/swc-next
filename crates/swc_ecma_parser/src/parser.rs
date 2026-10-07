@@ -11113,30 +11113,36 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Defer => (Some(ImportPhase::Defer), false),
             TokenTag::Identifier if property.text(self.source) == "sync" => (None, true),
             TokenTag::Identifier if property.text(self.source) == "meta" => {
-                let property = self.parse_identifier_name()?;
                 self.state.insert(ParserState::HAS_MODULE_SYNTAX);
-                return Some(self.ast.expr_meta_property(
-                    Span::new(
-                        import_name.span(&self.ast).start,
-                        property.span(&self.ast).end,
-                    ),
-                    import_name,
-                    property,
-                ));
+                return self.parse_meta_property(import_name);
             }
             _ => {
-                return {
-                    let span = self.current_token.span();
-                    self.report(
-                        span,
-                        "The only valid meta properties for 'import' are 'import.meta', 'import.source()', or 'import.defer()'",
-                        ReportOptions::default(),
-                    );
-                    None
-                };
+                self.report(
+                    property.span(),
+                    "The only valid meta properties for 'import' are 'import.meta', 'import.source()', or 'import.defer()'",
+                    ReportOptions::default(),
+                );
+                return self.parse_meta_property(import_name);
             }
         };
         self.advance()?;
+        if self.current_token.tag() != TokenTag::LeftParen {
+            self.report_expected(
+                self.current_token.span(),
+                "Expected '(' after import",
+                ReportOptions::default(),
+            );
+            let name = self.identifier_name(property);
+            let property = self.ast.identifier_name(property.span(), name);
+            return Some(self.ast.expr_meta_property(
+                Span::new(
+                    import_name.span(&self.ast).start,
+                    property.span(&self.ast).end,
+                ),
+                import_name,
+                property,
+            ));
+        }
         self.parse_dynamic_import(import_name.span(&self.ast).start, phase, sync)
     }
 
@@ -11194,20 +11200,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let property_token = self.current_token;
         if property_token.text(self.source) != "target" {
-            return {
-                let span = self.current_token.span();
-                self.report(
-                    span,
-                    "The only valid meta property for 'new' is 'new.target'",
-                    ReportOptions::default(),
-                );
-                None
-            };
-        }
-        let property = self.parse_identifier_name()?;
-        if self.boundary_context.can_be_commonjs() {
+            self.report(
+                property_token.span(),
+                "The only valid meta property for 'new' is 'new.target'",
+                ReportOptions::default(),
+            );
+        } else if self.boundary_context.can_be_commonjs() {
             self.state.insert(ParserState::HAS_COMMONJS_SYNTAX);
         }
+        self.parse_meta_property(meta)
+    }
+
+    fn parse_meta_property(&mut self, meta: IdentifierName) -> Option<Expr> {
+        if !self.current_token.tag().is_identifier_like() {
+            self.report_expected(
+                self.current_token.span(),
+                "Expected an identifier name after '.'",
+                ReportOptions::default(),
+            );
+            return None;
+        }
+        let property = self.parse_identifier_name()?;
         Some(self.ast.expr_meta_property(
             Span::new(meta.span(&self.ast).start, property.span(&self.ast).end),
             meta,

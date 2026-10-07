@@ -454,17 +454,20 @@ pub(super) fn check_yield_expression(
 }
 
 pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, property: MetaProperty) {
-    let name = builder
+    let meta_name = builder
         .ast
         .get_utf8(property.meta(builder.ast).name(builder.ast));
-    if name == "import" && !builder.ast.is_module() {
+    let property_name = builder
+        .ast
+        .get_utf8(property.property(builder.ast).name(builder.ast));
+    if meta_name == "import" && property_name == "meta" && !builder.ast.is_module() {
         builder.report(
             builder.ast.span(property.node_id()),
             "'import.meta' is only valid in module code",
             ReportOptions::default(),
         );
     }
-    if name == "new" && !is_new_target_available(builder) {
+    if meta_name == "new" && property_name == "target" && !is_new_target_available(builder) {
         builder.report(
             builder.ast.span(property.node_id()),
             "'new.target' is only valid inside functions, class field initializers, or static blocks",
