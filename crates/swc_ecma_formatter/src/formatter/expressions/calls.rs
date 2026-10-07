@@ -68,25 +68,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         call: CallExpression,
         context: ExpressionContext,
     ) -> Result<CallCallee, FormatError> {
+        // Only suppression can change the callee's content mode.
         if self.has_suppression {
             return Ok(self.source_call(call, context)?.callee_head());
         }
-        if call.type_arguments(self.ast).is_some() {
-            return Err(self.unsupported("typed call", call));
-        }
+        let ast = self.ast;
+        let expression = call.callee(ast);
+        let access = if call.optional(ast) {
+            AccessKind::Optional
+        } else {
+            AccessKind::Ordinary
+        };
+        let mode = ContentMode::Formatted;
+        let curried_call = self.curried_call_callee(expression, call.arguments(ast), mode);
         Ok(CallCallee {
-            expression: call.callee(self.ast),
-            curried_call: self.curried_call_callee(
-                call.callee(self.ast),
-                call.arguments(self.ast),
-                ContentMode::Formatted,
-            ),
-            mode: ContentMode::Formatted,
-            access: if call.optional(self.ast) {
-                AccessKind::Optional
-            } else {
-                AccessKind::Ordinary
-            },
+            expression,
+            access,
+            mode,
+            curried_call,
         })
     }
     /// The RHS spine owner has verified this call's suffix window.
@@ -159,21 +158,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         call: CallExpression,
         context: ExpressionContext,
     ) -> Result<SourceArguments<'ast>, FormatError> {
-        if call.type_arguments(self.ast).is_some() {
-            return Err(self.unsupported("typed call", call));
-        }
-        let mut arguments = self
-            .source_arguments(
-                call.arguments(self.ast),
-                call.callee(self.ast),
-                call.span(self.ast).end,
-                if call.optional(self.ast) {
-                    AccessKind::Optional
-                } else {
-                    AccessKind::Ordinary
-                },
-            )
-            .ok_or_else(|| self.unsupported("call opening boundary", call))?;
+        let ast = self.ast;
+        let callee = call.callee(ast);
+        let call_arguments = call.arguments(ast);
+        let access = if call.optional(ast) {
+            AccessKind::Optional
+        } else {
+            AccessKind::Ordinary
+        };
+        let source = if let Some(node) = call.type_arguments(ast) {
+            let types = self.prepare_expression_type_arguments(callee, node, access)?;
+            self.source_arguments_after_types(call_arguments, callee, call.span(ast).end, types)
+        } else {
+            self.source_arguments(call_arguments, callee, call.span(ast).end, access)
+        };
+        let mut arguments =
+            source.ok_or_else(|| self.unsupported("call opening boundary", call))?;
         arguments.group = if matches!(context.position,
             ExpressionPosition::CallCallee { curried_call: Some(curried), .. } if curried == call)
         {

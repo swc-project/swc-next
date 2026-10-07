@@ -716,4 +716,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.soft_line();
         }
     }
+
+    pub(super) fn mapped_type_requires_break(&self, node: TsMappedType) -> bool {
+        let ast = self.ast;
+        let start = node.span(ast).start + 1;
+        let prefix = Span::new(start, node.key(ast).span(ast).start);
+        // Select the same first token as the real prefix; absent modifiers do
+        // not become syntax merely because their text occurs in the source.
+        let token = match node.readonly(ast) {
+            TsMappedTypeModifier::None => "[",
+            TsMappedTypeModifier::True => "readonly",
+            TsMappedTypeModifier::Plus => "+",
+            TsMappedTypeModifier::Minus => "-",
+        };
+        self.find_token(prefix, &[], token)
+            .is_none_or(|first| self.type_body_expands(start, first))
+    }
 }

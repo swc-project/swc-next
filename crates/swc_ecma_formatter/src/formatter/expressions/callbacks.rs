@@ -682,6 +682,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
+        let source_opening = head
+            .source_opening
+            .map(|opening| {
+                writer.record_with_value(|writer| self.format_verbatim(opening.span, writer))
+            })
+            .transpose()?
+            .map(|(fragment, ())| fragment);
         let (selected_argument, mut outcome) = match &selected {
             SelectedArgument::Callback(selected) => (selected.argument, SelectionOutcome::Callback),
             SelectedArgument::FinalObject(selected) => (
@@ -694,11 +701,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ),
         };
         let (opening, ()) = writer.record_with_value(|writer| {
-            self.opening_line_constraint(content).write(
-                writer,
-                FlatSeparator::Empty,
-                Writer::soft_line,
-            );
+            if let Some(opening) = head.source_opening {
+                opening
+                    .following
+                    .write(writer, FlatSeparator::Empty, Writer::soft_line);
+            } else {
+                self.opening_line_constraint(content).write(
+                    writer,
+                    FlatSeparator::Empty,
+                    Writer::soft_line,
+                );
+            }
             Ok::<_, FormatError>(())
         })?;
         let mut recorded = Vec::with_capacity(arguments.len());
@@ -834,7 +847,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         let (fallback, ()) = writer.record_with_value(|writer| {
             fallback_group.write(expand_fallback, writer, |writer| {
-                writer.text("(");
+                if let Some(opening) = source_opening {
+                    writer.write_fragment(opening);
+                } else {
+                    writer.text("(");
+                }
                 writer.indent(|writer| {
                     writer.write_fragment(opening);
                     for item in &recorded {
@@ -866,10 +883,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(None);
             }
         };
-        if let Some(grouped_items) = recorded
-            .iter()
-            .map(|item| item.try_group(policy))
-            .collect::<Option<Vec<_>>>()
+        if source_opening.is_none()
+            && let Some(grouped_items) = recorded
+                .iter()
+                .map(|item| item.try_group(policy))
+                .collect::<Option<Vec<_>>>()
             && let Some(opening) = grouping_view(opening, policy)
             && let Some(flat_closing) = grouping_view(closing, policy)
         {
