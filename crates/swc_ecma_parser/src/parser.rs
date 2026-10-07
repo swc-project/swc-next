@@ -10703,10 +10703,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 // Computed keys stay expressions when an object cover becomes a
                 // binding pattern, so they must not replace binding evidence.
                 let context = enter_grammar_context![&mut self.context, +In];
-                let expression = self.parse_expr_preserving_stripped_paren(
-                    Precedence::Assignment,
-                    ParseExpressionOpts { in_cover },
-                );
+                let expression = (|| {
+                    let expression = self.parse_expr_preserving_stripped_paren(
+                        Precedence::Assignment,
+                        ParseExpressionOpts { in_cover },
+                    )?;
+                    if self.current_token.tag() == TokenTag::Comma {
+                        self.report(
+                            self.current_token.span(),
+                            "A comma expression in a computed property key must be parenthesized",
+                            ReportOptions::default(),
+                        );
+                        self.parse_sequence_expression(Precedence::Comma, expression)
+                    } else {
+                        Some(expression)
+                    }
+                })();
                 self.context = context;
                 let expression = expression?;
                 let (message, help) = if in_cover {
