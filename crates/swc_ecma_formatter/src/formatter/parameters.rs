@@ -4,10 +4,11 @@ use super::comments::{CommentRunLayout, ExpressionTail};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
+use super::types::callable::{CallableParameter, SignatureParameterHug};
 use crate::{ArrowParentheses, FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
-    Ast, ExprData, FormalParameter, FormalParameterItem, FormalParameterItemData,
-    FormalParameterPatternData, FormalParameterRest, FormalParameters, FunctionBody, GetSpan, Span,
+    Ast, FormalParameter, FormalParameterItem, FormalParameterItemData, FormalParameterPatternData,
+    FormalParameterRest, FormalParameters, FunctionBody, GetSpan, Span,
 };
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ArrowParameterParentheses {
@@ -71,11 +72,6 @@ impl RuntimeParameter {
         }
     }
 }
-#[derive(Clone, Copy)]
-enum ParameterHug {
-    Pattern,
-    Object,
-}
 struct PrivateParameterBoundary {
     parameter: RuntimeParameter,
     relation: DelimitedSuppression,
@@ -88,7 +84,7 @@ pub(super) struct SourceParameters {
     first: Option<RuntimeParameter>,
     rest: Option<FormalParameterRest>,
     omit_parentheses: bool,
-    hug: Option<ParameterHug>,
+    hug: Option<SignatureParameterHug>,
     enclosing_mode: ContentMode,
     leading_mode: ContentMode,
     suppressed_tail: Option<RuntimeParameter>,
@@ -219,7 +215,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             && self.comments.in_range(span).is_empty()
             && !self.diagnostic_range_is_sensitive(span);
-        let hug = single.and_then(|parameter| self.parameter_hug(parameter, span));
+        let hug = single.and_then(|parameter| {
+            self.callable_parameter_hug(CallableParameter::Formal(parameter), span)
+        });
         let mut key_mode = ContentMode::Formatted;
         let mut body_mode = ContentMode::Formatted;
         let mut private_boundary = None;
@@ -291,43 +289,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => None,
             },
         })
-    }
-    fn parameter_hug(&self, node: FormalParameter, envelope: Span) -> Option<ParameterHug> {
-        let ast = self.ast;
-        if !node.decorators(ast).is_empty() {
-            return None;
-        }
-        let pattern = node.pattern(ast);
-        let initializer = node.initializer(ast);
-        if initializer.is_some_and(|expr| match self.expression_content(expr).data {
-            ExprData::IdentifierReference(_) => false,
-            ExprData::ArrayExpression(a) => !a.elements(ast).is_empty(),
-            ExprData::ObjectExpression(o) => !o.properties(ast).is_empty(),
-            _ => true,
-        }) {
-            return None;
-        }
-        let hug = match ast.formal_parameter_pattern_data(pattern) {
-            FormalParameterPatternData::ObjectPattern(_) if initializer.is_none() => {
-                ParameterHug::Object
-            }
-            FormalParameterPatternData::ObjectPattern(_)
-            | FormalParameterPatternData::ArrayPattern(_) => ParameterHug::Pattern,
-            _ => return None,
-        };
-        if self.diagnostic_range_is_sensitive(envelope)
-            || !self
-                .comments
-                .in_range(Span::new(envelope.start, pattern.span(ast).start))
-                .is_empty()
-            || !self
-                .comments
-                .in_range(Span::new(node.span(ast).end, envelope.end))
-                .is_empty()
-        {
-            return None;
-        }
-        Some(hug)
     }
     pub(super) fn format_source_parameters(
         &mut self,
@@ -491,7 +452,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: RuntimeParameter,
         mode: ContentMode,
-        hug: Option<ParameterHug>,
+        hug: Option<SignatureParameterHug>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match node {
@@ -503,21 +464,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         parameter: FormalParameter,
         mode: ContentMode,
-        signature_hug: Option<ParameterHug>,
+        signature_hug: Option<SignatureParameterHug>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if mode == ContentMode::Verbatim {
             self.format_verbatim(parameter.span(self.ast), writer)?;
             return Ok(None);
         }
-        if parameter.type_annotation(self.ast).is_some()
-            || parameter.optional(self.ast)
-            || !parameter.decorators(self.ast).is_empty()
-        {
-            return Err(self.unsupported("typed or decorated parameter", parameter));
+        if !parameter.decorators(self.ast).is_empty() {
+            return Err(self.unsupported("decorated parameter", parameter));
+        }
+        if self.ast.is_ts() {
+            let annotation = parameter.type_annotation(self.ast);
+            let optional = parameter.optional(self.ast);
+            if annotation.is_some() || optional {
+                let prepared =
+                    self.prepare_typed_formal_parameter(parameter, mode, annotation, optional)?;
+                if let Some(hug) = signature_hug
+                    && !prepared.is_source()
+                {
+                    return self.format_prepared_parameter_item(
+                        prepared.share_signature_group(hug),
+                        writer,
+                    );
+                }
+                return writer.group(false, |writer| {
+                    self.format_prepared_parameter_item(prepared, writer)
+                });
+            }
         }
         let pattern = parameter.pattern(self.ast);
-        if matches!(signature_hug, Some(ParameterHug::Object))
+        if matches!(signature_hug, Some(SignatureParameterHug::Object))
             && let FormalParameterPatternData::ObjectPattern(object) =
                 self.ast.formal_parameter_pattern_data(pattern)
         {
@@ -557,8 +534,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(rest.span(self.ast), writer)?;
             return Ok(None);
         }
-        if rest.type_annotation(self.ast).is_some() || !rest.decorators(self.ast).is_empty() {
-            return Err(self.unsupported("typed or decorated rest parameter", rest));
+        if !rest.decorators(self.ast).is_empty() {
+            return Err(self.unsupported("decorated rest parameter", rest));
+        }
+        if self.ast.is_ts()
+            && let Some(annotation) = rest.type_annotation(self.ast)
+        {
+            let prepared = self.prepare_typed_rest_parameter(rest, mode, annotation)?;
+            return self.format_prepared_parameter_item(prepared, writer);
         }
         let argument = rest.argument(self.ast);
         writer.text("...");
