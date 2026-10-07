@@ -1921,7 +1921,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn is_using_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Using);
         let next = self.peek_ahead()?;
-        if can_start_binding_identifier(next.tag()) && !self.can_insert_implicit_semicolon(next) {
+        if can_start_using_binding(next.tag()) && !self.can_insert_implicit_semicolon(next) {
             return Some(false);
         }
         Some(true)
@@ -1940,10 +1940,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return Some(false);
             }
             let binding = peek.next()?;
-            Some(
-                !binding.has_line_terminator_before()
-                    && can_start_binding_identifier(binding.tag()),
-            )
+            Some(!binding.has_line_terminator_before() && can_start_using_binding(binding.tag()))
         })();
         peek.end();
         result
@@ -7451,7 +7448,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             TokenTag::Using => {
                 let next = self.peek_ahead()?;
-                if next.has_line_terminator_before() || !can_start_binding_identifier(next.tag()) {
+                if next.has_line_terminator_before() || !can_start_using_binding(next.tag()) {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
 
@@ -13066,6 +13063,13 @@ fn can_start_binding_identifier(tag: TokenTag) -> bool {
 #[inline]
 fn can_start_binding_pattern(tag: TokenTag) -> bool {
     matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace) || can_start_binding_identifier(tag)
+}
+
+#[inline]
+fn can_start_using_binding(tag: TokenTag) -> bool {
+    // Object patterns can be recovered as declarations. '[' must still allow
+    // a member expression with the identifier 'using' as its object.
+    tag == TokenTag::LeftBrace || can_start_binding_identifier(tag)
 }
 
 #[inline]
