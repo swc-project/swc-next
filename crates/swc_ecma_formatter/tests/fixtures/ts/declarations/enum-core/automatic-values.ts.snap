@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+enum E { A, B, C = 7, D }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+enum E {
+  A,
+  B,
+  C = 7,
+  D,
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+enum E {
+  A,
+  B,
+  C = 7,
+  D,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+enum E {
+  A,
+  B,
+  C = 7,
+  D,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+enum E {
+  A,
+  B,
+  C = 7,
+  D,
+}
