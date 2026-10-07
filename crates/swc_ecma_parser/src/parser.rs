@@ -4570,12 +4570,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Import {
             let statement = self.parse_import_declaration()?;
             let StmtData::Declaration(declaration) = self.ast.stmt_data(statement) else {
+                let span = statement.span(&self.ast);
                 self.report(
-                    statement.span(&self.ast),
+                    span,
                     "expected an import-equals declaration after 'export'",
                     ReportOptions::default(),
                 );
-                return None;
+                statement.set_span(&mut self.ast, Span::new(start, span.end));
+                return Some(statement);
             };
             let DeclData::TsImportEqualsDeclaration(_) = self.ast.decl_data(declaration) else {
                 unreachable!()

@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11358/11509 (98.69%)
+Positive Passed: 11366/11509 (98.76%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
@@ -10,14 +10,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/classHeritage
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/constDeclarations-errors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/controlFlowInstanceofWithSymbolHasInstance.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/declareAlreadySeen.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingFollowedWithNamedImport1WithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingFollowedWithNamedImportWithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingFollowedWithNamespaceBinding1WithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingFollowedWithNamespaceBindingWithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportDefaultBindingWithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportNameSpaceImportWithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportNamedImportWithExport.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/es6ImportWithoutFromClauseWithExport.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAlreadySeen.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithDeclareAndExportModifiers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithDeclareModifier.ts
