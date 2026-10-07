@@ -19,20 +19,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let callee = constructor.callee(self.ast);
         let callee_span = callee.span(self.ast);
         let span = constructor.span(self.ast);
-        if constructor.type_arguments(self.ast).is_some() {
-            return Err(self.unsupported("typed constructor", constructor));
-        }
-        let arguments = if span.end == callee_span.end {
+        let mut types = constructor
+            .type_arguments(self.ast)
+            .map(|node| self.prepare_expression_type_arguments(callee, node, AccessKind::Ordinary))
+            .transpose()?;
+        let suffix_end = types
+            .as_ref()
+            .map_or(callee_span.end, |types| types.node.span(self.ast).end);
+        let arguments = if span.end == suffix_end {
             None
         } else {
-            Some(
+            let source = if let Some(types) = types.take() {
+                self.source_arguments_after_types(
+                    constructor.arguments(self.ast),
+                    callee,
+                    span.end,
+                    types,
+                )
+            } else {
                 self.source_arguments(
                     constructor.arguments(self.ast),
                     callee,
                     span.end,
                     AccessKind::Ordinary,
                 )
-                .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?,
+            };
+            Some(
+                source
+                    .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?,
             )
         };
         let keyword_end = span.start + 3;
@@ -44,6 +58,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             leading_mode
         } else if let Some(arguments) = &arguments {
             arguments.callee_mode
+        } else if let Some(types) = &types {
+            types.callee_mode
         } else {
             ContentMode::Formatted
         };
@@ -54,11 +70,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.line_constraint(keyword_end, next)
             .write(writer, FlatSeparator::Space, Writer::space);
         self.comments.claim(leading)?;
-        let mut callee_context = ExpressionContext::at(ExpressionPosition::NewCallee)
-            .with_tail_owner(TailOwner::ParentOperation)
-            .with_content_mode(mode);
-        callee_context.member_layout = MemberLayout::Tight;
-        callee_context.conditional_envelope = context.conditional_envelope.terminal_head();
         let tail = self.format_expression_with_leading_comments(
             callee,
             NodeHead {
@@ -67,14 +78,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout: CommentRunLayout::FlatLeading(callee_span.start),
                 gap_end: None,
             },
-            callee_context,
+            ExpressionContext::at(ExpressionPosition::NewCallee)
+                .with_tail_owner(TailOwner::ParentOperation)
+                .with_member_layout(MemberLayout::Tight)
+                .with_content_mode(mode)
+                .with_conditional_envelope(context.conditional_envelope.terminal_head()),
             None,
             writer,
         )?;
         if let Some(arguments) = arguments {
             self.format_source_arguments(arguments, tail, writer)
         } else {
-            self.format_expression_tail(tail, writer)?;
+            if let Some(types) = types {
+                self.format_expression_type_arguments(types, tail, writer)?;
+            } else {
+                self.format_expression_tail(tail, writer)?;
+            }
             writer.text("()");
             Ok(None)
         }

@@ -962,7 +962,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn assignment_call_is_short(&self, call: CallExpression) -> bool {
         let ast = self.ast;
         let arguments = call.arguments(ast);
-        match arguments.len() {
+        let short = match arguments.len() {
             0 => true,
             1 => {
                 let Some(first) = arguments.first() else {
@@ -975,7 +975,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.assignment_call_argument_is_short(expression)
             }
             _ => false,
-        }
+        };
+        short
+            && call
+                .type_arguments(ast)
+                .is_none_or(|types| self.call_type_arguments_are_compact(types))
     }
 
     fn assignment_call_argument_is_short(&self, mut expression: Expr) -> bool {
