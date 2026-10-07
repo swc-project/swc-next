@@ -155,14 +155,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DeclData::VariableDeclaration(_) => {
                     self.finish_statement(end, None, punctuation, writer)
                 }
-                DeclData::TsModuleDeclaration(_) | DeclData::TsGlobalDeclaration(_) => {
-                    Ok(StatementBoundary::SourceEnd {
-                        end,
-                        has_terminator: self.source(span).ends_with(';'),
-                    }
-                    .type_declaration()
-                    .into())
+                DeclData::TsModuleDeclaration(_)
+                | DeclData::TsGlobalDeclaration(_)
+                | DeclData::TsImportEqualsDeclaration(_) => Ok(StatementBoundary::SourceEnd {
+                    end,
+                    has_terminator: self.source(span).ends_with(';'),
                 }
+                .type_declaration()
+                .into()),
                 DeclData::TsInterfaceDeclaration(_) => Ok(StatementBoundary::SourceEnd {
                     end,
                     has_terminator: false,
@@ -237,6 +237,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             DeclData::TsGlobalDeclaration(node) => {
                 self.format_global_declaration(node, keyword, writer)
+            }
+            DeclData::TsImportEqualsDeclaration(node) => {
+                self.format_import_equals_declaration(node, punctuation, writer)
             }
             _ => Err(self.unsupported("declaration", declaration)),
         }
