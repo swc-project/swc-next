@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+function f(x: Missing): void;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+// @ts-expect-error
+function f(x: Missing,): void;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+function f(x: Missing,): void
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+// @ts-expect-error
+function f(x: Missing): void;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+function f(x: Missing): void

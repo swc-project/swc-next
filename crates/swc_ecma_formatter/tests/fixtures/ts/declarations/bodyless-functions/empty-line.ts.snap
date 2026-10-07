@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(// empty
+): void;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+function f(
+  // empty
+): void;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function f(
+  // empty
+): void
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+function f(
+  // empty
+): void;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+function f(
+  // empty
+): void
