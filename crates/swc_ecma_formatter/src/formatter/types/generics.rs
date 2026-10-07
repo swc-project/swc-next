@@ -1,9 +1,10 @@
 //! Real generic list owners share the item/comma protocol and retain child bindings.
 
 use swc_next_ecma_ast::{
-    BindingIdentifier, CommentKind, GetSpan, Span, TsLiteralData, TsType, TsTypeData,
+    Ast, BindingIdentifier, ClassBody, CommentKind, FunctionBody, GetSpan, ObjectExpression, Span,
+    TemplateElement, TsLiteralData, TsMappedType, TsType, TsTypeData, TsTypeLiteral,
     TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypeReference,
-    UnaryOperator,
+    UnaryOperator, Visit, VisitWith,
 };
 
 use super::compound::PendingTypeHead;
@@ -134,6 +135,61 @@ pub(super) struct PreparedParameter<'ast> {
     name_mode: ContentMode,
     constraint: Option<ParameterBound<'ast>>,
     default: Option<ParameterBound<'ast>>,
+}
+
+/// Source expansion preferences and literal lines in a comment/diagnostic-clear
+/// type list. Other type groups remain free to break by width.
+struct RequiredTypeBreak<'formatter, 'ast, 'source> {
+    formatter: &'formatter Formatter<'ast, 'source>,
+    required: bool,
+}
+
+impl<'source> Visit<'source> for RequiredTypeBreak<'_, '_, 'source> {
+    fn ast(&self) -> &Ast<'source> {
+        self.formatter.ast
+    }
+
+    fn visit_ts_type(&mut self, node: TsType) {
+        if !self.required {
+            node.visit_children_with(self);
+        }
+    }
+
+    fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
+        self.required |= self.formatter.type_literal_requires_break(node);
+        if !self.required {
+            node.visit_children_with(self);
+        }
+    }
+
+    fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
+        self.required |= self.formatter.mapped_type_requires_break(node);
+        if !self.required {
+            node.visit_children_with(self);
+        }
+    }
+
+    fn visit_object_expression(&mut self, node: ObjectExpression) {
+        self.required |= self.formatter.object_body_expands(node);
+        if !self.required {
+            node.visit_children_with(self);
+        }
+    }
+
+    fn visit_function_body(&mut self, node: FunctionBody) {
+        self.required |= self.formatter.function_body_requires_break(node);
+    }
+
+    fn visit_class_body(&mut self, node: ClassBody) {
+        self.required |= self.formatter.class_body_first_member(node).is_some();
+    }
+
+    fn visit_template_element(&mut self, node: TemplateElement) {
+        self.required |= self
+            .ast()
+            .get_utf8(node.raw(self.ast()))
+            .contains(['\r', '\n']);
+    }
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -1048,5 +1104,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_type_comment_gap(&boundary, FlatSeparator::Space, writer)?;
         }
         Ok(())
+    }
+
+    pub(in crate::formatter) fn call_type_arguments_are_compact(
+        &self,
+        node: TsTypeParameterInstantiation,
+    ) -> bool {
+        let ast = self.ast;
+        let parameters = node.params(ast);
+        if parameters.len() != 1 {
+            return false;
+        }
+        let Some(first) = parameters.first() else {
+            return false;
+        };
+        let first = ast.get_node_in_sub_range(first);
+        if matches!(
+            ast.ts_type_data(first),
+            TsTypeData::TsUnionType(_)
+                | TsTypeData::TsIntersectionType(_)
+                | TsTypeData::TsTypeLiteral(_)
+        ) {
+            return false;
+        }
+        let mut breaks = RequiredTypeBreak {
+            formatter: self,
+            required: false,
+        };
+        first.visit_with(&mut breaks);
+        !breaks.required
     }
 }

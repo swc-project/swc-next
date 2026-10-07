@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{
 use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use super::chains::PreparedChain;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
-use super::{ExpressionContext, ExpressionPosition, ParenthesesOwner, TailOwner};
+use super::{AccessKind, ExpressionContext, ExpressionPosition, ParenthesesOwner, TailOwner};
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, NodeHead,
@@ -41,15 +41,31 @@ impl TypeBinaryOperator {
 }
 
 pub(in crate::formatter) struct ExpressionTypeArguments<'ast> {
-    node: TsTypeParameterInstantiation,
+    pub(super) node: TsTypeParameterInstantiation,
     pub(in crate::formatter) callee_mode: ContentMode,
-    mode: ContentMode,
+    pub(super) mode: ContentMode,
+    pub(super) access: AccessKind,
+    has_comments: bool,
     prefix: ExpressionTypeArgumentPrefix<'ast>,
+}
+
+impl ExpressionTypeArguments<'_> {
+    pub(in crate::formatter) fn has_comments(&self) -> bool {
+        self.has_comments
+    }
 }
 
 enum ExpressionTypeArgumentPrefix<'ast> {
     Source(Span),
-    Formatted(CommentBoundary<'ast>),
+    Formatted {
+        before: CommentBoundary<'ast>,
+        optional: Option<OptionalTypeArgumentPrefix<'ast>>,
+    },
+}
+
+struct OptionalTypeArgumentPrefix<'ast> {
+    token: Span,
+    after: CommentBoundary<'ast>,
 }
 
 enum TypeExpressionGap<'ast> {
@@ -239,9 +255,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         expression: Expr,
         node: TsTypeParameterInstantiation,
-    ) -> ExpressionTypeArguments<'ast> {
+        access: AccessKind,
+    ) -> Result<ExpressionTypeArguments<'ast>, FormatError> {
         let gap = Span::new(expression.span(self.ast).end, node.span(self.ast).start);
         let comments = self.comments.in_range(gap);
+        let optional = if access == AccessKind::Optional {
+            let Some(start) = self.find_token(gap, comments, "?.") else {
+                return Err(FormatError::unsupported(
+                    "optional type arguments token",
+                    None,
+                    gap,
+                ));
+            };
+            Some(Span::new(start, start + 2))
+        } else {
+            None
+        };
+        let split = optional.map_or(0, |token| {
+            comments.partition_point(|comment| comment.span.end <= token.start)
+        });
+        let (before, after) = comments.split_at(split);
         let mut callee_mode = ContentMode::Formatted;
         let mut mode = ContentMode::Formatted;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
@@ -255,17 +288,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let prefix = if callee_mode == ContentMode::Verbatim || mode == ContentMode::Verbatim {
             ExpressionTypeArgumentPrefix::Source(gap)
+        } else if let Some(token) = optional {
+            ExpressionTypeArgumentPrefix::Formatted {
+                before: self.prepare_comment_boundary(before, gap.start, token.start),
+                optional: Some(OptionalTypeArgumentPrefix {
+                    token,
+                    after: self.prepare_comment_boundary(after, token.end, gap.end),
+                }),
+            }
         } else {
-            ExpressionTypeArgumentPrefix::Formatted(
-                self.prepare_comment_boundary(comments, gap.start, gap.end),
-            )
+            ExpressionTypeArgumentPrefix::Formatted {
+                before: self.prepare_comment_boundary(comments, gap.start, gap.end),
+                optional: None,
+            }
         };
-        ExpressionTypeArguments {
+        Ok(ExpressionTypeArguments {
             node,
             callee_mode,
             mode,
+            access,
+            has_comments: !comments.is_empty(),
             prefix,
-        }
+        })
     }
 
     pub(in crate::formatter) fn format_expression_type_arguments(
@@ -295,17 +339,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 self.format_verbatim(gap, writer)?;
             }
-            ExpressionTypeArgumentPrefix::Formatted(before) => {
+            ExpressionTypeArgumentPrefix::Formatted { before, optional } => {
                 let before = if let Some(tail) = tail {
                     // The real angle suffix owns one source-ordered packet,
                     // including comments exposed by removed callee pairs.
-                    let end = arguments.node.span(self.ast).start;
+                    let end = optional
+                        .as_ref()
+                        .map_or(arguments.node.span(self.ast).start, |optional| {
+                            optional.token.start
+                        });
                     let comments = self.comments.between(Span::new(tail.source_end, end))?;
                     self.prepare_comment_boundary(comments, tail.source_end, end)
                 } else {
                     before
                 };
-                if !before.is_empty()
+                if optional.is_none()
+                    && !before.is_empty()
                     && matches!(
                         self.comment_boundary_binding(&before, arguments.node.span(self.ast)),
                         CommentBinding::Unbound
@@ -322,8 +371,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?;
                 } else {
-                    self.format_comment_boundary(&before, writer)?;
-                    before.gap().write(writer, FlatSeparator::Empty, |_| {});
+                    self.format_type_expression_gap(
+                        TypeExpressionGap::Formatted(before),
+                        FlatSeparator::Empty,
+                        writer,
+                    )?;
+                }
+                if let Some(optional) = optional {
+                    writer.text("?.");
+                    self.format_type_expression_gap(
+                        TypeExpressionGap::Formatted(optional.after),
+                        FlatSeparator::Empty,
+                        writer,
+                    )?;
                 }
             }
         }

@@ -1440,4 +1440,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_signature_return(index.result, writer)
         })
     }
+
+    pub(super) fn type_literal_requires_break(&self, node: TsTypeLiteral) -> bool {
+        let ast = self.ast;
+        node.members(ast).first().is_some_and(|id| {
+            let member: TsTypeElement = ast.get_node_in_sub_range(id);
+            self.type_body_expands(node.span(ast).start + 1, member.span(ast).start)
+        })
+    }
 }
