@@ -1,10 +1,10 @@
 //! Borrowed TypeScript types, aliases, and binding annotation boundaries.
 
-mod callable;
+pub(super) mod callable;
 mod compound;
 mod conditional;
 mod context;
-mod generics;
+pub(super) mod generics;
 mod imports;
 mod infer;
 mod interfaces;

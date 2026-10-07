@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* prefix */ function /* star */ * /* name */ alpha(): void;
+---------- Options ----------
+{}
+---------- Output ----------
+declare function* /* prefix */ /* star */ /* name */ alpha(): void;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare function* /* prefix */ /* star */ /* name */ alpha(): void;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare function* /* prefix */ /* star */ /* name */ alpha(): void
