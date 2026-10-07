@@ -10581,7 +10581,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   `[` AssignmentExpression[+In, ?Yield, ?Await] `]`
     fn parse_property_key(&mut self, in_cover: bool) -> Option<PropertyKey> {
         let token = self.current_token;
-        match token.tag() {
+        let token_tag = token.tag();
+        if token_tag.is_identifier_like() {
+            return Some(PropertyKey::IdentifierName(self.parse_identifier_name()?));
+        }
+
+        match token_tag {
+            TokenTag::PrivateIdentifier => {
+                let private = self.parse_private_identifier()?;
+                self.report(
+                    token.span(),
+                    "Private property names are only allowed in class members",
+                    ReportOptions::default(),
+                );
+                Some(PropertyKey::Expr(Expr::PrivateIdentifier(private)))
+            }
             TokenTag::LeftBracket => {
                 self.advance()?;
                 // Computed keys stay expressions when an object cover becomes a
@@ -10611,9 +10625,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ))),
             tag if tag.is_numeric_literal() => {
                 Some(PropertyKey::Expr(self.parse_numeric_literal()?))
-            }
-            tag if tag.is_identifier_like() => {
-                Some(PropertyKey::IdentifierName(self.parse_identifier_name()?))
             }
             _ => {
                 let found = self.describe_token(token);

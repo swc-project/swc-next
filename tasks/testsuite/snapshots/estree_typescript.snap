@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11370/11509 (98.79%)
+Positive Passed: 11373/11509 (98.82%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
@@ -49,11 +49,8 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/shorthandProp
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/shorthandPropertyAssignmentsInDestructuring_ES6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/sourceMapValidationDecorators.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/classStaticBlock/classStaticBlock19.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameAndPropertySignature.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameBadDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameEnum.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameInObjectLiteral-1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameInObjectLiteral-2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameInObjectLiteral-3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameJsBadDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators/decoratorMetadata-jsdoc.ts
