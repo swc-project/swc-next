@@ -6981,12 +6981,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type_reference(&mut self) -> Option<TsType> {
+        let start = self.current_token.start();
         let type_name = self.parse_entity_name()?;
-        let start = type_name.span(&self.ast).start;
         let type_arguments = self.parse_type_arguments_after_entity_name()?;
-        let end = type_arguments.map_or(type_name.span(&self.ast).end, |args| {
-            args.span(&self.ast).end
-        });
+        let end = self.lexer.state.prev_token_end;
         Some(
             self.ast
                 .ts_type_ts_type_reference(Span::new(start, end), type_name, type_arguments),
