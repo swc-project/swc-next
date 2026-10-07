@@ -13,6 +13,7 @@ mod restricted;
 mod source;
 mod statements;
 mod suppression;
+mod templates;
 mod types;
 mod variables;
 
