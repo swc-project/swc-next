@@ -5665,14 +5665,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_union_type(&mut self) -> Option<TsType> {
-        self.parse_binary_type_chain(TokenTag::BitwiseOr, BinaryTypeKind::Union)
+        self.parse_binary_type_chain(
+            TokenTag::BitwiseOr,
+            BinaryTypeKind::Union,
+            Self::parse_intersection_type,
+        )
     }
 
-    fn parse_binary_type_chain(
+    fn parse_binary_type_chain<F>(
         &mut self,
         separator: TokenTag,
         kind: BinaryTypeKind,
-    ) -> Option<TsType> {
+        parse_constituent: F,
+    ) -> Option<TsType>
+    where
+        F: Fn(&mut Self) -> Option<TsType>,
+    {
         let leading_start = if self.current_token.tag() == separator {
             let start = self.current_token.start();
             self.advance()?;
@@ -5680,27 +5688,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        let first = match kind {
-            BinaryTypeKind::Union => self.parse_intersection_type()?,
-            BinaryTypeKind::Intersection => self.parse_postfix_type()?,
-        };
+        let first_start = self.current_token.start();
+        let first = parse_constituent(self)?;
         if leading_start.is_none() && self.current_token.tag() != separator {
             return Some(first);
         }
         let checkpoint = self.scratch_a.begin();
         self.scratch_a.append(first);
         let result = (|| {
-            let mut last = first;
             while self.eat(separator)? {
-                last = match kind {
-                    BinaryTypeKind::Union => self.parse_intersection_type()?,
-                    BinaryTypeKind::Intersection => self.parse_postfix_type()?,
-                };
-                self.scratch_a.append(last);
+                let next = parse_constituent(self)?;
+                self.scratch_a.append(next);
             }
             let span = Span::new(
-                leading_start.unwrap_or(first.span(&self.ast).start),
-                last.span(&self.ast).end,
+                leading_start.unwrap_or(first_start),
+                self.lexer.state.prev_token_end,
             );
             let types = self.add_extra_from_scratch_a(checkpoint);
             Some(match kind {
@@ -5715,7 +5717,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_intersection_type(&mut self) -> Option<TsType> {
-        self.parse_binary_type_chain(TokenTag::BitwiseAnd, BinaryTypeKind::Intersection)
+        self.parse_binary_type_chain(
+            TokenTag::BitwiseAnd,
+            BinaryTypeKind::Intersection,
+            Self::parse_postfix_type,
+        )
     }
 
     fn parse_postfix_type(&mut self) -> Option<TsType> {
