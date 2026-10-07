@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(callee // inner
+) /* outer */ <Type>;
+---------- Options ----------
+{}
+---------- Output ----------
+callee // inner
+/* outer */ <Type>;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+callee // inner
+/* outer */ <Type>
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+callee // inner
+/* outer */ <Type>;

@@ -1,0 +1,1 @@
+result = new ((make())<number>).Box(value);
