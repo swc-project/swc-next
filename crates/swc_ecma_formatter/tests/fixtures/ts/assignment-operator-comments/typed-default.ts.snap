@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function use(value: number =
+  // default
+  1) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function use(
+  // default
+  value: number = 1,
+) {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function use(
+  // default
+  value: number = 1,
+) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function use(
+  // default
+  value: number = 1,
+) {}

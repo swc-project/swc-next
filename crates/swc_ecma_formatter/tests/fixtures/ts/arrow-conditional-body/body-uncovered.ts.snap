@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+const fn = (foo: boolean) =>
+foo ? missingA : missingB;
+const outsideSentinel: number = "x";
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+const fn = (foo: boolean) =>
+  foo ? missingA : missingB;
+const outsideSentinel: number = "x";
+
+---------- Options ----------
+{"printWidth":28}
+---------- Output ----------
+// @ts-expect-error
+const fn = (foo: boolean) =>
+    foo
+      ? missingA
+      : missingB;
+const outsideSentinel: number =
+  "x";
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+const fn = (foo: boolean,) =>
+    foo
+      ? missingA
+      : missingB
+const outsideSentinel: number =
+  "x"
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+const fn = (foo: boolean) =>
+	foo ? missingA : missingB;
+const outsideSentinel: number = "x";
