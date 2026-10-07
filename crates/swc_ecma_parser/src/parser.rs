@@ -1709,12 +1709,58 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let export_start = self.current_token.start();
         self.advance()?;
         let is_default = self.eat(TokenTag::Default)?;
+        self.parse_decorated_export_class(export_start, is_default, decorators)
+    }
+
+    fn parse_decorated_export_class(
+        &mut self,
+        export_start: u32,
+        mut is_default: bool,
+        mut decorators: SubRange<Decorator>,
+    ) -> Option<Stmt> {
+        let before_export = !decorators.is_empty();
+        let mut class_start = None;
+        while self.current_token.tag() == TokenTag::At {
+            let (start, following) = self.parse_decorators()?;
+            class_start = Some(start);
+            if before_export {
+                self.report(
+                    Span::new(start, self.lexer.state.prev_token_end),
+                    "Decorators cannot appear both before and after export",
+                    ReportOptions::default(),
+                );
+            }
+            if decorators.is_empty() {
+                decorators = following;
+            } else {
+                let checkpoint = self.scratch_decorators.begin();
+                for id in decorators.iter() {
+                    self.scratch_decorators
+                        .append(self.ast.get_node_in_sub_range(id));
+                }
+                for id in following.iter() {
+                    self.scratch_decorators
+                        .append(self.ast.get_node_in_sub_range(id));
+                }
+                decorators = self.add_extra_from_scratch_decorators(checkpoint);
+                self.scratch_decorators.reset(checkpoint);
+            }
+            if !is_default && self.eat(TokenTag::Default)? {
+                self.report(
+                    Span::new(start, self.lexer.state.prev_token_end),
+                    "Decorators must follow the default keyword",
+                    ReportOptions::default(),
+                );
+                is_default = true;
+                class_start = None;
+            }
+        }
         let class = self.parse_class_decorated(
             ParseClassOpts {
                 is_default_export: is_default,
                 ..ParseClassOpts::default()
             },
-            None,
+            class_start,
             decorators,
         )?;
         let end = class.span(&self.ast).end;
@@ -4693,18 +4739,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ImportOrExportKind::Value,
             ));
         }
+        if self.current_token.tag() == TokenTag::At {
+            return self.parse_decorated_export_class(start, false, SubRange::empty());
+        }
         if matches!(
             self.current_token.tag(),
-            TokenTag::Function | TokenTag::Async | TokenTag::Class | TokenTag::At
+            TokenTag::Function | TokenTag::Async | TokenTag::Class
         ) {
-            let declaration = if self.current_token.tag() == TokenTag::At {
-                let (decorators_start, decorators) = self.parse_decorators()?;
-                Decl::Class(self.parse_class_decorated(
-                    ParseClassOpts::default(),
-                    Some(decorators_start),
-                    decorators,
-                )?)
-            } else if self.current_token.tag() == TokenTag::Class {
+            let declaration = if self.current_token.tag() == TokenTag::Class {
                 Decl::Class(self.parse_class(ParseClassOpts::default(), None)?)
             } else {
                 let is_async = self.current_token.tag() == TokenTag::Async;

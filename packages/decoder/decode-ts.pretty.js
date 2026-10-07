@@ -264,7 +264,11 @@ export function decodeTs(buffer, source, sourceBuffer) {
         const extraId = _i32[(payload + 12) >> 2];
         const f_hashbang = optionalNode(_i32[(payload + 8) >> 2]);
         const body = nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
-        result = { type: "Program", start: body.length !== 0 ? body[0].start : end, end, sourceType, hashbang: f_hashbang, body };
+        const first = body[0];
+        const declaration = first?.declaration ?? first;
+        const firstStart = first?.start ?? end;
+        const programStart = Math.min(firstStart, declaration?.decorators?.[0]?.start ?? firstStart);
+        result = { type: "Program", start: programStart, end, sourceType, hashbang: f_hashbang, body };
         break;
       }
       case 1: {

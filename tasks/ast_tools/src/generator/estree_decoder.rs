@@ -338,7 +338,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         "Program" => {
             writeln!(output, "        const body = {};", combined_body_expression(fields)).unwrap();
             output.push_str(if is_ts {
-                "        result = { type: \"Program\", start: body.length !== 0 ? body[0].start : end, end, sourceType, hashbang: f_hashbang, body };\n"
+                "        const first = body[0];\n        const declaration = first?.declaration ?? first;\n        const firstStart = first?.start ?? end;\n        const programStart = Math.min(firstStart, declaration?.decorators?.[0]?.start ?? firstStart);\n        result = { type: \"Program\", start: programStart, end, sourceType, hashbang: f_hashbang, body };\n"
             } else {
                 "        result = { type: \"Program\", start, end, sourceType, hashbang: f_hashbang, body };\n"
             });

@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11385/11509 (98.92%)
+Positive Passed: 11387/11509 (98.94%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
@@ -56,8 +56,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/arrowF
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restElementWithInitializer1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restPropertyWithBindingPattern.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es7/trailingCommasInFunctionParametersAndArguments.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-commentPreservation.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/binaryOperators/instanceofOperator/instanceofOperatorWithRHSHasSymbolHasInstance.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/nullishCoalescingOperator/nullishCoalescingOperator5.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/objectLiterals/objectLiteralErrors.ts
