@@ -5770,55 +5770,69 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_primary_type(&mut self) -> Option<TsType> {
         let token = self.current_token;
-        if matches!(
-            token.tag(),
+        match token.tag() {
             TokenTag::True
-                | TokenTag::False
-                | TokenTag::StringLiteral
-                | TokenTag::NumericLiteral
-                | TokenTag::HexLiteral
-                | TokenTag::OctalLiteral
-                | TokenTag::BinaryLiteral
-                | TokenTag::BigIntLiteral
-                | TokenTag::NoSubstitutionTemplate
-                | TokenTag::Minus
-                | TokenTag::Plus
-        ) {
-            return self.parse_literal_type();
-        }
-        if !token.is_escaped() {
-            if is_type_keyword(token.tag())
-                && (token.tag() == TokenTag::Void || !self.is_qualified_type_continuation()?)
+            | TokenTag::False
+            | TokenTag::StringLiteral
+            | TokenTag::NumericLiteral
+            | TokenTag::HexLiteral
+            | TokenTag::OctalLiteral
+            | TokenTag::BinaryLiteral
+            | TokenTag::BigIntLiteral
+            | TokenTag::NoSubstitutionTemplate
+            | TokenTag::Minus
+            | TokenTag::Plus => return self.parse_literal_type(),
+            tag @ (TokenTag::Any
+            | TokenTag::Bigint
+            | TokenTag::Boolean
+            | TokenTag::Never
+            | TokenTag::NullLiteral
+            | TokenTag::Number
+            | TokenTag::Object
+            | TokenTag::String
+            | TokenTag::Symbol
+            | TokenTag::Undefined
+            | TokenTag::Unknown
+            | TokenTag::Void)
+                if !token.is_escaped() =>
             {
-                return self.parse_type_keyword();
-            }
-            if token.tag() == TokenTag::This {
-                return self.parse_this_type_or_predicate();
-            }
-            if token.tag() == TokenTag::Asserts && self.is_asserts_predicate_start()? {
-                return self.parse_asserts_type_predicate();
-            }
-            match token.tag() {
-                TokenTag::LeftParen => return self.parse_parenthesized_type(),
-                TokenTag::LeftBracket => return self.parse_tuple_type(),
-                TokenTag::LeftBrace => {
-                    return if self.is_start_of_mapped_type()? {
-                        self.parse_mapped_type()
-                    } else {
-                        self.parse_type_literal()
-                    };
+                if tag == TokenTag::Void || !self.is_qualified_type_continuation()? {
+                    return self.parse_type_keyword();
                 }
-                TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly => {
-                    return self.parse_type_operator();
-                }
-                TokenTag::Infer => return self.parse_infer_type(),
-                TokenTag::TemplateHead => return self.parse_template_literal_type(),
-                TokenTag::Typeof => return self.parse_type_query(),
-                TokenTag::Import => return self.parse_import_type(),
-                TokenTag::Question => return self.parse_jsdoc_nullable_or_unknown_type(),
-                TokenTag::LogicalNot => return self.parse_jsdoc_non_nullable_type(),
-                _ => {}
             }
+            TokenTag::This if !token.is_escaped() => return self.parse_this_type_or_predicate(),
+            TokenTag::Asserts if !token.is_escaped() => {
+                if self.is_asserts_predicate_start()? {
+                    return self.parse_asserts_type_predicate();
+                }
+            }
+            TokenTag::LeftParen if !token.is_escaped() => {
+                return self.parse_parenthesized_type();
+            }
+            TokenTag::LeftBracket if !token.is_escaped() => return self.parse_tuple_type(),
+            TokenTag::LeftBrace if !token.is_escaped() => {
+                return if self.is_start_of_mapped_type()? {
+                    self.parse_mapped_type()
+                } else {
+                    self.parse_type_literal()
+                };
+            }
+            TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly if !token.is_escaped() => {
+                return self.parse_type_operator();
+            }
+            TokenTag::Infer if !token.is_escaped() => return self.parse_infer_type(),
+            TokenTag::TemplateHead if !token.is_escaped() => {
+                return self.parse_template_literal_type();
+            }
+            TokenTag::Typeof if !token.is_escaped() => return self.parse_type_query(),
+            TokenTag::Import if !token.is_escaped() => return self.parse_import_type(),
+            TokenTag::Question if !token.is_escaped() => {
+                return self.parse_jsdoc_nullable_or_unknown_type();
+            }
+            TokenTag::LogicalNot if !token.is_escaped() => {
+                return self.parse_jsdoc_non_nullable_type();
+            }
+            _ => {}
         }
         if token.tag().is_identifier_like() {
             return self.parse_type_reference();
@@ -12929,25 +12943,6 @@ fn requires_same_line(tag: TokenTag) -> bool {
 #[inline]
 fn is_const_enum_head(after_const: Token) -> bool {
     after_const.tag() == TokenTag::Enum
-}
-
-#[inline]
-fn is_type_keyword(tag: TokenTag) -> bool {
-    matches!(
-        tag,
-        TokenTag::Any
-            | TokenTag::Bigint
-            | TokenTag::Boolean
-            | TokenTag::Never
-            | TokenTag::NullLiteral
-            | TokenTag::Number
-            | TokenTag::Object
-            | TokenTag::String
-            | TokenTag::Symbol
-            | TokenTag::Undefined
-            | TokenTag::Unknown
-            | TokenTag::Void
-    )
 }
 
 #[inline]
