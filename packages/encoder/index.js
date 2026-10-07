@@ -5,6 +5,8 @@ import { encodeTs } from "./encode-ts.js";
 export { encodeJs, encodeTs };
 export { encodeOptions } from "./encode-ts.js";
 
-export function encode(program, lang) {
-  return lang === "js" || lang === "jsx" ? encodeJs(program) : encodeTs(program);
+export function encode(program, meta) {
+  return meta?.lang === "js" || meta?.lang === "jsx"
+    ? encodeJs(program, meta)
+    : encodeTs(program, meta);
 }

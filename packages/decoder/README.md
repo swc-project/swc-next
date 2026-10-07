@@ -1,6 +1,6 @@
 # `@swc-next/decoder`
 
-Decodes the binary output of an SWC Next parser crate into an ESTree-compatible program, comments, and parser diagnostics.
+Decodes the binary output of an SWC Next parser crate into an ESTree-compatible program, metadata, comments, and parser diagnostics.
 
 The binary format is internal and versioned with the Rust crates. Depend on the exact package version that matches the `swc_next_*` crate versions used by your native binding.
 
@@ -16,3 +16,6 @@ export function parseSync(source, options) {
 ```
 
 `decode` selects the JavaScript or TypeScript decoder from the buffer header. `decodeJs` and `decodeTs` are also exported for callers that already know the language.
+
+The result includes `meta: { lang, sourceType }`, which can be passed directly
+to `encode(program, meta)` to preserve source metadata.

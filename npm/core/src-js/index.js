@@ -29,7 +29,7 @@ export function parseSync(source, options) {
   return decode(buffer, source, sourceBytes);
 }
 
-export function printSync(program, options) {
-  const code = __printSync(encode(program), encodeCodegenOptions(options));
+export function printSync(program, options, meta) {
+  const code = __printSync(encode(program, meta), encodeCodegenOptions(options));
   return { code };
 }

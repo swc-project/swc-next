@@ -872,7 +872,8 @@ for (let length = 0; length <= 64; length++) {
 }
 
 const ENUMS = Object.freeze({
-  SourceType: ["module", "script", "commonjs"],
+  Lang: ["js", "ts", "jsx", "tsx", "dts"],
+  SourceType: ["module", "script", "commonjs", "unambiguous"],
   MethodDefinitionKind: ["constructor", "method", "get", "set"],
   ClassType: ["ClassDeclaration", "ClassExpression"],
   BinaryOperator: ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"],
@@ -1021,7 +1022,7 @@ const DECODE_PREAMBLE: &str = r#"
     const values = ENUMS[name];
     return values !== undefined && value < values.length ? values[value] : value;
   };
-  const sourceType = enumValue("SourceType", (flags >> 1) & 3);
+  const sourceType = enumValue("SourceType", flags & 3);
   const optionalEnum = (name, value) =>
     value === 0xff ? null : enumValue(name, value);
   const optionalNode = index => index === NULL ? null : node(index);
@@ -1124,6 +1125,7 @@ const POSTAMBLE: &str = r#"      default:
 
   let _program, _comments, _diagnostics;
   return {
+    meta: { lang: enumValue("Lang", (flags >> 2) & 7), sourceType },
     get program() {
       return _program !== undefined
         ? _program

@@ -20,6 +20,7 @@ const NATIVE_LITTLE_ENDIAN =
   new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 
 const ENUMS = Object.freeze({
+  Lang: ["js", "ts", "jsx", "tsx", "dts"],
   SourceType: ["module", "script", "commonjs", "unambiguous"],
   MethodDefinitionKind: ["constructor", "method", "get", "set"],
   Accessibility: [null, "public", "private", "protected"],
@@ -63,7 +64,7 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-function encodeTs(program) {
+function encodeTs(program, meta = {}) {
   const sizeHint = program.end || 0;
   let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
   let spans = new Uint32Array(nodeCapacity * 2);
@@ -2925,8 +2926,9 @@ function encodeTs(program) {
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
-  const sourceType = enumValue("SourceType", program.sourceType);
-  view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), true);
+  const sourceType = enumValue("SourceType", meta.sourceType ?? program.sourceType);
+  const lang = meta.lang ?? (isTs ? "ts" : "js");
+  view.setUint32(32, sourceType | (enumValue("Lang", lang) << 2), true);
   view.setUint32(36, firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   if (NATIVE_LITTLE_ENDIAN) {

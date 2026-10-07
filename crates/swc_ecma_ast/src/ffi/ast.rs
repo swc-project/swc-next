@@ -6,7 +6,8 @@
 //! `extra_data` using the same generated AST schema.
 //!
 //! Layout, in order:
-//! - 40-byte header, including the first non-ASCII source byte position;
+//! - 40-byte header, including language, source type, and the first non-ASCII
+//!   source byte position;
 //! - `node_count` UTF-16 spans (`start: u32`, `end: u32`);
 //! - `node_count` one-byte node kinds, padded to four bytes;
 //! - `node_count` 16-byte `NodePayload` values;
@@ -46,8 +47,8 @@ const NODE_KIND_SIZE: usize = 1;
 const NODE_PAYLOAD_SIZE: usize = 16;
 const EXTRA_DATA_SIZE: usize = 8;
 const COMMENT_SIZE: usize = 16;
-const FLAG_TS: u32 = 1 << 0;
-const FLAG_SOURCE_TYPE_SHIFT: u32 = 1;
+// SourceType uses the low two bits; Lang uses the next three.
+const FLAG_LANG_SHIFT: u32 = 2;
 
 // Skip ASCII runs in 64-byte chunks instead of decoding each byte as a character.
 const ASCII_SCAN_CHUNK_SIZE: usize = 64;
@@ -144,8 +145,7 @@ pub fn serialize_into(
         &mut pos,
         &(tree.root_node_id().index() as u32).to_le_bytes(),
     );
-    let flags = (if tree.is_ts() { FLAG_TS } else { 0 })
-        | ((tree.source_type() as u32) << FLAG_SOURCE_TYPE_SHIFT);
+    let flags = (tree.source_type() as u32) | ((tree.lang() as u32) << FLAG_LANG_SHIFT);
     write(buf, &mut pos, &flags.to_le_bytes());
     let first_non_ascii_pos =
         u32::try_from(first_non_ascii_pos).expect("AST source length exceeds u32");
@@ -402,20 +402,21 @@ pub fn deserialize_from<'a>(
     tree.strings.initialize_extra(&buf[source_end..pool_end]);
 
     // ================= Source Metadata =================
-    let source_type = match (flags >> FLAG_SOURCE_TYPE_SHIFT) & 3 {
+    let source_type = match flags & 3 {
         0 => SourceType::Module,
         1 => SourceType::Script,
         2 => SourceType::CommonJs,
         _ => SourceType::Unambiguous,
     };
-    tree.set_source_metadata(
-        source_type,
-        if flags & FLAG_TS == 0 {
-            Lang::Js
-        } else {
-            Lang::Ts
-        },
-    );
+    let lang = match (flags >> FLAG_LANG_SHIFT) & 7 {
+        0 => Lang::Js,
+        1 => Lang::Ts,
+        2 => Lang::Jsx,
+        3 => Lang::Tsx,
+        4 => Lang::Dts,
+        _ => return Err(DeserializeError("AST buffer contains an unknown language")),
+    };
+    tree.set_source_metadata(source_type, lang);
 
     Ok(tree)
 }

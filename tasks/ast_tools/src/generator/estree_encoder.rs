@@ -39,8 +39,8 @@ pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
 
 fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     let mut output = PREAMBLE.replace(
-        "function encode(program)",
-        &format!("function {name}(program)"),
+        "function encode(program, meta = {})",
+        &format!("function {name}(program, meta = {{}})"),
     );
     if !is_ts {
         output = output.replace("let isTs = false;", "const isTs = false;");
@@ -72,8 +72,10 @@ import { encodeTs } from "./encode-ts.js";
 export { encodeJs, encodeTs };
 export { encodeOptions } from "./encode-ts.js";
 
-export function encode(program, lang) {
-  return lang === "js" || lang === "jsx" ? encodeJs(program) : encodeTs(program);
+export function encode(program, meta) {
+  return meta?.lang === "js" || meta?.lang === "jsx"
+    ? encodeJs(program, meta)
+    : encodeTs(program, meta);
 }
 "#;
 
@@ -985,6 +987,7 @@ const NATIVE_LITTLE_ENDIAN =
   new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 
 const ENUMS = Object.freeze({
+  Lang: ["js", "ts", "jsx", "tsx", "dts"],
   SourceType: ["module", "script", "commonjs", "unambiguous"],
   MethodDefinitionKind: ["constructor", "method", "get", "set"],
   Accessibility: [null, "public", "private", "protected"],
@@ -1028,7 +1031,7 @@ function encodeOptionBoolean(value, name) {
   return value ? 2 : 1;
 }
 
-function encode(program) {
+function encode(program, meta = {}) {
   const sizeHint = program.end || 0;
   let nodeCapacity = Math.max(512, (sizeHint / 7) | 0);
   let spans = new Uint32Array(nodeCapacity * 2);
@@ -1321,8 +1324,9 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
-  const sourceType = enumValue("SourceType", program.sourceType);
-  view.setUint32(32, (isTs ? 1 : 0) | (sourceType << 1), true);
+  const sourceType = enumValue("SourceType", meta.sourceType ?? program.sourceType);
+  const lang = meta.lang ?? (isTs ? "ts" : "js");
+  view.setUint32(32, sourceType | (enumValue("Lang", lang) << 2), true);
   view.setUint32(36, firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   if (NATIVE_LITTLE_ENDIAN) {

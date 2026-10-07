@@ -1,3 +1,6 @@
+import type { AstMeta } from "@swc-next/encoder";
+export type { AstMeta } from "@swc-next/encoder";
+
 export interface CodegenOptions {
   asciiOnly?: boolean;
   /** Escape closing script tags; tagged template raw text is preserved. Defaults to false. */
@@ -12,4 +15,5 @@ export interface CodegenOutput {
 export declare function printSync(
   program: any,
   options?: CodegenOptions | undefined | null,
+  meta?: Partial<AstMeta>,
 ): CodegenOutput;

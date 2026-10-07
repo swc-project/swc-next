@@ -3,6 +3,8 @@ import type {
   CodegenOutput,
   ParserOptions,
 } from "./binding.js";
+import type { AstMeta } from "@swc-next/decoder";
+export type { AstMeta } from "@swc-next/decoder";
 
 export { CommentMode, Lang, SourceType } from "./binding.js";
 export type { CodegenOptions, CodegenOutput, ParserOptions } from "./binding.js";
@@ -29,6 +31,7 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface ParseResult {
+  readonly meta: AstMeta;
   readonly program: any;
   readonly comments: Comment[];
   /** Parser diagnostics, decoded lazily. Empty when parsing succeeds without diagnostics. */
@@ -49,6 +52,7 @@ export declare function parseSync(
 export declare function printSync(
   program: any,
   options?: CodegenOptions | undefined | null,
+  meta?: Partial<AstMeta>,
 ): CodegenOutput;
 
 export declare function langFromPath(path: string): import("./binding.js").Lang;

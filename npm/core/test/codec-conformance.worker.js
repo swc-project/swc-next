@@ -3,7 +3,7 @@ import path from "node:path";
 import { readExpected } from "./conformance-utils.js";
 
 import { decode, encodeOptions } from "@swc-next/decoder";
-import { encode as encodeTs } from "@swc-next/encoder";
+import { encode } from "@swc-next/encoder";
 import * as binding from "./binding/index.js";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
@@ -47,7 +47,7 @@ function checkUnit(file, unit, suite, sourceType) {
   try {
     const program = parsed.program;
     const native = binding.nativeParsePrintSync(source, options, 0);
-    const codec = binding.printSync(encodeTs(program), 0);
+    const codec = binding.printSync(encode(program, parsed.meta), 0);
     if (codec !== native) {
       return { ...result, error: "Codec output differs from native output" };
     }

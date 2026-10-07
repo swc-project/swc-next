@@ -4,7 +4,7 @@ import { decodeTs } from "./decode-ts.js";
 export { decodeJs, decodeTs };
 
 const FLAGS_OFFSET = 32;
-const TYPESCRIPT_FLAG = 1;
+const LANG_SHIFT = 2;
 
 const OPTION_SOURCE_TYPES = ["module", "script", "commonjs", "unambiguous"];
 const OPTION_LANGS = ["js", "ts", "jsx", "tsx", "dts"];
@@ -45,7 +45,8 @@ export function decode(buffer, source, sourceBuffer) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const view = new DataView(arrayBuffer, buffer.byteOffset ?? 0, buffer.byteLength);
   const flags = view.getInt32(FLAGS_OFFSET, true);
-  return (flags & TYPESCRIPT_FLAG) !== 0
+  const lang = (flags >> LANG_SHIFT) & 7;
+  return lang === 1 || lang === 3 || lang === 4
     ? decodeTs(buffer, source, sourceBuffer)
     : decodeJs(buffer, source, sourceBuffer);
 }

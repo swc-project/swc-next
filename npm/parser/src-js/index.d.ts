@@ -1,4 +1,6 @@
 import type { ParserOptions } from "./binding.js";
+import type { AstMeta } from "@swc-next/decoder";
+export type { AstMeta } from "@swc-next/decoder";
 
 export * from "./binding.js";
 
@@ -24,6 +26,7 @@ export interface Diagnostic extends DiagnosticLabel {
 }
 
 export interface ParseResult {
+  readonly meta: AstMeta;
   readonly program: any;
   readonly comments: Comment[];
   /** Parser diagnostics, decoded lazily. Empty when parsing succeeds without diagnostics. */
