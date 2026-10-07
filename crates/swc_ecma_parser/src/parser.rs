@@ -5569,9 +5569,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type(&mut self) -> Option<TsType> {
-        let saved = self.ts_context.disallow_conditional_types();
-        self.ts_context
-            .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        let disallow_conditional_types = self.ts_context.disallow_conditional_types();
+        if disallow_conditional_types {
+            self.ts_context
+                .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        }
         let result = (|| {
             let tag = self.current_token.tag();
             let may_start_function_or_constructor_type = matches!(
@@ -5593,8 +5595,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 })
             }
         })();
-        self.ts_context
-            .set(TsContext::DISALLOW_CONDITIONAL_TYPES, saved);
+        if disallow_conditional_types {
+            self.ts_context
+                .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        }
         result
     }
 
