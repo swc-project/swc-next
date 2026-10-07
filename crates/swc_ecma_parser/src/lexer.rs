@@ -251,6 +251,15 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.cursor = start;
                 *target = self.punc_token(1, TokenTag::Dot, start);
             }
+            FastClass::Operator => {
+                // HTML comments still need the trivia scanner.
+                if byte == b'<' && self.source[start as usize..].starts_with(b"<!--") {
+                    return false;
+                }
+                self.clear_token_flags();
+                self.cursor = start;
+                *target = self.scan_punctuation();
+            }
             FastClass::Slow => return false,
         }
         self.handle_token(*target, HandleTokenMode::Append);
@@ -327,7 +336,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let token = match current_char {
             b'+' | b'*' | b'-' | b'!' | b'<' | b'>' | b'=' | b'|' | b'&' | b'^' | b'%' | b'/'
-            | b'?' => self.scan_punctuation()?,
+            | b'?' => self.scan_punctuation(),
             b'.' => self.scan_dot()?,
             b'0'..=b'9' => self.scan_number()?,
             b'"' | b'\'' => self.scan_string()?,
@@ -956,7 +965,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Ok(self.create_token(tag, start, self.cursor))
     }
 
-    fn scan_punctuation(&mut self) -> Result<Token, LexicalError> {
+    #[inline(always)]
+    fn scan_punctuation(&mut self) -> Token {
         debug_assert!((self.cursor as usize) < self.source.len());
         let start = self.cursor;
         let c0 = self.source[self.cursor as usize];
@@ -964,7 +974,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let c2 = self.peek(2);
         let c3 = self.peek(3);
 
-        let token = match c0 {
+        match c0 {
             b'+' => match c1 {
                 b'+' => self.punc_token(2, TokenTag::Increment, start),
                 b'=' => self.punc_token(2, TokenTag::PlusAssign, start),
@@ -1053,8 +1063,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 _ => self.punc_token(1, TokenTag::Question, start),
             },
             _ => unreachable!(),
-        };
-        Ok(token)
+        }
     }
 
     #[inline]
@@ -1570,6 +1579,7 @@ enum FastClass {
     Identifier,
     Punctuation,
     Dot,
+    Operator,
 }
 
 const FAST_CLASS: [FastClass; 256] = {
@@ -1588,6 +1598,13 @@ const FAST_CLASS: [FastClass; 256] = {
         byte += 1;
     }
     table[b'.' as usize] = FastClass::Dot;
+    // Slash and minus can start comments and retain the trivia path.
+    let operators = b"+*%<>=!&|^?";
+    let mut operator = 0;
+    while operator < operators.len() {
+        table[operators[operator] as usize] = FastClass::Operator;
+        operator += 1;
+    }
     table
 };
 
