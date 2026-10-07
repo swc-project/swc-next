@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { readExpected } from "./conformance-utils.js";
 
 import { decode, encodeOptions } from "@swc-next/decoder";
 import { encode as encodeTs } from "@swc-next/encoder";
@@ -11,20 +12,30 @@ const { makeUnitsFromTest } = await import(
   path.join(FIXTURE_DIR, "estree-conformance/src/utils/typescript-make-units-from-test.cjs")
 );
 const textEncoder = new TextEncoder();
-const options = encodeOptions({ lang: "ts", comments: "none" });
 
-export default async function runCase({ suite, file }) {
+export default async function runCase({ suite, file, oracle }) {
   const source = await readSource(file);
+  const expectedUnits = readExpected(oracle).map((expected) => JSON.parse(expected.ast));
   const units = suite === "typescript"
     ? makeUnitsFromTest(file, source).tests
-    : [{ name: path.basename(file), content: source }];
-  return units.map((unit) => checkUnit(file, unit));
+    : [{
+        name: path.basename(file),
+        content: source,
+        sourceType: { jsx: false },
+      }];
+  return units.map((unit, index) => checkUnit(file, unit, suite, expectedUnits[index]?.sourceType));
 }
 
-function checkUnit(file, unit) {
+function checkUnit(file, unit, suite, sourceType) {
   const result = { file, name: unit.name, parsed: false, passed: false };
   const source = unit.content;
   const sourceBytes = textEncoder.encode(source);
+  const options = encodeOptions({
+    lang: getLang(unit, suite),
+    sourceType: sourceType ?? (unit.sourceType.module ? "module" : "script"),
+    preserveParens: suite !== "typescript",
+    comments: "none",
+  });
   let parsed;
   try {
     parsed = decode(binding.parseSync(sourceBytes, source.length, options), source, sourceBytes);
@@ -44,6 +55,15 @@ function checkUnit(file, unit) {
   } catch (error) {
     return { ...result, error: String(error) };
   }
+}
+
+function getLang(unit, suite) {
+  let lang = binding.langFromPath(unit.name);
+  if (suite === "typescript" && lang !== "dts") lang = "ts";
+  if (!unit.sourceType.jsx) return lang;
+  if (lang === "ts" || lang === "dts") return "tsx";
+  if (lang === "js") return "jsx";
+  return lang;
 }
 
 async function readSource(file) {

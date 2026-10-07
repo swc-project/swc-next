@@ -41,10 +41,12 @@ async function runTestSuite(suite: string, oracle: string, source: string, snaps
       files
         .filter((file) => file.endsWith(".json") || file.endsWith(".md"))
         .sort()
-        .map((file) => file.endsWith(".json")
-          ? file.slice(0, -".json".length) + ".js"
-          : file.slice(0, -".md".length))
-        .map((file) => pool.run({ suite, file: path.join(source, file) })),
+        .map((file) => {
+          const sourceFile = file.endsWith(".json")
+            ? file.slice(0, -".json".length) + ".js"
+            : file.slice(0, -".md".length);
+          return pool.run({ suite, file: path.join(source, sourceFile), oracle: path.join(oracle, file) });
+        }),
     )
   ).flat().filter((result) => result.parsed || result.error !== undefined);
   await writeResults(suite, snapshot, results);
