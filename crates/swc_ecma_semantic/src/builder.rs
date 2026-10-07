@@ -92,7 +92,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
-        self.state.record_node_scope(node);
+        self.state.enter_scope(node);
         self.path.push(node);
         self.state.enter_node()
     }
@@ -528,19 +528,19 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_this_expression(&mut self, node: ThisExpression) {
         self.record_constructor_this(node);
-        self.state.record_node_scope(node.node_id());
+        self.state.enter_scope(node.node_id());
         self.state.enter_node();
     }
 
     #[inline]
     fn visit_boolean_literal(&mut self, node: BooleanLiteral) {
-        self.state.record_node_scope(node.node_id());
+        self.state.enter_scope(node.node_id());
         self.state.enter_node();
     }
 
     #[inline]
     fn visit_identifier_name(&mut self, node: IdentifierName) {
-        self.state.record_node_scope(node.node_id());
+        self.state.enter_scope(node.node_id());
         self.state.enter_node();
     }
 
@@ -554,7 +554,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             let current = self.path.pop();
             debug_assert_eq!(current, Some(node.node_id()));
         } else {
-            self.state.record_node_scope(node.node_id());
+            self.state.enter_scope(node.node_id());
             let flags = self.state.enter_node();
             self.record_identifier_reference(node, flags);
         }
@@ -1674,13 +1674,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_jsx_identifier(&mut self, node: JsxIdentifier) {
-        self.state.record_node_scope(node.node_id());
+        self.state.enter_scope(node.node_id());
         self.state.enter_node();
     }
 
     #[inline]
     fn visit_jsx_text(&mut self, node: JsxText) {
-        self.state.record_node_scope(node.node_id());
+        self.state.enter_scope(node.node_id());
         self.state.enter_node();
     }
 

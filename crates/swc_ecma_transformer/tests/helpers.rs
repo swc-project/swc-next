@@ -27,8 +27,7 @@ fn with_source_context(
     let mut semantic = analyze(
         &ast,
         AnalyzeOptions {
-            features: swc_next_ecma_semantic::SemanticFeatureFlags::GENERATED_NAMES
-                | swc_next_ecma_semantic::SemanticFeatureFlags::NODE_SCOPES,
+            features: swc_next_ecma_semantic::SemanticFeatureFlags::GENERATED_NAMES,
             ..AnalyzeOptions::default()
         },
     )

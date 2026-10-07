@@ -79,6 +79,9 @@ The statement queue defers attachment to AST lists, not binding allocation or
 reference registration. Ordinary replacements happen during the visitor. Flush
 is per destination container; it is not one global replay of all AST mutations.
 
+Semantic always collects node evaluation scopes in an arena-backed index. Transforms
+request feature flags only for optional information beyond these scope indexes.
+
 ## Implementing a transform
 
 1. **Identify the needed information.** Reuse Semantic's existing scopes,

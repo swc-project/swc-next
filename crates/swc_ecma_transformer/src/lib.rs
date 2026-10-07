@@ -65,7 +65,7 @@ impl TransformerOptions {
 
     /// Semantic information that must be collected before this transform runs.
     pub fn semantic_features(&self) -> SemanticFeatureFlags {
-        let mut features = SemanticFeatureFlags::NODE_SCOPES;
+        let mut features = SemanticFeatureFlags::empty();
         if self.es2022.static_blocks {
             features |= SemanticFeatureFlags::CLASS_PRIVATE_NAMES
                 | SemanticFeatureFlags::STATIC_BLOCK_COMMENTS;

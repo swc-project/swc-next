@@ -4317,7 +4317,7 @@ impl<'a> SymbolTracker<'a> {
             hoisting_variables: self.hoisting_variables,
             node_symbols,
             node_references,
-            node_scopes: Vec::new(),
+            node_scopes: ArenaVec::new_in(self.allocator),
             features,
             class,
             used_names: self.used_names,

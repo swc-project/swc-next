@@ -24,21 +24,14 @@ impl<'a> Semantic<'a> {
         assert!(node_count >= self.node_symbols.len());
         self.node_symbols.resize(node_count, None);
         self.node_references.resize(node_count, None);
-        if self
-            .features
-            .contains(crate::SemanticFeatureFlags::NODE_SCOPES)
-        {
-            self.node_scopes.resize(node_count, None);
-        }
+        self.node_scopes.resize(node_count, None);
     }
 
     /// Register freshly allocated nodes in their evaluation scope.
     #[doc(hidden)]
     pub fn register_nodes(&mut self, ast: &Ast<'a>, start: usize, scope: ScopeId) {
         self.grow_node_indexes(ast.node_count());
-        if let Some(nodes) = self.node_scopes.get_mut(start..) {
-            nodes.fill(Some(scope));
-        }
+        self.node_scopes[start..].fill(Some(scope));
     }
 
     /// Reserves and interns a name as one operation.
@@ -57,9 +50,7 @@ impl<'a> Semantic<'a> {
         flags: SymbolFlags,
     ) -> SymbolId {
         self.grow_node_indexes(ast.node_count());
-        if let Some(slot) = self.node_scopes.get_mut(node.node_id().index()) {
-            *slot = Some(scope);
-        }
+        self.node_scopes[node.node_id().index()] = Some(scope);
         let name = node.name(ast);
         let bytes = ast.get_utf8(name).as_bytes();
         assert!(self.binding(scope, bytes).is_none());
@@ -97,9 +88,7 @@ impl<'a> Semantic<'a> {
         mut flags: ReferenceFlags,
     ) -> ReferenceId {
         self.grow_node_indexes(ast.node_count());
-        if let Some(slot) = self.node_scopes.get_mut(node.node_id().index()) {
-            *slot = Some(scope);
-        }
+        self.node_scopes[node.node_id().index()] = Some(scope);
         assert!(self.node_references[node.node_id().index()].is_none());
         if flags.space == crate::ReferenceSpace::Value {
             let target = symbol.map(|symbol| self.scope_of(symbol));
@@ -340,9 +329,7 @@ impl<'a> Semantic<'a> {
                         && matches!(ast.kind_data(owner), NodeKindData::Function(_))),
             },
         });
-        if let Some(slot) = self.node_scopes.get_mut(owner.index()) {
-            *slot = Some(id);
-        }
+        self.node_scopes[owner.index()] = Some(id);
         self.scope_maps.push(ArenaHashMap::new_in(ast.allocator()));
         self.hoisting_variables.push(None);
         id
@@ -424,12 +411,8 @@ impl<'a> Semantic<'a> {
                 }
             }
         }
-        if let Some(slot) = self.node_scopes.get_mut(new.index()) {
-            *slot = current;
-        }
-        if let Some(slot) = self.node_scopes.get_mut(old.index()) {
-            *slot = previous;
-        }
+        self.node_scopes[new.index()] = current;
+        self.node_scopes[old.index()] = previous;
     }
 }
 

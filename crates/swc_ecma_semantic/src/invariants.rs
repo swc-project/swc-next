@@ -12,6 +12,7 @@ impl Semantic<'_> {
     pub fn assert_invariants(&self, ast: &Ast<'_>) {
         assert_eq!(self.node_symbols.len(), ast.node_count());
         assert_eq!(self.node_references.len(), ast.node_count());
+        assert_eq!(self.node_scopes.len(), ast.node_count());
         let mut visitor = Invariants {
             ast,
             semantic: self,

@@ -1,5 +1,7 @@
+use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, StaticBlock,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, ScopeId,
+    StaticBlock,
 };
 
 use crate::{
@@ -21,7 +23,7 @@ pub(crate) struct SemanticContext<'a> {
     default_reference_flags: ReferenceFlags,
     pub class: ClassSemantic<'a>,
     pub features: SemanticFeatureFlags,
-    node_scopes: Vec<Option<swc_next_ecma_ast::ScopeId>>,
+    node_scopes: ArenaVec<'a, Option<ScopeId>>,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
 }
@@ -29,6 +31,8 @@ pub(crate) struct SemanticContext<'a> {
 impl<'a> SemanticContext<'a> {
     pub fn init(tree: &Ast<'a>, build_module_record: bool, features: SemanticFeatureFlags) -> Self {
         let allocator = tree.allocator();
+        let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
+        node_scopes.resize(tree.node_count(), None);
         Self {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree, features),
@@ -36,19 +40,9 @@ impl<'a> SemanticContext<'a> {
             default_reference_flags: ReferenceFlags::default(),
             class: ClassSemantic::new(tree, features),
             features,
-            node_scopes: if features.contains(SemanticFeatureFlags::NODE_SCOPES) {
-                vec![None; tree.node_count()]
-            } else {
-                Vec::new()
-            },
+            node_scopes,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
-        }
-    }
-
-    pub fn record_node_scope(&mut self, node: NodeId) {
-        if let Some(slot) = self.node_scopes.get_mut(node.index()) {
-            *slot = Some(self.scope.current);
         }
     }
 
@@ -67,6 +61,11 @@ impl<'a> SemanticContext<'a> {
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
         flags
+    }
+
+    #[inline]
+    pub fn enter_scope(&mut self, node: NodeId) {
+        self.node_scopes[node.index()] = Some(self.scope.current);
     }
 
     #[inline]

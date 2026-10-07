@@ -2837,6 +2837,7 @@ dependencies = [
 name = "swc_next_ecma_transformer"
 version = "0.2.4"
 dependencies = [
+ "bitflags",
  "rustc-hash",
  "serde",
  "swc_next_allocator",

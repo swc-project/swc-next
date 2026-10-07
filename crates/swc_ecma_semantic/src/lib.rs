@@ -66,20 +66,18 @@ bitflags::bitflags! {
         const ARROW_ENVIRONMENTS = 1 << 1;
         /// Collect names used by transforms that introduce local bindings.
         const GENERATED_NAMES = 1 << 2;
-        /// Record the active evaluation scope of each node for AST mutations.
-        const NODE_SCOPES = 1 << 3;
         /// Index comments attached to static blocks.
-        const STATIC_BLOCK_COMMENTS = 1 << 4;
+        const STATIC_BLOCK_COMMENTS = 1 << 3;
         /// Record arrows and static blocks that contain lexical super.
-        const LEXICAL_SUPER = 1 << 5;
+        const LEXICAL_SUPER = 1 << 4;
         /// Identify the constructors of derived classes.
-        const DERIVED_CONSTRUCTORS = 1 << 6;
+        const DERIVED_CONSTRUCTORS = 1 << 5;
         /// Record arrow this uses in derived constructors, including their owners.
-        const CONSTRUCTOR_THIS = 1 << 7;
+        const CONSTRUCTOR_THIS = 1 << 6;
         /// Record super() calls in derived constructors, including their owners.
-        const CONSTRUCTOR_SUPER = 1 << 8;
+        const CONSTRUCTOR_SUPER = 1 << 7;
         /// Record static fields and trailing blocks for closure-based block lowering.
-        const STATIC_BLOCK_LAYOUT = 1 << 9;
+        const STATIC_BLOCK_LAYOUT = 1 << 8;
         /// Collect all optional per-class information.
         const CLASS = Self::CLASS_PRIVATE_NAMES.bits() | Self::ARROW_ENVIRONMENTS.bits()
             | Self::STATIC_BLOCK_COMMENTS.bits() | Self::LEXICAL_SUPER.bits()
@@ -137,7 +135,7 @@ pub struct Semantic<'a> {
     /// The symbol declared by each node, indexed by [`NodeId`].
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
-    node_scopes: Vec<Option<ScopeId>>,
+    node_scopes: ArenaVec<'a, Option<ScopeId>>,
 
     module_record: ModuleRecord<'a>,
     ts_members: TsMemberIndex<'a>,
@@ -153,7 +151,7 @@ impl<'a> Semantic<'a> {
         &self.jsx_usages
     }
 
-    /// The scope active when this node is evaluated, collected by NODE_SCOPES.
+    /// The scope active when this node is evaluated, collected during every analysis.
     /// Detached structural nodes may retain their old entry; this is not a
     /// reachability index.
     pub fn scope_at(&self, node: NodeId) -> Option<ScopeId> {

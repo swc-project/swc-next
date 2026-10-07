@@ -206,8 +206,7 @@ fn transform_information() {
     let allocator = Allocator::new();
     let source = "class C { static {} // keep\n}";
     let options = AnalyzeOptions {
-        features: crate::SemanticFeatureFlags::STATIC_BLOCK_COMMENTS
-            | crate::SemanticFeatureFlags::NODE_SCOPES,
+        features: crate::SemanticFeatureFlags::STATIC_BLOCK_COMMENTS,
         ..AnalyzeOptions::default()
     };
     let (ast, semantic) = analyze_with_options(&allocator, source, Options::default(), options);
@@ -224,7 +223,9 @@ fn transform_information() {
             .class()
             .static_block_has_comments(first_static_block(&ast))
     );
-    assert!(semantic.scope_at(first_static_block(&ast)).is_none());
+    let scope = semantic.scope_at(first_static_block(&ast)).unwrap();
+    assert_eq!(semantic.scope(scope).node, first_static_block(&ast));
+    assert_eq!(semantic.scope(scope).kind, ScopeKind::StaticBlock);
 }
 
 #[test]

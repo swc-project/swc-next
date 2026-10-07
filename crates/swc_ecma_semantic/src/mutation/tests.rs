@@ -20,14 +20,7 @@ fn structural_wrappers() {
         .as_expression_statement(&ast)
         .unwrap()
         .expression(&ast);
-    let mut semantic = crate::analyze(
-        &ast,
-        crate::AnalyzeOptions {
-            features: crate::SemanticFeatureFlags::NODE_SCOPES,
-            ..Default::default()
-        },
-    )
-    .semantic;
+    let mut semantic = crate::analyze(&ast, crate::AnalyzeOptions::default()).semantic;
     let statement = program
         .body(&ast)
         .get_node(&ast, 0)
@@ -55,7 +48,7 @@ fn structural_wrappers() {
 
 #[test]
 fn scope_merging() {
-    use crate::{AnalyzeOptions, SemanticFeatureFlags, analyze};
+    use crate::{AnalyzeOptions, analyze};
     use swc_next_ecma_ast::{ClassElement, DUMMY_SP, Expr};
 
     let allocator = Allocator::new();
@@ -64,10 +57,7 @@ fn scope_merging() {
     let parsed = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
-    let options = AnalyzeOptions {
-        features: SemanticFeatureFlags::NODE_SCOPES,
-        ..Default::default()
-    };
+    let options = AnalyzeOptions::default();
     let mut semantic = analyze(&ast, options).semantic;
     let class = ast
         .root_program()
