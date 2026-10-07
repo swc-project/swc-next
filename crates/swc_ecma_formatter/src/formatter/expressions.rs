@@ -62,6 +62,7 @@ pub(super) enum ExpressionPosition {
     TypeBinaryOperand,
     TypeAssertionOperand,
     NonNullOperand,
+    InstantiationOperand,
     Superclass,
     SpreadArgument,
     MemberObject(AccessKind),
@@ -642,6 +643,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         context.tail_owner,
                     ),
                 ),
+                ExprData::TsInstantiationExpression(node) => {
+                    let expression = node.expression(self.ast);
+                    let mut child_context = context.type_operand(
+                        ExpressionPosition::InstantiationOperand,
+                        context.content_mode,
+                        context.tail_owner,
+                    );
+                    if self.has_suppression {
+                        let arguments = self.prepare_expression_type_arguments(
+                            expression,
+                            node.type_arguments(self.ast),
+                            AccessKind::Ordinary,
+                        )?;
+                        child_context.content_mode = arguments.callee_mode;
+                    }
+                    (expression, child_context)
+                }
                 ExprData::ChainExpression(chain) => (chain.expression(self.ast), context),
                 ExprData::ConditionalExpression(conditional) => {
                     let mut child_context = context;
@@ -740,6 +758,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExprData::TsNonNullExpression(node) => (
                         node.expression(self.ast),
                         ExpressionPosition::NonNullOperand,
+                    ),
+                    ExprData::TsInstantiationExpression(node) => (
+                        node.expression(self.ast),
+                        ExpressionPosition::InstantiationOperand,
                     ),
                     ExprData::ChainExpression(chain) => {
                         (chain.expression(self.ast), ExpressionPosition::Nested)
@@ -872,6 +894,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::TypeBinaryOperand
                 | ExpressionPosition::TypeAssertionOperand
                 | ExpressionPosition::NonNullOperand
+                | ExpressionPosition::InstantiationOperand
         ) && matches!(
             data,
             ExprData::ArrowFunctionExpression(_)
@@ -924,6 +947,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExpressionPosition::ConditionalTest
                         | ExpressionPosition::TypeBinaryOperand
                         | ExpressionPosition::NonNullOperand
+                        | ExpressionPosition::InstantiationOperand
                 );
                 let awaited_yield = matches!(data, ExprData::YieldExpression(_))
                     && matches!(position, ExpressionPosition::AwaitArgument);
@@ -1232,6 +1256,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.format_non_null(node, context, writer);
             }
 
+            ExprData::TsInstantiationExpression(node) => {
+                return self.format_instantiation(node, context, writer);
+            }
             ExprData::IdentifierReference(node) => {
                 writer.text(self.ast.get_utf8(node.name(self.ast)))
             }
