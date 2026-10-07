@@ -971,8 +971,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let start = self.cursor;
         let c0 = self.source[self.cursor as usize];
         let c1 = self.peek(1);
-        let c2 = self.peek(2);
-        let c3 = self.peek(3);
 
         match c0 {
             b'+' => match c1 {
@@ -985,7 +983,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::MinusAssign, start),
                 _ => self.punc_token(1, TokenTag::Minus, start),
             },
-            b'*' if c1 == b'*' && c2 == b'=' => self.punc_token(3, TokenTag::ExponentAssign, start),
+            b'*' if c1 == b'*' && self.peek(2) == b'=' => {
+                self.punc_token(3, TokenTag::ExponentAssign, start)
+            }
             b'*' => match c1 {
                 b'*' => self.punc_token(2, TokenTag::Exponent, start),
                 b'=' => self.punc_token(2, TokenTag::StarAssign, start),
@@ -997,7 +997,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::PercentAssign, start),
                 _ => self.punc_token(1, TokenTag::Percent, start),
             },
-            b'<' if c1 == b'<' && c2 == b'=' => {
+            b'<' if c1 == b'<' && self.peek(2) == b'=' => {
                 self.punc_token(3, TokenTag::LeftShiftAssign, start)
             }
             b'<' => match c1 {
@@ -1010,13 +1010,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             b'>' if self.mode == LexerMode::JsxTag => {
                 self.punc_token(1, TokenTag::GreaterThan, start)
             }
-            b'>' if c1 == b'>' && c2 == b'=' => {
+            b'>' if c1 == b'>' && self.peek(2) == b'=' => {
                 self.punc_token(3, TokenTag::RightShiftAssign, start)
             }
-            b'>' if c1 == b'>' && c2 == b'>' && c3 == b'=' => {
+            b'>' if c1 == b'>' && self.peek(2) == b'>' && self.peek(3) == b'=' => {
                 self.punc_token(4, TokenTag::UnsignedRightShiftAssign, start)
             }
-            b'>' if c1 == b'>' && c2 == b'>' => {
+            b'>' if c1 == b'>' && self.peek(2) == b'>' => {
                 self.punc_token(3, TokenTag::UnsignedRightShift, start)
             }
             b'>' => match c1 {
@@ -1024,18 +1024,22 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::GreaterThanEqual, start),
                 _ => self.punc_token(1, TokenTag::GreaterThan, start),
             },
-            b'=' if c1 == b'=' && c2 == b'=' => self.punc_token(3, TokenTag::StrictEqual, start),
+            b'=' if c1 == b'=' && self.peek(2) == b'=' => {
+                self.punc_token(3, TokenTag::StrictEqual, start)
+            }
             b'=' => match c1 {
                 b'=' => self.punc_token(2, TokenTag::Equal, start),
                 b'>' => self.punc_token(2, TokenTag::Arrow, start),
                 _ => self.punc_token(1, TokenTag::Assign, start),
             },
-            b'!' if c1 == b'=' && c2 == b'=' => self.punc_token(3, TokenTag::StrictNotEqual, start),
+            b'!' if c1 == b'=' && self.peek(2) == b'=' => {
+                self.punc_token(3, TokenTag::StrictNotEqual, start)
+            }
             b'!' => match c1 {
                 b'=' => self.punc_token(2, TokenTag::NotEqual, start),
                 _ => self.punc_token(1, TokenTag::LogicalNot, start),
             },
-            b'&' if c1 == b'&' && c2 == b'=' => {
+            b'&' if c1 == b'&' && self.peek(2) == b'=' => {
                 self.punc_token(3, TokenTag::LogicalAndAssign, start)
             }
             b'&' => match c1 {
@@ -1043,7 +1047,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::BitwiseAndAssign, start),
                 _ => self.punc_token(1, TokenTag::BitwiseAnd, start),
             },
-            b'|' if c1 == b'|' && c2 == b'=' => {
+            b'|' if c1 == b'|' && self.peek(2) == b'=' => {
                 self.punc_token(3, TokenTag::LogicalOrAssign, start)
             }
             b'|' => match c1 {
@@ -1055,10 +1059,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 b'=' => self.punc_token(2, TokenTag::BitwiseXorAssign, start),
                 _ => self.punc_token(1, TokenTag::BitwiseXor, start),
             },
-            b'?' if c1 == b'?' && c2 == b'=' => self.punc_token(3, TokenTag::NullishAssign, start),
+            b'?' if c1 == b'?' && self.peek(2) == b'=' => {
+                self.punc_token(3, TokenTag::NullishAssign, start)
+            }
             b'?' => match c1 {
                 b'?' => self.punc_token(2, TokenTag::NullishCoalescing, start),
-                b'.' if c2.is_ascii_digit() => self.punc_token(1, TokenTag::Question, start),
+                b'.' if self.peek(2).is_ascii_digit() => {
+                    self.punc_token(1, TokenTag::Question, start)
+                }
                 b'.' => self.punc_token(2, TokenTag::OptionalChaining, start),
                 _ => self.punc_token(1, TokenTag::Question, start),
             },

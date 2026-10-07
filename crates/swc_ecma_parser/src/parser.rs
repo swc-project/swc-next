@@ -5692,19 +5692,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_postfix_type(&mut self) -> Option<TsType> {
         let mut type_annotation = self.parse_primary_type()?;
-        while !self.current_token.has_line_terminator_before() {
-            match self.current_token.tag() {
-                TokenTag::LeftBracket => {
+        loop {
+            let token = self.current_token;
+            match token.tag() {
+                TokenTag::LeftBracket if !token.has_line_terminator_before() => {
                     type_annotation = self.parse_array_or_indexed_access_type(type_annotation)?;
                 }
-                TokenTag::Question => {
+                TokenTag::Question if !token.has_line_terminator_before() => {
                     if !self.is_postfix_nullable()? {
                         break;
                     }
                     type_annotation =
                         self.parse_jsdoc_postfix(type_annotation, JsDocKind::Nullable)?;
                 }
-                TokenTag::LogicalNot => {
+                TokenTag::LogicalNot if !token.has_line_terminator_before() => {
                     type_annotation =
                         self.parse_jsdoc_postfix(type_annotation, JsDocKind::NonNullable)?;
                 }
