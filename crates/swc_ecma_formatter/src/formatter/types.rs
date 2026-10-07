@@ -48,6 +48,7 @@ enum TypeBoundaryRole {
     Default,
 }
 enum TypeBoundaryTarget<'a> {
+    ModuleReference,
     Alias(&'a mut PreparedType),
     Qualified,
     Constraint {
@@ -1156,7 +1157,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut target: TypeBoundaryTarget<'_>,
     ) -> Result<TypeBoundary<'ast>, FormatError> {
         let (token, mut role) = match &target {
-            TypeBoundaryTarget::Alias(_) => ("=", TypeBoundaryRole::Alias),
+            TypeBoundaryTarget::Alias(_) | TypeBoundaryTarget::ModuleReference => {
+                ("=", TypeBoundaryRole::Alias)
+            }
             TypeBoundaryTarget::Qualified => (".", TypeBoundaryRole::Qualified),
             TypeBoundaryTarget::Constraint { name, .. } => {
                 // A modifier-token name before `extends` needs a line terminator
@@ -2566,5 +2569,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
     ) -> Result<TypeBoundary<'ast>, FormatError> {
         self.prepare_type_boundary(gap, TypeBoundaryTarget::Qualified)
+    }
+
+    pub(super) fn prepare_module_reference_boundary(
+        &self,
+        gap: Span,
+    ) -> Result<TypeBoundary<'ast>, FormatError> {
+        self.prepare_type_boundary(gap, TypeBoundaryTarget::ModuleReference)
     }
 }

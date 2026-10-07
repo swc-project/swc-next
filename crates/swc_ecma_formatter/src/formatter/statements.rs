@@ -4,6 +4,7 @@ mod control_flow;
 mod declarations;
 mod modules;
 mod namespaces;
+mod typescript_modules;
 pub(in crate::formatter) use self::declarations::DeclarationKeyword;
 mod tails;
 
@@ -1055,6 +1056,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StmtData::ExportNamedDeclaration(node) if mode == ContentMode::Formatted => {
                 self.format_export_named(node, punctuation, writer)
             }
+            StmtData::TsExportAssignment(node) if mode == ContentMode::Formatted => {
+                self.format_ts_export_assignment(node, punctuation, writer)
+            }
+            StmtData::TsNamespaceExportDeclaration(node) if mode == ContentMode::Formatted => {
+                self.format_ts_namespace_export(node, punctuation, writer)
+            }
             StmtData::ExportAllDeclaration(node) if mode == ContentMode::Formatted => {
                 self.format_export_all(node, punctuation, writer)
             }
@@ -1134,6 +1141,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | StmtData::ExportNamedDeclaration(_)
                         | StmtData::ExportAllDeclaration(_)
                         | StmtData::ExportDefaultDeclaration(_)
+                        | StmtData::TsExportAssignment(_)
+                        | StmtData::TsNamespaceExportDeclaration(_)
                         | StmtData::IfStatement(_)
                         | StmtData::ForStatement(_)
                         | StmtData::ForInStatement(_)
@@ -1165,15 +1174,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                     _ => None,
                 };
-                if declaration.is_some_and(|declaration| {
-                    matches!(
-                        self.ast.decl_data(declaration),
-                        DeclData::TsTypeAliasDeclaration(_)
-                            | DeclData::TsInterfaceDeclaration(_)
-                            | DeclData::TsModuleDeclaration(_)
-                            | DeclData::TsGlobalDeclaration(_)
-                    )
-                }) {
+                if matches!(data, StmtData::TsNamespaceExportDeclaration(_))
+                    || declaration.is_some_and(|declaration| {
+                        matches!(
+                            self.ast.decl_data(declaration),
+                            DeclData::TsTypeAliasDeclaration(_)
+                                | DeclData::TsInterfaceDeclaration(_)
+                                | DeclData::TsModuleDeclaration(_)
+                                | DeclData::TsGlobalDeclaration(_)
+                                | DeclData::TsImportEqualsDeclaration(_)
+                        )
+                    })
+                {
                     printed.boundary = printed.boundary.type_declaration();
                 }
                 Ok(printed)

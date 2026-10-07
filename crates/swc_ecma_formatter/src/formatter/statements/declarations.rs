@@ -38,6 +38,14 @@ pub(in crate::formatter) struct DeclarationKeyword {
 }
 
 impl DeclarationKeyword {
+    pub(super) fn for_name(span: Span, name: BindingIdentifier, mode: ContentMode) -> Self {
+        Self {
+            span,
+            name_prefix_start: span.end,
+            incoming: (mode == ContentMode::Verbatim).then_some(DeclarationLeading::Name(name)),
+        }
+    }
+
     pub(in crate::formatter) fn name_prefix_start(self) -> u32 {
         self.name_prefix_start
     }
