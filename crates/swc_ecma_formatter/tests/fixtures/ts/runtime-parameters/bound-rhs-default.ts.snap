@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(value : {key: number} = /* prettier-ignore */ {key  : 1}) { return value; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(value: { key: number } = /* prettier-ignore */ {key  : 1}) {
+  return value;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(
+  value: {
+    key: number;
+  } = /* prettier-ignore */ {key  : 1},
+) {
+  return value;
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+function f(
+  value: {
+    key: number
+  } = /* prettier-ignore */ {key  : 1},
+) {
+  return value
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+function f(
+	value: {
+		key: number;
+	} = /* prettier-ignore */ {key  : 1},
+) {
+	return value;
+}
