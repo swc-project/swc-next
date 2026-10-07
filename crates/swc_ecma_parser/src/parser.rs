@@ -1869,7 +1869,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(true);
         }
 
-        Some(!can_start_let_binding(next.tag()))
+        Some(!can_start_binding_pattern(next.tag()))
     }
 
     fn is_using_identifier(&mut self) -> Option<bool> {
@@ -2260,42 +2260,57 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             DeclaratorCtx::Normal
         };
         // The program or function/static block entry already establishes +In.
+        let declarators = self.parse_variable_declarators(kind, context)?;
+        let declaration_end = self.lexer.state.prev_token_end;
+        let end = self.eat_semicolon(declaration_end)?;
+        if !self.statement_context.permits_declaration()
+            && matches!(
+                kind,
+                VariableKind::Let
+                    | VariableKind::Const
+                    | VariableKind::Using
+                    | VariableKind::AwaitUsing
+            )
+        {
+            self.report(
+                Span::new(declaration_start, end),
+                "Lexical declaration cannot appear in a single-statement context",
+                ReportOptions {
+                    help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
+                    ..ReportOptions::default()
+                },
+            );
+        }
+        Some(self.ast.variable_declaration(
+            Span::new(declaration_start, end),
+            kind,
+            declarators,
+            is_declare,
+        ))
+    }
+
+    fn parse_variable_declarators(
+        &mut self,
+        kind: VariableKind,
+        context: DeclaratorCtx,
+    ) -> Option<SubRange<VariableDeclarator>> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             let first = self.parse_variable_declarator(kind, context)?;
-            let mut declaration_end = first.span(&self.ast).end;
             self.scratch_a.append(first);
             while self.eat(TokenTag::Comma)? {
+                if !can_start_binding_pattern(self.current_token.tag()) {
+                    self.report_expected(
+                        self.current_token.span(),
+                        "Expected a variable declarator after ','",
+                        ReportOptions::default(),
+                    );
+                    break;
+                }
                 let declarator = self.parse_variable_declarator(kind, context)?;
-                declaration_end = declarator.span(&self.ast).end;
                 self.scratch_a.append(declarator);
             }
-            let end = self.eat_semicolon(declaration_end)?;
-            if !self.statement_context.permits_declaration()
-                && matches!(
-                    kind,
-                    VariableKind::Let
-                        | VariableKind::Const
-                        | VariableKind::Using
-                        | VariableKind::AwaitUsing
-                )
-            {
-                self.report(
-                    Span::new(declaration_start, end),
-                    "Lexical declaration cannot appear in a single-statement context",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
-                        ..ReportOptions::default()
-                    },
-                );
-            }
-            let declarators = self.add_extra_from_scratch_a(checkpoint);
-            Some(self.ast.variable_declaration(
-                Span::new(declaration_start, end),
-                kind,
-                declarators,
-                is_declare,
-            ))
+            Some(self.add_extra_from_scratch_a(checkpoint))
         })();
         self.scratch_a.reset(checkpoint);
         result
@@ -7353,7 +7368,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             TokenTag::Let if !self.current_token.is_escaped() => {
                 let next = self.peek_ahead()?;
-                if !can_start_let_binding(next.tag()) {
+                if !can_start_binding_pattern(next.tag()) {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
                 self.advance()?;
@@ -7420,22 +7435,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         declaration_start: u32,
     ) -> Option<Stmt> {
         let context = enter_grammar_context![&mut self.context, ~In];
-        let checkpoint = self.scratch_a.begin();
-        let declarators_result = (|| {
-            let first = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
-            let mut declaration_end = first.span(&self.ast).end;
-            self.scratch_a.append(first);
-            while self.eat(TokenTag::Comma)? {
-                let declarator = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
-                declaration_end = declarator.span(&self.ast).end;
-                self.scratch_a.append(declarator);
-            }
-            let declarators = self.add_extra_from_scratch_a(checkpoint);
-            Some((declarators, declaration_end))
-        })();
+        let declarators_result = self.parse_variable_declarators(kind, DeclaratorCtx::ForLoop);
         self.context = context;
-        self.scratch_a.reset(checkpoint);
-        let (declarators, declaration_end) = declarators_result?;
+        let declarators = declarators_result?;
+        let declaration_end = self.lexer.state.prev_token_end;
         let declaration = self.ast.variable_declaration(
             Span::new(declaration_start, declaration_end),
             kind,
@@ -12968,7 +12971,7 @@ fn can_start_binding_identifier(tag: TokenTag) -> bool {
 }
 
 #[inline]
-fn can_start_let_binding(tag: TokenTag) -> bool {
+fn can_start_binding_pattern(tag: TokenTag) -> bool {
     matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace) || can_start_binding_identifier(tag)
 }
 
