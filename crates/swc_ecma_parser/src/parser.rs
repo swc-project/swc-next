@@ -1517,6 +1517,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         token
     }
 
+    fn next_token_may_start_with(&self, matches_ascii: impl FnOnce(u8) -> bool) -> bool {
+        let start = self.current_token.end() as usize;
+        let source = self.source.as_bytes();
+        let Some(&byte) = source.get(start) else {
+            return false;
+        };
+        // Keep full lookahead for trivia and non-ASCII bytes.
+        // '/' may start a line or block comment, and '<' may start an HTML comment.
+        byte >= 0x80 || matches!(byte, b' ' | b'\t'..=b'\r' | b'/' | b'<') || matches_ascii(byte)
+    }
+
     fn ensure_capacity(&mut self) {
         let (estimated_nodes, estimated_extra) = estimate_ast_capacity(self.source.len());
         self.ast.reserve(estimated_nodes, estimated_extra);
@@ -5550,6 +5561,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if current.tag() == TokenTag::This || !current.tag().is_identifier_like() {
             return Some(false);
         }
+        if !self.next_token_may_start_with(|byte| byte == b'i') {
+            return Some(false);
+        }
         let next = self.peek_ahead()?;
         Some(next.tag() == TokenTag::Is && !next.is_escaped() && !next.has_line_terminator_before())
     }
@@ -5559,7 +5573,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ts_context
             .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
         let result = (|| {
-            if self.is_start_of_function_or_constructor_type()? {
+            let tag = self.current_token.tag();
+            let may_start_function_or_constructor_type = matches!(
+                tag,
+                TokenTag::New | TokenTag::Abstract | TokenTag::LeftParen
+            ) || is_angle_open(tag);
+            if may_start_function_or_constructor_type
+                && self.is_start_of_function_or_constructor_type()?
+            {
                 self.parse_function_or_constructor_type()
             } else {
                 self.parse_conditional_type().or_else(|| {
@@ -5578,7 +5599,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type_no_conditional(&mut self) -> Option<TsType> {
-        if self.is_start_of_function_or_constructor_type()? {
+        let tag = self.current_token.tag();
+        let may_start_function_or_constructor_type = matches!(
+            tag,
+            TokenTag::New | TokenTag::Abstract | TokenTag::LeftParen
+        ) || is_angle_open(tag);
+        if may_start_function_or_constructor_type
+            && self.is_start_of_function_or_constructor_type()?
+        {
             self.parse_function_or_constructor_type()
         } else {
             self.parse_union_type().or_else(|| {
@@ -5914,6 +5942,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_named_tuple_element(&mut self) -> Option<bool> {
         if !self.current_token.tag().is_identifier_like() {
+            return Some(false);
+        }
+        if !self.next_token_may_start_with(|byte| matches!(byte, b':' | b'?')) {
             return Some(false);
         }
         let first = self.peek_ahead()?;
@@ -6345,6 +6376,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn is_qualified_type_continuation(&mut self) -> Option<bool> {
+        if !self.next_token_may_start_with(|byte| byte == b'.') {
+            return Some(false);
+        }
         let next = self.peek_ahead()?;
         Some(next.tag() == TokenTag::Dot && !next.has_line_terminator_before())
     }
@@ -13618,6 +13652,10 @@ mod tests {
         }
 
         assert_eq!(name(r"type F = (x: unknown) => \u0078 is string;"), "x");
+
+        assert_eq!(name("type F = (x: unknown) => x\x0Bis string;"), "x");
+
+        assert_eq!(name("type F = (x: unknown) => x\u{00A0}is string;"), "x");
 
         assert_eq!(
             name(r"type F = (x: unknown) => asserts \u0078 is string;"),
