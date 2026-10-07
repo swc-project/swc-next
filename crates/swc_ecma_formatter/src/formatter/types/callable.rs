@@ -128,7 +128,7 @@ pub(in crate::formatter) enum SignatureReturnDelimiter {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum SignatureParameterHug {
+pub(in crate::formatter) enum SignatureParameterHug {
     Pattern,
     Object,
     Type,
@@ -256,10 +256,17 @@ enum ParameterItemState<'ast> {
     },
 }
 
-pub(super) struct PreparedParameterItem<'ast>(ParameterItemState<'ast>);
+pub(in crate::formatter) struct PreparedParameterItem<'ast>(ParameterItemState<'ast>);
 
 impl PreparedParameterItem<'_> {
-    pub(super) fn share_signature_group(mut self, hug: SignatureParameterHug) -> Self {
+    pub(in crate::formatter) fn is_source(&self) -> bool {
+        matches!(self.0, ParameterItemState::Source(_))
+    }
+
+    pub(in crate::formatter) fn share_signature_group(
+        mut self,
+        hug: SignatureParameterHug,
+    ) -> Self {
         if let ParameterItemState::Formatted(left) = &mut self.0 {
             if matches!(hug, SignatureParameterHug::Object)
                 && let ParameterBinding::Pattern {
@@ -492,7 +499,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn callable_parameter_hug(
+    pub(in crate::formatter) fn callable_parameter_hug(
         &self,
         parameter: CallableParameter,
         envelope: Span,
@@ -1372,7 +1379,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PreparedParameterItem(parameter))
     }
 
-    pub(super) fn format_prepared_parameter_item(
+    pub(in crate::formatter) fn format_prepared_parameter_item(
         &mut self,
         parameter: PreparedParameterItem<'ast>,
         writer: &mut Writer<'ast>,
@@ -1561,5 +1568,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_annotation_owner(bound.content, TypeContext::Root, writer);
         }
         Ok(None)
+    }
+
+    pub(in crate::formatter) fn prepare_typed_formal_parameter(
+        &self,
+        parameter: FormalParameter,
+        mode: ContentMode,
+        annotation: Option<TsTypeAnnotation>,
+        optional: bool,
+    ) -> Result<PreparedParameterItem<'ast>, FormatError> {
+        let node = CallableParameter::Formal(parameter);
+        if mode == ContentMode::Verbatim {
+            return Ok(PreparedParameterItem(ParameterItemState::Source(node)));
+        }
+        self.prepare_parameter_item(node, annotation, optional)
+    }
+
+    pub(in crate::formatter) fn prepare_typed_rest_parameter(
+        &self,
+        rest: FormalParameterRest,
+        mode: ContentMode,
+        annotation: TsTypeAnnotation,
+    ) -> Result<PreparedParameterItem<'ast>, FormatError> {
+        let node = CallableParameter::Rest(rest);
+        if mode == ContentMode::Verbatim {
+            return Ok(PreparedParameterItem(ParameterItemState::Source(node)));
+        }
+        self.prepare_parameter_item(node, Some(annotation), false)
     }
 }
