@@ -154,17 +154,18 @@ test("printSync rejects unsupported ESTree nodes", () => {
   );
 });
 
-test("encoder language hints select compatible JS and TS variants", () => {
+test("encoder metadata selects compatible JS and TS variants", () => {
   const { program } = parseSync("const value = (a) => a;");
   assert.deepEqual(encodeJs(program), encodeTs(program));
-  assert.deepEqual(encode(program, "js"), encodeJs(program));
-  assert.deepEqual(encode(program, "jsx"), encodeJs(program));
+  assert.deepEqual(encode(program, { lang: "js" }), encodeJs(program));
+  assert.deepEqual(encode(program, { lang: "jsx" }), encodeJs(program, { lang: "jsx" }));
   assert.deepEqual(encode(program), encodeTs(program));
 
   const typed = parseSync("const value: string = 'ok';", { lang: "ts" }).program;
-  assert.deepEqual(encode(typed, "ts"), encodeTs(typed));
-  assert.deepEqual(encode(typed, "tsx"), encodeTs(typed));
-  assert.equal(new DataView(encodeTs(typed).buffer).getUint32(32, true) & 1, 1);
+  assert.deepEqual(encode(typed, { lang: "ts" }), encodeTs(typed));
+  assert.deepEqual(encode(typed, { lang: "tsx" }), encodeTs(typed, { lang: "tsx" }));
+  assert.equal((new DataView(encodeTs(typed).buffer).getUint32(32, true) >> 2) & 7, 1);
+  assert.equal((new DataView(encode(typed, { lang: "tsx" }).buffer).getUint32(32, true) >> 2) & 7, 3);
 });
 
 
