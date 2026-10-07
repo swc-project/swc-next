@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11382/11509 (98.90%)
+Positive Passed: 11385/11509 (98.92%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
@@ -38,8 +38,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectLiteral
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parseInvalidNonNullableTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parseInvalidNullableTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/privacyImportParseErrors.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionScanning.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionWithNonBMPFlags.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/restParamAsOptional.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/restParameterNotLast.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/restParameterWithBindingPattern3.ts
@@ -102,7 +100,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList10.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList11.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList9.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpressionDivideAmbiguity3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName35.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/salsa/constructorNameInGenerator.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarationsInForOf.3.ts

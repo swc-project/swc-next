@@ -90,6 +90,7 @@ pub struct RegexResult {
     pub span: Span,
     pub pattern: Span,
     pub flags: Span,
+    pub flag_error: Option<LexicalError>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1174,6 +1175,53 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         token
     }
 
+    fn scan_regex_flags(&mut self) -> Result<Option<LexicalError>, LexicalError> {
+        let mut flags_seen = 0u32;
+        let mut flag_error = None;
+
+        while (self.cursor as usize) < self.source.len() {
+            let flag = self.source[self.cursor as usize];
+            if flag.is_ascii_alphabetic() {
+                if !matches!(flag, b'g' | b'i' | b'm' | b's' | b'u' | b'y' | b'd' | b'v') {
+                    flag_error.get_or_insert(LexicalError::InvalidRegexFlag);
+                } else {
+                    let bit = flag - b'a';
+                    if (flags_seen & (1u32 << bit)) != 0 {
+                        flag_error.get_or_insert(LexicalError::DuplicateRegexFlag);
+                    }
+                    flags_seen |= 1u32 << bit;
+                }
+                self.cursor += 1;
+                continue;
+            }
+
+            if is_ident_continue_ascii(flag) {
+                flag_error.get_or_insert(LexicalError::InvalidRegexFlag);
+                self.cursor += 1;
+                continue;
+            }
+
+            // Let the identifier scanner consume escapes and identifier Unicode fully; its lexical errors win,
+            // and non-identifier Unicode stays outside the flags span.
+            if flag == b'\\' || flag >= 0x80 {
+                let start = self.cursor;
+                self.scan_identifier_body(false)?;
+                if self.cursor > start {
+                    flag_error.get_or_insert(LexicalError::InvalidRegexFlag);
+                }
+            }
+            break;
+        }
+
+        let u_bit = 1u32 << (b'u' - b'a');
+        let v_bit = 1u32 << (b'v' - b'a');
+        if flags_seen & u_bit != 0 && flags_seen & v_bit != 0 {
+            flag_error.get_or_insert(LexicalError::IncompatibleRegexFlags);
+        }
+
+        Ok(flag_error)
+    }
+
     pub fn re_scan_as_regex(
         &mut self,
         slash_token_start: u32,
@@ -1217,29 +1265,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             if c == b'/' && !in_class {
                 self.cursor += 1;
                 let closing_delimiter_pos = self.cursor;
-                let mut flags_seen = 0u32;
-
-                loop {
-                    let flag = self.peek(0);
-                    if !flag.is_ascii_alphabetic() {
-                        break;
-                    }
-                    if !matches!(flag, b'g' | b'i' | b'm' | b's' | b'u' | b'y' | b'd' | b'v') {
-                        return Err(LexicalError::InvalidRegexFlag);
-                    }
-                    let bit = flag - b'a';
-                    if (flags_seen & (1u32 << bit)) != 0 {
-                        return Err(LexicalError::DuplicateRegexFlag);
-                    }
-                    flags_seen |= 1u32 << bit;
-                    self.cursor += 1;
-                }
-
-                let u_bit = 1u32 << (b'u' - b'a');
-                let v_bit = 1u32 << (b'v' - b'a');
-                if flags_seen & u_bit != 0 && flags_seen & v_bit != 0 {
-                    return Err(LexicalError::IncompatibleRegexFlags);
-                }
+                let flag_error = self.scan_regex_flags()?;
 
                 let end = self.cursor;
                 return Ok(RegexResult {
@@ -1252,6 +1278,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                         start: closing_delimiter_pos,
                         end,
                     },
+                    flag_error,
                 });
             }
 
