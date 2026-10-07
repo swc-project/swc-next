@@ -24,14 +24,7 @@ fn with_source_context(
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
-    let mut semantic = analyze(
-        &ast,
-        AnalyzeOptions {
-            features: swc_next_ecma_semantic::SemanticFeatureFlags::GENERATED_NAMES,
-            ..AnalyzeOptions::default()
-        },
-    )
-    .semantic;
+    let mut semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     let state = TransformerState::new(&mut semantic, Default::default());
     let mut traversal = TraverseMutCtx::new(&mut ast, state);
     let mut ctx = traversal.mutate();

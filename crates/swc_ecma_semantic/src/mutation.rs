@@ -34,12 +34,6 @@ impl<'a> Semantic<'a> {
         self.node_scopes[start..].fill(Some(scope));
     }
 
-    /// Reserves and interns a name as one operation.
-    #[doc(hidden)]
-    pub fn generate_name(&mut self, ast: &mut Ast<'a>, base: &str, start_suffix: u64) -> AstUtf8 {
-        ast.add_utf8(self.used_names.next_name(base, start_suffix))
-    }
-
     /// Registers a fresh declaration whose name is unique in its owning scope.
     #[doc(hidden)]
     pub fn register_binding(
@@ -72,7 +66,6 @@ impl<'a> Semantic<'a> {
         let bytes = bytes.clone_in(ast.allocator());
         self.scope_maps[scope.index()].insert(bytes, symbol);
         self.node_symbols[node.node_id().index()] = Some(symbol);
-        self.used_names.observe(bytes);
         self.refresh_named_references(ast, name);
         symbol
     }

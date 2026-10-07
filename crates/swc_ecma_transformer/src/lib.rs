@@ -70,8 +70,7 @@ impl TransformerOptions {
             features |= SemanticFeatureFlags::CLASS_PRIVATE_NAMES
                 | SemanticFeatureFlags::STATIC_BLOCK_COMMENTS;
             if self.proposal.prevent_extensions {
-                features |= SemanticFeatureFlags::GENERATED_NAMES
-                    | SemanticFeatureFlags::STATIC_BLOCK_LAYOUT;
+                features |= SemanticFeatureFlags::STATIC_BLOCK_LAYOUT;
             }
         }
         if self.es2015.arrow_functions.is_some() {
@@ -79,8 +78,7 @@ impl TransformerOptions {
                 | SemanticFeatureFlags::LEXICAL_SUPER
                 | SemanticFeatureFlags::DERIVED_CONSTRUCTORS
                 | SemanticFeatureFlags::CONSTRUCTOR_THIS
-                | SemanticFeatureFlags::CONSTRUCTOR_SUPER
-                | SemanticFeatureFlags::GENERATED_NAMES;
+                | SemanticFeatureFlags::CONSTRUCTOR_SUPER;
         }
         features
     }

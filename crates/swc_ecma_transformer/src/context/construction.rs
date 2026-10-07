@@ -35,6 +35,7 @@ impl<'a> Mutation<'_, '_, 'a> {
         scope: ScopeId,
         flags: ReferenceFlags,
     ) -> IdentifierReference {
+        self.observe_name(name);
         assert!(
             self.state.semantic.scope(scope).active,
             "reference scope must be active"

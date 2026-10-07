@@ -21,7 +21,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     ClassSemantic, DeclarationId, HoistingMap, Redeclarations, ScopeMap, Semantic,
-    SemanticFeatureFlags, UsedNameState,
+    SemanticFeatureFlags,
     module_record::ModuleRecordBuilder,
     scope::{Scope, ScopeKind, ScopeTracker, ScopeTree},
 };
@@ -1826,8 +1826,6 @@ pub(crate) struct SymbolTracker<'a> {
     ts_container_stack: Vec<TsContainerContext>,
     ts_module_instance_scratch: HashMap<NodeId, TsModuleInstanceMemo, FxBuildHasher>,
     ts_enum_owner_stack: Vec<SymbolId>,
-    used_names: UsedNameState<'a>,
-    semantic_features: SemanticFeatureFlags,
 
     /// What the next `binding_identifier` will declare: its flags,
     /// redeclaration excludes, and destination scope. Valid inside an
@@ -2011,7 +2009,7 @@ struct SavedContext {
 }
 
 impl<'a> SymbolTracker<'a> {
-    pub fn init(tree: &Ast<'a>, semantic_features: SemanticFeatureFlags) -> Self {
+    pub fn init(tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
         let nodes = tree.node_count();
         let mut node_symbols = ArenaVec::with_capacity_in(nodes, allocator);
@@ -2042,8 +2040,6 @@ impl<'a> SymbolTracker<'a> {
             ts_container_stack: Vec::new(),
             ts_module_instance_scratch: HashMap::with_hasher(FxBuildHasher),
             ts_enum_owner_stack: Vec::new(),
-            used_names: UsedNameState::new(allocator),
-            semantic_features,
             pending: PendingBinding::default(),
             export_state: ExportState::None,
             // A declaration file is ambient in its entirety.
@@ -2909,12 +2905,6 @@ impl<'a> SymbolTracker<'a> {
         debug_assert!(node.index() < tree.node_count());
 
         let name_text = tree.get_wtf8(name).as_bytes();
-        if self
-            .semantic_features
-            .contains(SemanticFeatureFlags::GENERATED_NAMES)
-        {
-            self.used_names.observe(name_text);
-        }
         if self.ts_container_stack.is_empty()
             && self.pending_type_parameter_owner().is_none()
             && (self.pending.scope != ScopeId::MODULE
@@ -3346,13 +3336,6 @@ impl<'a> SymbolTracker<'a> {
 
     #[inline(always)]
     fn declare_prepared(&mut self, tree: &Ast<'a>, plan: PreparedDeclaration) -> SymbolId {
-        if self
-            .semantic_features
-            .contains(SemanticFeatureFlags::GENERATED_NAMES)
-        {
-            self.used_names
-                .observe(tree.get_wtf8(plan.name()).as_bytes());
-        }
         match plan.destination {
             DeclarationDestination::TsDefaultExport => {
                 self.declare_default_export(tree, plan.declaration, true)
@@ -3856,12 +3839,6 @@ impl<'a> SymbolTracker<'a> {
         } else {
             flags
         };
-        if self
-            .semantic_features
-            .contains(SemanticFeatureFlags::GENERATED_NAMES)
-        {
-            self.used_names.observe(tree.get_utf8(name).as_bytes());
-        }
         let id = ReferenceId::from_usize(self.references.len());
         self.references.push(Reference {
             name,
@@ -4320,7 +4297,6 @@ impl<'a> SymbolTracker<'a> {
             node_scopes: ArenaVec::new_in(self.allocator),
             features,
             class,
-            used_names: self.used_names,
             ts_members: TsMemberIndex {
                 source_exports: self.ts_source_exports,
                 local_exports: self.ts_local_exports,

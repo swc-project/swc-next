@@ -53,6 +53,7 @@ impl<'s, 'a> Mutation<'_, 's, 'a> {
             "binding name must be available"
         );
         let name = self.ast.add_utf8(name);
+        self.observe_name(name);
         let node = self.ast.binding_identifier(DUMMY_SP, name);
         self.state
             .semantic

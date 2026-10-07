@@ -64,20 +64,18 @@ bitflags::bitflags! {
         const CLASS_PRIVATE_NAMES = 1 << 0;
         /// Record property-initializer and static-block environments of arrows.
         const ARROW_ENVIRONMENTS = 1 << 1;
-        /// Collect names used by transforms that introduce local bindings.
-        const GENERATED_NAMES = 1 << 2;
         /// Index comments attached to static blocks.
-        const STATIC_BLOCK_COMMENTS = 1 << 3;
+        const STATIC_BLOCK_COMMENTS = 1 << 2;
         /// Record arrows and static blocks that contain lexical super.
-        const LEXICAL_SUPER = 1 << 4;
+        const LEXICAL_SUPER = 1 << 3;
         /// Identify the constructors of derived classes.
-        const DERIVED_CONSTRUCTORS = 1 << 5;
+        const DERIVED_CONSTRUCTORS = 1 << 4;
         /// Record arrow this uses in derived constructors, including their owners.
-        const CONSTRUCTOR_THIS = 1 << 6;
+        const CONSTRUCTOR_THIS = 1 << 5;
         /// Record super() calls in derived constructors, including their owners.
-        const CONSTRUCTOR_SUPER = 1 << 7;
+        const CONSTRUCTOR_SUPER = 1 << 6;
         /// Record static fields and trailing blocks for closure-based block lowering.
-        const STATIC_BLOCK_LAYOUT = 1 << 8;
+        const STATIC_BLOCK_LAYOUT = 1 << 7;
         /// Collect all optional per-class information.
         const CLASS = Self::CLASS_PRIVATE_NAMES.bits() | Self::ARROW_ENVIRONMENTS.bits()
             | Self::STATIC_BLOCK_COMMENTS.bits() | Self::LEXICAL_SUPER.bits()
@@ -141,7 +139,6 @@ pub struct Semantic<'a> {
     ts_members: TsMemberIndex<'a>,
     features: SemanticFeatureFlags,
     class: ClassSemantic<'a>,
-    used_names: UsedNameState<'a>,
 }
 
 impl<'a> Semantic<'a> {
@@ -182,18 +179,6 @@ impl<'a> Semantic<'a> {
     /// AST transforms use this to reserve names for generated class elements.
     pub fn class_mut(&mut self) -> &mut ClassSemantic<'a> {
         &mut self.class
-    }
-
-    /// Names collected for transforms that introduce local bindings.
-    ///
-    /// Empty unless [`SemanticFeatureFlags::GENERATED_NAMES`] was enabled.
-    pub fn used_names(&self) -> &UsedNameState<'a> {
-        &self.used_names
-    }
-
-    /// Mutable generated-name state used to synchronize AST transforms.
-    pub fn used_names_mut(&mut self) -> &mut UsedNameState<'a> {
-        &mut self.used_names
     }
 
     /// The symbol with the given id.

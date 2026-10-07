@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{
 mod construction;
 mod expressions;
 mod mutation;
+mod names;
 mod scopes;
 mod statement_injector;
 
@@ -69,12 +70,6 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             .expect("closure lowering requires static block layout information")
     }
 
-    pub fn generate_name(&mut self, base: &str, start_suffix: u64) -> AstUtf8 {
-        self.state
-            .semantic
-            .generate_name(self.ast, base, start_suffix)
-    }
-
     pub fn generate_binding(
         &mut self,
         base: &str,
@@ -121,6 +116,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
 
     pub fn create_unbound_reference(&mut self, name: &str, scope: ScopeId) -> IdentifierReference {
         let name = self.ast.add_utf8(name);
+        self.observe_name(name);
         let node = self.ast.identifier_reference(DUMMY_SP, name);
         self.state
             .semantic
@@ -162,6 +158,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             swc_next_ecma_semantic::ReferenceSpace::Value,
         );
         let name = self.ast.add_utf8(name);
+        self.observe_name(name);
         let node = self.ast.identifier_reference(DUMMY_SP, name);
         self.state
             .semantic

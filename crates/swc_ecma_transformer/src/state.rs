@@ -5,7 +5,7 @@ use crate::{
 };
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{AstUtf8, NodeId};
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic::{Semantic, UsedNameState};
 
 /// Configuration, caches and pending work for a single transform.
 /// Passes access state through the context's mutation APIs.
@@ -16,6 +16,7 @@ pub(crate) struct TransformerState<'s, 'a> {
     pub(crate) helpers: Helpers,
     pub(crate) statement_injector: StatementInjector,
     pub(crate) generated_bindings: FxHashMap<AstUtf8, GeneratedBinding>,
+    pub(crate) used_names: Option<UsedNameState<'a>>,
 }
 
 impl<'s, 'a> TransformerState<'s, 'a> {
@@ -27,6 +28,7 @@ impl<'s, 'a> TransformerState<'s, 'a> {
             helpers: Helpers::default(),
             statement_injector: Default::default(),
             generated_bindings: Default::default(),
+            used_names: None,
         }
     }
 }

@@ -35,7 +35,7 @@ impl<'a> SemanticContext<'a> {
         node_scopes.resize(tree.node_count(), None);
         Self {
             scope: ScopeTracker::init(tree),
-            symbols: SymbolTracker::init(tree, features),
+            symbols: SymbolTracker::init(tree),
             module_record: ModuleRecordBuilder::new(allocator, build_module_record),
             default_reference_flags: ReferenceFlags::default(),
             class: ClassSemantic::new(tree, features),

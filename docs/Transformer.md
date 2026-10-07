@@ -18,6 +18,7 @@ Transformer                              TraverseMutCtx<TransformerState>
                                              +-- semantic: &mut Semantic
 Visitor callback receives TraverseMutCtx     +-- assumptions
              |                               +-- generated_bindings
+             |                               +-- used_names
              | ctx.mutate()                  +-- helpers
              v                               +-- statement_injector
           Mutation
@@ -32,8 +33,9 @@ Visitor callback receives TraverseMutCtx     +-- assumptions
 - `TraverseMutCtx` belongs to `swc_ecma_ast`. It carries AST and the generic state value. The generic traversal does not implement transform
   replacement policies or depend on Semantic.
 - `TransformerState` holds shared configuration, Semantic's mutable borrow,
-  generated bindings, helper imports, and the statement injection queue. It
-  stores the traversal path through the generic node hooks and does not own another AST.
+  generated bindings, used names, helper imports, and the statement injection
+  queue. It stores the traversal path through the generic node hooks and does
+  not own another AST.
 - `Mutate` is a trait defined in the transform crate and implemented for
   `TraverseMutCtx<TransformerState>`. Its `mutate()` method returns a temporary
   `Mutation` borrowing the existing data.
@@ -81,13 +83,18 @@ is per destination container; it is not one global replay of all AST mutations.
 
 Semantic always collects node evaluation scopes in an arena-backed index. Transforms
 request feature flags only for optional information beyond these scope indexes.
+Mutation initializes shared generated-name state on first use from Semantic's
+symbols, binding declarations, and references, including unresolved references.
+It reserves each generated name immediately and observes newly introduced names
+so later transforms use the same collision domain. Class private names remain
+in Semantic's separate per-class collision domains.
 
 ## Implementing a transform
 
 1. **Identify the needed information.** Reuse Semantic's existing scopes,
-   bindings, references, class metadata, and name allocation. Collect additional
-   program information in the existing semantic traversal. Gate optional
-   collection with narrowly scoped `SemanticFeatureFlags` and request those flags
+   bindings, references, and class metadata; allocate names through Mutation.
+   Collect additional program information in the existing semantic traversal.
+   Gate optional collection with narrowly scoped `SemanticFeatureFlags` and request those flags
    from `TransformerOptions::semantic_features()`. Avoid separate information
    collection walks in the transform.
 2. **Keep lowering in the visitor.** Follow the existing ES2015/ES2022 dispatch
@@ -149,6 +156,7 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Entry point, feature requirements, visitor dispatch | [crates/swc_ecma_transformer/src/lib.rs](../crates/swc_ecma_transformer/src/lib.rs) |
 | Shared transform state | [crates/swc_ecma_transformer/src/state.rs](../crates/swc_ecma_transformer/src/state.rs) |
 | Mutate trait, borrowed Mutation, names and helpers | [crates/swc_ecma_transformer/src/context/mod.rs](../crates/swc_ecma_transformer/src/context/mod.rs) |
+| Shared name allocation from Semantic indexes | [crates/swc_ecma_transformer/src/context/names.rs](../crates/swc_ecma_transformer/src/context/names.rs) |
 | Allocation and registration | [crates/swc_ecma_transformer/src/context/construction.rs](../crates/swc_ecma_transformer/src/context/construction.rs) |
 | Expression replacement contracts | [crates/swc_ecma_transformer/src/context/expressions.rs](../crates/swc_ecma_transformer/src/context/expressions.rs) |
 | Statement/class edits and scope operations | [crates/swc_ecma_transformer/src/context/mutation.rs](../crates/swc_ecma_transformer/src/context/mutation.rs), [crates/swc_ecma_transformer/src/context/scopes.rs](../crates/swc_ecma_transformer/src/context/scopes.rs) |

@@ -240,7 +240,7 @@ fn generated_bindings() {
     let (mut ast, mut semantic) = analyze_source(&allocator, source, script);
     let original = semantic.binding(ScopeId::ROOT, b"original").unwrap();
     let original_use = semantic.uses(original)[0];
-    let name = semantic.generate_name(&mut ast, "_temporary", 2);
+    let name = ast.add_utf8("_temporary");
     let binding = ast.binding_identifier(DUMMY_SP, name);
     let symbol = semantic.register_binding(
         &ast,
