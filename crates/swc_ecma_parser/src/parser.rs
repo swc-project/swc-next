@@ -2694,6 +2694,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             (None, None)
         };
+        if self.lang.is_typescript()
+            && super_class.is_some()
+            && self.current_token.tag() == TokenTag::Comma
+        {
+            let next = self.peek_ahead()?;
+            if matches!(next.tag(), TokenTag::Implements | TokenTag::LeftBrace) {
+                self.report(
+                    self.current_token.span(),
+                    "A class extends clause cannot have a trailing comma",
+                    ReportOptions::default(),
+                );
+                self.advance()?;
+            }
+        }
         let implements = if self.lang.is_typescript() {
             self.parse_implements_clause()?
         } else {
@@ -5213,6 +5227,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     HeritageEntry::Class(node) => self.scratch_a.append(node),
                 }
                 if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
+                if self.current_token.tag() == TokenTag::LeftBrace {
+                    self.report_expected(
+                        self.current_token.span(),
+                        "Expected a heritage type after ','",
+                        ReportOptions::default(),
+                    );
                     break;
                 }
             }
