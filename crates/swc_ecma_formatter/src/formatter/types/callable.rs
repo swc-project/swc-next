@@ -60,14 +60,14 @@ impl CallableType {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum SignatureIncoming {
+pub(in crate::formatter) enum SignatureIncoming {
     Parameter(CallableParameter),
     Return(TsTypeAnnotation),
     Empty,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum CallableParameter {
+pub(in crate::formatter) enum CallableParameter {
     This(TsThisParameter),
     Formal(FormalParameter),
     Rest(FormalParameterRest),
@@ -93,10 +93,10 @@ struct PredicateBound<'ast> {
     prefix: TypeBoundaryLayout<'ast>,
 }
 
-pub(super) struct SignatureReturn<'ast> {
+pub(in crate::formatter) struct SignatureReturn<'ast> {
     pub(super) content: AnnotationContent,
     prefix: TypeBoundaryLayout<'ast>,
-    pub(super) preceding_mode: ContentMode,
+    pub(in crate::formatter) preceding_mode: ContentMode,
     delimiter: SignatureReturnDelimiter,
 }
 
@@ -122,7 +122,7 @@ impl FunctionReturn<'_> {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum SignatureReturnDelimiter {
+pub(in crate::formatter) enum SignatureReturnDelimiter {
     Arrow,
     Colon,
 }
@@ -134,13 +134,13 @@ pub(super) enum SignatureParameterHug {
     Type,
 }
 
-pub(super) struct SignatureGenerics<'ast> {
+pub(in crate::formatter) struct SignatureGenerics<'ast> {
     pub(super) node: TsTypeParameterDeclaration,
     pub(super) mode: ContentMode,
     pub(super) following: TypeGap<'ast>,
 }
 
-pub(super) enum SignatureReturnEolTarget<'mode> {
+pub(in crate::formatter) enum SignatureReturnEolTarget<'mode> {
     Parameter,
     Header(&'mode mut ContentMode),
     Annotation,
@@ -184,23 +184,23 @@ struct IncomingParameterHead {
     target_start: u32,
 }
 
-pub(super) struct CallableParameters {
+pub(in crate::formatter) struct CallableParameters {
     node: FormalParameters,
     this_parameter: Option<TsThisParameter>,
     count: usize,
     hug: Option<SignatureParameterHug>,
-    pub(super) source_head: Option<CallableParameter>,
+    pub(in crate::formatter) source_head: Option<CallableParameter>,
     suppressed_tail: Option<CallableParameter>,
     terminal: Option<CallableTerminal>,
     incoming_head: Option<IncomingParameterHead>,
 }
 
 impl CallableParameters {
-    pub(super) fn has_parameters(&self) -> bool {
+    pub(in crate::formatter) fn has_parameters(&self) -> bool {
         self.count != 0
     }
 
-    pub(super) fn count(&self) -> usize {
+    pub(in crate::formatter) fn count(&self) -> usize {
         self.count
     }
 }
@@ -281,7 +281,7 @@ impl PreparedParameterItem<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn signature_incoming(
+    pub(in crate::formatter) fn signature_incoming(
         &self,
         parameters: &CallableParameters,
         result: Option<TsTypeAnnotation>,
@@ -451,7 +451,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn callable_parameters(
+    pub(in crate::formatter) fn callable_parameters(
         &self,
         node: FormalParameters,
         this_parameter: Option<TsThisParameter>,
@@ -649,7 +649,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(true)
     }
 
-    pub(super) fn prepare_callable_parameter_tail(
+    pub(in crate::formatter) fn prepare_callable_parameter_tail(
         &self,
         parameters: &mut CallableParameters,
         preceding_mode: ContentMode,
@@ -699,7 +699,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
-    pub(super) fn prepare_signature_return(
+    pub(in crate::formatter) fn prepare_signature_return(
         &self,
         preceding_end: u32,
         mut eol_target: SignatureReturnEolTarget<'_>,
@@ -837,7 +837,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn signature_parameters_can_group(
+    pub(in crate::formatter) fn signature_parameters_can_group(
         &self,
         has_single_parameter: bool,
         generics: Option<TsTypeParameterDeclaration>,
@@ -895,7 +895,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn format_callable_signature_contents(
+    pub(in crate::formatter) fn format_callable_signature_contents(
         &mut self,
         parameters: CallableParameters,
         result: Option<SignatureReturn<'ast>>,

@@ -3,6 +3,7 @@
 mod control_flow;
 mod declarations;
 mod enums;
+mod functions;
 mod modules;
 mod namespaces;
 mod typescript_modules;
@@ -1168,6 +1169,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .ast
                         .export_default_declaration_kind_data(node.declaration(self.ast))
                     {
+                        ExportDefaultDeclarationKindData::TsFunction(function) => {
+                            Some(Decl::TsFunction(function))
+                        }
                         ExportDefaultDeclarationKindData::TsInterfaceDeclaration(interface) => {
                             Some(Decl::TsInterfaceDeclaration(interface))
                         }
@@ -1179,7 +1183,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || declaration.is_some_and(|declaration| {
                         matches!(
                             self.ast.decl_data(declaration),
-                            DeclData::TsTypeAliasDeclaration(_)
+                            DeclData::TsFunction(_)
+                                | DeclData::TsTypeAliasDeclaration(_)
                                 | DeclData::TsInterfaceDeclaration(_)
                                 | DeclData::TsModuleDeclaration(_)
                                 | DeclData::TsGlobalDeclaration(_)

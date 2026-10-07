@@ -93,6 +93,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 DeclarationLeading::Name(node.id(self.ast)),
             ),
 
+            DeclData::TsFunction(node) => {
+                if node.r#async(self.ast) {
+                    return Err(self.unsupported("async ambient function", node));
+                }
+                let Some(name) = node.id(self.ast) else {
+                    return Err(self.unsupported("anonymous ambient function", node));
+                };
+                ("function", DeclarationLeading::Name(name))
+            }
             DeclData::TsTypeAliasDeclaration(node) => {
                 ("type", DeclarationLeading::Name(node.id(self.ast)))
             }
