@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export = (1, 3 + 4);
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+export = (1, 3 + 4);
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+export = (1, 3 + 4);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export = (1, 3 + 4)
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+export = (1, 3 + 4)

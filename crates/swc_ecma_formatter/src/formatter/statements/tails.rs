@@ -290,6 +290,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         _ => Complete(declaration.span(self.ast).end),
                     };
                 }
+                StmtData::TsExportAssignment(node) => {
+                    return Semicolon(node.expression(self.ast).span(self.ast).end);
+                }
+                StmtData::TsNamespaceExportDeclaration(node) => {
+                    return Semicolon(node.id(self.ast).span(self.ast).end);
+                }
                 StmtData::DebuggerStatement(node) => {
                     return Semicolon(node.span(self.ast).start + "debugger".len() as u32);
                 }
@@ -325,6 +331,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             DeclData::TsGlobalDeclaration(node) => {
                 return Complete(node.body(self.ast).span(self.ast).end);
+            }
+            DeclData::TsImportEqualsDeclaration(node) => {
+                return Semicolon(node.module_reference(self.ast).span(self.ast).end);
             }
             _ => return Complete(declaration.span(self.ast).end),
         };
