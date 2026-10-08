@@ -3639,15 +3639,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         && (!self.ts_context.ambient()
                             || self.current_token.tag() != TokenTag::RightParen)
                     {
-                        return {
-                            let span = self.current_token.span();
-                            self.report(
-                                span,
-                                "Rest parameter must be the last parameter",
-                                ReportOptions::default(),
-                            );
-                            None
-                        };
+                        self.recover_rest_parameter_end()?;
                     }
                     break;
                 }
@@ -3688,6 +3680,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ts_context = ts_context;
         self.scratch_a.reset(checkpoint);
         result
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn recover_rest_parameter_end(&mut self) -> Option<()> {
+        self.report(
+            self.current_token.span(),
+            "Rest parameter must be the last parameter",
+            ReportOptions::default(),
+        );
+        (self.current_token.tag() == TokenTag::RightParen).then_some(())
     }
 
     fn parse_formal_parameter<const IS_TYPESCRIPT: bool>(
@@ -8919,7 +8922,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                     ..ReportOptions::default()
                                 },
                             );
-                            return None;
                         }
                         let argument =
                             self.expression_to_binding_pattern(spread.argument(&self.ast))?;
