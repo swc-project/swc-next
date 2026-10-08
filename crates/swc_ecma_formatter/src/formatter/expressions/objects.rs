@@ -29,6 +29,7 @@ pub(in crate::formatter) enum PropertyKeyQuoting {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum ConstructorKeyGrammar {
     Equivalent,
+    DistinctClassification,
     DistinctDiagnostics,
 }
 
@@ -923,7 +924,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || computed
             || !matches!(
                 context,
-                PropertyKeyContext::ClassMethod(ConstructorKeyGrammar::DistinctDiagnostics)
+                PropertyKeyContext::ClassMethod(
+                    ConstructorKeyGrammar::DistinctClassification
+                        | ConstructorKeyGrammar::DistinctDiagnostics
+                )
             )
         {
             return quoting;
