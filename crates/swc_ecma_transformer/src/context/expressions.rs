@@ -30,6 +30,11 @@ impl Mutation<'_, '_, '_> {
         if old != replacement.node_id() {
             let old = self.ast.kind_data(old);
             self.state.semantic.replace_leaf_expression(old);
+            if matches!(old, NodeKindData::ThisExpression(_)) {
+                self.state
+                    .analysis
+                    .replace_this(old.node_id(), self.state.path.iter().rev().copied());
+            }
         }
     }
 

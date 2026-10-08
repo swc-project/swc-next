@@ -1,14 +1,15 @@
 //! Scope ownership and lexical environments for constructed or relocated nodes.
 use super::Mutation;
+use crate::analysis::ArrowEnvironment;
 use swc_next_ecma_ast::{Ast, AstNode, FormalParameterKind, FormalParameters, NodeId, ScopeId};
-use swc_next_ecma_semantic::{ClassArrowInfo, scope::ScopeKind};
+use swc_next_ecma_semantic::scope::ScopeKind;
 
 pub(crate) struct ScopeOptions {
     pub parent: ScopeId,
     pub kind: ScopeKind,
     /// Transfer this existing scope to the new owner instead of allocating one.
     pub reuse: Option<ScopeId>,
-    pub environment: Option<ClassArrowInfo>,
+    pub environment: Option<ArrowEnvironment>,
 }
 
 impl<'a> Mutation<'_, '_, 'a> {
@@ -49,6 +50,11 @@ impl<'a> Mutation<'_, '_, 'a> {
         self.state.semantic.grow_node_indexes(self.ast.node_count());
         let scope = if let Some(scope) = options.reuse {
             let old = self.state.semantic.scope(scope).node;
+            let semantic = &*self.state.semantic;
+            let ancestors =
+                std::iter::successors(semantic.scope_outside(old), |&id| semantic.scope(id).parent)
+                    .map(|id| semantic.scope(id).node);
+            self.state.analysis.remove_arrow(old, ancestors);
             self.state
                 .semantic
                 .replace_scope_owner(self.ast, old, node.node_id(), options.kind);
@@ -65,7 +71,7 @@ impl<'a> Mutation<'_, '_, 'a> {
         self.state.semantic.register_nodes(self.ast, start, scope);
         if let Some(environment) = options.environment {
             self.state
-                .semantic
+                .analysis
                 .record_arrow_environment(node.node_id(), environment);
         }
         (node, scope)
@@ -77,12 +83,15 @@ impl<'a> Mutation<'_, '_, 'a> {
         &mut self,
         owner: NodeId,
         parent: ScopeId,
-        environment: ClassArrowInfo,
+        environment: ArrowEnvironment,
     ) {
         let scope = self
             .scope_for_node(owner)
             .expect("source owner must have an active scope");
-        self.state.semantic.merge_scope(scope, parent, environment);
+        self.state.semantic.merge_scope(scope, parent);
+        self.state
+            .analysis
+            .inherit_scope_environment(owner, environment);
     }
 
     pub(crate) fn set_parameter_kind(

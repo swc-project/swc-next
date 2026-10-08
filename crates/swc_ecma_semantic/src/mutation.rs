@@ -151,15 +151,6 @@ impl<'a> Semantic<'a> {
         if let Some(reference) = self.node_references[node.index()].take() {
             self.unlink_reference_use(reference);
         }
-        if matches!(old, swc_next_ecma_ast::NodeKindData::ThisExpression(_)) {
-            let scope = self.scope_outside(node);
-            self.class.replace_this(
-                node,
-                self.scopes
-                    .ancestors(scope)
-                    .map(|id| self.scopes.list[id.index()].node),
-            );
-        }
     }
 
     /// Update indexes when replacing a class element shell. Property and method
@@ -205,8 +196,6 @@ impl<'a> Semantic<'a> {
                 debug_assert_eq!(property.r#static(ast), new.r#static(ast));
                 debug_assert_eq!(property.declare(ast), new.declare(ast));
                 debug_assert_eq!(property.r#abstract(ast), new.r#abstract(ast));
-                self.class
-                    .replace_property(property.node_id(), new.node_id());
             }
             NodeKindData::MethodDefinition(method) => {
                 let Some(new) = replacement.and_then(|node| node.as_method_definition(ast)) else {
@@ -235,27 +224,6 @@ impl<'a> Semantic<'a> {
             }
             _ => debug_assert!(false, "unsupported class element replacement"),
         }
-        self.invalidate_static_block_layout(old.node_id());
-    }
-
-    #[doc(hidden)]
-    pub fn invalidate_static_block_layout(&mut self, node: NodeId) {
-        if !self
-            .features
-            .contains(crate::SemanticFeatureFlags::STATIC_BLOCK_LAYOUT)
-        {
-            return;
-        }
-        let class = self
-            .scopes
-            .ancestors(self.scope_at(node))
-            .find_map(|scope| {
-                let scope = self.scope(scope);
-                (scope.kind == ScopeKind::Class).then_some(scope.node)
-            });
-        if let Some(class) = class {
-            self.class.invalidate_static_block_layout(class);
-        }
     }
 
     /// Finish replacing a static block whose contents have already been moved.
@@ -272,7 +240,6 @@ impl<'a> Semantic<'a> {
             );
             self.scopes.list[scope.index()].active = false;
         }
-        self.class.replace_static_block(node);
     }
 
     fn append_use(&mut self, symbol: SymbolId, reference: ReferenceId) {
@@ -337,13 +304,6 @@ impl<'a> Semantic<'a> {
         new: NodeId,
         kind: ScopeKind,
     ) {
-        let scope = self.scope_outside(old);
-        self.class.remove_arrow(
-            old,
-            self.scopes
-                .ancestors(scope)
-                .map(|id| self.scopes.list[id.index()].node),
-        );
         self.transfer_scope_owner(ast, old, new, kind);
     }
 
@@ -410,34 +370,10 @@ impl<'a> Semantic<'a> {
 }
 
 impl<'a> Semantic<'a> {
-    #[doc(hidden)]
-    pub fn reserve_private_key(
-        &mut self,
-        ast: &mut Ast<'a>,
-        class: NodeId,
-        scope: ScopeId,
-    ) -> swc_next_ecma_ast::PropertyKey {
-        let name = self.class.next_private_name(ast, class);
-        let start = ast.node_count();
-        let key = ast.property_key_expr_private_identifier(swc_next_ecma_ast::DUMMY_SP, name);
-        self.register_nodes(ast, start, scope);
-        key
-    }
-
-    #[doc(hidden)]
-    pub fn record_arrow_environment(&mut self, arrow: NodeId, environment: crate::ClassArrowInfo) {
-        self.class.record_arrow_environment(arrow, environment);
-    }
-
     /// Merge a binding-free scope using the existing semantic indexes.
     /// Nodes, references and nested scopes retain their identities.
     #[doc(hidden)]
-    pub fn merge_scope(
-        &mut self,
-        source: ScopeId,
-        parent: ScopeId,
-        environment: crate::ClassArrowInfo,
-    ) {
+    pub fn merge_scope(&mut self, source: ScopeId, parent: ScopeId) {
         let scope = self.scope(source);
         let target = self.scope(parent);
         assert!(
@@ -461,8 +397,6 @@ impl<'a> Semantic<'a> {
             "merging a block must preserve its hoist target"
         );
 
-        self.class
-            .inherit_scope_environment(scope.node, environment);
         for child in &mut self.scopes.list {
             if !child.active {
                 continue;

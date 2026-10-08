@@ -20,8 +20,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ClassSemantic, DeclarationId, HoistingMap, Redeclarations, ScopeMap, Semantic,
-    SemanticFeatureFlags,
+    DeclarationId, HoistingMap, Redeclarations, ScopeMap, Semantic,
     module_record::ModuleRecordBuilder,
     scope::{Scope, ScopeKind, ScopeTracker, ScopeTree},
 };
@@ -4122,8 +4121,6 @@ impl<'a> SymbolTracker<'a> {
         scopes: ScopeTree<'a>,
         has_with_statement: bool,
         module_record: ModuleRecordBuilder<'a>,
-        features: SemanticFeatureFlags,
-        class: ClassSemantic<'a>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
         debug_assert!(self.saved_stack.is_empty());
@@ -4295,8 +4292,6 @@ impl<'a> SymbolTracker<'a> {
             node_symbols,
             node_references,
             node_scopes: ArenaVec::new_in(self.allocator),
-            features,
-            class,
             ts_members: TsMemberIndex {
                 source_exports: self.ts_source_exports,
                 local_exports: self.ts_local_exports,

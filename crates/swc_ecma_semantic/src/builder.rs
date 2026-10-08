@@ -38,7 +38,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ReferenceFlags, ReferenceSpace, Semantic, SemanticFeatureFlags, SymbolFlags,
+    ReferenceFlags, ReferenceSpace, Semantic, SymbolFlags,
     binder::PreparedDeclaration,
     context::SemanticContext,
     ecmascript,
@@ -57,17 +57,12 @@ pub struct SemanticBuilder<'traverse, 'a> {
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    pub fn new(
-        ast: &'traverse Ast<'a>,
-        check_syntax: bool,
-        build_module_record: bool,
-        features: SemanticFeatureFlags,
-    ) -> Self {
+    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
-            state: SemanticContext::init(ast, build_module_record, features),
+            state: SemanticContext::init(ast, build_module_record),
             ast,
             path: Vec::with_capacity(64),
             check_syntax,
@@ -107,115 +102,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
         self.path.iter().rev().copied()
-    }
-
-    pub fn record_constructor_this(&mut self, node: swc_next_ecma_ast::ThisExpression) {
-        if self
-            .state
-            .features
-            .contains(SemanticFeatureFlags::CONSTRUCTOR_THIS)
-        {
-            self.state.class.record_lexical_this(
-                self.ast,
-                node.node_id(),
-                self.path.iter().rev().copied(),
-                false,
-            );
-        }
-    }
-
-    pub fn record_constructor_super(&mut self, node: swc_next_ecma_ast::CallExpression) {
-        if self
-            .state
-            .features
-            .contains(SemanticFeatureFlags::CONSTRUCTOR_SUPER)
-            && node.callee(self.ast).is_super(self.ast)
-        {
-            self.state.class.record_lexical_this(
-                self.ast,
-                node.node_id(),
-                self.path.iter().rev().copied(),
-                true,
-            );
-        }
-    }
-
-    pub fn record_class_arrow(&mut self, arrow: ArrowFunctionExpression) {
-        if !self
-            .state
-            .features
-            .contains(SemanticFeatureFlags::ARROW_ENVIRONMENTS)
-        {
-            return;
-        }
-        let ancestors = self.path.iter().rev().copied();
-        self.state.class.record_arrow(self.ast, arrow, ancestors);
-    }
-
-    pub fn record_class_super(&mut self) {
-        if !self
-            .state
-            .features
-            .contains(SemanticFeatureFlags::LEXICAL_SUPER)
-        {
-            return;
-        }
-        let ancestors = self.path.iter().rev().copied();
-        self.state.class.record_super(self.ast, ancestors);
-    }
-
-    pub fn record_class_private_key(&mut self, key: PropertyKey) {
-        if !self
-            .state
-            .features
-            .contains(SemanticFeatureFlags::CLASS_PRIVATE_NAMES)
-        {
-            return;
-        }
-        let Some(class) = self.current_class() else {
-            return;
-        };
-        self.state.class.record_private_key(class, self.ast, key);
-    }
-
-    pub fn record_class_method_definition(&mut self, method: MethodDefinition) {
-        if !self
-            .state
-            .features
-            .intersects(crate::class_semantic::CONSTRUCTOR_FEATURES)
-            || method.kind(self.ast) != swc_next_ecma_ast::MethodDefinitionKind::Constructor
-        {
-            return;
-        }
-        let Some(class) = self.current_class() else {
-            return;
-        };
-        self.state
-            .class
-            .record_method_definition(class, self.ast, method);
-    }
-
-    pub fn record_static_block_layout(&mut self, element: swc_next_ecma_ast::NodeKindData) {
-        if !self
-            .state
-            .features
-            .contains(SemanticFeatureFlags::STATIC_BLOCK_LAYOUT)
-        {
-            return;
-        }
-        let class = self.current_class().expect("class element has a class");
-        self.state
-            .class
-            .record_static_block_layout(class, self.ast, element);
-    }
-
-    fn current_class(&self) -> Option<NodeId> {
-        self.path.iter().rev().copied().find(|node| {
-            matches!(
-                self.ast.kind_data(*node),
-                swc_next_ecma_ast::NodeKindData::Class(_)
-            )
-        })
     }
 
     fn record_ts_expando_assignment(&mut self, node: swc_next_ecma_ast::AssignmentExpression) {
@@ -421,7 +307,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline]
     fn visit_call_expression(&mut self, node: CallExpression) {
-        self.record_constructor_super(node);
         self.enter_node(node.node_id());
         if !self.state.symbols.in_ambient_context()
             && self.state.default_reference_flags().is_read()
@@ -520,14 +405,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     // pending reference flags without adding an unused ancestry entry.
     #[inline]
     fn visit_super(&mut self, node: Super) {
-        self.record_class_super();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.leave_node(NodeKindData::Super(node));
     }
 
     fn visit_this_expression(&mut self, node: ThisExpression) {
-        self.record_constructor_this(node);
         self.state.enter_scope(node.node_id());
         self.state.enter_node();
     }
@@ -797,7 +680,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
-        self.record_class_arrow(node);
         self.state.enter_arrow_function_expression(self.ast, node);
         let export_state = self.state.symbols.enter_arrow_function_expression();
         self.enter_node(node.node_id());
@@ -882,7 +764,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_property_definition(&mut self, node: PropertyDefinition) {
         self.enter_node(node.node_id());
-        self.record_class_private_key(node.key(self.ast));
         let decorators = node.decorators(self.ast);
         decorators.visit_with(self);
         let key = node.key(self.ast);
@@ -894,22 +775,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         }
         node.type_annotation(self.ast).visit_with(self);
         node.value(self.ast).visit_with(self);
-        self.record_static_block_layout(NodeKindData::PropertyDefinition(node));
         self.leave_node(NodeKindData::PropertyDefinition(node));
     }
 
     #[inline]
     fn visit_method_definition(&mut self, node: MethodDefinition) {
         self.enter_node(node.node_id());
-        self.record_class_method_definition(node);
-        self.record_class_private_key(node.key(self.ast));
         node.visit_children_with(self);
         self.leave_node(NodeKindData::MethodDefinition(node));
     }
 
     fn visit_ts_method_definition(&mut self, node: TsMethodDefinition) {
         self.enter_node(node.node_id());
-        self.record_class_private_key(node.key(self.ast));
         let decorators = node.decorators(self.ast);
         decorators.visit_with(self);
         self.visit_erased_member_key(
@@ -922,11 +799,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_static_block(&mut self, node: StaticBlock) {
-        self.state.enter_static_block(self.ast, node);
+        self.state.enter_static_block(node);
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.state.exit_scope(node.node_id());
-        self.record_static_block_layout(NodeKindData::StaticBlock(node));
         self.leave_node(NodeKindData::StaticBlock(node));
     }
 

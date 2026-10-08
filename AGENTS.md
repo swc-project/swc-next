@@ -42,12 +42,14 @@ Read [Transformer Implementation](docs/Transformer.md) when implementing or
 refactoring transforms. It describes object relationships, mutation contracts,
 semantic synchronization, helper imports, and the test directory layout.
 
-- All transform implementations must collect required program information during
-  semantic analysis in `swc_ecma_semantic`, reusing existing scope, binding, reference,
-  and class metadata instead of adding separate AST scans in transform passes.
-- Control optional information collection with `bitflags` feature flags. Each transform
-  declares the semantic features it requires; collect optional information only when
-  the corresponding flags are enabled.
+- Semantic owns name resolution: reuse its scope, binding, declaration, and reference
+  indexes instead of rebuilding them in transforms. Transform-specific environments,
+  capture summaries, private-name allocation, comments, and member layouts belong to
+  `swc_ecma_transformer`.
+- Collect optional transform information only for enabled passes, using the transform
+  feature flags. Combine required lookahead in one preparation traversal; obtain local
+  class information from member lists and keep generated-node metadata in transformer
+  state. Do not add transform collection flags or caches to Semantic.
 - Keep transformation logic in the actual transform visitors using the generic `TraverseMut`.
   Obtain a borrowed `Mutation` with `TraverseMutCtx::mutate()` from the transform crate's
   `Mutate` trait; keep Semantic in `TransformerState` and read AST through `Mutation::ast()`.
@@ -55,7 +57,8 @@ semantic synchronization, helper imports, and the test directory layout.
   in a visitor.
 - `Mutation` must synchronize Semantic whenever nodes are inserted, deleted,
   replaced, or moved, so subsequent visitor operations always see semantic information
-  consistent with the latest AST. For deferred statement injection, register semantic
+  consistent with the latest AST. It must also update affected transformer metadata.
+  For deferred statement injection, register semantic
   information when preparing nodes and attach the queued statements in one final step.
 
 ## Testing & Examples

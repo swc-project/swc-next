@@ -108,7 +108,7 @@ fn scope_merging() {
     let target_statement = target.body(&ast).get_node(&ast, 0).unwrap();
     let node_count = ast.node_count();
 
-    semantic.merge_scope(source_scope, target_scope, Default::default());
+    semantic.merge_scope(source_scope, target_scope);
     let statements = ast.add_sub_range(
         source_statements
             .into_iter()

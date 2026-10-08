@@ -59,13 +59,16 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
         self.state.semantic
     }
 
+    pub(crate) fn analysis(&self) -> &crate::analysis::TransformAnalysis<'a> {
+        &self.state.analysis
+    }
+
     pub(crate) fn take_static_block_layout(
         &mut self,
         class: NodeId,
-    ) -> swc_next_ecma_semantic::ClassStaticBlockLayout {
+    ) -> crate::analysis::StaticBlockLayout {
         self.state
-            .semantic
-            .class_mut()
+            .analysis
             .take_static_block_layout(class)
             .expect("closure lowering requires static block layout information")
     }
@@ -291,16 +294,20 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
 
     pub(crate) fn next_private_name(&mut self, class: NodeId) -> PropertyKey {
         let scope = self.scope_for_node(class).expect("class scope exists");
-        self.state
-            .semantic
-            .reserve_private_key(self.ast, class, scope)
+        let name = self.state.analysis.next_private_name(self.ast, class);
+        self.add_node(scope, |ast| {
+            ast.property_key_expr_private_identifier(DUMMY_SP, name)
+        })
     }
 
     pub(crate) fn finish(&mut self) {
         debug_assert!(self.state.statement_injector.is_empty());
         debug_assert!(self.state.helpers.is_empty());
         #[cfg(debug_assertions)]
-        self.state.semantic.assert_invariants(self.ast);
+        {
+            self.state.semantic.assert_invariants(self.ast);
+            self.state.analysis.assert_invariants(self.ast);
+        }
     }
 }
 

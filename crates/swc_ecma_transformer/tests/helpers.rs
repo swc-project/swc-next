@@ -25,7 +25,11 @@ fn with_source_context(
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
     let mut semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let state = TransformerState::new(&mut semantic, Default::default());
+    let state = TransformerState::new(
+        &mut semantic,
+        Default::default(),
+        crate::analysis::TransformAnalysis::collect(&ast, crate::TransformFeatureFlags::empty()),
+    );
     let mut traversal = TraverseMutCtx::new(&mut ast, state);
     let mut ctx = traversal.mutate();
     let program = ctx.ast().root_program();

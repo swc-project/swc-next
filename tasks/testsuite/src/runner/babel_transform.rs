@@ -108,7 +108,6 @@ fn transform_input<C: TransformCase>(case: &C) -> Result<String, String> {
         &ast,
         AnalyzeOptions {
             check_syntax: true,
-            features: options.semantic_features(),
             ..AnalyzeOptions::default()
         },
     );

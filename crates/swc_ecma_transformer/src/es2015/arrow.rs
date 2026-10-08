@@ -109,17 +109,13 @@ impl ArrowFunctions {
     }
 
     pub fn enter_function(&mut self, node: Function, ctx: &mut Mutation<'_, '_, '_>) {
-        let derived_constructor = ctx
-            .semantic()
-            .class()
-            .is_derived_constructor(node.node_id());
+        let derived_constructor = ctx.analysis().is_derived_constructor(node.node_id());
         let old_in_arrow = self.hoister.set_in_arrow(false);
         self.function_state_stack
             .push((old_in_arrow, derived_constructor));
         self.hoister.push_frame();
         if ctx
-            .semantic()
-            .class()
+            .analysis()
             .constructor_needs_this_capture(node.node_id())
         {
             let name = self.hoister.capture_this(ctx);
@@ -141,11 +137,7 @@ impl ArrowFunctions {
     }
 
     pub fn exit_call_expression(&mut self, call: CallExpression, ctx: &mut Mutation<'_, '_, '_>) {
-        let Some(owner) = ctx
-            .semantic()
-            .class()
-            .super_call_constructor(call.node_id())
-        else {
+        let Some(owner) = ctx.analysis().super_call_constructor(call.node_id()) else {
             return;
         };
         let Some(&name) = self.constructor_captures.get(&owner) else {
@@ -186,7 +178,7 @@ impl ArrowFunctions {
         property_initializer_owner: Option<NodeId>,
         ctx: &mut Mutation<'_, '_, '_>,
     ) {
-        let class = ctx.semantic().class();
+        let class = ctx.analysis();
         let old_in_arrow = self.hoister.set_in_arrow(true);
         let inherited_property_initializer_owner = old_in_arrow
             .then(|| {

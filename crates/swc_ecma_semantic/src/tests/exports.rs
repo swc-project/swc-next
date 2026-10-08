@@ -66,7 +66,6 @@ fn default_exports() {
     let checked = AnalyzeOptions {
         check_syntax: true,
         build_module_record: true,
-        ..AnalyzeOptions::default()
     };
     let ts = ts_module_options();
     let dts = dts_module_options();
@@ -127,7 +126,6 @@ fn default_binding_spaces() {
     let checked = AnalyzeOptions {
         check_syntax: true,
         build_module_record: true,
-        ..AnalyzeOptions::default()
     };
 
     let source = "export default function f() {} export default interface I { value: string } let item: f; const fn = f;";
@@ -178,7 +176,6 @@ fn default_namespace_aliases() {
     let checked = AnalyzeOptions {
         check_syntax: true,
         build_module_record: true,
-        ..AnalyzeOptions::default()
     };
 
     let source = "export default function f() {} namespace f { export interface Item {} } const A = 1; type A = string; namespace Test { import A = f; export const fn: typeof A = A; export let text: A; }";
@@ -223,7 +220,6 @@ fn source_exports() {
     let checked = AnalyzeOptions {
         check_syntax: true,
         build_module_record: true,
-        ..AnalyzeOptions::default()
     };
 
     let source = "export default function f() {} export default interface I { value: string } export type f = number; let item: f;";
@@ -1033,7 +1029,6 @@ fn assert_global_augmentation_export(source: &str, value: bool) {
         let options = AnalyzeOptions {
             check_syntax,
             build_module_record,
-            ..AnalyzeOptions::default()
         };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);

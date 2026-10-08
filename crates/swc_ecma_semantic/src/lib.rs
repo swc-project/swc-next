@@ -34,7 +34,6 @@ use crate::{
 
 mod binder;
 mod builder;
-mod class_semantic;
 mod context;
 mod ecmascript;
 #[cfg(debug_assertions)]
@@ -48,41 +47,12 @@ mod used_names;
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
 };
-pub use class_semantic::{ClassArrowInfo, ClassInfo, ClassSemantic, ClassStaticBlockLayout};
 pub use module_record::{
     ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
     ModuleRecord,
 };
 pub use swc_next_ecma_ast::ReferenceId;
 pub use used_names::UsedNameState;
-
-bitflags::bitflags! {
-    /// Optional semantic data requested by downstream transforms.
-    #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
-    pub struct SemanticFeatureFlags: u16 {
-        /// Collect private names used by each class.
-        const CLASS_PRIVATE_NAMES = 1 << 0;
-        /// Record property-initializer and static-block environments of arrows.
-        const ARROW_ENVIRONMENTS = 1 << 1;
-        /// Index comments attached to static blocks.
-        const STATIC_BLOCK_COMMENTS = 1 << 2;
-        /// Record arrows and static blocks that contain lexical super.
-        const LEXICAL_SUPER = 1 << 3;
-        /// Identify the constructors of derived classes.
-        const DERIVED_CONSTRUCTORS = 1 << 4;
-        /// Record arrow this uses in derived constructors, including their owners.
-        const CONSTRUCTOR_THIS = 1 << 5;
-        /// Record super() calls in derived constructors, including their owners.
-        const CONSTRUCTOR_SUPER = 1 << 6;
-        /// Record static fields and trailing blocks for closure-based block lowering.
-        const STATIC_BLOCK_LAYOUT = 1 << 7;
-        /// Collect all optional per-class information.
-        const CLASS = Self::CLASS_PRIVATE_NAMES.bits() | Self::ARROW_ENVIRONMENTS.bits()
-            | Self::STATIC_BLOCK_COMMENTS.bits() | Self::LEXICAL_SUPER.bits()
-            | Self::DERIVED_CONSTRUCTORS.bits() | Self::CONSTRUCTOR_THIS.bits()
-            | Self::CONSTRUCTOR_SUPER.bits() | Self::STATIC_BLOCK_LAYOUT.bits();
-    }
-}
 
 oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -137,8 +107,6 @@ pub struct Semantic<'a> {
 
     module_record: ModuleRecord<'a>,
     ts_members: TsMemberIndex<'a>,
-    features: SemanticFeatureFlags,
-    class: ClassSemantic<'a>,
 }
 
 impl<'a> Semantic<'a> {
@@ -162,23 +130,6 @@ impl<'a> Semantic<'a> {
             scope = self.scope(scope).parent?;
         }
         Some(scope)
-    }
-
-    /// Optional semantic features collected during analysis.
-    pub fn features(&self) -> SemanticFeatureFlags {
-        self.features
-    }
-
-    /// Per-class transform information.
-    pub fn class(&self) -> &ClassSemantic<'a> {
-        &self.class
-    }
-
-    /// Mutable per-class transform information.
-    ///
-    /// AST transforms use this to reserve names for generated class elements.
-    pub fn class_mut(&mut self) -> &mut ClassSemantic<'a> {
-        &mut self.class
     }
 
     /// The symbol with the given id.
@@ -734,8 +685,6 @@ pub struct AnalyzeOptions {
     ///
     /// Disabled by default.
     pub build_module_record: bool,
-    /// Optional semantic information required by transforms.
-    pub features: SemanticFeatureFlags,
 }
 
 /// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
@@ -747,12 +696,7 @@ pub struct AnalyzeOptions {
 /// module record is empty.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = SemanticBuilder::new(
-        ast,
-        options.check_syntax,
-        options.build_module_record,
-        options.features,
-    );
+    let mut visitor = SemanticBuilder::new(ast, options.check_syntax, options.build_module_record);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {

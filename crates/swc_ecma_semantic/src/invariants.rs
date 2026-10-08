@@ -62,7 +62,6 @@ impl Semantic<'_> {
                 assert!(self.uses(symbol).contains(&entry.id));
             }
         }
-        self.class.assert_invariants(ast, &reachable);
     }
 }
 

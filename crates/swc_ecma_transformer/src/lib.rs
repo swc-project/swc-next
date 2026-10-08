@@ -4,10 +4,11 @@ use swc_next_ecma_ast::{
     RegExpLiteral, StaticBlock, SwitchCase, ThisExpression, TraverseMut, TraverseMutCtx,
     TraverseMutWith, TsModuleBlock,
 };
-use swc_next_ecma_semantic::{Semantic, SemanticFeatureFlags};
+use swc_next_ecma_semantic::Semantic;
 
 use crate::{assumptions::Assumptions, state::TransformerState};
 
+mod analysis;
 pub mod assumptions;
 mod context;
 pub use context::{GeneratedBinding, Mutate, Mutation, StatementList};
@@ -62,26 +63,6 @@ impl TransformerOptions {
         );
         features
     }
-
-    /// Semantic information that must be collected before this transform runs.
-    pub fn semantic_features(&self) -> SemanticFeatureFlags {
-        let mut features = SemanticFeatureFlags::empty();
-        if self.es2022.static_blocks {
-            features |= SemanticFeatureFlags::CLASS_PRIVATE_NAMES
-                | SemanticFeatureFlags::STATIC_BLOCK_COMMENTS;
-            if self.proposal.prevent_extensions {
-                features |= SemanticFeatureFlags::STATIC_BLOCK_LAYOUT;
-            }
-        }
-        if self.es2015.arrow_functions.is_some() {
-            features |= SemanticFeatureFlags::ARROW_ENVIRONMENTS
-                | SemanticFeatureFlags::LEXICAL_SUPER
-                | SemanticFeatureFlags::DERIVED_CONSTRUCTORS
-                | SemanticFeatureFlags::CONSTRUCTOR_THIS
-                | SemanticFeatureFlags::CONSTRUCTOR_SUPER;
-        }
-        features
-    }
 }
 
 pub struct Transformer {
@@ -95,12 +76,7 @@ impl Transformer {
         semantic: &mut Semantic<'ast>,
         options: TransformerOptions,
     ) {
-        let required_features = options.semantic_features();
         let features = options.transform_features();
-        assert!(
-            semantic.features().contains(required_features),
-            "semantic analysis did not collect all features required by the transformer"
-        );
         let program = ast.root_program();
 
         let mut transformer = Self {
@@ -108,7 +84,11 @@ impl Transformer {
             x0_es2022: es2022::ES2022::new(features),
         };
 
-        let state = TransformerState::new(semantic, options.assumptions);
+        let state = TransformerState::new(
+            semantic,
+            options.assumptions,
+            analysis::TransformAnalysis::collect(ast, features),
+        );
         let mut ctx = TraverseMutCtx::new(ast, state);
         ctx.mutate().normalize();
         program.traverse_mut_with(&mut transformer, &mut ctx);
@@ -321,10 +301,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        let property_initializer_owner = ctx
-            .semantic()
-            .class()
-            .property_initializer_owner(node.node_id());
+        let property_initializer_owner = ctx.analysis().property_initializer_owner(node.node_id());
         self.x0_es2015
             .enter_arrow_function_expression(node, property_initializer_owner, ctx);
         let container = node

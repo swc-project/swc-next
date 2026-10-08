@@ -148,9 +148,7 @@ impl Mutation<'_, '_, '_> {
             .collect();
         elements.insert(index, element);
         self.attach_class_elements(body, &elements);
-        self.state
-            .semantic
-            .invalidate_static_block_layout(body.node_id());
+        self.invalidate_static_block_layout(body.node_id());
     }
 
     pub fn set_property_computed(&mut self, owner: NodeId, computed: bool) {
@@ -248,15 +246,11 @@ impl Mutation<'_, '_, '_> {
                     element
                 }
                 ClassElementAction::Update(replacement) => {
-                    self.state
-                        .semantic
-                        .replace_class_element(self.ast, element, Some(replacement));
+                    self.replace_class_element(element, Some(replacement));
                     replacement
                 }
                 ClassElementAction::Delete => {
-                    self.state
-                        .semantic
-                        .replace_class_element(self.ast, element, None);
+                    self.replace_class_element(element, None);
                     continue;
                 }
             };
@@ -271,6 +265,41 @@ impl Mutation<'_, '_, '_> {
             elements.split_off(write_index);
             body.set_body(self.ast, elements);
         }
+    }
+
+    fn invalidate_static_block_layout(&mut self, node: NodeId) {
+        let mut scope = self.state.semantic.scope_at(node);
+        while let Some(id) = scope {
+            let current = self.state.semantic.scope(id);
+            if current.kind == swc_next_ecma_semantic::scope::ScopeKind::Class {
+                self.state
+                    .analysis
+                    .invalidate_static_block_layout(current.node);
+                break;
+            }
+            scope = current.parent;
+        }
+    }
+
+    fn replace_class_element(&mut self, old: ClassElement, replacement: Option<ClassElement>) {
+        if replacement.map(|node| node.node_id()) == Some(old.node_id()) {
+            return;
+        }
+        self.state
+            .semantic
+            .replace_class_element(self.ast, old, replacement);
+        match self.ast.kind_data(old.node_id()) {
+            NodeKindData::StaticBlock(_) => self.state.analysis.replace_static_block(old.node_id()),
+            NodeKindData::PropertyDefinition(_) => {
+                if let Some(new) = replacement {
+                    self.state
+                        .analysis
+                        .replace_property(old.node_id(), new.node_id());
+                }
+            }
+            _ => {}
+        }
+        self.invalidate_static_block_layout(old.node_id());
     }
 
     fn attach_class_elements(&mut self, body: ClassBody, elements: &[ClassElement]) {

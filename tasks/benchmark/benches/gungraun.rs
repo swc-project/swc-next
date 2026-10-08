@@ -129,19 +129,13 @@ fn all_transform_options() -> TransformerOptions {
     }
 }
 
-// Keep transform-specific semantic collection inside its own measured function.
+// Name resolution is independent of the enabled transforms; bench_transform includes preparation.
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 #[bench::transform(setup_program(TRANSFORM, Lang::Js))]
 fn bench_semantic_for_transform(ast: Ast<'static>) {
-    black_box(analyze(
-        &ast,
-        AnalyzeOptions {
-            features: all_transform_options().semantic_features(),
-            ..AnalyzeOptions::default()
-        },
-    ));
+    black_box(analyze(&ast, AnalyzeOptions::default()));
 }
 
 type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
@@ -149,14 +143,7 @@ type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
 fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
     let ast = setup_program(source, lang);
     let options = all_transform_options();
-    let semantic = analyze(
-        &ast,
-        AnalyzeOptions {
-            features: options.semantic_features(),
-            ..AnalyzeOptions::default()
-        },
-    )
-    .semantic;
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     (ast, semantic, options)
 }
 

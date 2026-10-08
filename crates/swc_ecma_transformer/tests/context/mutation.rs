@@ -5,7 +5,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{BindingPattern, DUMMY_SP, VariableKind};
 use swc_next_ecma_ast::{Decl, TraverseMutCtx};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SemanticFeatureFlags, SymbolFlags, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SymbolFlags, analyze};
 
 fn with_context(source: &str, run: impl FnOnce(&mut Mutation<'_, '_, '_>)) {
     let allocator = Allocator::new();
@@ -13,19 +13,25 @@ fn with_context(source: &str, run: impl FnOnce(&mut Mutation<'_, '_, '_>)) {
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
     let options = AnalyzeOptions {
-        features: SemanticFeatureFlags::all(),
         build_module_record: true,
         ..AnalyzeOptions::default()
     };
     let mut semantic = analyze(&ast, options).semantic;
-    let state = TransformerState::new(&mut semantic, Default::default());
+    let state = TransformerState::new(
+        &mut semantic,
+        Default::default(),
+        crate::analysis::TransformAnalysis::collect(&ast, crate::TransformFeatureFlags::all()),
+    );
     let mut traversal = TraverseMutCtx::new(&mut ast, state);
     let mut ctx = traversal.mutate();
     let program = ctx.ast().root_program();
     ctx.at_node(program.node_id(), run);
     // Check the mutation itself, without Mutation::finish cleanup.
     #[cfg(debug_assertions)]
-    ctx.semantic().assert_invariants(ctx.ast());
+    {
+        ctx.semantic().assert_invariants(ctx.ast());
+        ctx.analysis().assert_invariants(ctx.ast());
+    }
     let rebuilt = analyze(ctx.ast(), options).semantic;
     assert_eq!(
         ctx.semantic().iter_references().count(),
@@ -187,19 +193,13 @@ fn class_elements() {
             assert_ne!(replacement.node_id(), property.node_id());
             assert_eq!(replacement.value(ctx.ast()), property.value(ctx.ast()));
             assert_eq!(
-                ctx.semantic()
-                    .class()
-                    .property_initializer_owner(arrow.node_id()),
+                ctx.analysis().property_initializer_owner(arrow.node_id()),
                 Some(replacement.node_id())
             );
             assert_ne!(new_method.node_id(), method.node_id());
             assert_eq!(new_method.value(ctx.ast()), function);
             assert_eq!(ctx.semantic().scope_at(function.node_id()), scope);
-            assert!(
-                ctx.semantic()
-                    .class()
-                    .is_derived_constructor(function.node_id())
-            );
+            assert!(ctx.analysis().is_derived_constructor(function.node_id()));
         },
     );
 }

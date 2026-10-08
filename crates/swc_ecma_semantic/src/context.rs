@@ -5,9 +5,8 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    Semantic, SemanticFeatureFlags,
+    Semantic,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
-    class_semantic::ClassSemantic,
     module_record::ModuleRecordBuilder,
     scope::{DecoratorSite, ScopeTracker},
 };
@@ -21,15 +20,13 @@ pub(crate) struct SemanticContext<'a> {
     pub module_record: ModuleRecordBuilder<'a>,
     // Nested type syntax saves and restores this default through the visitor.
     default_reference_flags: ReferenceFlags,
-    pub class: ClassSemantic<'a>,
-    pub features: SemanticFeatureFlags,
     node_scopes: ArenaVec<'a, Option<ScopeId>>,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
 }
 
 impl<'a> SemanticContext<'a> {
-    pub fn init(tree: &Ast<'a>, build_module_record: bool, features: SemanticFeatureFlags) -> Self {
+    pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         node_scopes.resize(tree.node_count(), None);
@@ -38,8 +35,6 @@ impl<'a> SemanticContext<'a> {
             symbols: SymbolTracker::init(tree),
             module_record: ModuleRecordBuilder::new(allocator, build_module_record),
             default_reference_flags: ReferenceFlags::default(),
-            class: ClassSemantic::new(tree, features),
-            features,
             node_scopes,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
@@ -206,17 +201,10 @@ impl<'a> SemanticContext<'a> {
 
     pub fn enter_class(&mut self, tree: &Ast, class: Class) {
         self.scope.enter_class(tree, class);
-        self.class.enter_class(tree, class);
     }
 
-    pub fn enter_static_block(&mut self, tree: &Ast, block: StaticBlock) {
+    pub fn enter_static_block(&mut self, block: StaticBlock) {
         self.scope.enter_static_block(block.node_id());
-        if self
-            .features
-            .contains(SemanticFeatureFlags::STATIC_BLOCK_COMMENTS)
-        {
-            self.class.record_static_block(tree, block);
-        }
     }
 
     pub fn enter_decorator(&mut self, node: NodeId, site: DecoratorSite) {
@@ -233,14 +221,9 @@ impl<'a> SemanticContext<'a> {
 
     pub fn finalize(self, tree: &Ast<'a>) -> Semantic<'a> {
         let (scopes, has_with_statement) = self.scope.into_scope_tree();
-        let mut semantic = self.symbols.finalize(
-            tree,
-            scopes,
-            has_with_statement,
-            self.module_record,
-            self.features,
-            self.class,
-        );
+        let mut semantic =
+            self.symbols
+                .finalize(tree, scopes, has_with_statement, self.module_record);
         semantic.node_scopes = self.node_scopes;
         semantic
     }

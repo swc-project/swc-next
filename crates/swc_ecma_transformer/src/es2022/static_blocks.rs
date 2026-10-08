@@ -9,11 +9,12 @@ use swc_next_ecma_ast::{
     StaticBlock, Stmt, SubRange, UnaryOperator,
 };
 
+use crate::analysis::{ArrowEnvironment, StaticBlockLayout};
 use crate::{
     TransformFeatureFlags,
     context::{ClassElementAction, Mutation, ScopeOptions},
 };
-use swc_next_ecma_semantic::{ClassArrowInfo, ClassStaticBlockLayout, scope::ScopeKind};
+use swc_next_ecma_semantic::scope::ScopeKind;
 
 pub(crate) struct StaticBlocks {
     features: TransformFeatureFlags,
@@ -145,7 +146,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
     fn prepare_trailing_closure(
         &mut self,
         first_block: BlockExpression,
-        layout: &ClassStaticBlockLayout,
+        layout: &StaticBlockLayout,
         inferred_name: Option<InferredName>,
     ) -> Option<(ArrowFunctionExpression, ScopeId)> {
         let expression_closure = if layout.trailing_blocks != 1
@@ -190,8 +191,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
         if statements.is_empty()
             && !self
                 .ctx
-                .semantic()
-                .class()
+                .analysis()
                 .static_block_has_comments(block.node_id())
         {
             return None;
@@ -222,8 +222,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
         let source = block.source_block.expect("statement block has an owner");
         let lexical_super = self
             .ctx
-            .semantic()
-            .class()
+            .analysis()
             .static_block_preserves_lexical_super(source);
         let mut expression = self.build_iife(
             block.span,
@@ -232,12 +231,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
             source,
             parent,
         );
-        if self
-            .ctx
-            .semantic()
-            .class()
-            .static_block_has_comments(source)
-        {
+        if self.ctx.analysis().static_block_has_comments(source) {
             let span = if first { DUMMY_SP } else { block.span };
             expression = Expr::ParenthesizedExpression(
                 self.ctx
@@ -253,7 +247,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
                 parent: self.ctx.current_scope(),
                 kind: ScopeKind::Function,
                 reuse: None,
-                environment: Some(ClassArrowInfo {
+                environment: Some(ArrowEnvironment {
                     property_initializer: Some(
                         self.ctx.semantic().scope(self.ctx.current_scope()).node,
                     ),
@@ -333,15 +327,11 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
             let body = ArrowFunctionBody::FunctionBody(self.ctx.add_node(scope, |ast| {
                 ast.function_body(DUMMY_SP, SubRange::empty(), statements)
             }));
-            let preserve_lexical_super = self
-                .ctx
-                .semantic()
-                .class()
-                .static_block_preserves_lexical_super(
-                    block
-                        .source_block
-                        .expect("block expression has a source block"),
-                );
+            let preserve_lexical_super = self.ctx.analysis().static_block_preserves_lexical_super(
+                block
+                    .source_block
+                    .expect("block expression has a source block"),
+            );
             let replacement = self.build_arrow(
                 DUMMY_SP,
                 body,
@@ -577,8 +567,7 @@ impl StaticBlocks {
         };
         debug_assert_eq!(class.body(ctx.ast()).node_id(), body.node_id());
         let has_static_blocks = ctx
-            .semantic()
-            .class()
+            .analysis()
             .static_block_layout(class.node_id())
             .map_or_else(
                 || {
@@ -614,8 +603,7 @@ impl StaticBlocks {
             if matches!(ctx.ast().kind_data(parent), NodeKindData::PropertyDefinition(property)
                 if !property.r#static(ctx.ast())))
             && ctx
-                .semantic()
-                .class()
+                .analysis()
                 .static_block_layout(class.node_id())
                 .is_some_and(|layout| layout.trailing_blocks != 0)
         {
@@ -908,10 +896,8 @@ fn transform_class_as_private_fields(
     ctx.filter_map_class_elements(body, |ctx, element| {
         if let Some(block) = element.as_static_block(ctx.ast()) {
             if block.body(ctx.ast()).is_empty() {
-                let has_attached_comments = ctx
-                    .semantic()
-                    .class()
-                    .static_block_has_comments(block.node_id());
+                let has_attached_comments =
+                    ctx.analysis().static_block_has_comments(block.node_id());
                 if !has_attached_comments {
                     return ClassElementAction::Delete;
                 }
@@ -958,8 +944,7 @@ fn convert_block_to_expression(block: StaticBlock, ctx: &mut Mutation<'_, '_, '_
         expression
     } else {
         let preserve_lexical_super = ctx
-            .semantic()
-            .class()
+            .analysis()
             .static_block_preserves_lexical_super(block.node_id());
         wrap_statements_in_arrow_function_iife(
             statements,
@@ -1042,7 +1027,7 @@ fn build_static_block_arrow(
         parent,
         kind: ScopeKind::Function,
         reuse: Some(reuse),
-        environment: Some(ClassArrowInfo {
+        environment: Some(ArrowEnvironment {
             property_initializer: Some(ctx.semantic().scope(ctx.current_scope()).node),
             lexical_super,
             static_block_environment: true,
@@ -1064,10 +1049,10 @@ fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut Muta
     ctx.merge_scope(
         block,
         parent,
-        ClassArrowInfo {
+        ArrowEnvironment {
             property_initializer: Some(ctx.semantic().scope(ctx.current_scope()).node),
             static_block_environment: true,
-            ..ClassArrowInfo::default()
+            ..ArrowEnvironment::default()
         },
     );
 }

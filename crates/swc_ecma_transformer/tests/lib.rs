@@ -14,7 +14,6 @@ pub(super) fn transform_source<'a>(
     let mut semantic = analyze(
         &ast,
         AnalyzeOptions {
-            features: options.semantic_features(),
             build_module_record: true,
             ..AnalyzeOptions::default()
         },
