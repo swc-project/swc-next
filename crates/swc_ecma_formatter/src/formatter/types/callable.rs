@@ -105,14 +105,14 @@ enum FunctionReturnContent<'ast> {
     Parenthesized(PreparedTypeParentheses<'ast>),
 }
 
-pub(super) struct FunctionReturn<'ast> {
+pub(in crate::formatter) struct FunctionReturn<'ast> {
     content: FunctionReturnContent<'ast>,
     prefix: TypeBoundaryLayout<'ast>,
     delimiter: SignatureReturnDelimiter,
 }
 
 impl FunctionReturn<'_> {
-    pub(super) fn has_object_type(&self) -> bool {
+    pub(in crate::formatter) fn has_object_type(&self) -> bool {
         matches!(&self.content,
             FunctionReturnContent::Annotation(AnnotationContent::Type(node))
                 if matches!(node.data,
@@ -125,6 +125,12 @@ impl FunctionReturn<'_> {
 pub(in crate::formatter) enum SignatureReturnDelimiter {
     Arrow,
     Colon,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::formatter) enum SignatureParameterLayout {
+    Shared,
+    Independent,
 }
 
 #[derive(Clone, Copy)]
@@ -779,7 +785,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn prepare_function_return(
+    pub(in crate::formatter) fn prepare_function_return(
         &self,
         result: SignatureReturn<'ast>,
     ) -> FunctionReturn<'ast> {
@@ -811,7 +817,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         FunctionReturnContent::Annotation(AnnotationContent::Type(node))
     }
 
-    pub(super) fn format_function_return(
+    pub(in crate::formatter) fn format_function_return(
         &mut self,
         result: FunctionReturn<'ast>,
         writer: &mut Writer<'ast>,
@@ -819,7 +825,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_function_return_with_context(result, TypeContext::Root, writer)
     }
 
-    pub(super) fn format_signature_return(
+    pub(in crate::formatter) fn format_signature_return(
         &mut self,
         result: SignatureReturn<'ast>,
         writer: &mut Writer<'ast>,

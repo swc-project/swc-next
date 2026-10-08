@@ -57,6 +57,10 @@ struct MethodKeyInput {
     quoting: PropertyKeyQuoting,
 }
 
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Keep the prepared borrowed header inline instead of allocating per method."
+)]
 enum MethodSignature<'ast> {
     Formatted(PreparedFunctionSignature<'ast>),
     FunctionValue {
@@ -175,6 +179,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
         };
+        let (ordinary_header, getter_header) = match owner {
+            MethodOwner::Object(property) => match property.kind(ast) {
+                PropertyKind::Init => (true, false),
+                PropertyKind::Get => (false, true),
+                PropertyKind::Set => (false, false),
+            },
+            MethodOwner::Class(method) => match method.kind(ast) {
+                MethodDefinitionKind::Method => (true, false),
+                MethodDefinitionKind::Get => (false, true),
+                MethodDefinitionKind::Set | MethodDefinitionKind::Constructor => (false, false),
+            },
+        };
+        if !ordinary_header && !getter_header && function.return_type(ast).is_some() {
+            return Err(self.unsupported("typed accessor or constructor header", function));
+        }
         // Babel's JS private methods use generic attachment. TS MethodDefinition
         // remains function-like, including private keys.
         let kind = if !ast.lang().is_typescript()
@@ -273,7 +292,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             }
                         }
                 }
-                MethodOwner::Class(_) => ast.lang().is_typescript() && signature.has_parameters(),
+                MethodOwner::Class(_) => {
+                    ast.lang().is_typescript()
+                        && (signature.has_parameters() || function.return_type(ast).is_some())
+                }
             } {
             let function_span = function.span(ast);
             let key_end = prefix.end(ast);
@@ -319,7 +341,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             None => {
-                let signature = self.prepare_function_signature(signature);
+                let signature = self.prepare_function_signature(signature)?;
                 let key_mode = signature.key_mode(key);
                 (MethodSignature::Formatted(signature), key_mode)
             }

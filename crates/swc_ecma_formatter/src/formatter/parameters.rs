@@ -4,7 +4,7 @@ use super::comments::{CommentRunLayout, ExpressionTail};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
-use super::types::callable::{CallableParameter, SignatureParameterHug};
+use super::types::callable::{CallableParameter, SignatureParameterHug, SignatureParameterLayout};
 use crate::{ArrowParentheses, FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     Ast, FormalParameter, FormalParameterItem, FormalParameterItemData, FormalParameterPatternData,
@@ -78,6 +78,11 @@ struct PrivateParameterBoundary {
     closing: LineConstraint,
 }
 
+pub(super) struct FunctionParameters {
+    pub(super) source: SourceParameters,
+    pub(super) has_single_parameter: bool,
+}
+
 pub(super) struct SourceParameters {
     node: FormalParameters,
     source: ParameterSource,
@@ -143,25 +148,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         parentheses: ArrowParameterParentheses,
     ) -> Result<SourceParameters, FormatError> {
         self.source_parameters(node, ParameterRole::Arrow(parentheses))
+            .map(|parameters| parameters.source)
     }
     pub(super) fn source_function_parameters(
         &self,
         node: FormalParameters,
-    ) -> Result<SourceParameters, FormatError> {
+    ) -> Result<FunctionParameters, FormatError> {
         self.source_parameters(node, ParameterRole::Function)
     }
     pub(super) fn source_private_method_parameters(
         &self,
         node: FormalParameters,
         body: FunctionBody,
-    ) -> Result<SourceParameters, FormatError> {
+    ) -> Result<FunctionParameters, FormatError> {
         self.source_parameters(node, ParameterRole::PrivateMethod(body))
     }
     fn source_parameters(
         &self,
         node: FormalParameters,
         role: ParameterRole,
-    ) -> Result<SourceParameters, FormatError> {
+    ) -> Result<FunctionParameters, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let items = node.items(ast);
@@ -270,23 +276,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             // The function signature consumes this actual body target below.
         }
-        Ok(SourceParameters {
-            node,
-            source,
-            first,
-            rest,
-            omit_parentheses,
-            hug,
-            enclosing_mode,
-            leading_mode: ContentMode::Formatted,
-            suppressed_tail: None,
-            private_boundary,
-            key_mode,
-            body_target: match role {
-                ParameterRole::PrivateMethod(body) if body_mode == ContentMode::Verbatim => {
-                    Some((body, body_mode))
-                }
-                _ => None,
+        Ok(FunctionParameters {
+            has_single_parameter: count == 1,
+            source: SourceParameters {
+                node,
+                source,
+                first,
+                rest,
+                omit_parentheses,
+                hug,
+                enclosing_mode,
+                leading_mode: ContentMode::Formatted,
+                suppressed_tail: None,
+                private_boundary,
+                key_mode,
+                body_target: match role {
+                    ParameterRole::PrivateMethod(body) if body_mode == ContentMode::Verbatim => {
+                        Some((body, body_mode))
+                    }
+                    _ => None,
+                },
             },
         })
     }
@@ -300,7 +309,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_source_parameters_with_shape(
         &mut self,
         parameters: SourceParameters,
+        callback_shape: Option<&mut CallbackParameterShape>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_source_parameters_with_layout(
+            parameters,
+            callback_shape,
+            SignatureParameterLayout::Shared,
+            writer,
+        )
+    }
+
+    pub(super) fn format_source_parameters_with_layout(
+        &mut self,
+        parameters: SourceParameters,
         mut callback_shape: Option<&mut CallbackParameterShape>,
+        layout: SignatureParameterLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let ast = self.ast;
@@ -445,7 +469,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(())
         };
-        write(writer)
+        match layout {
+            SignatureParameterLayout::Shared => write(writer),
+            SignatureParameterLayout::Independent => writer.group(false, write),
+        }
     }
 
     fn format_runtime_parameter(
