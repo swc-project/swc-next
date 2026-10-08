@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function evaluate(first: boolean): boolean {
+  return !(first &&
+    // @ts-expect-error
+    missingTarget /* tail */);
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function evaluate(first: boolean): boolean {
+  return !(
+    first &&
+    // @ts-expect-error
+    missingTarget /* tail */);
+}
