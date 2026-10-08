@@ -191,7 +191,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 MethodDefinitionKind::Set | MethodDefinitionKind::Constructor => (false, false),
             },
         };
-        if !ordinary_header && !getter_header && function.return_type(ast).is_some() {
+        if !ordinary_header
+            && (function.type_parameters(ast).is_some()
+                || (!getter_header && function.return_type(ast).is_some()))
+        {
             return Err(self.unsupported("typed accessor or constructor header", function));
         }
         // Babel's JS private methods use generic attachment. TS MethodDefinition
@@ -206,7 +209,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let signature_owner = FunctionSignatureOwner::Method { key, kind };
         let mut signature = self.source_function_signature(function, signature_owner)?;
-        let header_start = signature.span.start;
+        let header_start = signature.header_start(ast);
+        let has_generics = signature.has_generics();
         let mut prefix = self.source_method_key_prefix(MethodKeyInput {
             start,
             key,
@@ -226,6 +230,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         )
                     {
                         ConstructorKeyGrammar::DistinctDiagnostics
+                    } else if has_generics {
+                        ConstructorKeyGrammar::DistinctClassification
                     } else {
                         ConstructorKeyGrammar::Equivalent
                     },
@@ -235,6 +241,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let computed = prefix.computed;
         let key_span = key.span(ast);
         let modes = match kind {
+            _ if has_generics => FunctionNameModes {
+                name: ContentMode::Formatted,
+                following: ContentMode::Formatted,
+            },
             MethodSignatureKind::Public
                 if self.has_suppression
                     && matches!(owner, MethodOwner::Object(_))
@@ -286,7 +296,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 MethodOwner::Object(_) => {
                     computed.is_none()
                         && match ast.property_key_data(key) {
-                            PropertyKeyData::IdentifierName(_) => false,
+                            PropertyKeyData::IdentifierName(_) => has_generics,
                             PropertyKeyData::Expr(expression) => {
                                 matches!(ast.expr_data(expression), ExprData::StringLiteral(_))
                             }
@@ -303,7 +313,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self.comments.in_range(gap);
             if self
                 .suppression_positions(comments, function_span.start)
-                .any(|position| matches!(position, SuppressionPosition::OwnLine))
+                .any(|position| {
+                    if has_generics {
+                        !matches!(position, SuppressionPosition::EndOfLine)
+                    } else {
+                        matches!(position, SuppressionPosition::OwnLine)
+                    }
+                })
             {
                 // The real method value owns the complete Function, including
                 // its parameters and body, rather than a first formal.
@@ -341,7 +357,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             None => {
-                let signature = self.prepare_function_signature(signature)?;
+                let signature = self.prepare_function_signature(signature, prefix.end(ast))?;
                 let key_mode = signature.key_mode(key);
                 (MethodSignature::Formatted(signature), key_mode)
             }
@@ -471,7 +487,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let source =
                         self.format_delimited_source_gap(gap, DelimitedFollowing::Node, writer)?;
                     source.following.write(writer, FlatSeparator::Empty, |_| {});
-                } else {
+                } else if !signature.has_generics() {
                     self.format_source_token_gap(key_end, signature_span.start, false, writer)?;
                 }
                 let body = self.format_function_signature(signature, writer)?;
