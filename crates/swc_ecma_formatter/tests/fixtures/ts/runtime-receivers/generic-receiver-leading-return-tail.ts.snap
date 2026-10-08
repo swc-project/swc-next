@@ -1,0 +1,62 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function genericReceiver<T>
+// prettier-ignore
+(this:   { value:T }, value: T) // prettier-ignore
+:   T { return value; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function genericReceiver<T>
+// prettier-ignore
+(this:   { value:T }, value: T) // prettier-ignore
+:   T {
+  return value;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function genericReceiver<
+  T,
+>
+// prettier-ignore
+(
+  this:   { value:T },
+  value: T,
+) // prettier-ignore
+:   T {
+  return value;
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function genericReceiver<
+  T
+>
+// prettier-ignore
+(
+  this:   { value:T },
+  value: T
+) // prettier-ignore
+:   T {
+  return value
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+function genericReceiver<
+  T,
+>
+// prettier-ignore
+(
+  this:   { value:T },
+  value: T,
+) // prettier-ignore
+:   T {
+  return value;
+}

@@ -8,7 +8,7 @@ use super::types::callable::{CallableParameter, SignatureParameterHug, Signature
 use crate::{ArrowParentheses, FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     Ast, FormalParameter, FormalParameterItem, FormalParameterItemData, FormalParameterPatternData,
-    FormalParameterRest, FormalParameters, FunctionBody, GetSpan, Span,
+    FormalParameterRest, FormalParameters, FunctionBody, GetSpan, Span, TsThisParameter,
 };
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ArrowParameterParentheses {
@@ -23,12 +23,12 @@ pub(super) enum CallbackParameterShape {
 }
 
 impl CallbackParameterShape {
-    fn include(&mut self, parameter: RuntimeParameter, ast: &Ast<'_>) {
+    fn include(&mut self, parameter: CallableParameter, ast: &Ast<'_>) {
         if *self == Self::Other {
             return;
         }
         let identifier = matches!(parameter,
-            RuntimeParameter::Formal(node)
+            CallableParameter::Formal(node)
                 if node.type_annotation(ast).is_none()
                     && node.initializer(ast).is_none()
                     && matches!(ast.formal_parameter_pattern_data(node.pattern(ast)),
@@ -49,18 +49,7 @@ enum ParameterSource {
     Bare(FormalParameter),
     PrivateEmpty,
 }
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum RuntimeParameter {
-    Formal(FormalParameter),
-    Rest(FormalParameterRest),
-}
-impl RuntimeParameter {
-    fn span(self, ast: &Ast<'_>) -> Span {
-        match self {
-            Self::Formal(node) => node.span(ast),
-            Self::Rest(node) => node.span(ast),
-        }
-    }
+impl CallableParameter {
     fn from_formal(item: FormalParameterItem, ast: &Ast<'_>) -> Result<Self, FormatError> {
         match ast.formal_parameter_item_data(item) {
             FormalParameterItemData::FormalParameter(node) => Ok(Self::Formal(node)),
@@ -73,7 +62,7 @@ impl RuntimeParameter {
     }
 }
 struct PrivateParameterBoundary {
-    parameter: RuntimeParameter,
+    parameter: CallableParameter,
     relation: DelimitedSuppression,
     closing: LineConstraint,
 }
@@ -86,13 +75,13 @@ pub(super) struct FunctionParameters {
 pub(super) struct SourceParameters {
     node: FormalParameters,
     source: ParameterSource,
-    first: Option<RuntimeParameter>,
+    first: Option<CallableParameter>,
     rest: Option<FormalParameterRest>,
     omit_parentheses: bool,
     hug: Option<SignatureParameterHug>,
     enclosing_mode: ContentMode,
     leading_mode: ContentMode,
-    suppressed_tail: Option<RuntimeParameter>,
+    suppressed_tail: Option<CallableParameter>,
     private_boundary: Option<PrivateParameterBoundary>,
     key_mode: ContentMode,
     body_target: Option<(FunctionBody, ContentMode)>,
@@ -120,13 +109,17 @@ impl SourceParameters {
     pub(super) fn suppress_last(&mut self, ast: &Ast<'_>) -> Result<(), FormatError> {
         self.hug = None;
         self.suppressed_tail = if let Some(rest) = self.rest {
-            Some(RuntimeParameter::Rest(rest))
+            Some(CallableParameter::Rest(rest))
         } else {
             self.node
                 .items(ast)
                 .last()
-                .map(|id| RuntimeParameter::from_formal(ast.get_node_in_sub_range(id), ast))
+                .map(|id| CallableParameter::from_formal(ast.get_node_in_sub_range(id), ast))
                 .transpose()?
+                .or_else(|| {
+                    self.first
+                        .filter(|node| matches!(node, CallableParameter::This(_)))
+                })
         };
         Ok(())
     }
@@ -147,40 +140,46 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: FormalParameters,
         parentheses: ArrowParameterParentheses,
     ) -> Result<SourceParameters, FormatError> {
-        self.source_parameters(node, ParameterRole::Arrow(parentheses))
+        self.source_parameters(node, None, ParameterRole::Arrow(parentheses))
             .map(|parameters| parameters.source)
     }
     pub(super) fn source_function_parameters(
         &self,
         node: FormalParameters,
+        receiver: Option<TsThisParameter>,
     ) -> Result<FunctionParameters, FormatError> {
-        self.source_parameters(node, ParameterRole::Function)
+        self.source_parameters(node, receiver, ParameterRole::Function)
     }
     pub(super) fn source_private_method_parameters(
         &self,
         node: FormalParameters,
         body: FunctionBody,
     ) -> Result<FunctionParameters, FormatError> {
-        self.source_parameters(node, ParameterRole::PrivateMethod(body))
+        self.source_parameters(node, None, ParameterRole::PrivateMethod(body))
     }
     fn source_parameters(
         &self,
         node: FormalParameters,
+        receiver: Option<TsThisParameter>,
         role: ParameterRole,
     ) -> Result<FunctionParameters, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
         let items = node.items(ast);
         let rest = node.rest(ast);
-        let count = items.len() + usize::from(rest.is_some());
-        let first = items
-            .first()
-            .map(|id| RuntimeParameter::from_formal(ast.get_node_in_sub_range(id), ast))
-            .transpose()?;
+        let count = items.len() + usize::from(rest.is_some()) + usize::from(receiver.is_some());
+        let first = if let Some(receiver) = receiver {
+            Some(CallableParameter::This(receiver))
+        } else {
+            items
+                .first()
+                .map(|id| CallableParameter::from_formal(ast.get_node_in_sub_range(id), ast))
+                .transpose()?
+        };
         let mut source = if self.source(span).starts_with('(') && self.source(span).ends_with(')') {
             ParameterSource::Parenthesized
         } else if matches!(role, ParameterRole::Arrow(_))
-            && let Some(RuntimeParameter::Formal(parameter)) = first
+            && let Some(CallableParameter::Formal(parameter)) = first
             && items.len() == 1
             && rest.is_none()
             && parameter.span(ast) == span
@@ -203,7 +202,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ContentMode::Formatted
         };
         let single = match first {
-            Some(RuntimeParameter::Formal(p)) if count == 1 => Some(p),
+            Some(CallableParameter::Formal(p)) if count == 1 => Some(p),
             _ => None,
         };
         let omit_parentheses = matches!(
@@ -221,9 +220,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             && self.comments.in_range(span).is_empty()
             && !self.diagnostic_range_is_sensitive(span);
-        let hug = single.and_then(|parameter| {
-            self.callable_parameter_hug(CallableParameter::Formal(parameter), span)
-        });
+        let hug = if count == 1 {
+            first.and_then(|parameter| self.callable_parameter_hug(parameter, span))
+        } else {
+            None
+        };
         let mut key_mode = ContentMode::Formatted;
         let mut body_mode = ContentMode::Formatted;
         let mut private_boundary = None;
@@ -232,12 +233,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             let content = Span::new(span.start + 1, span.end - 1);
             let tail = if let Some(rest) = rest {
-                Some(RuntimeParameter::Rest(rest))
+                Some(CallableParameter::Rest(rest))
             } else {
                 items.iter().next_back().and_then(|id| {
                     match ast.formal_parameter_item_data(ast.get_node_in_sub_range(id)) {
                         FormalParameterItemData::FormalParameter(parameter) => {
-                            Some(RuntimeParameter::Formal(parameter))
+                            Some(CallableParameter::Formal(parameter))
                         }
                         FormalParameterItemData::TsParameterProperty(_) => None,
                     }
@@ -357,7 +358,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         if omit_parentheses
             && let Some(entry) = first
-            && matches!(entry, RuntimeParameter::Formal(_))
+            && matches!(entry, CallableParameter::Formal(_))
         {
             let tail =
                 self.format_runtime_parameter(entry, ContentMode::Formatted, None, writer)?;
@@ -375,16 +376,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     );
                 }
                 let mut formal_ids = node.items(ast).iter();
-                if first.is_some() {
+                if matches!(first, Some(CallableParameter::Formal(_))) {
                     formal_ids.next();
                 }
                 let formals = formal_ids
-                    .map(|id| RuntimeParameter::from_formal(ast.get_node_in_sub_range(id), ast));
+                    .map(|id| CallableParameter::from_formal(ast.get_node_in_sub_range(id), ast));
                 let mut parameters = first
                     .into_iter()
                     .map(Ok)
                     .chain(formals)
-                    .chain(rest.map(RuntimeParameter::Rest).into_iter().map(Ok));
+                    .chain(rest.map(CallableParameter::Rest).into_iter().map(Ok));
                 let mut next = parameters.next().transpose()?;
                 let mut end = content.start;
                 let mut separator = Separator::Line;
@@ -422,7 +423,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         span,
                         following,
                         Span::new(end, content.end),
-                        !matches!(parameter, RuntimeParameter::Rest(_))
+                        !matches!(parameter, CallableParameter::Rest(_))
                             && !hug
                             && self.options.trailing_commas == TrailingCommas::All,
                         writer,
@@ -477,14 +478,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_runtime_parameter(
         &mut self,
-        node: RuntimeParameter,
+        node: CallableParameter,
         mode: ContentMode,
         hug: Option<SignatureParameterHug>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match node {
-            RuntimeParameter::Formal(node) => self.format_formal_parameter(node, mode, hug, writer),
-            RuntimeParameter::Rest(node) => self.format_rest_parameter(node, mode, writer),
+            CallableParameter::This(node) => {
+                let prepared = self.prepare_runtime_this_parameter(node, mode)?;
+                let prepared = if let Some(hug) = hug {
+                    prepared.share_signature_group(hug)
+                } else {
+                    prepared
+                };
+                self.format_prepared_parameter_item(prepared, writer)
+            }
+            CallableParameter::Formal(node) => {
+                self.format_formal_parameter(node, mode, hug, writer)
+            }
+            CallableParameter::Rest(node) => self.format_rest_parameter(node, mode, writer),
         }
     }
     fn format_formal_parameter(
