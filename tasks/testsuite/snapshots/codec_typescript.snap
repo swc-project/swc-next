@@ -1,5 +1,5 @@
-Cases         : 14587
-Codec Passed  : 14584/14587
+Cases         : 14588
+Codec Passed  : 14585/14588
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/templates/templateStringMultiline3.ts (templateStringMultiline3.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings10.ts (unicodeExtendedEscapesInStrings10.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings11.ts (unicodeExtendedEscapesInStrings11.ts)

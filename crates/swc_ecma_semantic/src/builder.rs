@@ -1262,6 +1262,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
+        if self.check_syntax {
+            ts::check_tuple_optional_type(self, node);
+        }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsOptionalType(node));
         self.state.exit_type_position(type_position);
@@ -1271,6 +1274,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
+        if self.check_syntax {
+            ts::check_tuple_rest_type(self, node);
+        }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsRestType(node));
         self.state.exit_type_position(type_position);

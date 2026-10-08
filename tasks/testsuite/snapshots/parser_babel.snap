@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2235/2235 (100.00%)
-Negative Passed: 1640/1743 (94.09%)
+Negative Passed: 1641/1743 (94.15%)
 Panicked: 0/3978 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
@@ -99,7 +99,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read-only-2/input.ts - typescript/types/read-only-2: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read-only-3/input.ts - typescript/types/read-only-3: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read-only-4/input.ts - typescript/types/read-only-4: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-labeled-invalid-optional/input.ts - typescript/types/tuple-labeled-invalid-optional: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-optional-invalid/input.ts - typescript/types/tuple-optional-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-required-after-labeled-optional/input.ts - typescript/types/tuple-required-after-labeled-optional: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-assignment/input.ts - typescript/variable-declarator/invalid-definite-assignment: expected a parse or early error, but pipeline succeeded

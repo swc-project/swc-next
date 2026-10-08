@@ -5897,18 +5897,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.is_named_tuple_element()? {
             return self.parse_named_tuple_member();
         }
+        self.parse_tuple_element_type().map(TsTupleElement::TsType)
+    }
+
+    fn parse_tuple_element_type(&mut self) -> Option<TsType> {
         let type_annotation = self.parse_type()?;
-        if let TsTypeData::TsJsDocNullableType(nullable) = self.ast.ts_type_data(type_annotation)
+        if let Some(nullable) = type_annotation.as_ts_js_doc_nullable_type(&self.ast)
             && nullable.postfix(&self.ast)
         {
-            return Some(TsTupleElement::TsType(TsType::TsOptionalType(
-                self.ast.ts_optional_type(
-                    type_annotation.span(&self.ast),
-                    nullable.type_annotation(&self.ast),
-                ),
+            return Some(TsType::TsOptionalType(self.ast.ts_optional_type(
+                type_annotation.span(&self.ast),
+                nullable.type_annotation(&self.ast),
             )));
         }
-        Some(TsTupleElement::TsType(type_annotation))
+        Some(type_annotation)
     }
 
     fn is_named_tuple_element(&mut self) -> Option<bool> {
@@ -5942,12 +5944,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let element_type = self.parse_type()?;
+        // Keep a misplaced rest marker inside the named member so syntax
+        // checking can report its position without losing the tuple.
+        let element_type = if self.current_token.tag() == TokenTag::Spread {
+            self.parse_misplaced_tuple_rest_type()?
+        } else {
+            self.parse_tuple_element_type()?
+        };
         let span = Span::new(start, element_type.span(&self.ast).end);
         Some(TsTupleElement::TsNamedTupleMember(
             self.ast
                 .ts_named_tuple_member(span, label, element_type, optional),
         ))
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn parse_misplaced_tuple_rest_type(&mut self) -> Option<TsType> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::Spread);
+        let start = self.current_token.start();
+        self.advance()?;
+        let type_annotation = self.parse_type()?;
+        let span = Span::new(start, type_annotation.span(&self.ast).end);
+        let inner = TsTupleElement::TsType(type_annotation);
+        Some(TsType::TsRestType(self.ast.ts_rest_type(span, inner)))
     }
 
     fn parse_type_operator(&mut self) -> Option<TsType> {

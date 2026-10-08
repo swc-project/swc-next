@@ -14,6 +14,46 @@ pub(super) fn check_method_definition(
     }
 }
 
+pub(super) fn check_tuple_rest_type(builder: &mut SemanticBuilder<'_, '_>, rest: TsRestType) {
+    if let Some(member) = rest
+        .type_annotation(builder.ast)
+        .as_ts_named_tuple_member(builder.ast)
+    {
+        if member.optional(builder.ast) {
+            builder.report(
+                builder.ast.span(rest.node_id()),
+                "A tuple member cannot be both optional and rest",
+                ReportOptions::default(),
+            );
+        }
+        return;
+    }
+    if let Some(parent) = builder.parent()
+        && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
+    {
+        builder.report(
+            builder.ast.span(rest.node_id()),
+            "A labeled tuple element is declared as rest with '...' before the name, rather than before the type",
+            ReportOptions::default(),
+        );
+    }
+}
+
+pub(super) fn check_tuple_optional_type(
+    builder: &mut SemanticBuilder<'_, '_>,
+    optional: TsOptionalType,
+) {
+    if let Some(parent) = builder.parent()
+        && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
+    {
+        builder.report(
+            builder.ast.span(optional.node_id()),
+            "A labeled tuple element is declared as optional with '?' after the name and before the colon, rather than after the type",
+            ReportOptions::default(),
+        );
+    }
+}
+
 pub(super) fn check_ts_alias_issues(
     builder: &mut SemanticBuilder<'_, '_>,
     export_alias_issues: impl IntoIterator<Item = TsNamespaceExportAliasIssue>,
