@@ -1,0 +1,85 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Counter {
+  #value(
+    this:   Counter,
+    value: number
+  ): number { return value; }
+  read(): number {
+    // @ts-expect-error
+    this.#value("bad");
+    return this.#value(3);
+  }
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Counter {
+  #value(this: Counter, value: number): number {
+    return value;
+  }
+  read(): number {
+    // @ts-expect-error
+    this.#value("bad");
+    return this.#value(3);
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Counter {
+  #value(
+    this: Counter,
+    value: number,
+  ): number {
+    return value;
+  }
+  read(): number {
+    // @ts-expect-error
+    this.#value("bad");
+    return this.#value(
+      3,
+    );
+  }
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class Counter {
+  #value(
+    this: Counter,
+    value: number
+  ): number {
+    return value
+  }
+  read(): number {
+    // @ts-expect-error
+    this.#value("bad")
+    return this.#value(
+      3
+    )
+  }
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class Counter {
+  #value(
+    this: Counter,
+    value: number,
+  ): number {
+    return value;
+  }
+  read(): number {
+    // @ts-expect-error
+    this.#value("bad");
+    return this.#value(
+      3,
+    );
+  }
+}
