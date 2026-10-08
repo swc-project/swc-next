@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr, IdentifierReference,
-    NodeId, Program, PropertyKey, ScopeId, Span, SymbolId,
+    NodeId, Program, PropertyKey, ScopeId, Span, SymbolId, TraverseMutCtx,
 };
 mod construction;
 mod expressions;
@@ -23,9 +23,7 @@ pub trait Mutate<'s, 'a> {
     fn mutate(&mut self) -> Mutation<'_, 's, 'a>;
 }
 
-impl<'s, 'a> Mutate<'s, 'a>
-    for swc_next_ecma_ast::TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>
-{
+impl<'s, 'a> Mutate<'s, 'a> for TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>> {
     fn mutate(&mut self) -> Mutation<'_, 's, 'a> {
         Mutation {
             ast: self.ast,

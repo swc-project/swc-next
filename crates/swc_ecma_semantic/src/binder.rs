@@ -505,11 +505,6 @@ impl ReferenceFlags {
         self
     }
 
-    pub(crate) fn without_dynamic(mut self) -> Self {
-        self.properties.remove(ReferenceProperties::DYNAMIC);
-        self
-    }
-
     pub(crate) fn with_dynamic(mut self) -> Self {
         self.properties.insert(ReferenceProperties::DYNAMIC);
         self

@@ -37,9 +37,9 @@ mod builder;
 mod context;
 mod ecmascript;
 mod module_record;
-mod mutation;
 pub mod name_resolver;
 pub mod scope;
+mod scope_model;
 
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
@@ -48,6 +48,7 @@ pub use module_record::{
     ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
     ModuleRecord,
 };
+pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 
 oxc_index::define_nonmax_u32_index_type! {
