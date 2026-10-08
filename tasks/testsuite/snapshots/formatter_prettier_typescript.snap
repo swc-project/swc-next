@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 412/804 (51.24%)
-Snapshot matched: 412/804
-AST parity: 418/418
-AST mismatched: 0/418
+Passed: 419/804 (52.11%)
+Snapshot matched: 419/804
+AST parity: 425/425
+AST mismatched: 0/425
 AST format errors: 0/804
 Mismatched: 6/804
-Format errors: 386/804
+Format errors: 379/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -192,17 +192,13 @@ Unsupported option sets: 7
 - typescript/conformance/internalModules/importDeclarations/shadowedInternalModule.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/ambient/ambientDeclarations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/any/anyAsGenericFunctionCall.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/firstTypeNode/firstTypeNode.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/TSFunctionTypeNoUnnecessaryParentheses.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/functionImplementationErrors.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/functions/functionImplementations.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/parameterProperty/parameterProperty.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/thisType/thisType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/tuple/typeInferenceWithTupleType.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/typeParameters/typeParameterLists/innerTypeParameterShadowingOuterOne.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/typeParameters/typeParameterLists/innerTypeParameterShadowingOuterOne2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/typeParameters/typeParameterLists/staticMembersUsingClassTypeParameter.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/conformance/types/typeParameters/typeParameterLists/typeParametersAvailableInNestedScope2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/conformance/types/union/unionTypePropertyAccessibility.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/const/initializer-ambient-context.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/custom/abstract/abstractProperties.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -239,8 +235,6 @@ Unsupported option sets: 7
 - typescript/function-type/type-annotation.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/generic/arrow-return-type.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/generic/issue-6899.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/generic/object-method.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/generic/ungrouped-parameters.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-export/empty-import.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-export/type-modifier.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-require/comments.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -314,7 +308,6 @@ Unsupported option sets: 7
 - typescript/type-parameters-arguments/class-method.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/type-parameters-arguments/consistent/template-literal-types.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/type-parameters-arguments/const.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/type-parameters-arguments/constraints-and-default-2.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/type-parameters-arguments/issue-6858.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/type-parameters-arguments/long-function-arg.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/type-parameters-arguments/print-width-120/issue-7542.tsx: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
