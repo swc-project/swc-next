@@ -12355,7 +12355,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 "Logical expressions and nullish coalescing cannot be mixed",
                 ReportOptions::default(),
             );
-            return None;
         }
         Some(self.ast.expr_logical_expression(
             Span::new(start, right.span(&self.ast).end),

@@ -103,7 +103,9 @@ pub enum TokenTag {
     UnsignedRightShiftAssign =
         53 | ((Precedence::Assignment as u32) << PREC_SHIFT) | flags!(IS_ASSIGNMENT_OP),
 
-    NullishCoalescing = 54 | ((Precedence::Nullish as u32) << PREC_SHIFT) | flags!(IS_LOGICAL_OP),
+    // Use `||`'s precedence for left-associative recovery of mixed `??`/`||` chains.
+    // The parser still diagnoses mixing `??` with `||` or `&&`.
+    NullishCoalescing = 54 | ((Precedence::LogicalOr as u32) << PREC_SHIFT) | flags!(IS_LOGICAL_OP),
     NullishAssign = 55 | ((Precedence::Assignment as u32) << PREC_SHIFT) | flags!(IS_ASSIGNMENT_OP),
     LogicalAndAssign =
         56 | ((Precedence::Assignment as u32) << PREC_SHIFT) | flags!(IS_ASSIGNMENT_OP),

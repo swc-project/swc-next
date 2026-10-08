@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11397/11509 (99.03%)
+Positive Passed: 11398/11509 (99.04%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignToInvalidLHS.ts
@@ -51,7 +51,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es2019/imp
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restElementWithInitializer1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restPropertyWithBindingPattern.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/binaryOperators/instanceofOperator/instanceofOperatorWithRHSHasSymbolHasInstance.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/nullishCoalescingOperator/nullishCoalescingOperator5.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/objectLiterals/objectLiteralErrors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/optionalChaining/taggedTemplateChain/taggedTemplateChain.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardNarrowsPrimitiveIntersection.ts
