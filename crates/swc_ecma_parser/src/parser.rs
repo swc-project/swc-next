@@ -2713,15 +2713,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let id = if self.can_start_class_name() {
             Some(self.parse_binding_identifier()?)
         } else if !opts.is_expression && !opts.is_default_export {
-            return {
-                let span = self.current_token.span();
-                self.report(
-                    span,
-                    "Class declaration requires a name",
-                    ReportOptions::default(),
-                );
-                None
-            };
+            self.report(
+                self.current_token.span(),
+                "Class declaration requires a name",
+                ReportOptions::default(),
+            );
+            None
         } else {
             None
         };
@@ -7158,7 +7155,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "A 'set' accessor cannot have a return type annotation",
                     ReportOptions::default(),
                 );
-                return None;
             }
             Some(annotation)
         } else {
@@ -8791,7 +8787,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 "Trailing comma is not allowed in parenthesized expression",
                 ReportOptions::default(),
             );
-            return None;
         }
         let arguments = (0..cover.elements.len())
             .map(|index| {
@@ -12160,7 +12155,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ..ReportOptions::default()
                 },
             );
-            return None;
         }
         let span = Span::new(
             left.span(&self.ast).start,
@@ -12221,7 +12215,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 "Expected expression after 'yield*'",
                 ReportOptions::default(),
             );
-            return None;
         }
         let end = argument.map_or(self.lexer.state.prev_token_end, |expr| {
             expr.span(&self.ast).end
