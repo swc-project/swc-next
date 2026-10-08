@@ -1,11 +1,10 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11394/11509 (99.00%)
+Positive Passed: 11395/11509 (99.01%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignToInvalidLHS.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignmentToInstantiationExpression.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignmentToParenthesizedExpression1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/constDeclarations-errors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/controlFlowInstanceofWithSymbolHasInstance.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/declareAlreadySeen.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithDeclareAndExportModifiers.ts

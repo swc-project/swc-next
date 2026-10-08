@@ -7562,7 +7562,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 is_for_await,
             ),
             _ => {
-                self.validate_regular_for_declarators(declaration)?;
+                self.validate_regular_for_declarators(declaration);
                 self.parse_for_statement_rest(
                     start,
                     Some(ForStatementInit::VariableDeclaration(declaration)),
@@ -7765,11 +7765,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn validate_regular_for_declarators(&mut self, declaration: VariableDeclaration) -> Option<()> {
+    fn validate_regular_for_declarators(&mut self, declaration: VariableDeclaration) {
         let kind = declaration.kind(&self.ast);
-        for index in 0..declaration.declarators(&self.ast).len() {
-            let declarator = declaration
-                .declarators(&self.ast)
+        let declarators = declaration.declarators(&self.ast);
+        for index in 0..declarators.len() {
+            let declarator = declarators
                 .get_node(&self.ast, index)
                 .expect("variable declarator range contains its nodes");
             if declarator.init(&self.ast).is_some() {
@@ -7782,17 +7782,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "Destructuring declaration in for loop initializer must be initialized",
                     ReportOptions::default(),
                 );
-                return None;
-            }
-            if kind == VariableKind::Const {
+            } else if kind == VariableKind::Const {
                 self.report(
                     id.span(&self.ast),
                     "'const' declarations in for loop initializer must be initialized",
                     ReportOptions::default(),
                 );
-                return None;
-            }
-            if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
+            } else if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
                 self.report(
                     id.span(&self.ast),
                     Cow::Owned(format!(
@@ -7806,10 +7802,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         ..ReportOptions::default()
                     },
                 );
-                return None;
             }
         }
-        Some(())
     }
 
     // SwitchStatement[Yield, Await, Return] :
