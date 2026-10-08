@@ -11889,7 +11889,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             ..ReportOptions::default()
                         },
                     );
-                    return None;
                 }
                 Some(JsxAttributeValue::JsxExpressionContainer(container))
             }

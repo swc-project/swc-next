@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11395/11509 (99.01%)
+Positive Passed: 11396/11509 (99.02%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignToInvalidLHS.ts
@@ -24,7 +24,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexWithoutP
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexerAsOptional.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexerConstraints2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexerSignatureWithRestParam.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/jsxAttributeWithoutExpressionReact.tsx
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-invalidContexts.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-scopes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-validContexts.ts
