@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(): void {
+ for (
+ // @ts-expect-error
+ missingInit;
+ missingTest;
+ missingUpdate
+ ) {}
+ const outside: number = "outside";
+}
+---------- Options ----------
+{"printWidth":25}
+---------- Output ----------
+function f(): void {
+  for (
+    // @ts-expect-error
+    missingInit;
+    missingTest;
+    missingUpdate
+  ) {}
+  const outside: number =
+    "outside";
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(): void {
+  for (
+    // @ts-expect-error
+    missingInit;
+    missingTest;
+    missingUpdate
+  ) {}
+  const outside: number = "outside";
+}
+
+---------- Options ----------
+{"printWidth":25,"semi":false}
+---------- Output ----------
+function f(): void {
+  for (
+    // @ts-expect-error
+    missingInit;
+    missingTest;
+    missingUpdate
+  ) {}
+  const outside: number =
+    "outside"
+}

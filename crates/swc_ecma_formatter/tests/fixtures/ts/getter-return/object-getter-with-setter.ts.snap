@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object = { get value(): number { return 1; }, set value(input: number) {} };
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const object = {
+  get value(): number {
+    return 1;
+  },
+  set value(input: number) {},
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const object = {
+  get value(): number {
+    return 1;
+  },
+  set value(
+    input: number,
+  ) {},
+};
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const object = {
+  get value(): number {
+    return 1
+  },
+  set value(
+    input: number
+  ) {}
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+const object = {
+  get value(): number {
+    return 1;
+  },
+  set value(
+    input: number,
+  ) {},
+};

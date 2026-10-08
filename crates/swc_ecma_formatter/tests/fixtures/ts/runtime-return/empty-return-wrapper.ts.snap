@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function make
+/* prettier-ignore */
+// @ts-expect-error
+():  (number | Missing) { return 1; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function make
+/* prettier-ignore */
+// @ts-expect-error
+():  (number | Missing) { return 1; }
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function make
+/* prettier-ignore */
+// @ts-expect-error
+():  (number | Missing) { return 1; }
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function make
+/* prettier-ignore */
+// @ts-expect-error
+():  (number | Missing) { return 1 }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+function make
+/* prettier-ignore */
+// @ts-expect-error
+():  (number | Missing) { return 1; }
