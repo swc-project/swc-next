@@ -36,13 +36,10 @@ mod binder;
 mod builder;
 mod context;
 mod ecmascript;
-#[cfg(debug_assertions)]
-mod invariants;
 mod module_record;
 mod mutation;
 pub mod name_resolver;
 pub mod scope;
-mod used_names;
 
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
@@ -52,7 +49,6 @@ pub use module_record::{
     ModuleRecord,
 };
 pub use swc_next_ecma_ast::ReferenceId;
-pub use used_names::UsedNameState;
 
 oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -475,8 +471,6 @@ impl<'a> Semantic<'a> {
     pub fn iter_symbols(&self) -> SymbolIterator<'_> {
         SymbolIterator {
             symbols: &self.symbols,
-            declarations: &self.declarations,
-            node_symbols: &self.node_symbols,
             index: 0,
         }
     }
@@ -494,7 +488,6 @@ impl<'a> Semantic<'a> {
     pub fn iter_declarations(&self) -> DeclarationIterator<'_> {
         DeclarationIterator {
             declarations: &self.declarations,
-            node_symbols: &self.node_symbols,
             index: 0,
         }
     }
@@ -599,8 +592,6 @@ impl Iterator for BindingIterator<'_> {
 
 pub struct SymbolIterator<'a> {
     symbols: &'a [Symbol],
-    declarations: &'a [Declaration],
-    node_symbols: &'a [Option<SymbolId>],
     index: u32,
 }
 
@@ -608,17 +599,13 @@ impl Iterator for SymbolIterator<'_> {
     type Item = SymbolEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let index = self.index as usize;
-            let symbol = *self.symbols.get(index)?;
-            self.index += 1;
-            let id = SymbolId::from_usize(index);
-            if self.node_symbols[self.declarations[symbol.declaration.index()].node.index()]
-                .is_some()
-            {
-                return Some(SymbolEntry { id, symbol });
-            }
-        }
+        let index = self.index as usize;
+        let symbol = *self.symbols.get(index)?;
+        self.index += 1;
+        Some(SymbolEntry {
+            id: SymbolId::from_usize(index),
+            symbol,
+        })
     }
 }
 
@@ -630,7 +617,6 @@ pub struct ReferenceIterator<'a> {
 
 pub struct DeclarationIterator<'a> {
     declarations: &'a [Declaration],
-    node_symbols: &'a [Option<SymbolId>],
     index: u32,
 }
 
@@ -654,17 +640,13 @@ impl Iterator for DeclarationIterator<'_> {
     type Item = DeclarationEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let index = self.index as usize;
-            let declaration = *self.declarations.get(index)?;
-            self.index += 1;
-            if self.node_symbols[declaration.node.index()].is_some() {
-                return Some(DeclarationEntry {
-                    id: DeclarationId::from_usize(index),
-                    declaration,
-                });
-            }
-        }
+        let index = self.index as usize;
+        let declaration = *self.declarations.get(index)?;
+        self.index += 1;
+        Some(DeclarationEntry {
+            id: DeclarationId::from_usize(index),
+            declaration,
+        })
     }
 }
 

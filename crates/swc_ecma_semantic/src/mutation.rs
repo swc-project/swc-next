@@ -7,8 +7,8 @@ use oxc_index::Idx;
 use swc_next_allocator::CloneIn;
 use swc_next_allocator::hash_map::HashMap as ArenaHashMap;
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, ClassElement, IdentifierReference, NodeId, NodeKindData,
-    ReferenceId, ScopeId, SymbolId,
+    Ast, AstUtf8, BindingIdentifier, IdentifierReference, NodeId, NodeKindData, ReferenceId,
+    ScopeId, SymbolId,
 };
 
 use crate::{
@@ -153,93 +153,25 @@ impl<'a> Semantic<'a> {
         }
     }
 
-    /// Update indexes when replacing a class element shell. Property and method
-    /// replacements must preserve their children and evaluation environment.
-    /// Static block contents must already have been moved; only empty blocks
-    /// may be discarded without transferring their scope.
+    /// Retires a scope after its bindings, references and children have been moved.
     #[doc(hidden)]
-    pub fn replace_class_element(
-        &mut self,
-        ast: &Ast<'a>,
-        old: ClassElement,
-        replacement: Option<ClassElement>,
-    ) {
-        if replacement.map(|node| node.node_id()) == Some(old.node_id()) {
-            return;
-        }
-        match ast.kind_data(old.node_id()) {
-            NodeKindData::StaticBlock(block) => self.replace_static_block(ast, block),
-            NodeKindData::PropertyDefinition(property) => {
-                let Some(new) = replacement.and_then(|node| node.as_property_definition(ast))
-                else {
-                    debug_assert!(false, "property replacement must preserve its children");
-                    return;
-                };
-                debug_assert_eq!(
-                    self.scope_at(property.node_id()),
-                    self.scope_at(new.node_id())
-                );
-                debug_assert_eq!(property.key(ast), new.key(ast));
-                debug_assert_eq!(property.value(ast), new.value(ast));
-                debug_assert_eq!(property.type_annotation(ast), new.type_annotation(ast));
-                debug_assert!(
-                    property
-                        .decorators(ast)
-                        .iter()
-                        .map(|id| ast.get_node_in_sub_range(id))
-                        .eq(new
-                            .decorators(ast)
-                            .iter()
-                            .map(|id| ast.get_node_in_sub_range(id)))
-                );
-                debug_assert_eq!(property.computed(ast), new.computed(ast));
-                debug_assert_eq!(property.r#static(ast), new.r#static(ast));
-                debug_assert_eq!(property.declare(ast), new.declare(ast));
-                debug_assert_eq!(property.r#abstract(ast), new.r#abstract(ast));
-            }
-            NodeKindData::MethodDefinition(method) => {
-                let Some(new) = replacement.and_then(|node| node.as_method_definition(ast)) else {
-                    debug_assert!(false, "method replacement must preserve its children");
-                    return;
-                };
-                debug_assert_eq!(
-                    self.scope_at(method.node_id()),
-                    self.scope_at(new.node_id())
-                );
-                debug_assert_eq!(method.key(ast), new.key(ast));
-                debug_assert_eq!(method.value(ast), new.value(ast));
-                debug_assert!(
-                    method
-                        .decorators(ast)
-                        .iter()
-                        .map(|id| ast.get_node_in_sub_range(id))
-                        .eq(new
-                            .decorators(ast)
-                            .iter()
-                            .map(|id| ast.get_node_in_sub_range(id)))
-                );
-                debug_assert_eq!(method.kind(ast), new.kind(ast));
-                debug_assert_eq!(method.computed(ast), new.computed(ast));
-                debug_assert_eq!(method.r#static(ast), new.r#static(ast));
-            }
-            _ => debug_assert!(false, "unsupported class element replacement"),
-        }
-    }
-
-    /// Finish replacing a static block whose contents have already been moved.
-    /// Only an empty block can still own its original scope at this point.
-    fn replace_static_block(&mut self, ast: &Ast<'a>, block: swc_next_ecma_ast::StaticBlock) {
-        let node = block.node_id();
-        if let Some(scope) = self.scope_at(node)
-            && self.scope(scope).active
-            && self.scope(scope).node == node
-        {
-            debug_assert!(
-                block.body(ast).is_empty(),
-                "static block contents must be moved first"
-            );
-            self.scopes.list[scope.index()].active = false;
-        }
+    pub fn remove_scope(&mut self, scope: ScopeId) {
+        debug_assert!(self.scope_maps[scope.index()].is_empty());
+        debug_assert!(
+            !self
+                .iter_references()
+                .any(|entry| entry.reference.scope == scope)
+        );
+        debug_assert!(
+            !self
+                .scopes
+                .list
+                .iter()
+                .any(|child| child.active && child.parent == Some(scope))
+        );
+        self.scopes.list[scope.index()].active = false;
+        self.scopes.list[scope.index()].flags.direct_eval = false;
+        self.hoisting_variables[scope.index()] = None;
     }
 
     fn append_use(&mut self, symbol: SymbolId, reference: ReferenceId) {
@@ -293,18 +225,6 @@ impl<'a> Semantic<'a> {
         self.scope_maps.push(ArenaHashMap::new_in(ast.allocator()));
         self.hoisting_variables.push(None);
         id
-    }
-
-    /// Replaces a scope owner, clearing metadata attached to the previous node.
-    #[doc(hidden)]
-    pub fn replace_scope_owner(
-        &mut self,
-        ast: &Ast<'_>,
-        old: NodeId,
-        new: NodeId,
-        kind: ScopeKind,
-    ) {
-        self.transfer_scope_owner(ast, old, new, kind);
     }
 
     /// Reparent a function/static-block scope; descendants keep their own IDs
@@ -418,9 +338,7 @@ impl<'a> Semantic<'a> {
                 reference.scope = parent;
             }
         }
-        self.scopes.list[source.index()].active = false;
-        self.scopes.list[source.index()].flags.direct_eval = false;
-        self.hoisting_variables[source.index()] = None;
+        self.remove_scope(source);
         if scope.flags.direct_eval {
             self.scopes.mark_direct_eval(parent);
         }
@@ -577,6 +495,3 @@ impl Semantic<'_> {
         self.module_record.refresh_references(&self.references);
     }
 }
-
-#[cfg(test)]
-mod tests;

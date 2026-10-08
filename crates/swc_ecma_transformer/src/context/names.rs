@@ -1,6 +1,6 @@
 use super::Mutation;
+use crate::used_names::UsedNameState;
 use swc_next_ecma_ast::{AstUtf8, NodeKindData};
-use swc_next_ecma_semantic::UsedNameState;
 
 impl<'a> Mutation<'_, '_, 'a> {
     /// Reserves and interns a name in the shared transform collision domain.

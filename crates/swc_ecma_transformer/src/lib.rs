@@ -18,6 +18,7 @@ mod helpers;
 pub mod normalize;
 pub mod proposal;
 mod state;
+mod used_names;
 
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]

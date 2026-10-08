@@ -134,7 +134,7 @@ fn helper_registration() {
         ctx.flush_statements(program.node_id());
         assert_eq!(ctx.semantic().iter_references().count(), references);
         #[cfg(debug_assertions)]
-        ctx.semantic().assert_invariants(ctx.ast());
+        ctx.assert_invariants();
     });
 }
 
@@ -264,5 +264,5 @@ fn assert_external_require(ctx: &mut Mutation<'_, '_, '_>, helper: HelperKind, s
         source.as_bytes()
     );
     #[cfg(debug_assertions)]
-    ctx.semantic().assert_invariants(ctx.ast());
+    ctx.assert_invariants();
 }

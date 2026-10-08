@@ -57,7 +57,7 @@ impl<'a> Mutation<'_, '_, 'a> {
             self.state.analysis.remove_arrow(old, ancestors);
             self.state
                 .semantic
-                .replace_scope_owner(self.ast, old, node.node_id(), options.kind);
+                .transfer_scope_owner(self.ast, old, node.node_id(), options.kind);
             self.state.semantic.reparent_scope(scope, options.parent);
             scope
         } else {

@@ -29,8 +29,7 @@ fn with_context(source: &str, run: impl FnOnce(&mut Mutation<'_, '_, '_>)) {
     // Check the mutation itself, without Mutation::finish cleanup.
     #[cfg(debug_assertions)]
     {
-        ctx.semantic().assert_invariants(ctx.ast());
-        ctx.analysis().assert_invariants(ctx.ast());
+        ctx.assert_invariants();
     }
     let rebuilt = analyze(ctx.ast(), options).semantic;
     assert_eq!(
@@ -585,4 +584,83 @@ fn retained_subtrees() {
             references
         );
     });
+}
+
+#[test]
+fn scope_merging() {
+    with_context(
+        "class C { static { eval(''); (class { [key]() { nested; } }); } static { outside; } }",
+        |ctx| {
+            let body = first_class_body(ctx);
+            let source = body
+                .body(ctx.ast())
+                .get_node(ctx.ast(), 0)
+                .unwrap()
+                .as_static_block(ctx.ast())
+                .unwrap();
+            let target = body
+                .body(ctx.ast())
+                .get_node(ctx.ast(), 1)
+                .unwrap()
+                .as_static_block(ctx.ast())
+                .unwrap();
+            let source_scope = ctx.scope_for_node(source.node_id()).unwrap();
+            let target_scope = ctx.scope_for_node(target.node_id()).unwrap();
+            let reference = ctx.create_unbound_reference("generated", source_scope);
+            let generated = Stmt::ExpressionStatement(ctx.add_node(source_scope, |ast| {
+                ast.expression_statement(DUMMY_SP, Expr::IdentifierReference(reference))
+            }));
+            let reference_id = ctx.semantic().reference_of(reference.node_id()).unwrap();
+            let children: Vec<_> = ctx
+                .semantic()
+                .iter_scopes()
+                .filter(|entry| entry.scope.parent == Some(source_scope))
+                .map(|entry| entry.id)
+                .collect();
+            let mut statements: Vec<_> = source
+                .body(ctx.ast())
+                .iter()
+                .map(|slot| ctx.ast().get_node_in_sub_range(slot))
+                .collect();
+            statements.push(generated);
+            statements.extend(
+                target
+                    .body(ctx.ast())
+                    .iter()
+                    .map(|slot| ctx.ast().get_node_in_sub_range(slot)),
+            );
+            let node_count = ctx.ast().node_count();
+            ctx.merge_scope(source.node_id(), target_scope, Default::default());
+            ctx.attach_statements(StatementList::StaticBlock(target), &statements);
+            ctx.filter_map_class_elements(body, |_, element| {
+                if element.node_id() == source.node_id() {
+                    ClassElementAction::Delete
+                } else {
+                    ClassElementAction::Unchanged
+                }
+            });
+            assert!(!ctx.semantic().scope(source_scope).active);
+            assert!(ctx.semantic().scope(target_scope).flags.direct_eval);
+            assert_eq!(
+                ctx.semantic().reference_of(reference.node_id()),
+                Some(reference_id)
+            );
+            assert_eq!(ctx.semantic().reference(reference_id).scope, target_scope);
+            assert_eq!(
+                ctx.semantic().scope_at(generated.node_id()),
+                Some(target_scope)
+            );
+            assert_eq!(ctx.ast().node_count(), node_count);
+            assert!(
+                children
+                    .iter()
+                    .all(|&id| ctx.semantic().scope(id).parent == Some(target_scope))
+            );
+            assert!(
+                children
+                    .iter()
+                    .all(|&id| ctx.semantic().scope(id).hoist_target == target_scope)
+            );
+        },
+    );
 }

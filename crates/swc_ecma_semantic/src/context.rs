@@ -1,7 +1,6 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, ScopeId,
-    StaticBlock,
 };
 
 use crate::{
@@ -203,8 +202,8 @@ impl<'a> SemanticContext<'a> {
         self.scope.enter_class(tree, class);
     }
 
-    pub fn enter_static_block(&mut self, block: StaticBlock) {
-        self.scope.enter_static_block(block.node_id());
+    pub fn enter_static_block(&mut self, node: NodeId) {
+        self.scope.enter_static_block(node);
     }
 
     pub fn enter_decorator(&mut self, node: NodeId, site: DecoratorSite) {

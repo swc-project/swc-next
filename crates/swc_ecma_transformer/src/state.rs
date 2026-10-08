@@ -1,3 +1,4 @@
+use crate::used_names::UsedNameState;
 use crate::{
     analysis::TransformAnalysis,
     assumptions::Assumptions,
@@ -6,7 +7,7 @@ use crate::{
 };
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{AstUtf8, NodeId};
-use swc_next_ecma_semantic::{Semantic, UsedNameState};
+use swc_next_ecma_semantic::Semantic;
 
 /// Configuration, caches and pending work for a single transform.
 /// Passes access state through the context's mutation APIs.

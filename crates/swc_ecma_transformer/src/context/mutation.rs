@@ -227,7 +227,8 @@ impl Mutation<'_, '_, '_> {
     }
 
     /// Rewrite and compact existing slots without allocating a new list.
-    /// The callback prepares replacements; Semantic validates and updates each edit.
+    /// The callback prepares replacements; Mutation validates each edit and updates
+    /// name resolution and transform metadata together.
     pub(crate) fn filter_map_class_elements(
         &mut self,
         body: ClassBody,
@@ -285,9 +286,7 @@ impl Mutation<'_, '_, '_> {
         if replacement.map(|node| node.node_id()) == Some(old.node_id()) {
             return;
         }
-        self.state
-            .semantic
-            .replace_class_element(self.ast, old, replacement);
+        self.validate_class_element(old, replacement);
         match self.ast.kind_data(old.node_id()) {
             NodeKindData::StaticBlock(_) => self.state.analysis.replace_static_block(old.node_id()),
             NodeKindData::PropertyDefinition(_) => {
@@ -300,6 +299,75 @@ impl Mutation<'_, '_, '_> {
             _ => {}
         }
         self.invalidate_static_block_layout(old.node_id());
+    }
+
+    fn validate_class_element(&mut self, old: ClassElement, replacement: Option<ClassElement>) {
+        let ast = &*self.ast;
+        match ast.kind_data(old.node_id()) {
+            NodeKindData::StaticBlock(block) => {
+                if let Some(scope) = self.scope_for_node(block.node_id()) {
+                    debug_assert!(
+                        block.body(ast).is_empty(),
+                        "static block contents must be moved first"
+                    );
+                    self.state.semantic.remove_scope(scope);
+                }
+            }
+            NodeKindData::PropertyDefinition(property) => {
+                let Some(new) = replacement.and_then(|node| node.as_property_definition(ast))
+                else {
+                    debug_assert!(false, "property replacement must preserve its children");
+                    return;
+                };
+                debug_assert_eq!(
+                    self.state.semantic.scope_at(property.node_id()),
+                    self.state.semantic.scope_at(new.node_id())
+                );
+                debug_assert_eq!(property.key(ast), new.key(ast));
+                debug_assert_eq!(property.value(ast), new.value(ast));
+                debug_assert_eq!(property.type_annotation(ast), new.type_annotation(ast));
+                debug_assert!(
+                    property
+                        .decorators(ast)
+                        .iter()
+                        .map(|id| ast.get_node_in_sub_range(id))
+                        .eq(new
+                            .decorators(ast)
+                            .iter()
+                            .map(|id| ast.get_node_in_sub_range(id)))
+                );
+                debug_assert_eq!(property.computed(ast), new.computed(ast));
+                debug_assert_eq!(property.r#static(ast), new.r#static(ast));
+                debug_assert_eq!(property.declare(ast), new.declare(ast));
+                debug_assert_eq!(property.r#abstract(ast), new.r#abstract(ast));
+            }
+            NodeKindData::MethodDefinition(method) => {
+                let Some(new) = replacement.and_then(|node| node.as_method_definition(ast)) else {
+                    debug_assert!(false, "method replacement must preserve its children");
+                    return;
+                };
+                debug_assert_eq!(
+                    self.state.semantic.scope_at(method.node_id()),
+                    self.state.semantic.scope_at(new.node_id())
+                );
+                debug_assert_eq!(method.key(ast), new.key(ast));
+                debug_assert_eq!(method.value(ast), new.value(ast));
+                debug_assert!(
+                    method
+                        .decorators(ast)
+                        .iter()
+                        .map(|id| ast.get_node_in_sub_range(id))
+                        .eq(new
+                            .decorators(ast)
+                            .iter()
+                            .map(|id| ast.get_node_in_sub_range(id)))
+                );
+                debug_assert_eq!(method.kind(ast), new.kind(ast));
+                debug_assert_eq!(method.computed(ast), new.computed(ast));
+                debug_assert_eq!(method.r#static(ast), new.r#static(ast));
+            }
+            _ => debug_assert!(false, "unsupported class element replacement"),
+        }
     }
 
     fn attach_class_elements(&mut self, body: ClassBody, elements: &[ClassElement]) {

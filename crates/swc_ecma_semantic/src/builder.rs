@@ -20,8 +20,8 @@ use swc_next_ecma_ast::{
     ImportSpecifier, JsxClosingElement, JsxIdentifier, JsxOpeningElement, JsxText, Label,
     MemberExpression, MethodDefinition, NodeId, NodeKind, NodeKindData, ObjectPattern,
     ParenthesizedExpression, PropertyDefinition, PropertyKey, PropertyKeyData, ScopeId, Severity,
-    Span, StaticBlock, Super, SwitchCase, SwitchStatement, ThisExpression, TsArrayType,
-    TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    Span, StaticBlock, SwitchCase, SwitchStatement, ThisExpression, TsArrayType, TsAsExpression,
+    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
@@ -404,12 +404,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     // These leaves have neither binding actions nor syntax checks. Consume
     // pending reference flags without adding an unused ancestry entry.
     #[inline]
-    fn visit_super(&mut self, node: Super) {
-        self.enter_node(node.node_id());
-        node.visit_children_with(self);
-        self.leave_node(NodeKindData::Super(node));
-    }
-
     fn visit_this_expression(&mut self, node: ThisExpression) {
         self.state.enter_scope(node.node_id());
         self.state.enter_node();
@@ -779,12 +773,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     #[inline]
-    fn visit_method_definition(&mut self, node: MethodDefinition) {
-        self.enter_node(node.node_id());
-        node.visit_children_with(self);
-        self.leave_node(NodeKindData::MethodDefinition(node));
-    }
-
     fn visit_ts_method_definition(&mut self, node: TsMethodDefinition) {
         self.enter_node(node.node_id());
         let decorators = node.decorators(self.ast);
@@ -799,7 +787,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_static_block(&mut self, node: StaticBlock) {
-        self.state.enter_static_block(node);
+        self.state.enter_static_block(node.node_id());
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         self.state.exit_scope(node.node_id());

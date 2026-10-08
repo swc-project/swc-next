@@ -6,7 +6,7 @@ use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec 
 /// to try for that name, so repeated allocation does not rescan earlier
 /// candidates. An empty state has a zero-capacity map and does not allocate
 /// until the first name is observed.
-pub struct UsedNameState<'a> {
+pub(crate) struct UsedNameState<'a> {
     allocator: &'a Allocator,
     names: ArenaHashMap<'a, ArenaVec<'a, u8>, u64>,
 }
@@ -22,7 +22,7 @@ impl std::fmt::Debug for UsedNameState<'_> {
 
 impl<'a> UsedNameState<'a> {
     /// Creates an empty name state backed by `allocator`.
-    pub fn new(allocator: &'a Allocator) -> Self {
+    pub(crate) fn new(allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             names: ArenaHashMap::new_in(allocator),
@@ -30,14 +30,14 @@ impl<'a> UsedNameState<'a> {
     }
 
     /// Records `name` and initializes its suffix cursor.
-    pub fn observe(&mut self, name: &[u8]) {
+    pub(crate) fn observe(&mut self, name: &[u8]) {
         if !self.names.contains_key(name) {
             self.insert(name, 1);
         }
     }
 
     /// Returns whether `name` is observed or reserved.
-    pub fn contains(&self, name: &[u8]) -> bool {
+    pub(crate) fn contains(&self, name: &[u8]) -> bool {
         self.names.contains_key(name)
     }
 
@@ -45,7 +45,7 @@ impl<'a> UsedNameState<'a> {
     ///
     /// The unsuffixed base is preferred. If it is occupied, suffixes start at
     /// `min_suffix`, for example `next_name("_temp", 2)` produces `_temp2`.
-    pub fn next_name(&mut self, base: &str, min_suffix: u64) -> &str {
+    pub(crate) fn next_name(&mut self, base: &str, min_suffix: u64) -> &str {
         assert!(min_suffix > 0, "generated name suffix must be positive");
         if !self.contains(base.as_bytes()) {
             self.insert(base.as_bytes(), min_suffix);
@@ -70,11 +70,6 @@ impl<'a> UsedNameState<'a> {
                 .checked_add(1)
                 .expect("generated name suffix overflow");
         }
-    }
-
-    /// Iterates all currently observed or reserved names.
-    pub fn names(&self) -> impl Iterator<Item = &[u8]> {
-        self.names.keys().map(ArenaVec::as_slice)
     }
 
     fn insert(&mut self, name: &[u8], next_suffix: u64) {

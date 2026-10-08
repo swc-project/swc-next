@@ -169,6 +169,8 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Shared transform state | [crates/swc_ecma_transformer/src/state.rs](../crates/swc_ecma_transformer/src/state.rs) |
 | Mutate trait, borrowed Mutation, names and helpers | [crates/swc_ecma_transformer/src/context/mod.rs](../crates/swc_ecma_transformer/src/context/mod.rs) |
 | Shared name allocation from Semantic indexes | [crates/swc_ecma_transformer/src/context/names.rs](../crates/swc_ecma_transformer/src/context/names.rs) |
+| Generated-name collision domains | [crates/swc_ecma_transformer/src/used_names.rs](../crates/swc_ecma_transformer/src/used_names.rs) |
+| Post-transform semantic invariant checks | [crates/swc_ecma_transformer/src/context/invariants.rs](../crates/swc_ecma_transformer/src/context/invariants.rs) |
 | Allocation and registration | [crates/swc_ecma_transformer/src/context/construction.rs](../crates/swc_ecma_transformer/src/context/construction.rs) |
 | Expression replacement contracts | [crates/swc_ecma_transformer/src/context/expressions.rs](../crates/swc_ecma_transformer/src/context/expressions.rs) |
 | Statement/class edits and scope operations | [crates/swc_ecma_transformer/src/context/mutation.rs](../crates/swc_ecma_transformer/src/context/mutation.rs), [crates/swc_ecma_transformer/src/context/scopes.rs](../crates/swc_ecma_transformer/src/context/scopes.rs) |

@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     PropertyDefinition, Visit, VisitWith,
 };
 
-use swc_next_ecma_semantic::UsedNameState;
+use crate::used_names::UsedNameState;
 
 use crate::TransformFeatureFlags;
 

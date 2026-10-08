@@ -4,6 +4,8 @@ use swc_next_ecma_ast::{
 };
 mod construction;
 mod expressions;
+#[cfg(debug_assertions)]
+mod invariants;
 mod mutation;
 mod names;
 mod scopes;
@@ -282,7 +284,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             node,
             scope,
             Some(symbol),
-            swc_next_ecma_semantic::ReferenceFlags::generated_assignment(false),
+            swc_next_ecma_semantic::ReferenceFlags::default().write_only(),
         );
         let left = AssignmentTarget::SimpleAssignmentTarget(
             SimpleAssignmentTarget::IdentifierReference(node),
@@ -304,10 +306,13 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
         debug_assert!(self.state.statement_injector.is_empty());
         debug_assert!(self.state.helpers.is_empty());
         #[cfg(debug_assertions)]
-        {
-            self.state.semantic.assert_invariants(self.ast);
-            self.state.analysis.assert_invariants(self.ast);
-        }
+        self.assert_invariants();
+    }
+
+    #[cfg(debug_assertions)]
+    pub(crate) fn assert_invariants(&self) {
+        invariants::assert_semantic_invariants(self.state.semantic, self.ast);
+        self.state.analysis.assert_invariants(self.ast);
     }
 }
 

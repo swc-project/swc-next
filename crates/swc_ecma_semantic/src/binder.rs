@@ -440,16 +440,6 @@ impl Default for ReferenceFlags {
 }
 
 impl ReferenceFlags {
-    /// Access flags for a generated assignment target.
-    #[doc(hidden)]
-    pub fn generated_assignment(reads_previous_value: bool) -> Self {
-        if reads_previous_value {
-            Self::default().read_write()
-        } else {
-            Self::default().write_only()
-        }
-    }
-
     /// True when evaluation reads the binding's value.
     pub fn is_read(self) -> bool {
         self.properties.contains(ReferenceProperties::READ)
@@ -499,7 +489,7 @@ impl ReferenceFlags {
         self
     }
 
-    pub(crate) fn write_only(mut self) -> Self {
+    pub fn write_only(mut self) -> Self {
         self.properties = ReferenceProperties::WRITE;
         self
     }
