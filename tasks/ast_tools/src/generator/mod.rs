@@ -6,4 +6,5 @@ pub(crate) mod ast_property;
 pub(crate) mod ast_visitor;
 pub(crate) mod estree_decoder;
 pub(crate) mod estree_encoder;
+pub(crate) mod estree_visitor_keys;
 mod js_minifier;

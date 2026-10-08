@@ -15,3 +15,8 @@ console.log(printSync(program).code);
 
 Call `init()` before parsing or printing. It loads the bundled `.wasm` file;
 subsequent calls are idempotent.
+
+`walk`, `visitorKeys`, and `transformSync` use the same API and semantics as
+[`@swc-next/core`](../core/README.md). Call `init()` before `transformSync`.
+Use `@swc-next/core-browser/ast` for standalone traversal without initializing
+WASM. The shared AST helpers are included when assembling the browser package.

@@ -4,13 +4,30 @@
 
 import { expect, test } from "@rstest/core";
 
-import init, { parseSync, printSync } from "@swc-next/core-browser";
+import init, {
+  parseSync,
+  printSync,
+  transformSync,
+} from "@swc-next/core-browser";
 
-test("browser exposes parseSync and printSync", async () => {
+test("browser exposes parsing, printing, and AST transforms", async () => {
   await init();
   const { program } = parseSync("/* 😀 */ const value = 1;");
   expect(program.body[0].declarations[0].id.name).toBe("value");
   program.body[0].declarations[0].init.value = 2;
 
   expect(printSync(program).code).toBe("const value = 2;\n");
+  expect(
+    transformSync("debugger; run();", {
+      plugins: [
+        {
+          visitor: {
+            DebuggerStatement(node, ctx) {
+              ctx.remove();
+            },
+          },
+        },
+      ],
+    }).code,
+  ).toBe("run();\n");
 });

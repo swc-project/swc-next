@@ -746,7 +746,7 @@ fn references_field(body: &str, field: &str) -> bool {
     })
 }
 
-fn estree_type(name: &str) -> String {
+pub(super) fn estree_type(name: &str) -> String {
     match name {
         "BindingRestElement" | "FormalParameterRest" => "RestElement".into(),
         "ObjectProperty" => "Property".into(),
@@ -835,7 +835,7 @@ fn ts_extra_fields(name: &str) -> &'static [(&'static str, &'static str)] {
     }
 }
 
-fn estree_field_name(node: &str, field: &str) -> String {
+pub(super) fn estree_field_name(node: &str, field: &str) -> String {
     let field = field.strip_prefix("r#").unwrap_or(field);
     if node == "VariableDeclaration" && field == "declarators" {
         return "declarations".into();

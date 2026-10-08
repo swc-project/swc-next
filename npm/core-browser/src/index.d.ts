@@ -7,7 +7,11 @@ import type { AstMeta } from "@swc-next/decoder";
 export type { AstMeta } from "@swc-next/decoder";
 
 export { CommentMode, Lang, SourceType } from "./binding.js";
-export type { CodegenOptions, CodegenOutput, ParserOptions } from "./binding.js";
+export type {
+  CodegenOptions,
+  CodegenOutput,
+  ParserOptions,
+} from "./binding.js";
 
 export interface Comment {
   type: "Line" | "Block";
@@ -59,3 +63,33 @@ export declare function langFromPath(path: string): import("./binding.js").Lang;
 export declare function sourceTypeFromPath(
   path: string,
 ): import("./binding.js").SourceType;
+
+export { walk, visitorKeys } from "./ast.js";
+export type {
+  AstNode,
+  NodeType,
+  WalkContext,
+  WalkHandler,
+  WalkHook,
+  WalkHooks,
+  TransformPlugin,
+} from "./ast.js";
+
+export interface TransformOptions {
+  parser?: ParserOptions;
+  codegen?: CodegenOptions;
+  /** Each plugin completes a full walk before the next plugin starts. */
+  plugins?: readonly import("./ast.js").TransformPlugin[];
+}
+
+export interface TransformResult extends CodegenOutput {
+  program: import("./ast.js").AstNode & { type: "Program" };
+  diagnostics: Diagnostic[];
+  meta: AstMeta;
+}
+
+/** Throws SyntaxError (with diagnostics) before running plugins on parser errors. */
+export declare function transformSync(
+  source: string,
+  options?: TransformOptions,
+): TransformResult;

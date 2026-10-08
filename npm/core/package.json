@@ -14,13 +14,23 @@
     ".": {
       "import": "./src-js/index.js",
       "types": "./src-js/index.d.ts"
+    },
+    "./ast": {
+      "types": "./src-js/ast.d.ts",
+      "import": "./src-js/ast.js"
     }
   },
   "files": [
     "src-js/binding.d.ts",
     "src-js/binding.js",
     "src-js/index.d.ts",
-    "src-js/index.js"
+    "src-js/index.js",
+    "src-js/ast.js",
+    "src-js/ast.d.ts",
+    "src-js/visitor-keys.js",
+    "src-js/visitor-keys.d.ts",
+    "src-js/transform.js",
+    "README.md"
   ],
   "publishConfig": {
     "access": "public",
@@ -29,10 +39,11 @@
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir src-js",
-    "test": "node --test test/*.test.js",
+    "test": "node --test test/*.test.js && pnpm test:types",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts",
-    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts"
+    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts",
+    "test:types": "tsc --ignoreConfig --noEmit --strict --target esnext --module nodenext --moduleResolution nodenext --types node test/ast-types.ts"
   },
   "keywords": [],
   "author": "",

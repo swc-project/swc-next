@@ -40,6 +40,19 @@ async function prepareBrowserPackage({
     if (source !== destination) await copyFile(source, destination);
   }
 
+  for (const name of [
+    "ast.js",
+    "ast.d.ts",
+    "visitor-keys.js",
+    "visitor-keys.d.ts",
+    "transform.js",
+  ]) {
+    await copyFile(
+      path.join(REPOSITORY_ROOT, "npm/core/src-js", name),
+      path.join(directory, name),
+    );
+  }
+
   const declaration = await readFile(
     path.join(REPOSITORY_ROOT, "npm/core/src-js/binding.d.ts"),
     "utf8",

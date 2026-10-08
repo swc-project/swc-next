@@ -40,3 +40,7 @@ export function printSync(program, options, meta) {
   const code = __printSync(encode(program, meta), encodeCodegenOptions(options));
   return { code };
 }
+
+export { walk, visitorKeys } from "./ast.js";
+import { createTransformSync } from "./transform.js";
+export const transformSync = createTransformSync(parseSync, printSync);
