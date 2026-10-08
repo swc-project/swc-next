@@ -17,7 +17,8 @@ use swc_next_ecma_semantic::{
     AnalyzeOptions, Semantic, analyze, name_resolver::resolver as resolve_names,
 };
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, proposal::ProposalOptions,
+    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
+    proposal::ProposalOptions,
 };
 use swc_next_type_strip::strip_types;
 
@@ -126,11 +127,17 @@ fn all_transform_options() -> TransformerOptions {
     }
 }
 
+fn setup_normalized_program(source: &'static str, lang: Lang) -> Ast<'static> {
+    let mut ast = setup_program(source, lang);
+    Normalizer::normalize(ast.root_program(), &mut ast);
+    ast
+}
+
 // Name resolution is independent of the enabled transforms; bench_transform includes preparation.
 #[library_benchmark]
-#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
-#[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-#[bench::transform(setup_program(TRANSFORM, Lang::Js))]
+#[bench::typescript(setup_normalized_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx(setup_normalized_program(CAL_COM_TSX, Lang::Tsx))]
+#[bench::transform(setup_normalized_program(TRANSFORM, Lang::Js))]
 fn bench_semantic_for_transform(ast: Ast<'static>) {
     black_box(analyze(&ast, AnalyzeOptions::default()));
 }
@@ -138,7 +145,7 @@ fn bench_semantic_for_transform(ast: Ast<'static>) {
 type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
 
 fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
-    let ast = setup_program(source, lang);
+    let ast = setup_normalized_program(source, lang);
     let options = all_transform_options();
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     (ast, semantic, options)

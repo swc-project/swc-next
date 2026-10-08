@@ -8,8 +8,8 @@ use crate::comments::CommentRetargets;
 
 /// Normalizes parser AST shapes for downstream transforms.
 ///
-/// This pass preserves the node IDs of semantic-bearing leaves while the AST
-/// representation is normalized.
+/// Run this pass before semantic analysis so scopes and export targets are
+/// collected from the normalized tree.
 pub struct Normalizer {}
 
 impl Normalizer {

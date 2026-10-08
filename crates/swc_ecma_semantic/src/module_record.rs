@@ -51,32 +51,6 @@ impl ModuleRecord<'_> {
         }
     }
 
-    pub(crate) fn normalize_targets(
-        &mut self,
-        ast: &Ast<'_>,
-        node_references: &[Option<ReferenceId>],
-        references: &[crate::Reference],
-    ) {
-        for entry in &mut self.exports {
-            if !matches!(entry.target, ExportTarget::Expression { .. }) {
-                continue;
-            }
-            let NodeKindData::ExportDefaultDeclaration(declaration) =
-                ast.kind_data(entry.statement)
-            else {
-                continue;
-            };
-            let node = declaration.declaration(ast).node_id();
-            let reference = node_references[node.index()];
-            let symbol = reference.and_then(|id| references[id.index()].symbol);
-            entry.target = ExportTarget::Expression {
-                node,
-                reference,
-                symbol,
-            };
-        }
-    }
-
     pub(crate) fn refresh_references(&mut self, references: &[crate::Reference]) {
         for entry in &mut self.exports {
             match entry.target {

@@ -48,15 +48,6 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
     pub fn ast(&self) -> &Ast<'a> {
         self.ast
     }
-    // Normalization removes parentheses and associative containers. It
-    // preserves semantic-bearing leaves and scope owners, and allocates no
-    // AST nodes. Lookup scope owners and export expression roots can still change.
-    pub(crate) fn normalize(&mut self) {
-        crate::normalize::Normalizer::normalize(self.ast.root_program(), self.ast);
-        self.state.semantic.normalize_scope_owners(self.ast);
-        self.state.semantic.normalize_exports(self.ast);
-    }
-
     pub fn semantic(&self) -> &Semantic<'a> {
         self.state.semantic
     }

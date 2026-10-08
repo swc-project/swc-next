@@ -51,6 +51,10 @@ TransformerOptions
   transform_features() selects enabled passes (bitflags)
              |
              v
+Normalizer::normalize
+  normalize parser AST shapes before building semantic indexes
+             |
+             v
 Semantic analysis
   resolve names; collect scopes, bindings, declarations, and references
              |
@@ -58,7 +62,6 @@ Semantic analysis
 Transformer::transform
   collect optional TransformAnalysis for enabled passes
   create TransformerState and TraverseMutCtx
-  normalize through Mutation and synchronize affected export metadata
              |
              v
 Program.traverse_mut_with(Transformer, TraverseMutCtx)
@@ -78,6 +81,11 @@ Exit the corresponding statement container
 Mutation::finish
   debug-check empty queues/caches and Semantic invariants
 ```
+
+Callers must normalize the AST before `analyze`, then pass that same AST and
+Semantic to `Transformer::transform`. Normalization removes parentheses and
+flattens associative containers, so building Semantic afterward records the final
+scope owners and export expression roots directly.
 
 The statement queue defers attachment to AST lists, not binding allocation or
 reference registration. Ordinary replacements happen during the visitor. Flush

@@ -1,3 +1,5 @@
+use crate::normalize::Normalizer;
+
 use super::*;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::NodeKindData;
@@ -9,9 +11,23 @@ pub(super) fn transform_source<'a>(
     source: &'a str,
     options: TransformerOptions,
 ) -> (Ast<'a>, Semantic<'a>) {
-    let parsed = Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
+    transform_with_parser_options(allocator, source, options, Options::default())
+}
+
+fn transform_with_parser_options<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    options: TransformerOptions,
+    parser_options: Options,
+) -> (Ast<'a>, Semantic<'a>) {
+    let parser_options = Options {
+        preserve_parens: true,
+        ..parser_options
+    };
+    let parsed = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
+    Normalizer::normalize(ast.root_program(), &mut ast);
     let mut semantic = analyze(
         &ast,
         AnalyzeOptions {

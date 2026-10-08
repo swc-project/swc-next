@@ -52,6 +52,8 @@ pub struct Transformer {
 }
 
 impl Transformer {
+    /// Transform an AST that was normalized before semantic analysis.
+    /// Call `normalize::Normalizer::normalize` before constructing `semantic`.
     pub fn transform<'ast>(
         ast: &mut Ast<'ast>,
         semantic: &mut Semantic<'ast>,
@@ -70,7 +72,6 @@ impl Transformer {
             analysis::TransformAnalysis::collect(ast, features),
         );
         let mut ctx = TraverseMutCtx::new(ast, state);
-        ctx.mutate().normalize();
         program.traverse_mut_with(&mut transformer, &mut ctx);
         ctx.mutate().finish();
         debug_assert!(transformer.x0_es2022.is_empty());

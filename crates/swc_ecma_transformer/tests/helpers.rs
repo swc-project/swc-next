@@ -1,5 +1,6 @@
 use super::*;
 use crate::context::Mutate;
+use crate::normalize::Normalizer;
 use crate::state::TransformerState;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{NodeKindData, SourceType};
@@ -24,6 +25,7 @@ fn with_source_context(
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
+    Normalizer::normalize(ast.root_program(), &mut ast);
     let mut semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     let state = TransformerState::new(
         &mut semantic,

@@ -329,40 +329,6 @@ impl<'a> Semantic<'a> {
 }
 
 impl Semantic<'_> {
-    /// Reattach lookup views whose type wrappers were removed by normalization.
-    #[doc(hidden)]
-    pub fn normalize_scope_owners(&mut self, ast: &Ast<'_>) {
-        for scope in &mut self.scopes.list {
-            loop {
-                let replacement = match ast.kind_data(scope.node) {
-                    NodeKindData::TsParenthesizedType(node) => {
-                        Some(node.type_annotation(ast).node_id())
-                    }
-                    NodeKindData::TsUnionType(node) if node.types(ast).len() == 1 => {
-                        node.types(ast).get_node(ast, 0).map(|node| node.node_id())
-                    }
-                    NodeKindData::TsIntersectionType(node) if node.types(ast).len() == 1 => {
-                        node.types(ast).get_node(ast, 0).map(|node| node.node_id())
-                    }
-                    _ => None,
-                };
-                let Some(replacement) = replacement else {
-                    break;
-                };
-                scope.node = replacement;
-            }
-        }
-    }
-
-    /// Refreshes export expression roots after shape-only normalization.
-    #[doc(hidden)]
-    pub fn normalize_exports(&mut self, ast: &Ast<'_>) {
-        self.module_record
-            .normalize_targets(ast, &self.node_references, &self.references);
-    }
-}
-
-impl Semantic<'_> {
     fn resolve_mutated_reference(
         &self,
         ast: &Ast<'_>,

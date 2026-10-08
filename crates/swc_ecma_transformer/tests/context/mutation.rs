@@ -1,5 +1,6 @@
 use super::*;
 use crate::context::Mutate;
+use crate::normalize::Normalizer;
 use crate::state::TransformerState;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{BindingPattern, DUMMY_SP, VariableKind};
@@ -12,6 +13,7 @@ fn with_context(source: &str, run: impl FnOnce(&mut Mutation<'_, '_, '_>)) {
     let parsed = Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
+    Normalizer::normalize(ast.root_program(), &mut ast);
     let options = AnalyzeOptions {
         build_module_record: true,
         ..AnalyzeOptions::default()
@@ -411,12 +413,9 @@ fn retained_subtrees() {
             ctx.semantic().scope_at(original.node_id()),
             Some(ctx.current_scope())
         );
-        let node_count = ctx.ast().node_count();
-        ctx.normalize();
-        assert_eq!(ctx.ast().node_count(), node_count);
         assert_eq!(
             statement.expression(ctx.ast()).node_id(),
-            original.node_id()
+            expression.node_id()
         );
         assert_eq!(
             ctx.semantic()

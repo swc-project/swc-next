@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{Ast, Severity};
 use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
-use swc_next_ecma_transformer::Transformer;
+use swc_next_ecma_transformer::{Transformer, normalize::Normalizer};
 
 use crate::{
     cases::{babel::BabelTransformCase, transform::TransformCase},
@@ -103,6 +103,7 @@ fn transform_input<C: TransformCase>(case: &C) -> Result<String, String> {
     let source = case.code();
     let allocator = Allocator::new();
     let mut ast = parse_program(source, &allocator, case)?;
+    Normalizer::normalize(ast.root_program(), &mut ast);
     let options = case.transformer_options();
     let mut semantic_ret = analyze(
         &ast,
