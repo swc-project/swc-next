@@ -6,38 +6,6 @@ use swc_next_ecma_ast::{
 };
 
 impl Mutation<'_, '_, '_> {
-    /// Replace a leaf expression; its old arena storage remains allocated.
-    pub(crate) fn replace_current_expr(&mut self, replacement: Expr) {
-        let old = self
-            .current_node()
-            .expect("replacement requires a current node");
-        assert!(
-            matches!(
-                self.ast.kind_data(old),
-                NodeKindData::IdentifierReference(_)
-                    | NodeKindData::ThisExpression(_)
-                    | NodeKindData::MetaProperty(_)
-                    | NodeKindData::RegExpLiteral(_)
-                    | NodeKindData::StringLiteral(_)
-                    | NodeKindData::NumericLiteral(_)
-                    | NodeKindData::BigIntLiteral(_)
-                    | NodeKindData::BooleanLiteral(_)
-                    | NodeKindData::NullLiteral(_)
-            ),
-            "replacement must preserve non-leaf children explicitly"
-        );
-        let old = self.replace_current_expr_edge(replacement);
-        if old != replacement.node_id() {
-            let old = self.ast.kind_data(old);
-            self.state.semantic.replace_leaf_expression(old);
-            if matches!(old, NodeKindData::ThisExpression(_)) {
-                self.state
-                    .analysis
-                    .replace_this(old.node_id(), self.state.path.iter().rev().copied());
-            }
-        }
-    }
-
     /// Keep the old expression and all its descendants inside the new wrapper.
     pub(crate) fn wrap_current_expr(&mut self, wrapper: Expr) {
         let old = self
@@ -55,12 +23,7 @@ impl Mutation<'_, '_, '_> {
         );
     }
 
-    /// Keep every child after explicitly transferring the old owner's scope.
-    pub(crate) fn replace_current_expr_preserving_children(&mut self, replacement: Expr) {
-        self.replace_current_expr_edge(replacement);
-    }
-
-    fn replace_current_expr_edge(&mut self, replacement: Expr) -> NodeId {
+    fn replace_current_expr_edge(&mut self, replacement: Expr) {
         let old = self
             .current_node()
             .expect("replacement requires a current node");
@@ -82,7 +45,6 @@ impl Mutation<'_, '_, '_> {
                 .semantic
                 .replace_export_target(self.ast, parent, replacement.node_id());
         }
-        old
     }
 }
 

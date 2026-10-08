@@ -79,19 +79,6 @@ fn first_statement(ctx: &Mutation<'_, '_, '_>) -> Stmt {
         .unwrap()
 }
 
-fn replace_expression(ctx: &mut Mutation<'_, '_, '_>, parent: NodeId, old: Expr) -> Expr {
-    ctx.at_node(old.node_id(), |ctx| {
-        assert_eq!(ctx.parent(), Some(parent));
-        let scope = ctx.semantic().scope_outside(old.node_id()).unwrap();
-        let replacement = Expr::NumericLiteral(
-            ctx.add_node(scope, |ast| ast.numeric_literal(DUMMY_SP, 1.0, None)),
-        );
-        ctx.replace_current_expr(replacement);
-        assert_eq!(ctx.semantic().reference_of(old.node_id()), None);
-        replacement
-    })
-}
-
 fn first_class_body(ctx: &Mutation<'_, '_, '_>) -> ClassBody {
     first_statement(ctx)
         .as_declaration(ctx.ast())
@@ -154,11 +141,6 @@ fn class_elements() {
                 .unwrap()
                 .as_property_definition(ctx.ast())
                 .unwrap();
-            let arrow = property
-                .value(ctx.ast())
-                .unwrap()
-                .as_arrow_function_expression(ctx.ast())
-                .unwrap();
             let method = original
                 .get_node(ctx.ast(), 2)
                 .unwrap()
@@ -191,147 +173,11 @@ fn class_elements() {
             );
             assert_ne!(replacement.node_id(), property.node_id());
             assert_eq!(replacement.value(ctx.ast()), property.value(ctx.ast()));
-            assert_eq!(
-                ctx.analysis().property_initializer_owner(arrow.node_id()),
-                Some(replacement.node_id())
-            );
             assert_ne!(new_method.node_id(), method.node_id());
             assert_eq!(new_method.value(ctx.ast()), function);
             assert_eq!(ctx.semantic().scope_at(function.node_id()), scope);
-            assert!(ctx.analysis().is_derived_constructor(function.node_id()));
         },
     );
-}
-
-#[test]
-fn expression_edges() {
-    with_context("value;", |ctx| {
-        let statement = first_statement(ctx)
-            .as_expression_statement(ctx.ast())
-            .unwrap();
-        let old = statement.expression(ctx.ast());
-        let replacement = replace_expression(ctx, statement.node_id(), old);
-        assert_eq!(
-            statement.expression(ctx.ast()).node_id(),
-            replacement.node_id()
-        );
-    });
-
-    with_context("let result = value;", |ctx| {
-        let declaration = first_statement(ctx)
-            .as_declaration(ctx.ast())
-            .unwrap()
-            .as_variable_declaration(ctx.ast())
-            .unwrap();
-        let declarator = declaration
-            .declarators(ctx.ast())
-            .get_node(ctx.ast(), 0)
-            .unwrap();
-        let old = declarator.init(ctx.ast()).unwrap();
-        let replacement = replace_expression(ctx, declarator.node_id(), old);
-        assert_eq!(
-            declarator.init(ctx.ast()).unwrap().node_id(),
-            replacement.node_id()
-        );
-    });
-
-    with_context("call(value);", |ctx| {
-        let call = first_statement(ctx)
-            .as_expression_statement(ctx.ast())
-            .unwrap()
-            .expression(ctx.ast())
-            .as_call_expression(ctx.ast())
-            .unwrap();
-        let callee = call.callee(ctx.ast()).node_id();
-        let callee_reference = ctx.semantic().reference_of(callee);
-        let old = call
-            .arguments(ctx.ast())
-            .get_node(ctx.ast(), 0)
-            .unwrap()
-            .as_expr(ctx.ast())
-            .unwrap();
-        let replacement = replace_expression(ctx, call.node_id(), old);
-        assert_eq!(
-            call.arguments(ctx.ast())
-                .get_node(ctx.ast(), 0)
-                .unwrap()
-                .node_id(),
-            replacement.node_id()
-        );
-        assert_eq!(ctx.semantic().reference_of(callee), callee_reference);
-    });
-
-    with_context("[, value];", |ctx| {
-        let array = first_statement(ctx)
-            .as_expression_statement(ctx.ast())
-            .unwrap()
-            .expression(ctx.ast())
-            .as_array_expression(ctx.ast())
-            .unwrap();
-        let old = array
-            .elements(ctx.ast())
-            .get_node(ctx.ast(), 1)
-            .unwrap()
-            .unwrap()
-            .as_expr(ctx.ast())
-            .unwrap();
-        let replacement = replace_expression(ctx, array.node_id(), old);
-        assert!(
-            array
-                .elements(ctx.ast())
-                .get_node(ctx.ast(), 0)
-                .unwrap()
-                .is_none()
-        );
-        assert_eq!(
-            array
-                .elements(ctx.ast())
-                .get_node(ctx.ast(), 1)
-                .unwrap()
-                .unwrap()
-                .node_id(),
-            replacement.node_id()
-        );
-    });
-
-    with_context("let value; value + value;", |ctx| {
-        let statement = ctx
-            .ast()
-            .root_program()
-            .body(ctx.ast())
-            .get_node(ctx.ast(), 1)
-            .unwrap();
-        let binary = statement
-            .as_expression_statement(ctx.ast())
-            .unwrap()
-            .expression(ctx.ast())
-            .as_binary_expression(ctx.ast())
-            .unwrap();
-        let old = binary.left(ctx.ast());
-        let remaining = ctx
-            .semantic()
-            .reference_of(binary.right(ctx.ast()).node_id())
-            .unwrap();
-        let symbol = ctx.semantic().reference(remaining).symbol.unwrap();
-        replace_expression(ctx, binary.node_id(), old);
-        assert_eq!(ctx.semantic().uses(symbol), &[remaining]);
-        assert!(matches!(
-            ctx.ast().kind_data(old.node_id()),
-            NodeKindData::IdentifierReference(_)
-        ));
-    });
-
-    with_context("export default value", |ctx| {
-        let NodeKindData::ExportDefaultDeclaration(export) =
-            ctx.ast().kind_data(first_statement(ctx).node_id())
-        else {
-            unreachable!()
-        };
-        let expression = export.declaration(ctx.ast()).as_expr(ctx.ast()).unwrap();
-        let replacement = replace_expression(ctx, export.node_id(), expression);
-        assert!(matches!(ctx.semantic().module_record().exports()[0].target,
-            swc_next_ecma_semantic::ExportTarget::Expression { node, .. } if node == replacement.node_id()));
-    });
 }
 
 #[test]
@@ -445,8 +291,6 @@ fn rejected_edits() {
         ctx.at_node(binary.node_id(), |ctx| {
             assert!(catch_unwind(AssertUnwindSafe(|| ctx.wrap_current_expr(left))).is_err());
             assert_eq!(statement.expression(ctx.ast()).node_id(), binary.node_id());
-            assert!(catch_unwind(AssertUnwindSafe(|| ctx.replace_current_expr(left))).is_err());
-            assert_eq!(statement.expression(ctx.ast()).node_id(), binary.node_id());
             assert_eq!(ctx.semantic().reference_of(right.node_id()), reference);
         });
     });
@@ -480,11 +324,9 @@ fn rejected_edits() {
         let block = first_statement(ctx).as_block_statement(ctx.ast()).unwrap();
         let scope = ctx.scope_for_node(block.node_id()).unwrap();
         assert!(
-            catch_unwind(AssertUnwindSafe(|| ctx.merge_scope(
-                block.node_id(),
-                ctx.program_scope(),
-                Default::default()
-            )))
+            catch_unwind(AssertUnwindSafe(
+                || ctx.merge_scope(block.node_id(), ctx.program_scope())
+            ))
             .is_err()
         );
         assert!(ctx.semantic().scope(scope).active);
@@ -606,7 +448,8 @@ fn scope_merging() {
                 .unwrap();
             let source_scope = ctx.scope_for_node(source.node_id()).unwrap();
             let target_scope = ctx.scope_for_node(target.node_id()).unwrap();
-            let reference = ctx.create_unbound_reference("generated", source_scope);
+            let name = ctx.intern_utf8("generated");
+            let reference = ctx.create_named_reference(name, source_scope, Default::default());
             let generated = Stmt::ExpressionStatement(ctx.add_node(source_scope, |ast| {
                 ast.expression_statement(DUMMY_SP, Expr::IdentifierReference(reference))
             }));
@@ -630,7 +473,7 @@ fn scope_merging() {
                     .map(|slot| ctx.ast().get_node_in_sub_range(slot)),
             );
             let node_count = ctx.ast().node_count();
-            ctx.merge_scope(source.node_id(), target_scope, Default::default());
+            ctx.merge_scope(source.node_id(), target_scope);
             ctx.attach_statements(StatementList::StaticBlock(target), &statements);
             ctx.filter_map_class_elements(body, |_, element| {
                 if element.node_id() == source.node_id() {

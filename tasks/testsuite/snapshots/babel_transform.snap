@@ -4,10 +4,10 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 453/4069 (11.13%)
-Failed: 60/4069 (1.47%)
+Passed: 441/4069 (10.84%)
+Failed: 50/4069 (1.23%)
 Panicked: 0/4069 (0.00%)
-Skipped: 3556/4069 (87.39%)
+Skipped: 3578/4069 (87.93%)
 
 Packages
 ========
@@ -15,12 +15,11 @@ Packages
 babel-core
 ----------
 Cases: 21
-Passed: 5/21 (23.81%)
-Failed: 4/21 (19.05%)
+Passed: 4/21 (19.05%)
+Failed: 3/21 (14.29%)
 Panicked: 0/21 (0.00%)
-Skipped: 12/21 (57.14%)
+Skipped: 14/21 (66.67%)
 Messages:
-Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/inline/input.js - babel-core/test/fixtures/transformation/source-maps/inline: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-external/input.js - babel-core/test/fixtures/transformation/source-maps/input-source-map-external: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location/input.js - babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map/input.js - babel-core/test/fixtures/transformation/source-maps/input-source-map: transformed output differs from output.js
@@ -280,18 +279,10 @@ Skipped: 0/2 (0.00%)
 babel-plugin-transform-arrow-functions
 --------------------------------------
 Cases: 24
-Passed: 1/24 (4.17%)
-Failed: 7/24 (29.17%)
+Passed: 0/24 (0.00%)
+Failed: 0/24 (0.00%)
 Panicked: 0/24 (0.00%)
-Skipped: 16/24 (66.67%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/implicit-var-arguments/input.js - babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/implicit-var-arguments: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/spec/input.js - babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/spec: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/basic/input.js - babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/basic: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/naming/input.js - babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/naming: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/self-referential/input.js - babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/self-referential: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/spec/newableArrowFunction-default/input.js - babel-plugin-transform-arrow-functions/test/fixtures/spec/newableArrowFunction-default: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/spec/newableArrowFunction-vs-spec-false/input.js - babel-plugin-transform-arrow-functions/test/fixtures/spec/newableArrowFunction-vs-spec-false: transformed output differs from output.js
+Skipped: 24/24 (100.00%)
 
 babel-plugin-transform-async-generator-functions
 ------------------------------------------------
@@ -329,12 +320,9 @@ babel-plugin-transform-class-properties
 ---------------------------------------
 Cases: 267
 Passed: 0/267 (0.00%)
-Failed: 2/267 (0.75%)
+Failed: 0/267 (0.00%)
 Panicked: 0/267 (0.00%)
-Skipped: 265/267 (99.25%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-class-properties/test/fixtures/public-loose/arrow-static-this-without-transform/input.js - babel-plugin-transform-class-properties/test/fixtures/public-loose/arrow-static-this-without-transform: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-class-properties/test/fixtures/public/arrow-static-this-without-transform/input.js - babel-plugin-transform-class-properties/test/fixtures/public/arrow-static-this-without-transform: transformed output differs from output.js
+Skipped: 267/267 (100.00%)
 
 babel-plugin-transform-class-static-block
 -----------------------------------------
@@ -728,10 +716,10 @@ Skipped: 24/24 (100.00%)
 babel-plugin-transform-shorthand-properties
 -------------------------------------------
 Cases: 7
-Passed: 6/7 (85.71%)
+Passed: 0/7 (0.00%)
 Failed: 0/7 (0.00%)
 Panicked: 0/7 (0.00%)
-Skipped: 1/7 (14.29%)
+Skipped: 7/7 (100.00%)
 
 babel-plugin-transform-spread
 -----------------------------
@@ -744,10 +732,10 @@ Skipped: 43/43 (100.00%)
 babel-plugin-transform-sticky-regex
 -----------------------------------
 Cases: 2
-Passed: 2/2 (100.00%)
+Passed: 0/2 (0.00%)
 Failed: 0/2 (0.00%)
 Panicked: 0/2 (0.00%)
-Skipped: 0/2 (0.00%)
+Skipped: 2/2 (100.00%)
 
 babel-plugin-transform-strict-mode
 ----------------------------------
@@ -848,7 +836,7 @@ Skipped: 13/13 (100.00%)
 babel-traverse
 --------------
 Cases: 37
-Passed: 6/37 (16.22%)
+Passed: 4/37 (10.81%)
 Failed: 0/37 (0.00%)
 Panicked: 0/37 (0.00%)
-Skipped: 31/37 (83.78%)
+Skipped: 33/37 (89.19%)

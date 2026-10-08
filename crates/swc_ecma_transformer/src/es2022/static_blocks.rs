@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{
     StaticBlock, Stmt, SubRange, UnaryOperator,
 };
 
-use crate::analysis::{ArrowEnvironment, StaticBlockLayout};
+use crate::analysis::StaticBlockLayout;
 use crate::{
     TransformFeatureFlags,
     context::{ClassElementAction, Mutation, ScopeOptions},
@@ -153,7 +153,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
             || first_block.block_body.is_none()
             || (inferred_name.is_some() && layout.first_static_property.is_none())
         {
-            Some(self.create_trailing_arrow(layout.trailing_lexical_super))
+            Some(self.create_trailing_arrow())
         } else {
             None
         };
@@ -220,14 +220,9 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
             return expression;
         }
         let source = block.source_block.expect("statement block has an owner");
-        let lexical_super = self
-            .ctx
-            .analysis()
-            .static_block_preserves_lexical_super(source);
         let mut expression = self.build_iife(
             block.span,
             block.block_body.expect("statement block has a body"),
-            lexical_super,
             source,
             parent,
         );
@@ -241,19 +236,12 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
         expression
     }
 
-    fn create_trailing_arrow(&mut self, lexical_super: bool) -> (ArrowFunctionExpression, ScopeId) {
+    fn create_trailing_arrow(&mut self) -> (ArrowFunctionExpression, ScopeId) {
         self.ctx.add_scope_node(
             ScopeOptions {
                 parent: self.ctx.current_scope(),
                 kind: ScopeKind::Function,
                 reuse: None,
-                environment: Some(ArrowEnvironment {
-                    property_initializer: Some(
-                        self.ctx.semantic().scope(self.ctx.current_scope()).node,
-                    ),
-                    lexical_super,
-                    static_block_environment: true,
-                }),
             },
             |ast| {
                 let body = ArrowFunctionBody::FunctionBody(ast.function_body(
@@ -276,7 +264,6 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
         &mut self,
         span: Span,
         statements: SubRange<Stmt>,
-        preserve_lexical_super: bool,
         source: NodeId,
         parent: ScopeId,
     ) -> Expr {
@@ -287,7 +274,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
         let body = ArrowFunctionBody::FunctionBody(self.ctx.add_node(scope, |ast| {
             ast.function_body(span, SubRange::empty(), statements)
         }));
-        let arrow = self.build_arrow(span, body, false, preserve_lexical_super, source, parent);
+        let arrow = self.build_arrow(span, body, false, source, parent);
         Expr::CallExpression(self.ctx.add_node(parent, |ast| {
             ast.call_expression(span, arrow, None, SubRange::empty(), false)
         }))
@@ -327,19 +314,8 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
             let body = ArrowFunctionBody::FunctionBody(self.ctx.add_node(scope, |ast| {
                 ast.function_body(DUMMY_SP, SubRange::empty(), statements)
             }));
-            let preserve_lexical_super = self.ctx.analysis().static_block_preserves_lexical_super(
-                block
-                    .source_block
-                    .expect("block expression has a source block"),
-            );
-            let replacement = self.build_arrow(
-                DUMMY_SP,
-                body,
-                false,
-                preserve_lexical_super,
-                source,
-                self.ctx.current_scope(),
-            );
+            let replacement =
+                self.build_arrow(DUMMY_SP, body, false, source, self.ctx.current_scope());
             return replacement;
         }
 
@@ -374,7 +350,6 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
         span: Span,
         body: ArrowFunctionBody,
         expression: bool,
-        lexical_super: bool,
         source: NodeId,
         parent: ScopeId,
     ) -> Expr {
@@ -382,16 +357,7 @@ impl<'a> ClassTransform<'_, '_, '_, 'a> {
             .ctx
             .scope_for_node(source)
             .expect("static block scope exists");
-        build_static_block_arrow(
-            span,
-            body,
-            expression,
-            lexical_super,
-            reuse,
-            parent,
-            self.ctx,
-        )
-        .0
+        build_static_block_arrow(span, body, expression, reuse, parent, self.ctx).0
     }
 
     fn sequence_or_single(&mut self) -> Expr {
@@ -943,13 +909,9 @@ fn convert_block_to_expression(block: StaticBlock, ctx: &mut Mutation<'_, '_, '_
         inline_static_block_expression(block.node_id(), ctx.current_scope(), ctx);
         expression
     } else {
-        let preserve_lexical_super = ctx
-            .analysis()
-            .static_block_preserves_lexical_super(block.node_id());
         wrap_statements_in_arrow_function_iife(
             statements,
             block.span(ctx.ast()),
-            preserve_lexical_super,
             block.node_id(),
             ctx,
         )
@@ -959,7 +921,6 @@ fn convert_block_to_expression(block: StaticBlock, ctx: &mut Mutation<'_, '_, '_
 fn wrap_statements_in_arrow_function_iife(
     statements: SubRange<Stmt>,
     span: Span,
-    preserve_lexical_super: bool,
     source: NodeId,
     ctx: &mut Mutation<'_, '_, '_>,
 ) -> Expr {
@@ -969,15 +930,7 @@ fn wrap_statements_in_arrow_function_iife(
     let body = ArrowFunctionBody::FunctionBody(ctx.add_node(scope, |ast| {
         ast.function_body(span, SubRange::empty(), statements)
     }));
-    let (arrow, _) = build_static_block_arrow(
-        span,
-        body,
-        false,
-        preserve_lexical_super,
-        scope,
-        ctx.current_scope(),
-        ctx,
-    );
+    let (arrow, _) = build_static_block_arrow(span, body, false, scope, ctx.current_scope(), ctx);
     Expr::CallExpression(ctx.add_node(ctx.current_scope(), |ast| {
         ast.call_expression(span, arrow, None, SubRange::empty(), false)
     }))
@@ -1018,7 +971,6 @@ fn build_static_block_arrow(
     span: Span,
     body: ArrowFunctionBody,
     expression: bool,
-    lexical_super: bool,
     reuse: ScopeId,
     parent: ScopeId,
     ctx: &mut Mutation<'_, '_, '_>,
@@ -1027,11 +979,6 @@ fn build_static_block_arrow(
         parent,
         kind: ScopeKind::Function,
         reuse: Some(reuse),
-        environment: Some(ArrowEnvironment {
-            property_initializer: Some(ctx.semantic().scope(ctx.current_scope()).node),
-            lexical_super,
-            static_block_environment: true,
-        }),
     };
     let (arrow, scope) = ctx.add_scope_node(options, |ast| {
         let params = ast.formal_parameters(
@@ -1046,15 +993,7 @@ fn build_static_block_arrow(
 }
 
 fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut Mutation<'_, '_, '_>) {
-    ctx.merge_scope(
-        block,
-        parent,
-        ArrowEnvironment {
-            property_initializer: Some(ctx.semantic().scope(ctx.current_scope()).node),
-            static_block_environment: true,
-            ..ArrowEnvironment::default()
-        },
-    );
+    ctx.merge_scope(block, parent);
 }
 
 #[cfg(test)]

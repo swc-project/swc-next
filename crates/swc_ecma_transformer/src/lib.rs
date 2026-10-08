@@ -1,8 +1,6 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BlockStatement, CallExpression, Class, ClassBody, Function,
-    FunctionBody, IdentifierReference, MetaProperty, NodeId, NodeKindData, ObjectProperty, Program,
-    RegExpLiteral, StaticBlock, SwitchCase, ThisExpression, TraverseMut, TraverseMutCtx,
-    TraverseMutWith, TsModuleBlock,
+    ArrowFunctionExpression, Ast, BlockStatement, Class, ClassBody, Function, FunctionBody, NodeId,
+    Program, StaticBlock, SwitchCase, TraverseMut, TraverseMutCtx, TraverseMutWith, TsModuleBlock,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -12,7 +10,6 @@ mod analysis;
 pub mod assumptions;
 mod context;
 pub use context::{GeneratedBinding, Mutate, Mutation, StatementList};
-pub mod es2015;
 pub mod es2022;
 mod helpers;
 pub mod normalize;
@@ -23,18 +20,14 @@ mod used_names;
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
     pub(crate) struct TransformFeatureFlags: u8 {
-        const ARROW_FUNCTIONS = 1 << 0;
-        const SHORTHAND_PROPERTIES = 1 << 1;
-        const STICKY_REGEX = 1 << 2;
-        const ES2022_STATIC_BLOCKS = 1 << 3;
-        const PROPOSAL_PREVENT_EXTENSIONS = 1 << 4;
+        const ES2022_STATIC_BLOCKS = 1 << 0;
+        const PROPOSAL_PREVENT_EXTENSIONS = 1 << 1;
     }
 }
 
 #[derive(Default)]
 pub struct TransformerOptions {
     pub assumptions: Assumptions,
-    pub es2015: es2015::ES2015Options,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
 }
@@ -42,18 +35,6 @@ pub struct TransformerOptions {
 impl TransformerOptions {
     fn transform_features(&self) -> TransformFeatureFlags {
         let mut features = TransformFeatureFlags::empty();
-        features.set(
-            TransformFeatureFlags::ARROW_FUNCTIONS,
-            self.es2015.arrow_functions.is_some(),
-        );
-        features.set(
-            TransformFeatureFlags::SHORTHAND_PROPERTIES,
-            self.es2015.shorthand_properties,
-        );
-        features.set(
-            TransformFeatureFlags::STICKY_REGEX,
-            self.es2015.sticky_regex,
-        );
         features.set(
             TransformFeatureFlags::ES2022_STATIC_BLOCKS,
             self.es2022.static_blocks,
@@ -67,7 +48,6 @@ impl TransformerOptions {
 }
 
 pub struct Transformer {
-    x0_es2015: es2015::ES2015,
     x0_es2022: es2022::ES2022,
 }
 
@@ -81,7 +61,6 @@ impl Transformer {
         let program = ast.root_program();
 
         let mut transformer = Self {
-            x0_es2015: es2015::ES2015::new(options.es2015, features),
             x0_es2022: es2022::ES2022::new(features),
         };
 
@@ -134,15 +113,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         self.x0_es2022.enter_class_body(node, ctx);
     }
 
-    fn exit_call_expression(
-        &mut self,
-        node: CallExpression,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_call_expression(node, ctx);
-    }
-
     fn exit_class(
         &mut self,
         node: Class,
@@ -159,7 +129,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
     ) {
         let ctx = &mut ctx.mutate();
         ctx.inject_helpers(node);
-        self.x0_es2015.exit_program(node, ctx);
         ctx.flush_statements(node.node_id());
         ctx.exit_var_scope(node.node_id());
         ctx.exit_statement_container(node.node_id());
@@ -171,7 +140,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        self.x0_es2015.enter_function(node, ctx);
         let body = node.body(ctx.ast()).node_id();
         ctx.enter_var_scope(body);
     }
@@ -182,9 +150,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_function(node, ctx);
         let body = node.body(ctx.ast()).node_id();
-        ctx.flush_statements(body);
         ctx.exit_var_scope(body);
     }
 
@@ -203,14 +169,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        // Ordinary functions enqueue lexical captures on exit_function.
-        // Arrow bodies can flush now, before their owner is converted.
-        if !ctx
-            .parent()
-            .is_some_and(|parent| matches!(ctx.ast().kind_data(parent), NodeKindData::Function(_)))
-        {
-            ctx.flush_statements(node.node_id());
-        }
+        ctx.flush_statements(node.node_id());
         ctx.exit_statement_container(node.node_id());
     }
 
@@ -239,7 +198,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        self.x0_es2015.enter_static_block();
         ctx.enter_statement_container(node.node_id());
         ctx.enter_var_scope(node.node_id());
     }
@@ -250,7 +208,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_static_block(node, ctx);
         ctx.flush_statements(node.node_id());
         ctx.exit_var_scope(node.node_id());
         ctx.exit_statement_container(node.node_id());
@@ -302,9 +259,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        let property_initializer_owner = ctx.analysis().property_initializer_owner(node.node_id());
-        self.x0_es2015
-            .enter_arrow_function_expression(node, property_initializer_owner, ctx);
         let container = node
             .body(ctx.ast())
             .as_function_body(ctx.ast())
@@ -324,52 +278,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
             .map_or(node.node_id(), |body| body.node_id());
         ctx.flush_arrow_statements(node);
         ctx.exit_var_scope(container);
-        self.x0_es2015.exit_arrow_function_expression(node, ctx);
-    }
-
-    fn exit_object_property(
-        &mut self,
-        node: ObjectProperty,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_object_property(node, ctx);
-    }
-
-    fn exit_reg_exp_literal(
-        &mut self,
-        node: RegExpLiteral,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_reg_exp_literal(node, ctx);
-    }
-
-    fn exit_this_expression(
-        &mut self,
-        node: ThisExpression,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_this_expression(node, ctx);
-    }
-
-    fn enter_identifier_reference(
-        &mut self,
-        node: IdentifierReference,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        self.x0_es2015.enter_identifier_reference(node, ctx);
-    }
-
-    fn exit_meta_property(
-        &mut self,
-        node: MetaProperty,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        self.x0_es2015.exit_meta_property(node, ctx);
     }
 }
 

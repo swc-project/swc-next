@@ -119,16 +119,6 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
         node
     }
 
-    pub fn create_unbound_reference(&mut self, name: &str, scope: ScopeId) -> IdentifierReference {
-        let name = self.ast.add_utf8(name);
-        self.observe_name(name);
-        let node = self.ast.identifier_reference(DUMMY_SP, name);
-        self.state
-            .semantic
-            .register_reference(self.ast, node, scope, None, Default::default());
-        node
-    }
-
     pub(crate) fn path(&self) -> &[NodeId] {
         &self.state.path
     }
@@ -156,25 +146,6 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             .unwrap_or(ScopeId::ROOT)
     }
 
-    pub fn create_reference(&mut self, name: &str, scope: ScopeId) -> IdentifierReference {
-        let symbol = self.state.semantic.lookup(
-            scope,
-            name.as_bytes(),
-            swc_next_ecma_semantic::ReferenceSpace::Value,
-        );
-        let name = self.ast.add_utf8(name);
-        self.observe_name(name);
-        let node = self.ast.identifier_reference(DUMMY_SP, name);
-        self.state
-            .semantic
-            .register_reference(self.ast, node, scope, symbol, Default::default());
-        node
-    }
-
-    pub(crate) fn generated_reference(&mut self, name: AstUtf8, span: Span) -> IdentifierReference {
-        self.generated_reference_in_scope(name, span, self.current_scope())
-    }
-
     pub(crate) fn generated_reference_in_scope(
         &mut self,
         name: AstUtf8,
@@ -191,18 +162,6 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             Default::default(),
         );
         node
-    }
-
-    pub(crate) fn retarget_generated_reference(
-        &mut self,
-        node: IdentifierReference,
-        name: AstUtf8,
-    ) {
-        let symbol = self.state.generated_bindings[&name].symbol;
-        self.state
-            .semantic
-            .retarget_reference(node.node_id(), name, symbol);
-        node.set_name(self.ast, name);
     }
 
     pub(crate) fn generated_declaration(&self, name: AstUtf8) -> BindingIdentifier {

@@ -10,10 +10,9 @@ See [AGENTS.md](../AGENTS.md) for repository-wide development and testing comman
 ```text
 Transformer                              TraverseMutCtx<TransformerState>
 | implements TraverseMut                 |
-+-- ES2015 transforms                     +-- ast: &mut Ast
-|   +-- ArrowFunctions, ...               +-- state: TransformerState
-+-- ES2022 transforms                     |
-    +-- StaticBlocks                         |
++-- ES2022 transforms                     +-- ast: &mut Ast
+    +-- StaticBlocks                     +-- state: TransformerState
+                                             |
                                              +-- path: Vec<NodeId>
                                              +-- semantic: &mut Semantic
 Visitor callback receives TraverseMutCtx     +-- assumptions
@@ -29,12 +28,12 @@ Visitor callback receives TraverseMutCtx     +-- assumptions
 ```
 
 - `Transformer` owns the concrete transform implementations and dispatches visitor
-  callbacks. Each transform keeps its own traversal state, such as arrow capture
-  frames or pending static-block closure state.
+  callbacks. Each transform keeps its own traversal state, such as pending
+  static-block closure state.
 - `TraverseMutCtx` belongs to `swc_ecma_ast`. It carries AST and the generic state value. The generic traversal does not implement transform
   replacement policies or depend on Semantic.
 - `TransformerState` holds shared configuration, Semantic's mutable borrow,
-  optional transform analysis and generated-arrow environments,
+  optional transform analysis,
   generated bindings, used names, helper imports, and the statement injection
   queue. It stores the traversal path through the generic node hooks and does
   not own another AST.
@@ -86,18 +85,13 @@ is per destination container; it is not one global replay of all AST mutations.
 
 Semantic always collects node evaluation scopes in an arena-backed index. It has
 no transform collection flags. Transformer preparation uses the enabled pass flags
-to collect arrow environments, lexical-super summaries, constructor captures,
-static-block comments, and closure-lowering layouts in one optional traversal.
-Private-name collision domains and derived-constructor identities come from local
-class member lists. Preparation must precede lowering: a `super()` call before an
-arrow's `this` use still needs the constructor capture assignment.
+to collect static-block comments and closure-lowering layouts in one optional
+traversal. Private-name collision domains come from local class member lists.
 Mutation initializes shared generated-name state on first use from Semantic's
 symbols, binding declarations, and references, including unresolved references.
 It reserves each generated name immediately and observes newly introduced names
 so later transforms use the same collision domain. Class private-name allocation
-belongs to TransformAnalysis's separate per-class collision domains. Synthesized
-arrows carry explicit initializer, lexical-super, and static-block environment
-metadata in transformer state so later passes retain their original behavior.
+belongs to TransformAnalysis's separate per-class collision domains.
 
 ## Implementing a transform
 
@@ -106,7 +100,7 @@ metadata in transformer state so later passes retain their original behavior.
    Keep additional information in the transformer. Use traversal state or local
    member lists when possible; combine necessary lookahead in TransformAnalysis's
    preparation traversal and gate it with enabled transform flags.
-2. **Keep lowering in the visitor.** Follow the existing ES2015/ES2022 dispatch
+2. **Keep lowering in the visitor.** Follow the existing ES2022 dispatch
    pattern. Borrow `Mutation` in callbacks and pass it to the concrete transform.
    Keep transform-specific capture/layout logic with that transform. Add shared
    state or Mutation methods only when their responsibility is actually shared.
@@ -118,9 +112,9 @@ metadata in transformer state so later passes retain their original behavior.
 4. **Apply edits through Mutation.** Extend it with a concrete atomic operation
    when needed, including the corresponding Semantic update. Do not perform raw
    AST edits followed by separate Semantic repairs in a visitor. Mutation also
-   retires replaced arrow/static-block metadata, transfers initializer owners,
-   inherits inlined environments, and invalidates affected member layouts. Although the
-   generic `TraverseMutCtx.ast` field is public, transforms use the Mutation boundary.
+   retires replaced static-block metadata and invalidates affected member layouts.
+   Although the generic `TraverseMutCtx.ast` field is public, transforms use the
+   Mutation boundary.
 
 ### Existing mutation contracts
 
@@ -130,10 +124,9 @@ metadata in transformer state so later passes retain their original behavior.
 - `generate_binding` returns a `GeneratedBinding` containing its declaration and
   symbol. Register it on first use, then reuse it through `generated_bindings`.
   Use `add_scope_node` to create or transfer a scope owner.
-- `replace_current_expr` supports leaf replacement. `wrap_current_expr` retains
-  the old expression as a direct child. Use
-  `replace_current_expr_preserving_children` only after preserving the children
-  and transferring the old owner's scope as required by its contract.
+- `wrap_current_expr` retains the old expression as a direct child. Property
+  initializer and computed-key wrappers preserve their original expressions
+  through the same validation contract.
 - `filter_map_class_elements` distinguishes `Unchanged`, `Update`, and `Delete`.
   It compacts node-ID slots in place and synchronizes each edit. Materialize or
   move retained contents before deleting their old class-element attachment.
@@ -165,7 +158,7 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Responsibility | File |
 | --- | --- |
 | Entry point, enabled passes, visitor dispatch | [crates/swc_ecma_transformer/src/lib.rs](../crates/swc_ecma_transformer/src/lib.rs) |
-| Optional transform preparation and shared environments | [crates/swc_ecma_transformer/src/analysis.rs](../crates/swc_ecma_transformer/src/analysis.rs) |
+| Optional transform preparation | [crates/swc_ecma_transformer/src/analysis.rs](../crates/swc_ecma_transformer/src/analysis.rs) |
 | Shared transform state | [crates/swc_ecma_transformer/src/state.rs](../crates/swc_ecma_transformer/src/state.rs) |
 | Mutate trait, borrowed Mutation, names and helpers | [crates/swc_ecma_transformer/src/context/mod.rs](../crates/swc_ecma_transformer/src/context/mod.rs) |
 | Shared name allocation from Semantic indexes | [crates/swc_ecma_transformer/src/context/names.rs](../crates/swc_ecma_transformer/src/context/names.rs) |
@@ -176,7 +169,7 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Statement/class edits and scope operations | [crates/swc_ecma_transformer/src/context/mutation.rs](../crates/swc_ecma_transformer/src/context/mutation.rs), [crates/swc_ecma_transformer/src/context/scopes.rs](../crates/swc_ecma_transformer/src/context/scopes.rs) |
 | Deferred statement attachment | [crates/swc_ecma_transformer/src/context/statement_injector.rs](../crates/swc_ecma_transformer/src/context/statement_injector.rs) |
 | External helper cache and imports | [crates/swc_ecma_transformer/src/helpers.rs](../crates/swc_ecma_transformer/src/helpers.rs), [crates/swc_ecma_transformer/src/helpers/builder.rs](../crates/swc_ecma_transformer/src/helpers/builder.rs) |
-| Concrete lowering examples | [crates/swc_ecma_transformer/src/es2015/arrow.rs](../crates/swc_ecma_transformer/src/es2015/arrow.rs), [crates/swc_ecma_transformer/src/es2022/static_blocks.rs](../crates/swc_ecma_transformer/src/es2022/static_blocks.rs) |
+| Concrete lowering examples | [crates/swc_ecma_transformer/src/es2022/static_blocks.rs](../crates/swc_ecma_transformer/src/es2022/static_blocks.rs) |
 | Name resolution and semantic synchronization | [crates/swc_ecma_semantic/src/builder.rs](../crates/swc_ecma_semantic/src/builder.rs), [crates/swc_ecma_semantic/src/mutation.rs](../crates/swc_ecma_semantic/src/mutation.rs) |
 | Generic traversal context | [crates/swc_ecma_ast/src/visit.rs](../crates/swc_ecma_ast/src/visit.rs) |
 

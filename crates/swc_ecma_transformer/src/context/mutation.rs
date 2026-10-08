@@ -4,7 +4,6 @@
 //! These methods attach prepared nodes or relocate existing identities. Replaced
 //! shells remain in the AST arena until the entire AST is dropped.
 use super::Mutation;
-use swc_next_ecma_ast::ObjectProperty;
 use swc_next_ecma_ast::{
     Ast, BlockStatement, ClassBody, ClassElement, Expr, FunctionBody, NodeId, NodeKindData,
     Program, PropertyDefinition, PropertyKey, ScopeId, StaticBlock, Stmt, SubRange, SwitchCase,
@@ -151,22 +150,6 @@ impl Mutation<'_, '_, '_> {
         self.invalidate_static_block_layout(body.node_id());
     }
 
-    pub fn set_property_computed(&mut self, owner: NodeId, computed: bool) {
-        match self.ast.kind_data(owner) {
-            NodeKindData::ObjectProperty(property) => property.set_computed(self.ast, computed),
-            NodeKindData::PropertyDefinition(property) => property.set_computed(self.ast, computed),
-            _ => panic!("computed key owner must be a property"),
-        }
-    }
-
-    pub fn set_property_shorthand(&mut self, property: ObjectProperty, shorthand: bool) {
-        property.set_shorthand(self.ast, shorthand);
-    }
-
-    pub fn set_property_method(&mut self, property: ObjectProperty, method: bool) {
-        property.set_method(self.ast, method);
-    }
-
     pub(crate) fn set_property_value(&mut self, property: PropertyDefinition, value: Expr) {
         assert!(
             property.value(self.ast).is_none(),
@@ -182,22 +165,6 @@ impl Mutation<'_, '_, '_> {
             .expect("property must have an initializer");
         self.assert_expression_wrapper(old.node_id(), wrapper);
         property.set_value(self.ast, Some(wrapper));
-    }
-
-    pub(crate) fn set_property_key(&mut self, parent: NodeId, key: PropertyKey) {
-        let old = match self.ast.kind_data(parent) {
-            NodeKindData::ObjectProperty(property) => property.key(self.ast),
-            NodeKindData::PropertyDefinition(property) => property.key(self.ast),
-            _ => panic!("property key owner must be a property"),
-        };
-        assert!(
-            matches!(
-                self.ast.kind_data(old.node_id()),
-                NodeKindData::IdentifierName(_) | NodeKindData::StringLiteral(_)
-            ),
-            "replacement must preserve evaluated key expressions"
-        );
-        self.replace_property_key_edge(parent, key);
     }
 
     /// Preserve the old computed key within a new wrapper.
@@ -287,16 +254,11 @@ impl Mutation<'_, '_, '_> {
             return;
         }
         self.validate_class_element(old, replacement);
-        match self.ast.kind_data(old.node_id()) {
-            NodeKindData::StaticBlock(_) => self.state.analysis.replace_static_block(old.node_id()),
-            NodeKindData::PropertyDefinition(_) => {
-                if let Some(new) = replacement {
-                    self.state
-                        .analysis
-                        .replace_property(old.node_id(), new.node_id());
-                }
-            }
-            _ => {}
+        if matches!(
+            self.ast.kind_data(old.node_id()),
+            NodeKindData::StaticBlock(_)
+        ) {
+            self.state.analysis.replace_static_block(old.node_id());
         }
         self.invalidate_static_block_layout(old.node_id());
     }

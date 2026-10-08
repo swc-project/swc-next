@@ -1,7 +1,6 @@
 //! Scope ownership and lexical environments for constructed or relocated nodes.
 use super::Mutation;
-use crate::analysis::ArrowEnvironment;
-use swc_next_ecma_ast::{Ast, AstNode, FormalParameterKind, FormalParameters, NodeId, ScopeId};
+use swc_next_ecma_ast::{Ast, AstNode, NodeId, ScopeId};
 use swc_next_ecma_semantic::scope::ScopeKind;
 
 pub(crate) struct ScopeOptions {
@@ -9,7 +8,6 @@ pub(crate) struct ScopeOptions {
     pub kind: ScopeKind,
     /// Transfer this existing scope to the new owner instead of allocating one.
     pub reuse: Option<ScopeId>,
-    pub environment: Option<ArrowEnvironment>,
 }
 
 impl<'a> Mutation<'_, '_, 'a> {
@@ -21,7 +19,7 @@ impl<'a> Mutation<'_, '_, 'a> {
     }
 
     /// Construct a scope owner and register or transfer its scope before returning.
-    /// The caller chooses the node shape and any inherited class environment.
+    /// The caller chooses the node shape and scope destination.
     pub(crate) fn add_scope_node<N: AstNode + Copy>(
         &mut self,
         options: ScopeOptions,
@@ -50,11 +48,6 @@ impl<'a> Mutation<'_, '_, 'a> {
         self.state.semantic.grow_node_indexes(self.ast.node_count());
         let scope = if let Some(scope) = options.reuse {
             let old = self.state.semantic.scope(scope).node;
-            let semantic = &*self.state.semantic;
-            let ancestors =
-                std::iter::successors(semantic.scope_outside(old), |&id| semantic.scope(id).parent)
-                    .map(|id| semantic.scope(id).node);
-            self.state.analysis.remove_arrow(old, ancestors);
             self.state
                 .semantic
                 .transfer_scope_owner(self.ast, old, node.node_id(), options.kind);
@@ -69,36 +62,14 @@ impl<'a> Mutation<'_, '_, 'a> {
             )
         };
         self.state.semantic.register_nodes(self.ast, start, scope);
-        if let Some(environment) = options.environment {
-            self.state
-                .analysis
-                .record_arrow_environment(node.node_id(), environment);
-        }
         (node, scope)
     }
 
-    /// Merge a binding-free scope into the target while retaining reference IDs
-    /// and updating arrows that inherit its evaluation environment.
-    pub(crate) fn merge_scope(
-        &mut self,
-        owner: NodeId,
-        parent: ScopeId,
-        environment: ArrowEnvironment,
-    ) {
+    /// Merge a binding-free scope into the target while retaining reference IDs.
+    pub(crate) fn merge_scope(&mut self, owner: NodeId, parent: ScopeId) {
         let scope = self
             .scope_for_node(owner)
             .expect("source owner must have an active scope");
         self.state.semantic.merge_scope(scope, parent);
-        self.state
-            .analysis
-            .inherit_scope_environment(owner, environment);
-    }
-
-    pub(crate) fn set_parameter_kind(
-        &mut self,
-        params: FormalParameters,
-        kind: FormalParameterKind,
-    ) {
-        params.set_kind(self.ast, kind);
     }
 }

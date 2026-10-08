@@ -1,6 +1,4 @@
 use serde::Deserialize;
-use swc_next_ecma_transformer::es2015::arrow::ArrowFunctionsOptions;
-use swc_next_ecma_transformer::typescript::{JsxImportOptions, TypeScriptOptions};
 
 use super::PluginPresetEntries;
 
@@ -9,31 +7,6 @@ use super::PluginPresetEntries;
 pub struct SyntaxTypeScriptOptions {
     pub dts: bool,
     pub disallow_ambiguous_jsx_like: bool,
-}
-
-#[derive(Debug, Default, Clone, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-struct TransformTypeScriptOptions {
-    #[serde(flatten)]
-    syntax: SyntaxTypeScriptOptions,
-    only_remove_type_imports: bool,
-    optimize_const_enums: bool,
-    jsx_pragma: Option<String>,
-    jsx_pragma_frag: Option<String>,
-}
-
-impl From<TransformTypeScriptOptions> for TypeScriptOptions {
-    fn from(options: TransformTypeScriptOptions) -> Self {
-        Self {
-            verbatim_module_syntax: options.only_remove_type_imports,
-            preserve_const_enums: !options.optimize_const_enums,
-            jsx: JsxImportOptions {
-                pragma: options.jsx_pragma,
-                pragma_frag: options.jsx_pragma_frag,
-                ..JsxImportOptions::default()
-            },
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
@@ -47,14 +20,9 @@ pub struct BabelPlugins {
     pub syntax_jsx: bool,
 
     // TypeScript / JSX
-    pub typescript: Option<TypeScriptOptions>,
+    pub typescript: bool,
     pub react_jsx: bool,
     pub react_jsx_dev: bool,
-
-    // ES2015
-    pub arrow_function: Option<ArrowFunctionsOptions>,
-    pub shorthand_properties: bool,
-    pub sticky_regex: bool,
 
     // ES2022
     pub static_blocks: bool,
@@ -71,13 +39,10 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                     plugins.syntax_typescript = Some(entry.value::<SyntaxTypeScriptOptions>()?);
                 }
                 "jsx" | "syntax-jsx" => plugins.syntax_jsx = true,
-                "transform-typescript" => match entry.value::<TransformTypeScriptOptions>() {
-                    Ok(options) => {
-                        plugins.syntax_typescript = Some(options.syntax);
-                        plugins.typescript = Some(options.into());
-                    }
-                    Err(error) => plugins.errors.push(error),
-                },
+                "transform-typescript" => {
+                    plugins.typescript = true;
+                    plugins.unsupported.push(entry.name().to_owned());
+                }
                 "transform-react-jsx" => {
                     plugins.react_jsx = true;
                     plugins.unsupported.push(entry.name().to_owned());
@@ -86,14 +51,6 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
                     plugins.react_jsx_dev = true;
                     plugins.unsupported.push(entry.name().to_owned());
                 }
-                "transform-arrow-functions" => {
-                    plugins.arrow_function = entry
-                        .value::<ArrowFunctionsOptions>()
-                        .map_err(|error| plugins.errors.push(error))
-                        .ok();
-                }
-                "transform-shorthand-properties" => plugins.shorthand_properties = true,
-                "transform-sticky-regex" => plugins.sticky_regex = true,
                 "transform-class-static-block" => plugins.static_blocks = true,
                 _ => plugins.unsupported.push(entry.name().to_owned()),
             }

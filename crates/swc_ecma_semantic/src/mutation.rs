@@ -112,47 +112,6 @@ impl<'a> Semantic<'a> {
         id
     }
 
-    /// Changes an existing reference without changing its ReferenceId.
-    #[doc(hidden)]
-    pub fn retarget_reference(&mut self, node: NodeId, name: AstUtf8, symbol: SymbolId) {
-        let id = self
-            .reference_of(node)
-            .expect("retargeted node has a reference");
-        self.unlink_reference_use(id);
-        self.references[id.index()].name = name;
-        self.references[id.index()].symbol = Some(symbol);
-        self.append_use(symbol, id);
-    }
-
-    fn unlink_reference_use(&mut self, id: ReferenceId) {
-        if let Some(old_symbol) = self.references[id.index()].symbol {
-            let range = self.use_ranges[old_symbol.index()];
-            let start = self.use_ids.len();
-            for offset in 0..range.len as usize {
-                let previous = self.use_ids[range.start as usize + offset];
-                if previous != id {
-                    self.use_ids.push(previous);
-                }
-            }
-            self.use_ranges[old_symbol.index()] = Range {
-                start: start.try_into().expect("reference storage overflow"),
-                len: (self.use_ids.len() - start)
-                    .try_into()
-                    .expect("reference storage overflow"),
-            };
-        }
-    }
-
-    /// Update only the semantic records of a replaced leaf expression.
-    /// The old AST storage and structural scope entry remain allocated.
-    #[doc(hidden)]
-    pub fn replace_leaf_expression(&mut self, old: swc_next_ecma_ast::NodeKindData) {
-        let node = old.node_id();
-        if let Some(reference) = self.node_references[node.index()].take() {
-            self.unlink_reference_use(reference);
-        }
-    }
-
     /// Retires a scope after its bindings, references and children have been moved.
     #[doc(hidden)]
     pub fn remove_scope(&mut self, scope: ScopeId) {
