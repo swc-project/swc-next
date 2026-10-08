@@ -197,6 +197,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Err(self.unsupported("typed accessor or constructor header", function));
         }
+        if !ordinary_header && function.this_param(ast).is_some() {
+            return Err(self.unsupported("typed function", function));
+        }
         // Babel's JS private methods use generic attachment. TS MethodDefinition
         // remains function-like, including private keys.
         let kind = if !ast.lang().is_typescript()
