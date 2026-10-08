@@ -1,8 +1,7 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 11392/11509 (98.98%)
+Positive Passed: 11394/11509 (99.00%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arraySigChecking.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignToInvalidLHS.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignmentToInstantiationExpression.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/assignmentToParenthesizedExpression1.ts
@@ -51,7 +50,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/me
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators/decoratorMetadata-jsdoc.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionWithTypeArgument.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es2019/importMeta/importMeta.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/arrowFunction/disallowLineTerminatorBeforeArrow.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restElementWithInitializer1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/destructuring/restPropertyWithBindingPattern.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es7/trailingCommasInFunctionParametersAndArguments.ts

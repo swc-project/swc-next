@@ -8114,7 +8114,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             _ => {}
         }
 
-        if token.tag() == TokenTag::Arrow && !token.has_line_terminator_before() {
+        if token.tag() == TokenTag::Arrow {
             return self.parse_simple_arrow_function(left);
         }
 
@@ -8686,9 +8686,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
         let cover = self.parse_parenthesized_cover()?;
-        let is_arrow = self.current_token.tag() == TokenTag::Arrow
-            && !self.current_token.has_line_terminator_before()
-            && CAN_BE_ARROW;
+        let is_arrow = self.current_token.tag() == TokenTag::Arrow && CAN_BE_ARROW;
         if is_arrow {
             return self.cover_to_arrow_function(cover, false, start);
         }
@@ -9014,9 +9012,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             tag if tag.is_identifier_like() && minimum <= Precedence::Assignment => {
                 let after_identifier = self.peek_ahead()?;
-                if after_identifier.tag() == TokenTag::Arrow
-                    && !after_identifier.has_line_terminator_before()
-                {
+                if after_identifier.tag() == TokenTag::Arrow {
                     if token.is_escaped() {
                         self.report_escaped_keyword(token.span());
                     }
@@ -9056,9 +9052,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.checkpoint();
         let cover = self.parse_parenthesized_cover()?;
 
-        let is_arrow = self.current_token.tag() == TokenTag::Arrow
-            && !self.current_token.has_line_terminator_before()
-            && minimum <= Precedence::Assignment;
+        let is_arrow =
+            self.current_token.tag() == TokenTag::Arrow && minimum <= Precedence::Assignment;
         if is_arrow {
             self.rewind(checkpoint);
             if escaped_async {
@@ -9270,16 +9265,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             return None;
         }
-        if self.current_token.has_line_terminator_before() {
-            if need_diagnostics {
-                self.report(
-                    self.current_token.span(),
-                    "A line terminator is not allowed before '=>'",
-                    ReportOptions::default(),
-                );
-            }
-            return None;
-        }
         self.build_arrow_function(start, params, is_async, type_parameters, return_type)
     }
 
@@ -9291,6 +9276,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> Option<Expr> {
+        // Keep the arrow for recovery, including when its head was parsed speculatively.
+        if self.current_token.has_line_terminator_before() {
+            self.report(
+                self.current_token.span(),
+                "A line terminator is not allowed before '=>'",
+                ReportOptions::default(),
+            );
+        }
         self.advance()?;
         let context = enter_function_grammar_context(&mut self.context, false, async_function);
         let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
