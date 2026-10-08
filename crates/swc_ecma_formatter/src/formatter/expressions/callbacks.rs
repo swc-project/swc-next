@@ -455,8 +455,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     })?;
                     return Ok((RecordedValue::Ordinary(value), None));
                 }
-                let independent =
-                    !source.has_parameters() && function.return_type(self.ast).is_none();
+                let independent = !source.has_parameters()
+                    && !source.has_generics()
+                    && function.return_type(self.ast).is_none();
                 let mut shape = (selected.role == CallbackRole::Last
                     && sole_argument
                     && layout == ExpressionLayout::Normal)

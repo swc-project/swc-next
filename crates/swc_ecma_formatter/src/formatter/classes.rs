@@ -76,6 +76,10 @@ struct PreparedClassMember<'ast> {
     sibling: Option<DelimitedSuppression>,
 }
 
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Keep the prepared borrowed method inline instead of allocating per member."
+)]
 enum ClassMemberContent<'ast> {
     Verbatim,
     Method(SourceMethodHeader<'ast>),
