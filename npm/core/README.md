@@ -85,12 +85,19 @@ position, not deduplicated.
 | `skip()` | Enter only: stop remaining enter hooks and skip children, but run the current node's leave hooks. |
 | `stop()` | Finish the current callback, then end the walk, without pending leave hooks. |
 
-**Every context is valid only during the synchronous hook that receives it.**
-Retaining a context and reading its getters or calling its methods later throws,
-including from another hook or after an exception. A nested synchronous walk has
-its own contexts and does not invalidate the outer callback's context. Node,
-state, and ancestor snapshot references may be retained; they are ordinary
-objects, not persistent paths. Contexts are created only for invoked hooks.
+**One context is reused across the synchronous hooks of each walk. Do not retain
+it.** A saved reference aliases the position of later hooks, so stale-reference
+use during another hook cannot be detected. Getters and edit methods throw when
+no hook is active, including after completion or an exception. A nested walk has
+its own context and does not change the outer callback's position. Node, state,
+and ancestor snapshot references may be retained; they are ordinary objects.
+Call methods through `ctx` (for example `ctx.remove()`); they are not bound
+functions and must not be detached from their receiver.
+
+The walker reuses traversal frames by depth and constructs context methods once
+on the prototype, rather than allocating a context and closures per hook. Frame
+allocation scales with maximum depth, not the number of visited nodes. Ancestor
+arrays are allocated only when `ancestors()` is requested.
 
 Replace followed by skip traverses no replacement children. Remove or stop
 prevents further hooks for that node; removal makes subsequent structural edits

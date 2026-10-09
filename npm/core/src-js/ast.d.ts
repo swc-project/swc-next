@@ -10,7 +10,10 @@ export interface AstNode {
   [field: string]: any;
 }
 
-/** Valid only during the synchronous callback receiving it, including getters. */
+/**
+ * Reused across hooks within a walk. Use only in the receiving synchronous hook;
+ * do not retain it. A saved reference aliases the position of later hooks.
+ */
 export interface WalkContext<State = unknown> {
   readonly node: AstNode;
   readonly parent: AstNode | null;

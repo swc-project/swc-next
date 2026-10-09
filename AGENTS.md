@@ -29,6 +29,7 @@ Run from the workspace root.
 | Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--profile wasm-release]` |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                                   |
 | Check JS API types       | `pnpm --filter @swc-next/core test:types` (also included in `pnpm test`)                                  |
+| Benchmark JS walker | `node npm/core/benches/walk.bench.mjs /absolute/path/to/baseline/ast.js` (see `npm/core/benches/walk.md`) |
 | Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                                                |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                                  |
 

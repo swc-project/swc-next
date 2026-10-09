@@ -78,163 +78,213 @@ function compile(hooks) {
   return { table, enter, leave };
 }
 
+// One context per walk, with prototype methods instead of per-hook closures.
+// A retained reference aliases later hooks; callers must not store it.
+class WalkContext {
+  #frame;
+  #phase;
+  #state;
+  #active = false;
+  stopped = false;
+
+  constructor(state) {
+    this.#state = state;
+  }
+
+  #check() {
+    if (!this.#active)
+      throw new Error("Walk context is only valid during its hook");
+  }
+
+  #editable() {
+    this.#check();
+    const frame = this.#frame;
+    if (frame.removed) throw new Error("The current node has been removed");
+    if (!frame.parent)
+      throw new Error("Cannot structurally edit the walk root");
+    if (frame.list && frame.parent.node[frame.key] !== frame.list) {
+      throw new Error(
+        "The current node's container was changed outside the walk context",
+      );
+    }
+    const current = frame.list
+      ? frame.list[frame.index]
+      : frame.parent.node[frame.key];
+    if (current !== frame.node)
+      throw new Error(
+        "The current node's container was changed outside the walk context",
+      );
+    return frame;
+  }
+
+  get node() {
+    this.#check();
+    return this.#frame.node;
+  }
+  get parent() {
+    this.#check();
+    return this.#frame.parent?.node ?? null;
+  }
+  get key() {
+    this.#check();
+    return this.#frame.key;
+  }
+  get index() {
+    this.#check();
+    const frame = this.#frame;
+    return frame.removed || !frame.list ? null : frame.index;
+  }
+  get state() {
+    this.#check();
+    return this.#state;
+  }
+  ancestors() {
+    this.#check();
+    const result = [];
+    for (let p = this.#frame.parent; p; p = p.parent) result.push(p.node);
+    return result.reverse();
+  }
+  skip() {
+    this.#check();
+    if (this.#phase !== "enter")
+      throw new Error("skip() is only valid in enter hooks");
+    this.#frame.skip = true;
+  }
+  stop() {
+    this.#check();
+    this.stopped = true;
+  }
+  replace(node) {
+    const frame = this.#editable();
+    assertNode(node);
+    if (node === frame.node) return;
+    // Only the replacement root inherits missing positions.
+    if (node.start == null) node.start = frame.node.start;
+    if (node.end == null) node.end = frame.node.end;
+    if (frame.list) frame.list[frame.index] = node;
+    else frame.parent.node[frame.key] = node;
+    frame.node = node;
+    frame.replaced = true;
+  }
+  remove() {
+    const frame = this.#editable();
+    if (!frame.list) throw new Error("Removal requires an array element");
+    frame.list.splice(frame.index, 1);
+    frame.index--;
+    frame.removed = true;
+  }
+  #insert(nodes, after) {
+    const frame = this.#editable();
+    if (!frame.list) throw new Error("Insertion requires an array element");
+    const index = frame.index + (after ? 1 + frame.after : 0);
+    let count;
+    if (Array.isArray(nodes)) {
+      nodes.forEach(assertNode);
+      frame.list.splice(index, 0, ...nodes);
+      count = nodes.length;
+    } else {
+      assertNode(nodes);
+      frame.list.splice(index, 0, nodes);
+      count = 1;
+    }
+    if (after) frame.after += count;
+    else frame.index += count;
+  }
+  insertBefore(nodes) {
+    this.#insert(nodes, false);
+  }
+  insertAfter(nodes) {
+    this.#insert(nodes, true);
+  }
+
+  invoke(handler, frame, phase) {
+    this.#frame = frame;
+    this.#phase = phase;
+    this.#active = true;
+    try {
+      assertSync(handler(frame.node, this));
+    } finally {
+      this.#active = false;
+      // A saved context must not retain the AST after the callback.
+      this.#frame = undefined;
+    }
+  }
+}
+
 /** Walk a supported ESTree/TS-ESTree subtree in place and return its root. */
 export function walk(root, hooks, state) {
   assertNode(root);
   const dispatch = compile(hooks);
-  let stopped = false;
+  const ctx = new WalkContext(state);
+  // Siblings reuse the same depth slot. Active ancestors occupy earlier slots,
+  // so edits and ancestor snapshots stay valid without per-node allocations.
+  const frames = [];
 
-  function invoke(handler, frame, phase) {
-    let active = true;
-    const check = () => {
-      if (!active)
-        throw new Error("Walk context is only valid during its hook");
-    };
-    const editable = () => {
-      check();
-      if (frame.removed) throw new Error("The current node has been removed");
-      if (!frame.parent)
-        throw new Error("Cannot structurally edit the walk root");
-      if (frame.list && frame.parent.node[frame.key] !== frame.list) {
-        throw new Error(
-          "The current node's container was changed outside the walk context",
-        );
-      }
-      const current = frame.list
-        ? frame.list[frame.cursor.index]
-        : frame.parent.node[frame.key];
-      if (current !== frame.node)
-        throw new Error(
-          "The current node's container was changed outside the walk context",
-        );
-    };
-    const insert = (nodes, after) => {
-      editable();
-      if (!frame.list) throw new Error("Insertion requires an array element");
-      nodes = Array.isArray(nodes) ? nodes : [nodes];
-      nodes.forEach(assertNode);
-      const index = frame.cursor.index + (after ? 1 + frame.after : 0);
-      frame.list.splice(index, 0, ...nodes);
-      if (after) frame.after += nodes.length;
-      else frame.cursor.index += nodes.length;
-    };
-    const ctx = Object.freeze({
-      get node() {
-        check();
-        return frame.node;
-      },
-      get parent() {
-        check();
-        return frame.parent?.node ?? null;
-      },
-      get key() {
-        check();
-        return frame.key;
-      },
-      get index() {
-        check();
-        return frame.removed ? null : (frame.cursor?.index ?? null);
-      },
-      get state() {
-        check();
-        return state;
-      },
-      ancestors() {
-        check();
-        const result = [];
-        for (let p = frame.parent; p; p = p.parent) result.push(p.node);
-        return result.reverse();
-      },
-      skip() {
-        check();
-        if (phase !== "enter")
-          throw new Error("skip() is only valid in enter hooks");
-        frame.skip = true;
-      },
-      stop() {
-        check();
-        stopped = true;
-      },
-      replace(node) {
-        editable();
-        assertNode(node);
-        if (node === frame.node) return;
-        // Only the replacement root inherits missing positions. No source-map
-        // accuracy is implied for freshly constructed descendants.
-        if (node.start == null) node.start = frame.node.start;
-        if (node.end == null) node.end = frame.node.end;
-        if (frame.list) frame.list[frame.cursor.index] = node;
-        else frame.parent.node[frame.key] = node;
-        frame.node = node;
-        frame.replaced = true;
-      },
-      remove() {
-        editable();
-        // Do not silently null required scalar fields or repair parent grammar.
-        if (!frame.list) throw new Error("Removal requires an array element");
-        frame.list.splice(frame.cursor.index, 1);
-        frame.cursor.index--;
-        frame.removed = true;
-      },
-      insertBefore(nodes) {
-        insert(nodes, false);
-      },
-      insertAfter(nodes) {
-        insert(nodes, true);
-      },
-    });
-    try {
-      assertSync(handler(frame.node, ctx));
-    } finally {
-      active = false;
-    }
-  }
-
-  function visit(node, parent, key, list, cursor) {
+  function visit(node, parent, key, list, index, depth) {
     assertNode(node);
-    const frame = {
-      node,
-      parent,
-      key,
-      list,
-      cursor,
-      after: 0,
-      skip: false,
-      removed: false,
-      replaced: false,
-    };
-    if (dispatch.enter) invoke(dispatch.enter, frame, "enter");
-    if (!stopped && !frame.removed && !frame.replaced && !frame.skip) {
-      for (const handler of dispatch.table.get(frame.node.type)?.enter ?? []) {
-        invoke(handler, frame, "enter");
-        if (stopped || frame.removed || frame.replaced || frame.skip) break;
+    let frame = frames[depth];
+    if (!frame) {
+      frame = frames[depth] = {
+        node: null,
+        parent: null,
+        key: null,
+        list: null,
+        index: 0,
+        after: 0,
+        skip: false,
+        removed: false,
+        replaced: false,
+      };
+    }
+    frame.node = node;
+    frame.parent = parent;
+    frame.key = key;
+    frame.list = list;
+    frame.index = index;
+    frame.after = 0;
+    frame.skip = false;
+    frame.removed = false;
+    frame.replaced = false;
+
+    if (dispatch.enter) ctx.invoke(dispatch.enter, frame, "enter");
+    if (!ctx.stopped && !frame.removed && !frame.replaced && !frame.skip) {
+      const handlers = dispatch.table.get(frame.node.type);
+      if (handlers) {
+        for (const handler of handlers.enter) {
+          ctx.invoke(handler, frame, "enter");
+          if (ctx.stopped || frame.removed || frame.replaced || frame.skip) break;
+        }
       }
     }
-    if (stopped || frame.removed) return;
+    if (ctx.stopped || frame.removed) return frame.index;
     if (!frame.skip) {
       for (const childKey of visitorKeys[frame.node.type]) {
         const value = frame.node[childKey];
         if (Array.isArray(value)) {
-          const position = { index: 0 };
-          for (; position.index < value.length; position.index++) {
-            const child = value[position.index];
-            if (child != null) visit(child, frame, childKey, value, position);
-            if (stopped) return;
+          for (let i = 0; i < value.length; i++) {
+            const child = value[i];
+            if (child != null)
+              i = visit(child, frame, childKey, value, i, depth + 1);
+            if (ctx.stopped) return frame.index;
           }
         } else if (value != null) {
-          visit(value, frame, childKey, null, null);
-          if (stopped) return;
+          visit(value, frame, childKey, null, 0, depth + 1);
+          if (ctx.stopped) return frame.index;
         }
       }
     }
     frame.replaced = false;
-    for (const handler of dispatch.table.get(frame.node.type)?.leave ?? []) {
-      invoke(handler, frame, "leave");
-      if (stopped || frame.removed || frame.replaced) return;
+    const handlers = dispatch.table.get(frame.node.type);
+    if (handlers) {
+      for (const handler of handlers.leave) {
+        ctx.invoke(handler, frame, "leave");
+        if (ctx.stopped || frame.removed || frame.replaced) return frame.index;
+      }
     }
-    if (dispatch.leave) invoke(dispatch.leave, frame, "leave");
+    if (dispatch.leave) ctx.invoke(dispatch.leave, frame, "leave");
+    return frame.index;
   }
 
-  visit(root, null, null, null, null);
+  visit(root, null, null, null, 0, 0);
   return root;
 }

@@ -230,14 +230,18 @@ test("stop aborts siblings and pending leave hooks while retaining edits", () =>
   assert.deepEqual(bodyNames(ast), ["changed", "second"]);
 });
 
-test("contexts expire between callbacks, after exceptions, and across nested walks", () => {
+test("contexts are reused within a walk and isolated across nested walks", () => {
   let saved;
   walk(program("one", "two"), {
     Identifier(node, ctx) {
-      if (saved) assert.throws(() => saved.node, /only valid/);
+      if (saved) {
+        assert.equal(saved, ctx);
+        assert.equal(saved.node, node);
+      }
       saved = ctx;
       walk(program("nested"), {
-        Identifier() {
+        Identifier(nested, nestedCtx) {
+          assert.notEqual(nestedCtx, ctx);
           assert.equal(ctx.node, node);
         },
       });
@@ -401,4 +405,41 @@ test("replace plus skip preserves leave, and removed contexts reject further edi
     },
   });
   assert.equal(ast.body.length, 0);
+});
+
+test("nested edits restore parent positions for leave and later siblings", () => {
+  const first = { type: "ArrayExpression", elements: [id("edit"), id("tail")] };
+  const second = { type: "ArrayExpression", elements: [id("keep")] };
+  const ast = { type: "ArrayExpression", elements: [first, second] };
+  const seen = [];
+  walk(ast, {
+    Identifier(node, ctx) {
+      if (node.name === "edit") {
+        ctx.insertBefore(id("before"));
+        ctx.insertAfter(id("after"));
+        ctx.remove();
+      } else {
+        assert.deepEqual(ctx.ancestors(), [ast, ctx.parent]);
+        seen.push(node.name);
+      }
+    },
+    ArrayExpression: {
+      leave(node, ctx) {
+        assert.equal(ctx.node, node);
+        if (node === ast) {
+          assert.equal(ctx.parent, null);
+          assert.equal(ctx.index, null);
+        } else {
+          assert.equal(ctx.parent, ast);
+          assert.equal(ctx.key, "elements");
+          assert.equal(ctx.parent.elements[ctx.index], node);
+        }
+      },
+    },
+  });
+  assert.deepEqual(seen, ["after", "tail", "keep"]);
+  assert.deepEqual(first.elements.map((node) => node.name), [
+    "before", "after", "tail",
+  ]);
+  assert.deepEqual(second.elements.map((node) => node.name), ["keep"]);
 });
