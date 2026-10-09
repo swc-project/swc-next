@@ -39,7 +39,7 @@ impl Mutation<'_, '_, '_> {
                 self.external_member(bound_identifier, "_to_property_key", scope)
             }
             HelperKind::SetFunctionName => {
-                Expr::IdentifierReference(bound_identifier.reference(self, scope, DUMMY_SP))
+                Expr::IdentifierReference(bound_identifier.reference_read(self, scope, DUMMY_SP))
             }
         }
     }
@@ -151,7 +151,7 @@ impl Mutation<'_, '_, '_> {
         export: &str,
         scope: ScopeId,
     ) -> Expr {
-        let object = Expr::IdentifierReference(namespace.reference(self, scope, DUMMY_SP));
+        let object = Expr::IdentifierReference(namespace.reference_read(self, scope, DUMMY_SP));
         let property = self.ast.add_utf8(export);
         let property = PropertyKey::IdentifierName(
             self.add_node(scope, |ast| ast.identifier_name(DUMMY_SP, property)),

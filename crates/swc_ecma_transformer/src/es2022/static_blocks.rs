@@ -11,8 +11,8 @@
 //! pushContainer/unshiftContainer defer only member-list attachment. Registering
 //! the synthetic named-evaluation StaticBlock scope is still a framework gap.
 //! Babel templates are constructed directly with AST builders. Pending semantic
-//! work: register generated arrow scopes, move reused bodies/expressions into
-//! those scopes, and register assignment targets as write references.
+//! work: register generated arrow scopes and move reused bodies/expressions into
+//! those scopes.
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionBody, AssignmentOperator, AssignmentTarget, Ast, AstWtf8, Class,
@@ -234,9 +234,9 @@ impl StaticBlocks {
             return TraverseAction::Continue;
         };
         let scope = ctx.semantic().scope_outside(class.node_id()).unwrap();
-        // t.cloneNode(tmp): BoundIdentifier::reference supplies a fresh read
+        // t.cloneNode(tmp): BoundIdentifier::reference_read supplies a fresh read
         // reference to the same symbol, without cloning a binding declaration.
-        let callee = Expr::IdentifierReference(tmp.reference(ctx, scope, DUMMY_SP));
+        let callee = Expr::IdentifierReference(tmp.reference_read(ctx, scope, DUMMY_SP));
         let static_block_closure_call = Self::call(scope, callee, DUMMY_SP, ctx);
         if class.class_type(ctx.ast) == ClassType::ClassExpression {
             // We don't use .insertAfter() because we don't need to insert the
@@ -296,14 +296,11 @@ impl StaticBlocks {
         value: Expr,
         ctx: &mut Mutation<'_, '_, '_>,
     ) -> Expr {
-        let name = tmp.identifier.name(ctx.ast);
-        // TODO(Semantic): register the assignment target against tmp.symbol as
-        // a write reference. BoundIdentifier::reference currently registers reads.
+        let reference = tmp.reference_write(ctx, scope, DUMMY_SP);
+        let left = AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::IdentifierReference(reference),
+        );
         ctx.add_node(scope, |ast| {
-            let reference = ast.identifier_reference(DUMMY_SP, name);
-            let left = AssignmentTarget::SimpleAssignmentTarget(
-                SimpleAssignmentTarget::IdentifierReference(reference),
-            );
             Expr::AssignmentExpression(ast.assignment_expression(
                 DUMMY_SP,
                 left,
@@ -653,7 +650,7 @@ impl StaticBlocks {
                 let assignment = Self::assignment(key_scope, temp, converted, ctx);
                 owner.set_key(ctx.ast, PropertyKey::Expr(assignment));
                 Some(Expr::IdentifierReference(
-                    temp.reference(ctx, scope, DUMMY_SP),
+                    temp.reference_read(ctx, scope, DUMMY_SP),
                 ))
             }
             _ => None,

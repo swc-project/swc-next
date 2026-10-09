@@ -133,7 +133,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
         self.inject_variable(container, id.identifier);
 
         // BoundIdentifier retains the declaration identity; callers create fresh
-        // registered references with id.reference(), rather than cloneNode(id).
+        // registered references with id.reference_read(), rather than cloneNode(id).
         id
     }
 

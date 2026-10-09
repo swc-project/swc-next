@@ -2,7 +2,7 @@ use swc_next_ecma_ast::{
     AstUtf8, BindingIdentifier, DUMMY_SP, IdentifierReference, NodeKindData, ScopeId, Span,
     SymbolId,
 };
-use swc_next_ecma_semantic::SymbolFlags;
+use swc_next_ecma_semantic::{ReferenceFlags, SymbolFlags};
 
 use crate::{context::Mutation, used_names::UsedNameState};
 
@@ -30,7 +30,8 @@ impl BoundIdentifier {
         binding
     }
 
-    pub fn reference(
+    /// Create a fresh read-only reference to this binding.
+    pub fn reference_read(
         &self,
         ctx: &mut Mutation<'_, '_, '_>,
         scope: ScopeId,
@@ -44,7 +45,27 @@ impl BoundIdentifier {
             scope,
             node,
             Some(self.symbol),
-            Default::default(),
+            ReferenceFlags::default(),
+        );
+        node
+    }
+
+    /// Create a fresh write-only reference for an assignment target.
+    pub fn reference_write(
+        &self,
+        ctx: &mut Mutation<'_, '_, '_>,
+        scope: ScopeId,
+        span: Span,
+    ) -> IdentifierReference {
+        let node = ctx
+            .ast
+            .identifier_reference(span, self.identifier.name(ctx.ast));
+        ctx.state.semantic.register_reference(
+            ctx.ast,
+            scope,
+            node,
+            Some(self.symbol),
+            ReferenceFlags::default().write_only(),
         );
         node
     }
