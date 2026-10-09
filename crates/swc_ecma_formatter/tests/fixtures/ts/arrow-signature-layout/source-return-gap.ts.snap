@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const select = (value  :Entry) // prettier-ignore
+: Promise<Entry> => value;
+---------- Options ----------
+{"printWidth":88}
+---------- Output ----------
+const select = (value  :Entry) // prettier-ignore
+: Promise<Entry> => value;
+
+---------- Options ----------
+{"printWidth":89}
+---------- Output ----------
+const select = (value  :Entry) // prettier-ignore
+: Promise<Entry> => value;
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+const select = (value  :Entry) // prettier-ignore
+: Promise<Entry> => value;
+
+---------- Options ----------
+{"printWidth":96}
+---------- Output ----------
+const select = (value  :Entry) // prettier-ignore
+: Promise<Entry> => value;
+
+---------- Options ----------
+{"printWidth":88,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const select = (value  :Entry) // prettier-ignore
+: Promise<Entry> => value

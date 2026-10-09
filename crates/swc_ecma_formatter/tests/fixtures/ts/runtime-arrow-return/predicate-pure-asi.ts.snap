@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+previous();
+/* @__PURE__ */ (value): value is string => typeof value === "string";---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+previous();
+/* @__PURE__ */ (value): value is string => typeof value === "string";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+previous();
+/* @__PURE__ */ (
+  value,
+): value is string =>
+  typeof value ===
+  "string";
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+previous()
+;
+/* @__PURE__ */ (
+  value
+): value is string =>
+  typeof value ===
+  "string"
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+previous();
+/* @__PURE__ */ (
+  value,
+): value is string =>
+  typeof value ===
+  "string";

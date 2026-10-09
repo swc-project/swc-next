@@ -1,0 +1,1 @@
+run((value: number): ((next: number) => number) => (next: number): number => value + next);
