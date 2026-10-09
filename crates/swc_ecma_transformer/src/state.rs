@@ -1,4 +1,4 @@
-use crate::context::Container;
+use crate::context::{CommentState, Container};
 use crate::used_names::UsedNameState;
 use crate::{assumptions::Assumptions, context::StatementInjector, helpers::Helpers};
 use swc_next_ecma_ast::NodeId;
@@ -13,6 +13,7 @@ pub(crate) struct TransformerState<'s, 'a> {
     pub(crate) helpers: Helpers,
     pub(crate) statement_injector: StatementInjector,
     pub(crate) container: Container,
+    pub(crate) comments: CommentState,
     pub(crate) used_names: Option<UsedNameState<'a>>,
 }
 
@@ -25,6 +26,7 @@ impl<'s, 'a> TransformerState<'s, 'a> {
             helpers: Helpers::default(),
             statement_injector: Default::default(),
             container: Default::default(),
+            comments: Default::default(),
             used_names: None,
         }
     }

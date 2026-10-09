@@ -1,12 +1,14 @@
 use swc_next_ecma_ast::{Ast, NodeId, NodeKindData, ScopeId, Stmt, TraverseMutCtx};
 
 mod bound_identifier;
+mod comments;
 mod container;
 mod helpers;
 mod memoisation;
 mod statement_injector;
 
 pub(crate) use bound_identifier::BoundIdentifier;
+pub(crate) use comments::CommentState;
 pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
 pub(crate) use statement_injector::StatementInjector;
 
@@ -71,6 +73,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
     }
 
     pub(crate) fn finish(&mut self) {
+        self.state.comments.flush(self.ast);
         debug_assert!(self.state.statement_injector.is_empty());
         debug_assert!(self.state.helpers.is_empty());
         debug_assert!(self.state.container.is_empty());

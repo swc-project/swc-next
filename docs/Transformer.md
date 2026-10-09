@@ -166,6 +166,15 @@ belongs to TransformAnalysis's separate per-class collision domains.
 
 ### Existing mutation contracts
 
+- `inherits_comments(child, parent)` returns `child` and queues the parent's
+  leading/trailing attachment offsets for inheritance, retaining the child's
+  existing comments. `CommentState` lives in traversal state and composes queued
+  transfers in call order. `Mutation::finish` applies them with one
+  `Ast::retarget_comments` call, preserving source order and avoiding duplicate
+  comment records. This is relocation for replaced parents: unlike Babel's
+  shared comment objects, the flat AST gives each comment one attachment.
+  Inner comments retain their child/token anchors because the AST has no
+  separate inner-comment list.
 - `add_node(scope, |ast| ...)` allocates nodes and registers the new allocation
   range. The closure constructs new AST nodes; it must not modify existing edges.
   Use dedicated binding/reference and scope-owner APIs for those identities.

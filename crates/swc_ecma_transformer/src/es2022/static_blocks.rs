@@ -370,11 +370,14 @@ impl StaticBlocks {
                 // We special-case the single expression case to avoid the iife, since
                 // it's common.
                 let expression = statement.expression(ctx.ast);
-                return expression;
+                // t.inheritsComments(t.inheritsComments(expression, statement), block).
+                let expression = ctx.inherits_comments(expression, statement);
+                return ctx.inherits_comments(expression, block);
             }
         }
         let arrow = Self::block_to_arrow(block, scope, false, ctx);
-        Self::call(scope, arrow, block.span(ctx.ast), ctx)
+        let expression = Self::call(scope, arrow, block.span(ctx.ast), ctx);
+        ctx.inherits_comments(expression, block)
     }
 
     /// The block-bodied arrow in template.expression.ast`(() => { ${body} })()`.
