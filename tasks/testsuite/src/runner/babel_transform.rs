@@ -8,7 +8,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Severity};
 use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, analyze};
 use swc_next_ecma_transformer::{Transformer, normalize::Normalizer};
 
 use crate::{
@@ -105,7 +105,7 @@ fn transform_input<C: TransformCase>(case: &C) -> Result<String, String> {
     let mut ast = parse_program(source, &allocator, case)?;
     Normalizer::normalize(ast.root_program(), &mut ast);
     let options = case.transformer_options();
-    let mut semantic_ret = analyze(
+    let semantic_ret = analyze(
         &ast,
         AnalyzeOptions {
             check_syntax: true,
@@ -123,7 +123,8 @@ fn transform_input<C: TransformCase>(case: &C) -> Result<String, String> {
         ));
     }
 
-    Transformer::transform(&mut ast, &mut semantic_ret.semantic, options);
+    let mut semantic = ScopeModel::new(semantic_ret.semantic);
+    Transformer::transform(&mut ast, &mut semantic, options);
     Ok(print(&allocator, &ast, case.codegen_options())
         .code
         .to_owned())

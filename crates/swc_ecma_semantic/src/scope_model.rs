@@ -176,28 +176,87 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
-    pub fn grow_to(&mut self, _node_count: usize, _scope: ScopeId) {
-        todo!()
+    pub fn grow_to(&mut self, node_count: usize, scope: ScopeId) {
+        assert!(self.scope(scope).active, "target scope must be active");
+        // Never truncate indexes when an already registered node is reused.
+        if node_count > self.node_scopes.len() {
+            self.node_scopes.resize(node_count, Some(scope));
+            self.node_symbols.resize(node_count, None);
+            self.node_references.resize(node_count, None);
+        }
     }
 
     pub fn register_binding(
         &mut self,
-        _ast: &Ast,
-        _scope: ScopeId,
-        _binding: BindingIdentifier,
-        _flags: SymbolFlags,
+        ast: &Ast<'a>,
+        scope: ScopeId,
+        binding: BindingIdentifier,
+        flags: SymbolFlags,
     ) -> SymbolId {
-        todo!()
+        self.grow_to(ast.node_count(), scope);
+        let node = binding.node_id();
+        if let Some(symbol) = self.symbol_of(node) {
+            return symbol;
+        }
+        let text = ast.get_utf8(binding.name(ast));
+        let name = binding.name(ast).into();
+        let declaration = DeclarationId::from_usize(self.declarations.len());
+        let symbol = if let Some(symbol) = self.own_binding(scope, text.as_bytes()) {
+            self.symbols[symbol.index()].flags |= flags;
+            self.redeclarations
+                .entry(symbol)
+                .or_insert_with(|| ArenaVec::new_in(self.declarations.bump()))
+                .push(declaration);
+            symbol
+        } else {
+            let symbol = SymbolId::from_usize(self.symbols.len());
+            self.symbols.push(Symbol {
+                name,
+                flags,
+                declaration,
+            });
+            self.uses.push(ArenaVec::new_in(self.symbols.bump()));
+            self.scope_maps[scope.index()].insert(text.as_bytes(), symbol);
+            symbol
+        };
+        self.declarations.push(Declaration {
+            node,
+            symbol,
+            scope,
+            flags,
+        });
+        self.node_symbols[node.index()] = Some(symbol);
+        self.node_scopes[node.index()] = Some(scope);
+        symbol
     }
 
     pub fn register_reference(
         &mut self,
-        _ast: &Ast,
-        _scope: ScopeId,
-        _reference: IdentifierReference,
-        _target: Option<SymbolId>,
-        _flags: ReferenceFlags,
-    ) -> SymbolId {
-        todo!()
+        ast: &Ast,
+        scope: ScopeId,
+        reference: IdentifierReference,
+        target: Option<SymbolId>,
+        flags: ReferenceFlags,
+    ) -> ReferenceId {
+        self.grow_to(ast.node_count(), scope);
+        let node = reference.node_id();
+        assert!(
+            self.reference_of(node).is_none(),
+            "reference already registered"
+        );
+        let id = ReferenceId::from_usize(self.references.len());
+        self.references.push(Reference {
+            name: reference.name(ast),
+            scope,
+            node,
+            symbol: target,
+            flags,
+        });
+        self.node_references[node.index()] = Some(id);
+        self.node_scopes[node.index()] = Some(scope);
+        if let Some(symbol) = target {
+            self.uses[symbol.index()].push(id);
+        }
+        id
     }
 }

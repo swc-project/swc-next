@@ -1,6 +1,6 @@
 [package]
 # Files under tests/ are unit-test modules loaded by src/ through #[path].
-autotests = false
+autotests             = false
 description.workspace = true
 edition               = "2024"
 homepage.workspace    = true
@@ -11,7 +11,8 @@ repository.workspace  = true
 version               = "0.2.4"
 
 [dependencies]
-bitflags = { workspace = true }
+bitflags   = { workspace = true }
+num-bigint = { workspace = true }
 rustc-hash = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
 zmij_ecma  = { workspace = true }

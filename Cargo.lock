@@ -2838,6 +2838,7 @@ name = "swc_next_ecma_transformer"
 version = "0.2.4"
 dependencies = [
  "bitflags",
+ "num-bigint 0.5.1",
  "rustc-hash",
  "serde",
  "swc_next_allocator",

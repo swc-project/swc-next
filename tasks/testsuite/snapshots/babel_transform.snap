@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 441/4069 (10.84%)
-Failed: 50/4069 (1.23%)
+Passed: 440/4069 (10.81%)
+Failed: 51/4069 (1.25%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3578/4069 (87.93%)
 
@@ -327,13 +327,14 @@ Skipped: 267/267 (100.00%)
 babel-plugin-transform-class-static-block
 -----------------------------------------
 Cases: 24
-Passed: 6/24 (25.00%)
-Failed: 4/24 (16.67%)
+Passed: 5/24 (20.83%)
+Failed: 5/24 (20.83%)
 Panicked: 0/24 (0.00%)
 Skipped: 14/24 (58.33%)
 Messages:
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/multiple-static-initializers/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/multiple-static-initializers: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/name-conflict/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/name-conflict: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/preserve-comments/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/preserve-comments: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/var-scope/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/var-scope: transformed output differs from output.js
 

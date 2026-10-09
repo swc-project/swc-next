@@ -1,13 +1,13 @@
 // TODO: Support inline helpers and provide swc-next's own helper library.
 
-use swc_next_ecma_ast::Stmt;
+use swc_next_ecma_ast::{Ast, AstUtf8, Stmt};
 
 use crate::context::BoundIdentifier;
 
 /// Prepared external helper imports, allocated on first use and attached once.
 #[derive(Default)]
 pub(crate) struct Helpers {
-    require: Option<BoundIdentifier>,
+    require: Option<AstUtf8>,
     set_function_name: Option<PreparedHelper>,
     to_property_key: Option<PreparedHelper>,
 }
@@ -41,8 +41,10 @@ impl Helpers {
         entry.as_ref().map(|entry| entry.bound_identifier)
     }
 
-    pub(crate) fn require(&mut self) -> BoundIdentifier {
-        todo!()
+    /// Cache the callee spelling, without inventing a local `require` binding.
+    /// Each call site registers a fresh reference in the program scope.
+    pub(crate) fn require(&mut self, ast: &mut Ast) -> AstUtf8 {
+        *self.require.get_or_insert_with(|| ast.add_utf8("require"))
     }
 
     /// Cache a newly prepared helper for reuse and later program injection.

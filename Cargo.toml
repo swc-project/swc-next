@@ -18,6 +18,7 @@ bumpalo          = "3.20.3"
 hashbrown        = "0.17.1"
 indexmap         = "2.14.2"
 memchr           = "2.8.3"
+num-bigint       = "0.5.1"
 oxc_index        = { version = "5.0.0", features = ["nonmax"] }
 rayon            = "1.12.0"
 regex            = "1.13.1"
@@ -56,18 +57,18 @@ quote        = "1.0.47"
 syn          = { version = "3.0.8", default-features = false }
 
 # Workspace
-swc_next_allocator             = { version = "0.2.0", path = "crates/swc_allocator" }
-swc_next_ast_macros            = { version = "0.2.0", path = "crates/swc_ast_macros" }
-swc_next_bridge                = { version = "0.2.0", path = "crates/swc_bridge" }
-swc_next_bridge_macros         = { version = "0.2.0", path = "crates/swc_bridge_macros" }
-swc_next_ecma_ast              = { version = "0.2.0", path = "crates/swc_ecma_ast" }
-swc_next_ecma_codegen          = { version = "0.2.0", path = "crates/swc_ecma_codegen" }
-swc_next_ecma_parser           = { version = "0.2.0", path = "crates/swc_ecma_parser" }
-swc_next_ecma_semantic         = { version = "0.2.0", path = "crates/swc_ecma_semantic" }
-swc_next_ecma_transformer      = { version = "0.2.0", path = "crates/swc_ecma_transformer" }
-swc_next_regular_expression    = { version = "0.2.0", path = "crates/swc_regular_expression" }
-swc_next_simd                  = { version = "0.2.0", path = "crates/swc_simd" }
-swc_next_type_strip            = { version = "0.2.0", path = "crates/swc_type_strip" }
+swc_next_allocator          = { version = "0.2.0", path = "crates/swc_allocator" }
+swc_next_ast_macros         = { version = "0.2.0", path = "crates/swc_ast_macros" }
+swc_next_bridge             = { version = "0.2.0", path = "crates/swc_bridge" }
+swc_next_bridge_macros      = { version = "0.2.0", path = "crates/swc_bridge_macros" }
+swc_next_ecma_ast           = { version = "0.2.0", path = "crates/swc_ecma_ast" }
+swc_next_ecma_codegen       = { version = "0.2.0", path = "crates/swc_ecma_codegen" }
+swc_next_ecma_parser        = { version = "0.2.0", path = "crates/swc_ecma_parser" }
+swc_next_ecma_semantic      = { version = "0.2.0", path = "crates/swc_ecma_semantic" }
+swc_next_ecma_transformer   = { version = "0.2.0", path = "crates/swc_ecma_transformer" }
+swc_next_regular_expression = { version = "0.2.0", path = "crates/swc_regular_expression" }
+swc_next_simd               = { version = "0.2.0", path = "crates/swc_simd" }
+swc_next_type_strip         = { version = "0.2.0", path = "crates/swc_type_strip" }
 
 # Dev
 anyhow        = "1.0.104"

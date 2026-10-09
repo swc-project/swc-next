@@ -65,9 +65,8 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             self.state.semantic.scope(scope).active,
             "target scope must be active"
         );
-        let count = self.ast.node_count();
         let node = f(self.ast);
-        self.state.semantic.grow_to(count, scope);
+        self.state.semantic.grow_to(self.ast.node_count(), scope);
         node
     }
 
@@ -128,7 +127,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
 
         let base = format!("_{name}");
         let id = BoundIdentifier::named(self, scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
-        self.inject_variable(container, id.identifier.name(self.ast));
+        self.inject_variable(container, id.identifier);
 
         // BoundIdentifier retains the declaration identity; callers create fresh
         // registered references with id.reference(), rather than cloneNode(id).

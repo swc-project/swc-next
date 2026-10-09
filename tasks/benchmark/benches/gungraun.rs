@@ -14,7 +14,7 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, Semantic, analyze, name_resolver::resolver as resolve_names,
+    AnalyzeOptions, ScopeModel, analyze, name_resolver::resolver as resolve_names,
 };
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
@@ -142,13 +142,13 @@ fn bench_semantic_for_transform(ast: Ast<'static>) {
     black_box(analyze(&ast, AnalyzeOptions::default()));
 }
 
-type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
+type TransformInput = (Ast<'static>, ScopeModel<'static>, TransformerOptions);
 
 fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
     let ast = setup_normalized_program(source, lang);
     let options = all_transform_options();
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    (ast, semantic, options)
+    (ast, ScopeModel::new(semantic), options)
 }
 
 #[library_benchmark]

@@ -8,10 +8,6 @@
 //! architecture has no Babel NodePath/Scope objects. Mutation must synchronize
 //! AST edges, moved scope owners, bindings/references and comments in each edit.
 //!
-//! Existing framework blockers remain: ScopeModel registration, statement
-//! injection and script helper require are TODOs; add_node supplies grow_to with
-//! the pre-allocation count; register_reference returns SymbolId rather than
-//! ReferenceId; callers still pass Semantic where ScopeModel is expected.
 //! pushContainer/unshiftContainer defer only member-list attachment. Registering
 //! the synthetic named-evaluation StaticBlock scope is still a framework gap.
 //! Babel templates are constructed directly with AST builders. Pending semantic
@@ -670,8 +666,29 @@ impl StaticBlocks {
     /// handleComputedProperty and property visitors. This is a language-value
     /// conversion gap, not a Babel Scope or NodePath API. Numeric literals use
     /// ECMAScript Number formatting; BigInt raw radix/separators need decoding.
-    fn literal_value_to_string(_key: PropertyKey, _ctx: &mut Mutation<'_, '_, '_>) -> AstWtf8 {
-        todo!("Babel key.value string coercion: canonical Number/BigInt conversion")
+    fn literal_value_to_string(key: PropertyKey, ctx: &mut Mutation<'_, '_, '_>) -> AstWtf8 {
+        let value = match ctx.ast.kind_data(key.node_id()) {
+            NodeKindData::NumericLiteral(literal) => zmij_ecma::Buffer::new()
+                .format(literal.value(ctx.ast))
+                .to_owned(),
+            NodeKindData::BigIntLiteral(literal) => {
+                // Babel's parser stores a bigint value; our AST retains the raw
+                // spelling, including its radix, separators and trailing `n`.
+                let raw = ctx.ast.get_utf8(literal.raw(ctx.ast));
+                let digits = raw.strip_suffix('n').unwrap_or(raw).replace('_', "");
+                let (radix, digits) = match digits.as_bytes().get(..2) {
+                    Some(b"0x" | b"0X") => (16, &digits[2..]),
+                    Some(b"0o" | b"0O") => (8, &digits[2..]),
+                    Some(b"0b" | b"0B") => (2, &digits[2..]),
+                    _ => (10, digits.as_str()),
+                };
+                num_bigint::BigUint::parse_bytes(digits.as_bytes(), radix)
+                    .expect("valid BigInt literal")
+                    .to_str_radix(10)
+            }
+            _ => unreachable!("only Number and BigInt literals require value conversion"),
+        };
+        ctx.ast.add_wtf8(value.as_str().into())
     }
 }
 
