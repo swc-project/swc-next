@@ -8,6 +8,7 @@ pub(in crate::formatter) enum TypeContext {
     ConditionalCheck,
     ConditionalExtends,
     Parenthesized,
+    ArrowReturn,
     PostfixOperand,
     ModifierOperand,
     RestOperand,
@@ -63,6 +64,7 @@ impl TypeContext {
     pub(super) fn needs_parentheses(self, data: TsTypeData, ast: &Ast<'_>) -> bool {
         let minimum = match self {
             Self::Root | Self::Parenthesized => return false,
+            Self::ArrowReturn => return matches!(data, TsTypeData::TsFunctionType(_)),
             Self::ConditionalCheck => {
                 return matches!(
                     data,

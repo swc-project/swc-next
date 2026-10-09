@@ -300,26 +300,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
         })
     }
-    pub(super) fn format_source_parameters(
-        &mut self,
-        parameters: SourceParameters,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        self.format_source_parameters_with_shape(parameters, None, writer)
-    }
-    pub(super) fn format_source_parameters_with_shape(
-        &mut self,
-        parameters: SourceParameters,
-        callback_shape: Option<&mut CallbackParameterShape>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        self.format_source_parameters_with_layout(
-            parameters,
-            callback_shape,
-            SignatureParameterLayout::Shared,
-            writer,
-        )
-    }
 
     pub(super) fn format_source_parameters_with_layout(
         &mut self,
